@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 Int                 @id @default(autoincrement())
+  name               String?
+  phone              String?
+  email              String              @unique
+  password_hash      String
+  role               String              @default("customer")
+  created_at         DateTime            @default(now())
+  orders             Order[]
+  cartItems          CartItem[]
+  addresses          Address[]
+  wishlistItems      Wishlist[]
+  reviews            Review[]
+  stockNotifications StockNotification[]
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String
+  products Product[]
+}
+
+model Product {
+  id                 Int                 @id @default(autoincrement())
+  name               String
+  description        String?
+  price              Decimal
+  stock              Int
+  image_url          String?
+  images             String[]            @default([])
+  category_id        Int?
+  sub_category       String?
+  sizes              String[]            @default([])
+  size_stock         Json?               @default("{}")
+  category           Category?           @relation(fields: [category_id], references: [id])
+  created_at         DateTime            @default(now())
+  cartItems          CartItem[]
+  orderItems         OrderItem[]
+  wishlistItems      Wishlist[]
+  reviews            Review[]
+  stockNotifications StockNotification[]
+}
+
+model CartItem {
+  id         Int     @id @default(autoincrement())
+  user_id    Int
+  product_id Int
+  quantity   Int
+  size       String?
+  user       User    @relation(fields: [user_id], references: [id])
+  product    Product @relation(fields: [product_id], references: [id])
+}
+
+model Order {
+  id            Int         @id @default(autoincrement())
+  user_id       Int
+  total         Decimal
+  status        String      @default("pending")
+  cancel_reason String?
+  created_at    DateTime    @default(now())
+  user          User        @relation(fields: [user_id], references: [id])
+  items         OrderItem[]
+}
+
+model OrderItem {
+  id                Int     @id @default(autoincrement())
+  order_id          Int
+  product_id        Int
+  quantity          Int
+  size              String?
+  price_at_purchase Decimal
+  order             Order   @relation(fields: [order_id], references: [id])
+  product           Product @relation(fields: [product_id], references: [id])
+}
+
+model Address {
+  id      Int    @id @default(autoincrement())
+  user_id Int
+  line1   String
+  city    String
+  state   String
+  pincode String
+  phone   String
+  user    User   @relation(fields: [user_id], references: [id])
+}
+
+model Wishlist {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  product_id Int
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id])
+  product    Product  @relation(fields: [product_id], references: [id])
+
+  @@unique([user_id, product_id])
+}
+
+model Coupon {
+  id               Int      @id @default(autoincrement())
+  code             String   @unique
+  discount_percent Int?
+  discount_flat    Decimal?
+  min_order_value  Decimal? @default(0)
+  is_active        Boolean  @default(true)
+  created_at       DateTime @default(now())
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  product_id Int
+  rating     Int      @default(5)
+  comment    String
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id])
+  product    Product  @relation(fields: [product_id], references: [id])
+}
+
+model StockNotification {
+  id         Int      @id @default(autoincrement())
+  user_id    Int?
+  email      String
+  product_id Int
+  size       String?
+  created_at DateTime @default(now())
+  user       User?    @relation(fields: [user_id], references: [id])
+  product    Product  @relation(fields: [product_id], references: [id])
+}
+
+

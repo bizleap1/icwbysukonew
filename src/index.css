@@ -1,0 +1,206 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    margin: 0;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #FAF8F5;
+    color: #111113;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.dark body {
+    background-color: #0A0A0C;
+    background-image: 
+        radial-gradient(ellipse 100% 70% at 50% 0%, rgba(29, 78, 216, 0.45) 0%, rgba(59, 130, 246, 0.25) 35%, rgba(10, 10, 12, 0.85) 65%, #0A0A0C 100%),
+        radial-gradient(ellipse 80% 55% at 85% 45%, rgba(59, 130, 246, 0.24), transparent 70%),
+        radial-gradient(ellipse 75% 55% at 15% 75%, rgba(29, 78, 216, 0.28), transparent 70%);
+    background-attachment: fixed;
+    color: #F6F6F0;
+}
+
+.font-display, .font-quiche {
+    font-family: "Quiche", "Quiche Flare", "Cormorant Garamond", "Playfair Display", Georgia, serif;
+    font-weight: 500;
+}
+
+.font-body, .font-inter {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+@layer base {
+    :root {
+        --background: 240 5% 6%;
+        --foreground: 60 30% 96%;
+        --card: 240 4% 9%;
+        --card-foreground: 60 30% 96%;
+        --popover: 240 4% 9%;
+        --popover-foreground: 60 30% 96%;
+        --primary: 60 30% 96%;
+        --primary-foreground: 240 5% 6%;
+        --secondary: 240 5% 12%;
+        --secondary-foreground: 60 30% 96%;
+        --muted: 240 5% 15%;
+        --muted-foreground: 240 5% 65%;
+        --accent: 43 30% 45%;
+        --accent-foreground: 60 30% 96%;
+        --destructive: 0 62% 30%;
+        --destructive-foreground: 60 30% 96%;
+        --border: 240 5% 18%;
+        --input: 240 5% 18%;
+        --ring: 60 30% 96%;
+        --radius: 0rem;
+    }
+}
+
+@layer base {
+    * {
+        border-color: hsl(var(--border));
+    }
+    body {
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
+        overflow-x: hidden;
+        overscroll-behavior-y: none;
+    }
+    html {
+        scroll-behavior: smooth;
+        overscroll-behavior-y: none;
+    }
+    
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    ::selection {
+        background: #C8A663;
+        color: #0F0F11;
+    }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #0F0F11;
+}
+::-webkit-scrollbar-thumb {
+    background: #2a2a2e;
+    border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #3a3a3e;
+}
+
+/* Cinematic grain overlay */
+.grain::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.04;
+    z-index: 1;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='200' height='200' filter='url(%23n)' opacity='0.6'/></svg>");
+    mix-blend-mode: overlay;
+}
+
+/* Marquee for announcement bar */
+@keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+.marquee-track {
+    animation: marquee 40s linear infinite;
+}
+
+/* Hover image scaling */
+.product-img {
+    transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1), filter 0.8s ease;
+}
+.product-card:hover .product-img {
+    transform: scale(1.05);
+    filter: brightness(1.05);
+}
+
+/* Underline link */
+.luxe-link {
+    position: relative;
+    display: inline-block;
+}
+.luxe-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -3px;
+    width: 0;
+    height: 1px;
+    background: currentColor;
+    transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.luxe-link:hover::after {
+    width: 100%;
+}
+
+/* Hero overlay gradient */
+.hero-gradient {
+    background: linear-gradient(180deg, rgba(15,15,17,0.35) 0%, rgba(15,15,17,0.55) 60%, rgba(15,15,17,0.9) 100%);
+}
+
+[data-debug-wrapper="true"] {
+    display: contents !important;
+}
+
+/* Lenis smooth scrolling styles */
+html.lenis, html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-scrolling iframe {
+  pointer-events: none;
+}
+
+/* CSS Aurora Background */
+@keyframes aurora-bg {
+  0% { background-position: 50% 50%, 50% 50%; }
+  100% { background-position: 350% 50%, 350% 50%; }
+}
+.animate-aurora-bg {
+  animation: aurora-bg 60s linear infinite;
+}
+
+/* Fix Chrome / Edge / Safari Autofill light background and black text on dark theme */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: #ffffff !important;
+    caret-color: #ffffff;
+    transition: background-color 99999s ease-in-out 0s;
+}
+
+input {
+    color: inherit;
+}
+

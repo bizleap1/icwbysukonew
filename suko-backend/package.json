@@ -1,0 +1,42 @@
+{
+  "name": "suko-backend",
+  "version": "1.0.0",
+  "description": "Node.js Express backend for Suko e-commerce platform",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "build": "prisma generate",
+    "postinstall": "prisma generate",
+    "prisma:generate": "prisma generate"
+  },
+  "keywords": [
+    "express",
+    "prisma",
+    "e-commerce",
+    "suko",
+    "neon",
+    "postgres"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^5.18.0",
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^1.41.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.2.0",
+    "multer-storage-cloudinary": "^4.0.0",
+    "nodemailer": "^9.0.4",
+    "pdfkit": "^0.19.1",
+    "razorpay": "^2.9.8",
+    "resend": "^6.18.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4",
+    "prisma": "^5.18.0"
+  }
+}
