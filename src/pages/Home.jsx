@@ -165,12 +165,12 @@ const Home = () => {
           <img
             src="/boardroom_banner.jpg"
             alt="ICW Executive Tailoring"
-            className="w-full h-full object-cover object-top opacity-90"
+            className="w-full h-full object-cover object-[78%_25%] sm:object-top opacity-90"
             decoding="async"
           />
           {/* Gradients ensuring uninterrupted typography legibility on the left */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent z-[2]" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/35 to-transparent z-[2]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 sm:via-black/35 to-transparent z-[2]" />
         </div>
 
         {/* Lower-Third Anchored Hero Content */}
@@ -197,7 +197,7 @@ const Home = () => {
                 </h1>
 
                 {/* Concise 2-Line Subcopy (Dimmer / lighter grey for hero dominance, 14-16px breathing room) */}
-                <p className="text-white/65 font-body text-xs sm:text-[13.5px] lg:text-[14.5px] tracking-wide font-light leading-relaxed max-w-[400px] mb-6 sm:mb-[28px]">
+                <p className="text-white/80 sm:text-white/65 font-body text-xs sm:text-[13.5px] lg:text-[14.5px] tracking-wide font-light leading-relaxed max-w-[400px] mb-6 sm:mb-[28px] drop-shadow-sm">
                   Impeccable structure designed for the modern female leader. Tailored for ambition.
                 </p>
 
@@ -281,34 +281,34 @@ const Home = () => {
             <div 
               className="absolute inset-0 pointer-events-none"
               style={{
-                background: "linear-gradient(90deg, rgba(10,10,12,0.85) 0%, rgba(10,10,12,0.68) 32%, rgba(10,10,12,0.25) 55%, rgba(10,10,12,0) 75%)"
+                background: "linear-gradient(90deg, rgba(10,10,12,0.92) 0%, rgba(10,10,12,0.78) 36%, rgba(10,10,12,0.35) 60%, rgba(10,10,12,0) 80%)"
               }}
             />
             <div 
               className="absolute inset-0 pointer-events-none"
               style={{
-                background: "linear-gradient(0deg, rgba(10,10,12,0.65) 0%, rgba(10,10,12,0.20) 30%, rgba(10,10,12,0) 55%)"
+                background: "linear-gradient(0deg, rgba(10,10,12,0.75) 0%, rgba(10,10,12,0.30) 35%, rgba(10,10,12,0) 60%)"
               }}
             />
             
-            {/* Perfectly Anchored Content (Calibrated ~18px downward for smooth reveal transition) */}
+            {/* Perfectly Anchored Content */}
             <div className="absolute inset-0 p-6 sm:p-12 lg:p-16 pt-10 sm:pt-16 lg:pt-20 flex flex-col justify-center max-w-[650px] z-10">
               {/* Refined Gold Eyebrow: Bright, readable luxury gold #C99A2E with wide tracking */}
               <div className="flex items-center gap-2.5 mb-3 sm:mb-4">
                 <span className="w-4 h-[1px] bg-[#C99A2E]" />
-                <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.24em] text-[#C99A2E] font-semibold font-body">
+                <span className="text-[10.5px] sm:text-[11px] uppercase tracking-[0.24em] text-[#C99A2E] font-semibold font-body">
                   THE EDITORIAL &middot; SIGNATURE SUITING
                 </span>
               </div>
 
               {/* Main Headline: Tighter luxury leading, bold visual dominance */}
-              <h3 className="font-quiche text-3xl sm:text-5xl lg:text-6xl text-white font-light leading-[1.04] mb-3.5 sm:mb-4">
+              <h3 className="font-quiche text-3xl sm:text-5xl lg:text-6xl text-white font-light leading-[1.04] mb-3.5 sm:mb-4 drop-shadow-md">
                 THE ICW <br />
                 <span className="italic font-normal text-white/95">WOMAN</span>
               </h3>
 
-              {/* Exact Copy: 10-15% larger & higher contrast for effortless editorial readability */}
-              <p className="text-white/92 sm:text-white/95 font-body text-[13px] sm:text-[15px] lg:text-[16px] font-light leading-[1.62] mb-6 sm:mb-8 max-w-[480px] drop-shadow-sm">
+              {/* Exact Copy: 100% Solid White on Mobile for Crystal-Clear Readability */}
+              <p className="text-white sm:text-white/95 font-body text-[13.5px] sm:text-[15px] lg:text-[16px] font-normal sm:font-light leading-[1.62] mb-6 sm:mb-8 max-w-[480px] drop-shadow-md">
                 Architectural tailoring shaped for quiet authority and effortless presence.
               </p>
 
