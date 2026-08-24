@@ -1,3 +1,14 @@
+# Environment variables & secrets
+.env
+.env.*
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+suko-backend/.env
+suko-backend/.env.*
+
 # Logs
 logs
 *.log
@@ -7,13 +18,12 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies and build outputs
 node_modules
 build
 dist
 dist-ssr
 *.local
-.env
-.env.*
 
 # Editor directories and files
 .vscode/*
