@@ -2,31 +2,22 @@ const nodemailer = require('nodemailer');
 const { generateInvoicePDF } = require('./pdfGenerator');
 
 // Brevo (Sendinblue) Transporter Configuration
-let brevoTransporter = null;
-
 function getBrevoTransporter() {
-  if (brevoTransporter) return brevoTransporter;
-
   const login = (process.env.BREVO_SMTP_LOGIN || '').trim();
   const pass = (process.env.BREVO_SMTP_KEY || '').trim();
 
-  brevoTransporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com',
-    port: 587,
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
     secure: false,
-    pool: true,
-    maxConnections: 5,
-    maxMessages: 100,
     auth: {
       user: login,
       pass: pass,
     },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 15000,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
   });
-
-  return brevoTransporter;
 }
 
 const SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL || process.env.SMTP_EMAIL || 'bizleap1@gmail.com';
