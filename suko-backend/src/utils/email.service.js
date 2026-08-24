@@ -1,66 +1,51 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const { generateInvoicePDF } = require('./pdfGenerator');
 
-// Brevo (Sendinblue) Transporter Configuration
-function getBrevoTransporter(port = 587) {
-  const login = (process.env.BREVO_SMTP_LOGIN || '').trim();
-  const pass = (process.env.BREVO_SMTP_KEY || '').trim();
+// Initialize Resend Client with API Key
+const resendApiKey = (process.env.RESEND_API_KEY || '').trim();
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
-    port: port,
-    secure: port === 465,
-    auth: {
-      user: login,
-      pass: pass,
-    },
-    connectionTimeout: 8000,
-    greetingTimeout: 8000,
-    socketTimeout: 8000,
-  });
-}
+const SENDER_EMAIL = process.env.RESEND_FROM_EMAIL || 'ICW by Suko <onboarding@resend.dev>';
 
-const SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL || process.env.SMTP_EMAIL || 'bizleap1@gmail.com';
-const SENDER_NAME = process.env.BREVO_SENDER_NAME || 'SUKO Atelier';
+console.log(`📧 Email Provider: Resend HTTPS API (Sender: "${SENDER_EMAIL}")`);
 
-console.log(`📧 Email Provider: Brevo Relay (Sender: "${SENDER_NAME}" <${SENDER_EMAIL}>)`);
-
-// Universal send function with multi-port fallback (587 -> 2525 -> 465)
+// Universal send function via Resend HTTPS REST API (Port 443)
 async function sendEmail({ to, subject, html, attachments }) {
-  const configuredPort = parseInt(process.env.SMTP_PORT || '587', 10);
-  const portsToTry = [configuredPort, 2525, 465].filter((v, i, a) => a.indexOf(v) === i);
-  let lastError = null;
-
-  for (const port of portsToTry) {
-    try {
-      console.log(`📧 Sending email via Brevo (port ${port}) to: ${to}`);
-      const transporter = getBrevoTransporter(port);
-      
-      const mailOptions = {
-        from: `"${SENDER_NAME}" <${SENDER_EMAIL}>`,
-        to: Array.isArray(to) ? to.join(', ') : to,
-        subject,
-        html,
-      };
-
-      if (attachments && attachments.length > 0) {
-        mailOptions.attachments = attachments.map(a => ({
-          filename: a.filename,
-          content: a.content,
-        }));
-      }
-
-      const info = await transporter.sendMail(mailOptions);
-      console.log(`✅ Brevo email delivered successfully to ${to} via port ${port}. MessageId:`, info.messageId);
-      return info;
-    } catch (err) {
-      console.warn(`⚠️ Brevo port ${port} attempt failed for ${to}: ${err.message}. Trying next port...`);
-      lastError = err;
-    }
+  if (!resend) {
+    throw new Error('RESEND_API_KEY is not configured in backend environment.');
   }
 
-  console.error(`❌ All Brevo email attempts failed for ${to}:`, lastError?.message);
-  throw lastError;
+  const recipientList = Array.isArray(to) ? to : [to];
+
+  const payload = {
+    from: SENDER_EMAIL,
+    to: recipientList,
+    subject,
+    html,
+  };
+
+  if (attachments && attachments.length > 0) {
+    payload.attachments = attachments.map(a => ({
+      filename: a.filename,
+      content: Buffer.isBuffer(a.content) ? a.content : Buffer.from(a.content),
+    }));
+  }
+
+  try {
+    console.log(`📧 Sending email via Resend API to: ${recipientList.join(', ')}`);
+    const { data, error } = await resend.emails.send(payload);
+
+    if (error) {
+      console.error(`❌ Resend API returned error for ${recipientList.join(', ')}:`, error);
+      throw new Error(error.message || 'Resend email dispatch error');
+    }
+
+    console.log(`✅ Resend email delivered successfully to ${recipientList.join(', ')}. ID:`, data?.id);
+    return data;
+  } catch (err) {
+    console.error(`❌ Resend email dispatch exception for ${recipientList.join(', ')}:`, err.message);
+    throw err;
+  }
 }
 
 // 1. Send Login Notification Email

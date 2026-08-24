@@ -82,6 +82,13 @@ function validateEnv() {
     }
   }
 
+  // 7. Resend Email Service Configuration
+  if (isProd) {
+    if (!process.env.RESEND_API_KEY) {
+      errors.push("Missing required production environment variable: RESEND_API_KEY");
+    }
+  }
+
   if (errors.length > 0) {
     console.error("❌ Environment configuration validation failed:");
     errors.forEach(err => console.error(`   - ${err}`));
