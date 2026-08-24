@@ -119,8 +119,8 @@ const ProductDetail = () => {
   const related = products ? products.filter(p => p.id !== product.id && (p.gender === product.gender || !p.gender)).slice(0, 4) : [];
 
   const setCategoryLabel = product.setType
-    ? product.setType.toUpperCase()
-    : product.name.toLowerCase().includes("vest")
+    ? String(product.setType).toUpperCase()
+    : (product.name || "").toLowerCase().includes("vest")
       ? "2-PIECE VEST SET"
       : product.category === "waistcoats"
         ? "2-PIECE VEST SET"
@@ -130,14 +130,14 @@ const ProductDetail = () => {
 
   const setPiecesDescription = product.pieces
     ? product.pieces
-    : product.name.toLowerCase().includes("fishtail") || product.name.toLowerCase().includes("skirt")
+    : (product.name || "").toLowerCase().includes("fishtail") || (product.name || "").toLowerCase().includes("skirt")
       ? "Includes Peplum Jacket + Coordinated Fishtail Skirt."
-      : product.name.toLowerCase().includes("vest")
+      : (product.name || "").toLowerCase().includes("vest")
         ? "Includes Sculpted Vest + Coordinated Column Skirt."
         : "Includes Tailored Jacket + Coordinated Formal Trousers.";
 
   const activeColors = product.availableColors && product.availableColors.length > 0
-    ? COLOURS.filter(c => product.availableColors.some(ac => ac.toLowerCase() === c.name.toLowerCase()))
+    ? COLOURS.filter(c => product.availableColors.some(ac => ac.toLowerCase() === (c.name || "").toLowerCase()))
     : product.color
       ? COLOURS.filter(c => c.name.toLowerCase() === product.color.toLowerCase())
       : COLOURS.slice(0, 1);
@@ -307,7 +307,7 @@ const ProductDetail = () => {
                   ICW BY SUKO
                 </span>
                 <span className="text-[9.5px] uppercase tracking-[0.2em] text-[#666672] font-mono">
-                  REF: {product.id?.toUpperCase()}
+                  REF: {String(product.id || "").toUpperCase()}
                 </span>
               </div>
 
