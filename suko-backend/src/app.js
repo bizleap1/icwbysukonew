@@ -42,7 +42,7 @@ app.use(helmet({
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true); // Allow server-to-server and tools like curl
-    const allowed = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:5173,https://icw-by-suko.vercel.app')
+    const allowed = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:5173,https://icwbysukonew.vercel.app,https://indiancorporatewear.com,https://www.indiancorporatewear.com')
       .split(',')
       .map(o => o.trim());
     if (allowed.includes(origin)) {
