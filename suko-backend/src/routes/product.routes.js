@@ -18,6 +18,7 @@ const uploadFields = upload.fields([
 
 router.get('/', getAllProducts);
 router.get('/:id', getProductById);
+router.post('/', authMiddleware, adminOnly, createProduct);
 router.post('/upload', authMiddleware, adminOnly, uploadFields, createProductWithImage);
 router.put('/:id', authMiddleware, adminOnly, uploadFields, updateProduct);
 router.delete('/:id', authMiddleware, adminOnly, deleteProduct);
