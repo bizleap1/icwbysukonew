@@ -272,8 +272,8 @@ const Auth = () => {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Full Name (e.g. Elena Vance)"
                 disabled={isLoading}
-                autoComplete="new-password"
-                className="w-full bg-transparent border-b border-[#D8D4CC] focus:border-[#C2922E] text-[#111113] outline-none py-2.5 text-sm placeholder:text-[#9999A4] disabled:opacity-50 transition-colors"
+                autoComplete="off"
+                className="w-full bg-transparent border-b border-[#D8D4CC] focus:border-[#C2922E] !text-[#111113] font-medium outline-none py-2.5 text-sm placeholder:text-[#9999A4] disabled:opacity-50 transition-colors"
                 required
               />
               <input
@@ -282,8 +282,8 @@ const Auth = () => {
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Phone Number (e.g. +91 98765 43210)"
                 disabled={isLoading}
-                autoComplete="new-password"
-                className="w-full bg-transparent border-b border-[#D8D4CC] focus:border-[#C2922E] text-[#111113] outline-none py-2.5 text-sm placeholder:text-[#9999A4] disabled:opacity-50 transition-colors"
+                autoComplete="off"
+                className="w-full bg-transparent border-b border-[#D8D4CC] focus:border-[#C2922E] !text-[#111113] font-medium outline-none py-2.5 text-sm placeholder:text-[#9999A4] disabled:opacity-50 transition-colors"
                 required
               />
               <input
@@ -292,8 +292,8 @@ const Auth = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email Address"
                 disabled={isLoading}
-                autoComplete="new-password"
-                className="w-full bg-transparent border-b border-[#D8D4CC] focus:border-[#C2922E] text-[#111113] outline-none py-2.5 text-sm placeholder:text-[#9999A4] disabled:opacity-50 transition-colors"
+                autoComplete="off"
+                className="w-full bg-transparent border-b border-[#D8D4CC] focus:border-[#C2922E] !text-[#111113] font-medium outline-none py-2.5 text-sm placeholder:text-[#9999A4] disabled:opacity-50 transition-colors"
                 required
               />
               <div className="relative">
@@ -304,7 +304,7 @@ const Auth = () => {
                   placeholder="Create Password *"
                   disabled={isLoading}
                   autoComplete="new-password"
-                  className="w-full bg-transparent border-b border-[#D8D4CC] focus:border-[#C2922E] text-[#111113] outline-none py-2.5 text-sm placeholder:text-[#9999A4] disabled:opacity-50 transition-colors pr-10"
+                  className="w-full bg-transparent border-b border-[#D8D4CC] focus:border-[#C2922E] !text-[#111113] font-medium outline-none py-2.5 text-sm placeholder:text-[#9999A4] disabled:opacity-50 transition-colors pr-10"
                   required
                 />
                 <button
@@ -338,7 +338,7 @@ const Auth = () => {
                   placeholder="e.g. 583921"
                   disabled={isLoading}
                   autoComplete="off"
-                  className="w-full bg-transparent border-b border-[#C2922E] text-[#111113] outline-none py-2 text-xl font-mono tracking-[0.4em] text-center placeholder:text-[#C2922E]/40 font-bold"
+                  className="w-full bg-transparent border-b border-[#C2922E] !text-[#111113] outline-none py-2 text-xl font-mono tracking-[0.4em] text-center placeholder:text-[#C2922E]/40 font-bold"
                   required
                 />
               </div>
@@ -362,7 +362,7 @@ const Auth = () => {
                 placeholder="Email Address"
                 disabled={isLoading}
                 autoComplete="off"
-                className="w-full bg-transparent border-b border-[#D8D4CC] focus:border-[#C2922E] text-[#111113] outline-none py-2.5 text-sm placeholder:text-[#9999A4] disabled:opacity-50 transition-colors"
+                className="w-full bg-transparent border-b border-[#D8D4CC] focus:border-[#C2922E] !text-[#111113] font-medium outline-none py-2.5 text-sm placeholder:text-[#9999A4] disabled:opacity-50 transition-colors"
                 required
               />
               <div>
@@ -373,8 +373,8 @@ const Auth = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Password"
                     disabled={isLoading}
-                    autoComplete="new-password"
-                    className="w-full bg-transparent border-b border-[#D8D4CC] focus:border-[#C2922E] text-[#111113] outline-none py-2.5 text-sm placeholder:text-[#9999A4] disabled:opacity-50 transition-colors pr-10"
+                    autoComplete="current-password"
+                    className="w-full bg-transparent border-b border-[#D8D4CC] focus:border-[#C2922E] !text-[#111113] font-medium outline-none py-2.5 text-sm placeholder:text-[#9999A4] disabled:opacity-50 transition-colors pr-10"
                     required
                   />
                   <button
@@ -409,7 +409,7 @@ const Auth = () => {
                 placeholder="Email Address"
                 disabled={isLoading || otpSent}
                 autoComplete="off"
-                className="w-full bg-transparent border-b border-[#D8D4CC] focus:border-[#C2922E] text-[#111113] outline-none py-2.5 text-sm placeholder:text-[#9999A4] disabled:opacity-50 transition-colors"
+                className="w-full bg-transparent border-b border-[#D8D4CC] focus:border-[#C2922E] !text-[#111113] font-medium outline-none py-2.5 text-sm placeholder:text-[#9999A4] disabled:opacity-50 transition-colors"
                 required
               />
               {otpSent && (

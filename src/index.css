@@ -189,18 +189,27 @@ html.lenis, html.lenis body {
   animation: aurora-bg 60s linear infinite;
 }
 
-/* Fix Chrome / Edge / Safari Autofill light background and black text on dark theme */
+/* Fix Chrome / Edge / Safari Autofill styling for luxury light background */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 
 input:-webkit-autofill:active {
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: #ffffff !important;
-    caret-color: #ffffff;
+    -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+    -webkit-text-fill-color: #111113 !important;
+    caret-color: #111113;
     transition: background-color 99999s ease-in-out 0s;
 }
 
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover, 
+.dark input:-webkit-autofill:focus, 
+.dark input:-webkit-autofill:active,
+[data-theme="dark"] input:-webkit-autofill {
+    -webkit-text-fill-color: #ffffff !important;
+    caret-color: #ffffff;
+}
+
 input {
-    color: inherit;
+    color: #111113;
 }
 
