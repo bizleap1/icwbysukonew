@@ -15,6 +15,8 @@ router.post('/', authMiddleware, createOrder);
 router.get('/', authMiddleware, getMyOrders);
 router.get('/all', authMiddleware, adminOnly, getAllOrdersAdmin);
 router.get('/:id', authMiddleware, getOrderById);
+router.put('/:id', authMiddleware, adminOnly, updateOrderStatusAdmin);
+router.patch('/:id', authMiddleware, adminOnly, updateOrderStatusAdmin);
 router.patch('/:id/status', authMiddleware, adminOnly, updateOrderStatusAdmin);
 router.patch('/:id/cancel', authMiddleware, requestOrderCancellation);
 router.delete('/:id', authMiddleware, adminOnly, deleteOrderAdmin);
