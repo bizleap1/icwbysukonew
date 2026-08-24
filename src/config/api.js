@@ -5,37 +5,24 @@ export const getApiBaseUrl = () => {
   if (process.env.REACT_APP_API_URL) {
     return process.env.REACT_APP_API_URL.replace(/\/$/, '');
   }
-  
-  const isProd = process.env.NODE_ENV === 'production';
 
-  // Strict Development Fallbacks (Disabled in Production)
-  if (!isProd) {
-    const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'http://localhost:5000';
+  // If running in browser on a deployed domain (e.g. Vercel)
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return 'https://icwbysukonew.onrender.com';
     }
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-      return `http://${hostname}:5000`;
-    }
-    return 'http://localhost:5000';
   }
 
-  // In Production: Fail clearly if REACT_APP_API_URL is missing rather than silently falling back
-  throw new Error("CRITICAL CONFIGURATION ERROR: REACT_APP_API_URL environment variable is required in production builds.");
+  // Production build default fallback
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://icwbysukonew.onrender.com';
+  }
+
+  return 'http://localhost:5000';
 };
 
-// Safe initialization
-let apiBaseUrl = '';
-try {
-  apiBaseUrl = getApiBaseUrl();
-} catch (err) {
-  if (process.env.NODE_ENV === 'production') {
-    console.error(err.message);
-  }
-  apiBaseUrl = '';
-}
-
-export const API_BASE_URL = apiBaseUrl;
+export const API_BASE_URL = getApiBaseUrl();
 
 // Global 401 Session Invalidation Handler
 let unauthorizedCallback = null;

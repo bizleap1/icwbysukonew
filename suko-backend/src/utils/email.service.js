@@ -2,21 +2,21 @@ const nodemailer = require('nodemailer');
 const { generateInvoicePDF } = require('./pdfGenerator');
 
 // Brevo (Sendinblue) Transporter Configuration
-function getBrevoTransporter() {
+function getBrevoTransporter(port = 587) {
   const login = (process.env.BREVO_SMTP_LOGIN || '').trim();
   const pass = (process.env.BREVO_SMTP_KEY || '').trim();
 
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
-    port: parseInt(process.env.SMTP_PORT || '587', 10),
-    secure: false,
+    port: port,
+    secure: port === 465,
     auth: {
       user: login,
       pass: pass,
     },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 8000,
   });
 }
 
@@ -25,33 +25,42 @@ const SENDER_NAME = process.env.BREVO_SENDER_NAME || 'SUKO Atelier';
 
 console.log(`📧 Email Provider: Brevo Relay (Sender: "${SENDER_NAME}" <${SENDER_EMAIL}>)`);
 
-// Universal send function - Delivers to ANY recipient via Brevo without domain restrictions
+// Universal send function with multi-port fallback (587 -> 2525 -> 465)
 async function sendEmail({ to, subject, html, attachments }) {
-  try {
-    console.log(`📧 Sending email via Brevo to: ${to}`);
-    const transporter = getBrevoTransporter();
-    
-    const mailOptions = {
-      from: `"${SENDER_NAME}" <${SENDER_EMAIL}>`,
-      to: Array.isArray(to) ? to.join(', ') : to,
-      subject,
-      html,
-    };
+  const configuredPort = parseInt(process.env.SMTP_PORT || '587', 10);
+  const portsToTry = [configuredPort, 2525, 465].filter((v, i, a) => a.indexOf(v) === i);
+  let lastError = null;
 
-    if (attachments && attachments.length > 0) {
-      mailOptions.attachments = attachments.map(a => ({
-        filename: a.filename,
-        content: a.content,
-      }));
+  for (const port of portsToTry) {
+    try {
+      console.log(`📧 Sending email via Brevo (port ${port}) to: ${to}`);
+      const transporter = getBrevoTransporter(port);
+      
+      const mailOptions = {
+        from: `"${SENDER_NAME}" <${SENDER_EMAIL}>`,
+        to: Array.isArray(to) ? to.join(', ') : to,
+        subject,
+        html,
+      };
+
+      if (attachments && attachments.length > 0) {
+        mailOptions.attachments = attachments.map(a => ({
+          filename: a.filename,
+          content: a.content,
+        }));
+      }
+
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`✅ Brevo email delivered successfully to ${to} via port ${port}. MessageId:`, info.messageId);
+      return info;
+    } catch (err) {
+      console.warn(`⚠️ Brevo port ${port} attempt failed for ${to}: ${err.message}. Trying next port...`);
+      lastError = err;
     }
-
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`✅ Brevo email delivered successfully to ${to}. MessageId:`, info.messageId);
-    return info;
-  } catch (err) {
-    console.error(`❌ Brevo email delivery failed for ${to}:`, err.message);
-    throw err;
   }
+
+  console.error(`❌ All Brevo email attempts failed for ${to}:`, lastError?.message);
+  throw lastError;
 }
 
 // 1. Send Login Notification Email
