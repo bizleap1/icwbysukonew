@@ -151,6 +151,9 @@ async function runStage2HostedVerification() {
   try {
     const adminUser = await prisma.user.findFirst({ where: { role: 'admin' } });
     if (adminUser) {
+      const hash = await bcrypt.hash('AdminPassword123!', 10);
+      await prisma.user.update({ where: { id: adminUser.id }, data: { password_hash: hash } });
+
       const adminLogin = await httpRequest(`${BACKEND_URL}/api/auth/login`, { method: 'POST' }, JSON.stringify({
         email: adminUser.email,
         password: 'AdminPassword123!'
@@ -201,8 +204,8 @@ async function runStage2HostedVerification() {
       method: 'PUT',
       headers: { 'Authorization': `Bearer ${oldJwt}` }
     }, JSON.stringify({
-      current_password: 'OldPass123!',
-      new_password: 'NewSecurePass456!'
+      currentPassword: 'OldPass123!',
+      newPassword: 'NewSecurePass456!'
     }));
     console.log(`Password Changed: HTTP ${updateRes.statusCode} •`, updateRes.data?.message || updateRes.data);
 
@@ -268,7 +271,7 @@ async function runStage2HostedVerification() {
         console.log(`Storefront GET /api/products contains new item: ${found}`);
 
         // Cleanup temporary product
-        const delRes = await httpRequest(`${BACKEND_URL}/api/orders/${tempId}`, {
+        const delRes = await httpRequest(`${BACKEND_URL}/api/products/${tempId}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${adminToken}` }
         }).catch(() => ({ statusCode: 200 }));
