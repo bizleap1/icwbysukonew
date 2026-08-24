@@ -291,33 +291,28 @@ async function runStage2HostedVerification() {
     console.error('Cloudinary test error:', err.message);
   }
 
-  // --- 5. HOSTED BREVO OTP FLOW ---
-  console.log('\n--- 5. Testing Hosted Brevo OTP Delivery & Verification Flow ---');
+  // --- 5. HOSTED RESEND OTP FLOW ---
+  console.log('\n--- 5. Testing Hosted Resend OTP Delivery & Verification Flow ---');
   try {
+    const RESEND_TEST_EMAIL = 'indiancorporatewearbysuko@gmail.com';
     // A. Request OTP to real test email
     const otpReq = await httpRequest(`${BACKEND_URL}/api/auth/send-otp`, { method: 'POST' }, JSON.stringify({
-      email: TEST_EMAIL
+      email: RESEND_TEST_EMAIL
     }));
-    console.log(`POST /api/auth/send-otp to ${TEST_EMAIL}: HTTP ${otpReq.statusCode} •`, otpReq.data);
+    console.log(`POST /api/auth/send-otp to ${RESEND_TEST_EMAIL}: HTTP ${otpReq.statusCode} •`, otpReq.data);
 
     // B. Test Cooldown
     const coolReq = await httpRequest(`${BACKEND_URL}/api/auth/send-otp`, { method: 'POST' }, JSON.stringify({
-      email: TEST_EMAIL
+      email: RESEND_TEST_EMAIL
     }));
     console.log(`Cooldown Test (Immediate Resend): HTTP ${coolReq.statusCode} •`, coolReq.data);
 
     // C. Test Invalid OTP Rejection
     const invalidVerify = await httpRequest(`${BACKEND_URL}/api/auth/verify-otp-login`, { method: 'POST' }, JSON.stringify({
-      email: TEST_EMAIL,
+      email: RESEND_TEST_EMAIL,
       code: '000000'
     }));
     console.log(`Invalid OTP Submission: HTTP ${invalidVerify.statusCode} •`, invalidVerify.data);
-
-    // D. Fetch active OTP hash from DB for valid consumption test (without exposing OTP)
-    const activeOtpRecord = await prisma.otpVerification.findFirst({
-      where: { email: TEST_EMAIL.toLowerCase(), consumed_at: null },
-      orderBy: { created_at: 'desc' }
-    });
 
     results.push({
       scenario: 'Hosted OTP Rate Limit & Resend Cooldown',
