@@ -22,7 +22,7 @@ export const ReviewsSection = ({
     setSubmittingReview(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE_URL}/reviews`, {
+      const res = await fetch(`${API_BASE_URL}/api/reviews`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
