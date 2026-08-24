@@ -543,11 +543,52 @@ async function updateOrderStatusAdmin(req, res) {
   }
 }
 
+/**
+ * Permanently deletes an order and its associated records (Admin only).
+ * If the order holds active reserved stock, releases the reservation prior to deletion.
+ */
+async function deleteOrderAdmin(req, res) {
+  try {
+    const orderId = parseInt(req.params.id, 10);
+    if (isNaN(orderId)) {
+      return res.status(400).json({ error: 'Invalid order ID.' });
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+
+    // Release stock reservation if order was pending payment
+    if (order.status === ORDER_STATUS.PAYMENT_PENDING && order.reservation_status === RESERVATION_STATUS.RESERVED) {
+      await releaseOrderReservation(order.id, ORDER_STATUS.EXPIRED).catch(err => {
+        console.warn(`Could not release stock before deleting order #${order.id}:`, err.message);
+      });
+    }
+
+    // Delete related payment, order items, and order record in transaction
+    await prisma.$transaction(async (tx) => {
+      await tx.payment.deleteMany({ where: { order_id: orderId } });
+      await tx.orderItem.deleteMany({ where: { order_id: orderId } });
+      await tx.order.delete({ where: { id: orderId } });
+    });
+
+    res.json({ message: `Order #SUKO-${1000 + orderId} deleted successfully.` });
+  } catch (err) {
+    console.error("deleteOrderAdmin error:", err.message);
+    res.status(500).json({ error: 'Failed to delete order.' });
+  }
+}
+
 module.exports = {
   createOrder,
   getMyOrders,
   getOrderById,
   requestOrderCancellation,
   getAllOrdersAdmin,
-  updateOrderStatusAdmin
+  updateOrderStatusAdmin,
+  deleteOrderAdmin
 };

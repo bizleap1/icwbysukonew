@@ -7,7 +7,8 @@ const {
   getOrderById, 
   requestOrderCancellation, 
   getAllOrdersAdmin, 
-  updateOrderStatusAdmin 
+  updateOrderStatusAdmin,
+  deleteOrderAdmin
 } = require('../controllers/order.controller');
 
 router.post('/', authMiddleware, createOrder);
@@ -16,5 +17,6 @@ router.get('/all', authMiddleware, adminOnly, getAllOrdersAdmin);
 router.get('/:id', authMiddleware, getOrderById);
 router.patch('/:id/status', authMiddleware, adminOnly, updateOrderStatusAdmin);
 router.patch('/:id/cancel', authMiddleware, requestOrderCancellation);
+router.delete('/:id', authMiddleware, adminOnly, deleteOrderAdmin);
 
 module.exports = router;

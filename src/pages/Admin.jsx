@@ -205,7 +205,16 @@ const Admin = () => {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
-      const data = await res.json();
+
+      let data = {};
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        data = { error: text || "Failed to delete order" };
+      }
+
       if (!res.ok) throw new Error(data.error || "Failed to delete order");
 
       setOrders(prev => prev.filter(o => o.id !== orderId));
