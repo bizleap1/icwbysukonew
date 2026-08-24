@@ -10,9 +10,9 @@ function generateInvoicePDF(order, recipientEmail) {
       doc.on('end', () => resolve(Buffer.concat(buffers)));
       doc.on('error', (err) => reject(err));
 
-      const primaryColor = '#0b0b0e';
-      const textMain = '#1e1e24';
-      const accentGold = '#c5a059';
+      const primaryColor = '#121215';
+      const textMain = '#121215';
+      const accentGold = '#C2922E';
 
       // --- HEADER ---
       doc

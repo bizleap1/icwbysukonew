@@ -49,8 +49,8 @@ const ImageCropperModal = ({ imageSrc, onSave, onCancel }) => {
     canvas.width = targetW;
     canvas.height = targetH;
 
-    // Dark canvas background
-    ctx.fillStyle = "#0c0c0e";
+    // Luxury Warm canvas background
+    ctx.fillStyle = "#FAF8F5";
     ctx.fillRect(0, 0, targetW, targetH);
 
     ctx.save();
@@ -65,15 +65,15 @@ const ImageCropperModal = ({ imageSrc, onSave, onCancel }) => {
     ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
     ctx.restore();
 
-    // Draw Crop Selection Grid Box Overlay
+    // Draw Crop Selection Grid Box Overlay in luxury gold
     ctx.save();
-    ctx.strokeStyle = "#10b981"; // Emerald green crop box
+    ctx.strokeStyle = "#C2922E"; // Suko Gold crop box
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 4]);
     ctx.strokeRect(2, 2, targetW - 4, targetH - 4);
 
     // Rule of thirds grid lines
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+    ctx.strokeStyle = "rgba(194, 146, 46, 0.35)";
     ctx.lineWidth = 1;
     ctx.setLineDash([]);
     ctx.beginPath();
@@ -112,48 +112,75 @@ const ImageCropperModal = ({ imageSrc, onSave, onCancel }) => {
   const handleSave = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
-    onSave(dataUrl);
+
+    // Export cropped canvas to JPEG blob / dataURL
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+    
+    // Convert to File
+    const arr = dataUrl.split(",");
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    const croppedFile = new File([u8arr], "cropped-product.jpg", { type: mime });
+
+    onSave({
+      file: croppedFile,
+      preview: dataUrl,
+      width: canvas.width,
+      height: canvas.height
+    });
   };
 
   return (
-    <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[10000] flex items-center justify-center p-4">
-      <div className="max-w-[560px] w-full border border-white/20 p-6 bg-[#121214] text-foreground shadow-2xl relative rounded-sm space-y-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-white border border-[#E8E4DC] max-w-lg w-full p-6 sm:p-7 rounded-2xl relative shadow-2xl space-y-5 text-[#121215]">
+        {/* Close Button */}
+        <button
+          onClick={onCancel}
+          className="absolute top-5 right-5 text-[#888890] hover:text-[#121215] p-1.5 rounded-lg hover:bg-[#FAF8F5] transition-all"
+        >
+          <X size={18} />
+        </button>
+
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-3">
-          <div className="flex items-center gap-2">
-            <Crop size={18} className="text-emerald-400" />
-            <h3 className="font-display text-xl">Image Cropper & Frame Adjuster</h3>
-          </div>
-          <button onClick={onCancel} className="text-foreground/50 hover:text-foreground p-1">
-            <X size={18} />
-          </button>
+        <div className="border-b border-[#E8E4DC] pb-3">
+          <span className="text-[10px] uppercase tracking-[0.25em] text-[#C2922E] font-mono block mb-1">
+            — EDITORIAL RATIO ALIGNMENT
+          </span>
+          <h2 className="font-quiche text-2xl font-light text-[#121215]">
+            Precision Image Cropper
+          </h2>
+          <p className="text-xs text-[#555560] font-body mt-1">
+            Drag to pan & reposition the garment. Fits luxury high-res catalog displays.
+          </p>
         </div>
 
-        <p className="text-xs text-foreground/60 font-body -mt-2">
-          Click & Drag image inside the frame to adjust crop position. Use zoom & rotation for exact framing.
-        </p>
-
-        {/* Interactive Canvas Box */}
+        {/* Canvas Display Viewport */}
         <div 
-          className="flex flex-col items-center justify-center bg-black/80 border border-white/15 p-4 rounded relative overflow-hidden cursor-grab active:cursor-grabbing select-none"
+          className="flex items-center justify-center bg-[#FAF8F5] p-3 border border-[#E8E4DC] rounded-xl overflow-hidden cursor-grab active:cursor-grabbing relative select-none"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
-          <canvas ref={canvasRef} className="max-h-[360px] max-w-full object-contain shadow-2xl border border-emerald-500/40" />
-          
-          <div className="absolute top-3 right-3 bg-black/80 px-2 py-1 border border-white/10 text-[9px] font-mono text-emerald-400 flex items-center gap-1">
-            <Move size={10} /> Drag to Pan Frame
+          <canvas
+            ref={canvasRef}
+            className="max-h-[380px] w-auto shadow-md rounded-lg"
+          />
+          <div className="absolute bottom-3 right-3 bg-[#121215]/80 backdrop-blur-md text-white text-[9px] font-mono px-2 py-1 rounded-md border border-white/15 flex items-center gap-1.5">
+            <Move size={10} className="text-[#C2922E]" /> Click & Drag to Align
           </div>
         </div>
 
         {/* Crop Frame Presets */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body">Crop Frame Preset</label>
-            <span className="text-[10px] font-mono text-foreground/40">
+            <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono">Crop Frame Preset</label>
+            <span className="text-[10px] font-mono text-[#888890]">
               {cropPreset === "3:4" ? "400 x 533 px" : cropPreset === "1:1" ? "400 x 400 px" : "Free Custom"}
             </span>
           </div>
@@ -168,10 +195,10 @@ const ImageCropperModal = ({ imageSrc, onSave, onCancel }) => {
                 key={preset.id}
                 type="button"
                 onClick={() => setCropPreset(preset.id)}
-                className={`flex-1 py-2 text-[10px] uppercase tracking-wider font-body border transition-all ${
+                className={`flex-1 py-2 text-[10px] uppercase tracking-wider font-body rounded-xl border transition-all ${
                   cropPreset === preset.id 
-                    ? "bg-emerald-500 text-black font-bold border-emerald-400 shadow-md" 
-                    : "text-foreground/70 border-white/15 hover:border-white/40 bg-white/5"
+                    ? "bg-[#121215] text-[#C2922E] font-bold border-[#C2922E]/40 shadow-sm" 
+                    : "text-[#555560] border-[#E8E4DC] hover:border-[#C2922E] hover:text-[#121215] bg-[#FAF8F5]"
                 }`}
               >
                 {preset.label}
@@ -181,15 +208,15 @@ const ImageCropperModal = ({ imageSrc, onSave, onCancel }) => {
         </div>
 
         {/* Controls */}
-        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/10">
+        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[#E8E4DC]">
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body">Zoom ({zoom.toFixed(1)}x)</label>
+              <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono">Zoom ({zoom.toFixed(1)}x)</label>
               <div className="flex gap-1">
-                <button type="button" onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} className="p-1 border border-white/15 text-foreground/60 hover:text-foreground">
+                <button type="button" onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} className="p-1 rounded border border-[#E8E4DC] text-[#555560] hover:text-[#121215] hover:border-[#C2922E]">
                   <ZoomOut size={12} />
                 </button>
-                <button type="button" onClick={() => setZoom(z => Math.min(3, z + 0.1))} className="p-1 border border-white/15 text-foreground/60 hover:text-foreground">
+                <button type="button" onClick={() => setZoom(z => Math.min(3, z + 0.1))} className="p-1 rounded border border-[#E8E4DC] text-[#555560] hover:text-[#121215] hover:border-[#C2922E]">
                   <ZoomIn size={12} />
                 </button>
               </div>
@@ -201,37 +228,37 @@ const ImageCropperModal = ({ imageSrc, onSave, onCancel }) => {
               step="0.05"
               value={zoom}
               onChange={(e) => setZoom(parseFloat(e.target.value))}
-              className="w-full accent-emerald-400 cursor-pointer"
+              className="w-full accent-[#C2922E] cursor-pointer"
             />
           </div>
 
           <div className="space-y-1 flex flex-col justify-between">
-            <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body">Rotate</label>
+            <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono">Rotate</label>
             <button
               type="button"
               onClick={handleRotate}
-              className="w-full py-2 border border-white/20 text-xs font-body flex items-center justify-center gap-2 hover:bg-white/5 transition-all text-foreground"
+              className="w-full py-2 border border-[#E8E4DC] rounded-xl text-xs font-body flex items-center justify-center gap-2 hover:bg-[#FAF8F5] hover:border-[#C2922E] transition-all text-[#121215]"
             >
-              <RotateCw size={14} /> Rotate 90° ({rotation}°)
+              <RotateCw size={14} className="text-[#C2922E]" /> Rotate 90° ({rotation}°)
             </button>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 pt-4 border-t border-white/10">
+        <div className="flex gap-3 pt-4 border-t border-[#E8E4DC]">
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 py-3 border border-white/20 text-[10px] uppercase tracking-[0.2em] font-body hover:bg-white/5 transition-all"
+            className="flex-1 py-3 border border-[#E8E4DC] rounded-xl text-[10px] uppercase tracking-[0.2em] font-body text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] transition-all"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="flex-1 py-3 bg-emerald-500 text-black font-bold text-[10px] uppercase tracking-[0.2em] font-body hover:bg-emerald-400 transition-all flex items-center justify-center gap-2"
+            className="flex-1 py-3 bg-[#121215] hover:bg-[#C2922E] text-white font-bold text-[10px] uppercase tracking-[0.2em] font-body rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
           >
-            <Check size={14} /> Apply Crop & Save
+            <Check size={14} className="text-[#C2922E]" /> Apply Crop & Save
           </button>
         </div>
       </div>

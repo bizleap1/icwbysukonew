@@ -1,15 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { CheckCircle2, Loader2, Sparkles, Lock, Printer, FileText, ArrowRight, MapPin, CreditCard, ShieldCheck } from "lucide-react";
+import { 
+  CheckCircle2, Loader2, Sparkles, Lock, Printer, FileText, 
+  ArrowRight, MapPin, CreditCard, ShieldCheck, Clock, AlertTriangle, RefreshCw, ShoppingBag 
+} from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { formatINR } from "../data/products";
-import { API_BASE_URL } from "../config/api";
+import { apiClient } from "../config/api";
+
+const SESSION_KEY = "suko_active_checkout";
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true);
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.onload = () => resolve(true);
@@ -20,10 +26,31 @@ const loadRazorpayScript = () => {
 
 const Checkout = () => {
   const { items, subtotal, clearCart } = useCart();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
-  const [placed, setPlaced] = useState(false);
 
+  // Active Order & Confirmation States
+  const [placed, setPlaced] = useState(false);
+  const [confirmedOrder, setConfirmedOrder] = useState(null);
+  const [activeOrder, setActiveOrder] = useState(null);
+  const [checkoutId, setCheckoutId] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(SESSION_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.checkout_id) return parsed.checkout_id;
+      }
+    } catch (e) {}
+    return (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `chk_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  });
+
+  // UI & Loading States
+  const [isInitializingPayment, setIsInitializingPayment] = useState(false);
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+  const [reconcilingPayment, setReconcilingPayment] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(null);
+
+  // Address & Profile Form States
   const [form, setForm] = useState({
     email: "",
     firstName: "",
@@ -37,7 +64,6 @@ const Checkout = () => {
     payment: "card",
   });
 
-  // Separate Billing Address States
   const [sameAsBilling, setSameAsBilling] = useState(true);
   const [billingForm, setBillingForm] = useState({
     address: "",
@@ -49,44 +75,95 @@ const Checkout = () => {
   const [saveToAddressBook, setSaveToAddressBook] = useState(true);
   const [addresses, setAddresses] = useState([]);
   const [selectedAddrId, setSelectedAddrId] = useState(null);
+
+  // Coupon States
   const [couponCode, setCouponCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState("");
-  const [isInitializingPayment, setIsInitializingPayment] = useState(false);
 
+  // 1. Initial Load: Fetch Profile, Saved Addresses & Reconcile Active Session
   useEffect(() => {
-    if (user) {
-      const token = localStorage.getItem("token");
-      if (token) {
-        Promise.all([
-          fetch(`${API_BASE_URL}/api/auth/profile`, { headers: { "Authorization": `Bearer ${token}` } }).then(r => r.ok ? r.json() : null),
-          fetch(`${API_BASE_URL}/api/addresses`, { headers: { "Authorization": `Bearer ${token}` } }).then(r => r.ok ? r.json() : [])
-        ]).then(([prof, addrList]) => {
-          const firstAddr = addrList && addrList.length > 0 ? addrList[0] : null;
-          setAddresses(addrList || []);
+    if (user?.authenticated && token) {
+      // Fetch profile and addresses
+      Promise.all([
+        apiClient.get('/api/auth/profile').catch(() => null),
+        apiClient.get('/api/addresses').catch(() => [])
+      ]).then(([prof, addrList]) => {
+        const firstAddr = addrList && addrList.length > 0 ? addrList[0] : null;
+        setAddresses(addrList || []);
 
-          const userName = prof?.name || user.name || "";
-          setForm((prev) => ({
-            ...prev,
-            email: prof?.email || user.email || prev.email,
-            phone: prof?.phone || user.phone || prev.phone,
-            firstName: userName ? userName.split(' ')[0] : prev.firstName,
-            lastName: userName ? userName.split(' ').slice(1).join(' ') : prev.lastName,
-            address: firstAddr ? firstAddr.line1 : prev.address,
-            city: firstAddr ? firstAddr.city : prev.city,
-            state: firstAddr ? (firstAddr.state || "Maharashtra") : prev.state,
-            pincode: firstAddr ? firstAddr.pincode : prev.pincode,
-          }));
+        const userName = prof?.name || user.name || "";
+        setForm((prev) => ({
+          ...prev,
+          email: prof?.email || user.email || prev.email,
+          phone: prof?.phone || user.phone || prev.phone,
+          firstName: userName ? userName.split(' ')[0] : prev.firstName,
+          lastName: userName ? userName.split(' ').slice(1).join(' ') : prev.lastName,
+          address: firstAddr ? firstAddr.line1 : prev.address,
+          city: firstAddr ? firstAddr.city : prev.city,
+          state: firstAddr ? (firstAddr.state || "Maharashtra") : prev.state,
+          pincode: firstAddr ? firstAddr.pincode : prev.pincode,
+        }));
 
-          if (firstAddr) {
-            setSelectedAddrId(firstAddr.id);
-            toast.success("Welcome back! Your saved details & primary delivery address auto-filled.");
+        if (firstAddr) {
+          setSelectedAddrId(firstAddr.id);
+        }
+      });
+
+      // Check existing active checkout session in sessionStorage
+      try {
+        const saved = sessionStorage.getItem(SESSION_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.order_id) {
+            apiClient.get(`/api/orders/${parsed.order_id}`)
+              .then((existingOrder) => {
+                if (existingOrder) {
+                  if (existingOrder.status === 'paid') {
+                    setConfirmedOrder(existingOrder);
+                    setPlaced(true);
+                    sessionStorage.removeItem(SESSION_KEY);
+                  } else if (existingOrder.status === 'payment_pending' && new Date(existingOrder.expires_at) > new Date()) {
+                    setActiveOrder(existingOrder);
+                  } else {
+                    sessionStorage.removeItem(SESSION_KEY);
+                  }
+                }
+              })
+              .catch(() => {
+                sessionStorage.removeItem(SESSION_KEY);
+              });
           }
-        }).catch(err => console.error(err));
-      }
+        }
+      } catch (e) {}
     }
-  }, [user]);
+  }, [user, token]);
+
+  // 2. Reservation Expiry Countdown Timer
+  useEffect(() => {
+    if (!activeOrder?.expires_at || placed) {
+      setRemainingSeconds(null);
+      return;
+    }
+
+    const targetTime = new Date(activeOrder.expires_at).getTime();
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const diff = Math.max(0, Math.floor((targetTime - now) / 1000));
+      setRemainingSeconds(diff);
+
+      if (diff <= 0) {
+        sessionStorage.removeItem(SESSION_KEY);
+        toast.error("Your 15-minute reservation window has expired. Please initiate checkout again.");
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [activeOrder?.expires_at, placed]);
 
   const selectSavedAddress = (addr) => {
     setSelectedAddrId(addr.id);
@@ -98,7 +175,7 @@ const Checkout = () => {
       pincode: addr.pincode,
       phone: addr.phone || prev.phone
     }));
-    toast.success("Saved shipping address loaded!");
+    toast.success("Saved delivery address selected.");
   };
 
   const applyPromoCode = async () => {
@@ -106,26 +183,19 @@ const Checkout = () => {
     if (!couponCode.trim()) return;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/coupons/apply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: couponCode, orderTotal: subtotal })
+      const data = await apiClient.post('/api/coupons/apply', {
+        code: couponCode.trim().toUpperCase(),
+        orderTotal: subtotal
       });
-      const data = await res.json();
 
-      if (!res.ok) {
-        setCouponError(data.error || "Invalid promo code");
-        setDiscount(0);
-        setAppliedCoupon(null);
-        toast.error(data.error || "Invalid promo code");
-      } else {
-        setDiscount(data.discountAmount);
-        setAppliedCoupon(data.code);
-        toast.success(`Coupon ${data.code} applied! Saved ${formatINR(data.discountAmount)}`);
-      }
+      setDiscount(data.discountAmount || 0);
+      setAppliedCoupon(data.code);
+      toast.success(`Coupon ${data.code} applied! Saved ${formatINR(data.discountAmount)}`);
     } catch (err) {
-      setCouponError("Failed to apply promo code");
-      console.error(err);
+      setCouponError(err.message || "Invalid promo code");
+      setDiscount(0);
+      setAppliedCoupon(null);
+      toast.error(err.message || "Invalid promo code");
     }
   };
 
@@ -134,185 +204,204 @@ const Checkout = () => {
     setAppliedCoupon(null);
     setCouponCode("");
     setCouponError("");
-    toast.info("Coupon removed");
+    toast.info("Coupon removed.");
   };
 
   const upd = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const updBilling = (k) => (e) => setBillingForm({ ...billingForm, [k]: e.target.value });
 
-  // Auto-save address to user profile
-  const autoSaveUserAddress = async (token) => {
-    if (!saveToAddressBook || !token || !form.address) return;
+  // Auto-save address to user profile in background
+  const autoSaveUserAddress = async () => {
+    if (!saveToAddressBook || !user?.authenticated || !form.address) return;
     try {
-      await fetch(`${API_BASE_URL}/api/addresses`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          line1: form.address,
-          city: form.city || "Mumbai",
-          state: form.state || "Maharashtra",
-          pincode: form.pincode || "400050",
-          phone: form.phone || "9876543210"
-        })
+      await apiClient.post('/api/addresses', {
+        line1: form.address,
+        city: form.city || "Mumbai",
+        state: form.state || "Maharashtra",
+        pincode: form.pincode || "400050",
+        phone: form.phone || "9876543210"
       });
     } catch (e) {
-      console.error("Auto address save background error:", e);
+      // Non-fatal background save
     }
   };
 
-  const placeOrder = async (e) => {
-    e.preventDefault();
-    if (!form.email || !form.firstName || !form.address || !form.city || !form.pincode) {
-      toast.error("Please fill all required shipping address fields.");
-      return;
-    }
-    if (!sameAsBilling && (!billingForm.address || !billingForm.city || !billingForm.pincode)) {
-      toast.error("Please fill all required billing address fields.");
-      return;
-    }
-    if (items.length === 0) {
-      toast.error("Your shopping bag is empty");
-      return;
+  // Lost Response Recovery: Bounded Order Status Reconciliation
+  const reconcileOrderStatus = async (orderId, maxAttempts = 3) => {
+    setReconcilingPayment(true);
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      attempts++;
+      try {
+        const checkOrder = await apiClient.get(`/api/orders/${orderId}`);
+        if (checkOrder && checkOrder.status === 'paid') {
+          setConfirmedOrder(checkOrder);
+          setPlaced(true);
+          sessionStorage.removeItem(SESSION_KEY);
+          setReconcilingPayment(false);
+          setIsVerifyingPayment(false);
+          setIsInitializingPayment(false);
+          toast.success("Payment verified! Your order is confirmed.");
+          return true;
+        }
+      } catch (e) {}
+
+      // Wait 2 seconds before next poll
+      await new Promise(r => setTimeout(r, 2000));
     }
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      toast.error("You must sign in or create an account to proceed with checkout.");
+    setReconcilingPayment(false);
+    setIsVerifyingPayment(false);
+    setIsInitializingPayment(false);
+    toast.info("We are still confirming your payment with your bank. You can check the latest status in My Orders.");
+    return false;
+  };
+
+  // Main Checkout Submission Handler
+  const placeOrder = async (e) => {
+    e.preventDefault();
+    if (!user?.authenticated) {
+      toast.error("Please sign in to proceed with checkout.");
       navigate("/auth");
       return;
     }
 
-    // Auto-save address to profile
-    autoSaveUserAddress(token);
+    if (!form.email || !form.firstName || !form.address || !form.city || !form.pincode) {
+      toast.error("Please complete all required delivery address fields.");
+      return;
+    }
+    if (!sameAsBilling && (!billingForm.address || !billingForm.city || !billingForm.pincode)) {
+      toast.error("Please complete all required billing address fields.");
+      return;
+    }
+    if (items.length === 0 && !activeOrder) {
+      toast.error("Your shopping bag is empty.");
+      return;
+    }
 
-    // Cash on Delivery Handling
-    if (form.payment === "cod") {
-      try {
-        const orderRes = await fetch(`${API_BASE_URL}/api/orders`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            name: `${form.firstName || ''} ${form.lastName || ''}`.trim(),
-            phone: form.phone,
-            email: form.email,
-            items: items.map(i => ({ product_id: i.id, quantity: i.qty, size: i.size })),
-            discount: discount,
-            total: total
-          })
-        });
-        if (orderRes.ok) {
-          setPlaced(true);
-          clearCart();
-          toast.success("Cash on Delivery Order placed & address saved!");
-        } else {
-          toast.error("Failed to place COD order");
-        }
-      } catch (err) {
-        toast.error(err.message);
-      }
+    // Check if current active order has already expired
+    if (remainingSeconds !== null && remainingSeconds <= 0) {
+      toast.error("This payment session has expired. Please refresh your bag.");
+      sessionStorage.removeItem(SESSION_KEY);
+      setActiveOrder(null);
       return;
     }
 
     setIsInitializingPayment(true);
 
-    const scriptLoaded = await loadRazorpayScript();
-    if (!scriptLoaded) {
-      setIsInitializingPayment(false);
-      toast.error("Razorpay SDK failed to load. Are you online?");
-      return;
-    }
+    // Auto-save address
+    autoSaveUserAddress();
 
     try {
-      // 1. Create Order in Backend DB
-      const orderRes = await fetch(`${API_BASE_URL}/api/orders`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: `${form.firstName || ''} ${form.lastName || ''}`.trim(),
-          phone: form.phone,
-          email: form.email,
-          items: items.map(i => ({ product_id: i.id, quantity: i.qty, size: i.size })),
-          discount: discount,
-          total: total
-        })
+      // 1. Create or Reuse payment_pending Order on Backend
+      const cartItemIds = items.map(i => i.cartItemId).filter(Boolean);
+
+      const orderData = await apiClient.post('/api/orders', {
+        checkout_id: checkoutId,
+        address_id: selectedAddrId || undefined,
+        coupon_code: appliedCoupon || undefined,
+        cart_item_ids: cartItemIds.length > 0 ? cartItemIds : undefined,
+        items: items.map(i => ({
+          product_id: i.id,
+          size: i.size,
+          quantity: i.qty
+        })),
+        name: `${form.firstName || ''} ${form.lastName || ''}`.trim(),
+        phone: form.phone,
+        line1: form.address,
+        city: form.city,
+        state: form.state,
+        pincode: form.pincode
       });
-      const orderData = await orderRes.json();
-      
-      if (!orderRes.ok) {
-        throw new Error(orderData.error || "Failed to create order");
+
+      if (!orderData || !orderData.id) {
+        throw new Error("Unable to create order session.");
       }
 
-      // 2. Create Razorpay Order
-      const rzpRes = await fetch(`${API_BASE_URL}/api/payments/create-order`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ order_id: orderData.id })
-      });
-      const rzpData = await rzpRes.json();
-
-      if (!rzpRes.ok) {
-        throw new Error(rzpData.error || "Failed to initialize Razorpay");
+      // Check if already paid (idempotent replay)
+      if (orderData.status === 'paid' || orderData.alreadyPaid) {
+        setConfirmedOrder(orderData);
+        setPlaced(true);
+        sessionStorage.removeItem(SESSION_KEY);
+        setIsInitializingPayment(false);
+        toast.success("Order already confirmed and paid.");
+        return;
       }
 
-      // 3. Open Razorpay Checkout Modal
+      // Persist active order session
+      setActiveOrder(orderData);
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+        checkout_id: checkoutId,
+        order_id: orderData.id,
+        expires_at: orderData.expires_at
+      }));
+
+      // 2. Request / Reuse Razorpay Order from Backend
+      const rzpData = await apiClient.post('/api/payments/create-order', {
+        order_id: orderData.id
+      });
+
+      if (!rzpData || !rzpData.razorpay_order_id) {
+        throw new Error("Failed to initialize payment gateway.");
+      }
+
+      // 3. Load Gateway SDK
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        setIsInitializingPayment(false);
+        throw new Error("Razorpay Checkout SDK failed to load. Please check your network.");
+      }
+
+      // 4. Open Razorpay Modal with Authoritative Backend key_id
       const options = {
         key: rzpData.key_id,
         amount: rzpData.amount,
-        currency: rzpData.currency,
-        name: "Suko Atelier",
-        description: "Premium Bespoke Garments",
+        currency: rzpData.currency || "INR",
+        name: "ICW by Suko",
+        description: "Order Checkout",
         order_id: rzpData.razorpay_order_id,
         modal: {
-          ondismiss: function() {
+          ondismiss: function () {
             setIsInitializingPayment(false);
+            toast.info("Payment window dismissed. Your 15-minute reservation is still active.");
           }
         },
         handler: async function (response) {
-          // 4. Verify Payment
-          const verifyRes = await fetch(`${API_BASE_URL}/api/payments/verify`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({
+          setIsInitializingPayment(false);
+          setIsVerifyingPayment(true);
+
+          try {
+            // 5. Verify Payment Signature Server-Side
+            const verifyData = await apiClient.post('/api/payments/verify', {
               order_id: orderData.id,
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature
-            })
-          });
-          const verifyData = await verifyRes.json();
-          
-          setIsInitializingPayment(false);
+            });
 
-          if (verifyRes.ok) {
-            setPlaced(true);
-            clearCart();
-            toast.success("Payment successful. Order confirmed!");
-          } else {
-            toast.error(verifyData.error || "Payment verification failed.");
+            if (verifyData && (verifyData.order?.status === 'paid' || verifyData.alreadyVerified)) {
+              setConfirmedOrder(verifyData.order || orderData);
+              setPlaced(true);
+              sessionStorage.removeItem(SESSION_KEY);
+              setIsVerifyingPayment(false);
+              toast.success("Payment verified! Your bespoke order is confirmed.");
+            } else {
+              throw new Error(verifyData.error || "Payment verification incomplete.");
+            }
+          } catch (verifyErr) {
+            console.warn("Payment verification response interrupted:", verifyErr.message);
+            // Lost Response Recovery
+            await reconcileOrderStatus(orderData.id);
           }
         },
         prefill: {
-          name: `${form.firstName} ${form.lastName}`,
+          name: `${form.firstName} ${form.lastName}`.trim(),
           email: form.email,
           contact: form.phone
         },
         theme: {
-          color: "#000000"
+          color: "#0a0a0c"
         }
       };
 
@@ -321,42 +410,84 @@ const Checkout = () => {
 
       setTimeout(() => {
         setIsInitializingPayment(false);
-      }, 1500);
+      }, 1000);
 
     } catch (err) {
       setIsInitializingPayment(false);
-      toast.error(err.message);
-      console.error(err);
+      toast.error(err.message || "Failed to process checkout.");
     }
+  };
+
+  const formatTimer = (secs) => {
+    if (secs === null || isNaN(secs)) return "";
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
   const total = Math.max(0, subtotal - discount);
 
-  if (placed) {
+  // -------------------------------------------------------------
+  // RENDER CONFIRMED ORDER SUCCESS VIEW
+  // -------------------------------------------------------------
+  if (placed && confirmedOrder) {
     return (
       <div data-testid="order-confirmation" className="grain pt-40 pb-32 px-6 lg:px-16 max-w-[900px] mx-auto text-center">
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.8 }}>
-          <CheckCircle2 size={48} strokeWidth={1} className="mx-auto text-foreground/80 mb-8" />
-          <span className="text-[10px] uppercase tracking-[0.4em] text-foreground/45 font-body block mb-4">— Order Confirmed</span>
-          <h1 className="font-display text-5xl sm:text-6xl tracking-tighter font-medium mb-6">
-            Thank you, <em className="italic font-normal text-foreground/55">{form.firstName || "Sir"}.</em>
+        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6 }}>
+          <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/30 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 size={32} className="text-emerald-400" />
+          </div>
+          
+          <span className="text-[10px] uppercase tracking-[0.4em] text-emerald-400 font-mono block mb-3 font-semibold">
+            — Order Confirmed & Paid
+          </span>
+          <h1 className="font-display text-4xl sm:text-5xl tracking-tight font-medium mb-4 text-white">
+            Thank you, <em className="italic font-normal text-foreground/80">{confirmedOrder.shipping_name || form.firstName || "Client"}.</em>
           </h1>
-          <p className="font-body text-sm text-foreground/60 max-w-md mx-auto leading-relaxed mb-10">
-            Your order has been logged in the Suko Atelier ledger. A confirmation email and tax receipt have been dispatched to <strong className="text-foreground">{form.email}</strong>.
+          <p className="font-mono text-sm text-amber-400 mb-8">
+            Reference: #SUKO-{1000 + confirmedOrder.id}
           </p>
+
+          {/* Delivery & Items Summary Card */}
+          <div className="bg-[#0a0a0c]/80 border border-white/10 p-6 sm:p-8 text-left max-w-lg mx-auto mb-10 space-y-4 backdrop-blur-md">
+            <div className="border-b border-white/10 pb-4">
+              <span className="text-[10px] uppercase tracking-[0.2em] text-foreground/45 font-mono block mb-1">Destination</span>
+              <p className="text-xs text-white font-body">
+                {confirmedOrder.shipping_line1}, {confirmedOrder.shipping_city}, {confirmedOrder.shipping_state} - {confirmedOrder.shipping_pincode}
+              </p>
+              <p className="text-[11px] text-foreground/60 font-mono mt-1">Contact: {confirmedOrder.shipping_phone}</p>
+            </div>
+
+            <div className="border-b border-white/10 pb-4">
+              <span className="text-[10px] uppercase tracking-[0.2em] text-foreground/45 font-mono block mb-2">Purchased Creations</span>
+              <div className="space-y-2">
+                {confirmedOrder.items?.map((it, idx) => (
+                  <div key={idx} className="flex justify-between text-xs font-body text-foreground/80">
+                    <span>{it.product?.name || `Item #${it.product_id}`} (Size: {it.size || "STD"}) × {it.quantity}</span>
+                    <span className="font-mono text-white">{formatINR(Number(it.price_at_purchase) * it.quantity)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center pt-2">
+              <span className="text-xs uppercase tracking-wider font-body text-white font-medium">Total Paid</span>
+              <span className="font-mono text-lg font-bold text-emerald-400">{formatINR(Number(confirmedOrder.total))}</span>
+            </div>
+          </div>
 
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Link
               to="/orders"
-              className="inline-flex items-center gap-2 bg-foreground text-background px-8 py-4 text-[11px] uppercase tracking-[0.3em] font-body font-bold hover:bg-foreground/90 transition-all shadow-xl"
+              className="inline-flex items-center gap-2 bg-white text-black px-8 py-4 text-[11px] uppercase tracking-[0.3em] font-body font-bold hover:bg-white/90 transition-all shadow-xl"
             >
-              <FileText size={14} /> View Order Receipts & Invoices
+              <FileText size={14} /> View in My Orders
             </Link>
             <Link
-              to="/account"
+              to="/collection"
               className="inline-flex items-center gap-2 border border-white/20 px-8 py-4 text-[11px] uppercase tracking-[0.3em] font-body hover:bg-white/5 transition-all text-white"
             >
-              View Saved Addresses <ArrowRight size={14} />
+              Continue Shopping <ArrowRight size={14} />
             </Link>
           </div>
         </motion.div>
@@ -364,12 +495,15 @@ const Checkout = () => {
     );
   }
 
+  // -------------------------------------------------------------
+  // MAIN CHECKOUT FORM & REVIEW VIEW
+  // -------------------------------------------------------------
   return (
     <div className="grain pt-36 pb-32 min-h-screen relative">
       
-      {/* Full-Screen Razorpay Gateway Modal */}
+      {/* Payment Processing Overlay */}
       <AnimatePresence>
-        {isInitializingPayment && (
+        {(isInitializingPayment || isVerifyingPayment || reconcilingPayment) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -393,10 +527,10 @@ const Checkout = () => {
 
             <div className="space-y-2">
               <h3 className="text-sm uppercase tracking-[0.35em] font-body text-white font-medium animate-pulse">
-                Initializing Razorpay Gateway...
+                {reconcilingPayment ? "Confirming Payment with Gateway..." : isVerifyingPayment ? "Verifying Signature with Atelier..." : "Initializing Razorpay Session..."}
               </h3>
               <p className="text-[11px] text-foreground/50 uppercase tracking-[0.2em] font-body max-w-sm">
-                Securing your atelier order of <span className="text-white font-mono font-bold">{formatINR(total)}</span>
+                Securing order of <span className="text-white font-mono font-bold">{formatINR(activeOrder ? Number(activeOrder.total) : total)}</span>
               </p>
             </div>
           </motion.div>
@@ -404,15 +538,30 @@ const Checkout = () => {
       </AnimatePresence>
 
       <div className="max-w-[1400px] mx-auto px-6 lg:px-16">
-        <span className="text-[10px] uppercase tracking-[0.3em] text-foreground/45 font-body block mb-4">— Step 02 / Checkout</span>
-        <h1 className="font-display text-4xl lg:text-5xl tracking-tighter font-medium mb-16">Checkout</h1>
+        
+        {/* Header with Active Reservation Timer */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-12">
+          <div>
+            <span className="text-[10px] uppercase tracking-[0.3em] text-foreground/45 font-body block mb-2">— Step 02 / Secure Checkout</span>
+            <h1 className="font-display text-4xl lg:text-5xl tracking-tight font-medium text-white">Checkout</h1>
+          </div>
+
+          {remainingSeconds !== null && (
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-sm border ${remainingSeconds < 120 ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-300'}`}>
+              <Clock size={16} className={remainingSeconds < 120 ? 'animate-pulse' : ''} />
+              <span className="text-xs font-mono font-bold tracking-wider">
+                {remainingSeconds > 0 ? `Reservation Expires in: ${formatTimer(remainingSeconds)}` : "Reservation Expired"}
+              </span>
+            </div>
+          )}
+        </div>
 
         <div className="grid lg:grid-cols-12 gap-16">
           <form onSubmit={placeOrder} data-testid="checkout-form" className="lg:col-span-7 space-y-12">
             
-            {/* Contact Specs */}
+            {/* Contact Details */}
             <section>
-              <h2 className="text-[10px] uppercase tracking-[0.3em] text-foreground/45 font-body mb-6 font-medium">— Contact</h2>
+              <h2 className="text-[10px] uppercase tracking-[0.3em] text-foreground/45 font-body mb-6 font-medium">— Contact Information</h2>
               <div className="grid sm:grid-cols-2 gap-6">
                 <input
                   data-testid="checkout-email"
@@ -420,7 +569,7 @@ const Checkout = () => {
                   onChange={upd("email")}
                   type="email"
                   placeholder="Email Address *"
-                  className="w-full bg-transparent border-b border-white/15 focus:border-foreground outline-none py-3 text-base font-body placeholder:text-foreground/35 text-white"
+                  className="w-full bg-transparent border-b border-white/15 focus:border-white outline-none py-3 text-base font-body placeholder:text-foreground/35 text-white"
                   required
                 />
                 <input
@@ -428,22 +577,22 @@ const Checkout = () => {
                   onChange={upd("phone")}
                   type="tel"
                   placeholder="Contact Phone Number *"
-                  className="w-full bg-transparent border-b border-white/15 focus:border-foreground outline-none py-3 text-base font-body placeholder:text-foreground/35 text-white"
+                  className="w-full bg-transparent border-b border-white/15 focus:border-white outline-none py-3 text-base font-body placeholder:text-foreground/35 text-white"
                   required
                 />
               </div>
             </section>
 
-            {/* Saved Addresses Selector */}
+            {/* Saved Address Book Selection */}
             {addresses.length > 0 && (
               <section>
-                <h2 className="text-[10px] uppercase tracking-[0.3em] text-emerald-400 font-mono mb-4">— Select From Saved Address Book</h2>
+                <h2 className="text-[10px] uppercase tracking-[0.3em] text-emerald-400 font-mono mb-4">— Select Saved Delivery Address</h2>
                 <div className="grid sm:grid-cols-2 gap-4 mb-2">
                   {addresses.map((addr) => (
                     <div
                       key={addr.id}
                       onClick={() => selectSavedAddress(addr)}
-                      className={`p-4 border cursor-pointer transition-all ${selectedAddrId === addr.id ? 'border-foreground bg-white/10 shadow-lg' : 'border-white/10 hover:border-white/30 bg-white/5'}`}
+                      className={`p-4 border cursor-pointer transition-all ${selectedAddrId === addr.id ? 'border-white bg-white/10 shadow-lg' : 'border-white/10 hover:border-white/30 bg-white/5'}`}
                     >
                       <p className="text-xs font-body font-bold text-white flex items-center gap-1.5"><MapPin size={12} className="text-emerald-400" /> {addr.line1}</p>
                       <p className="text-[10px] uppercase tracking-[0.15em] text-foreground/60 mt-1 font-mono">{addr.city}, {addr.state} - {addr.pincode}</p>
@@ -453,19 +602,18 @@ const Checkout = () => {
               </section>
             )}
 
-            {/* SHIPPING ADDRESS SECTION */}
+            {/* Delivery Destination Form */}
             <section className="space-y-6">
-              <h2 className="text-[10px] uppercase tracking-[0.3em] text-foreground/45 font-body font-medium">— Shipping Address (Delivery Destination)</h2>
+              <h2 className="text-[10px] uppercase tracking-[0.3em] text-foreground/45 font-body font-medium">— Delivery Destination</h2>
               <div className="grid sm:grid-cols-2 gap-6">
-                <input data-testid="checkout-firstname" value={form.firstName} onChange={upd("firstName")} placeholder="First name *" className="bg-transparent border-b border-white/15 focus:border-foreground outline-none py-3 text-base font-body placeholder:text-foreground/35 text-white" required />
-                <input data-testid="checkout-lastname" value={form.lastName} onChange={upd("lastName")} placeholder="Last name *" className="bg-transparent border-b border-white/15 focus:border-foreground outline-none py-3 text-base placeholder:text-foreground/35 text-white" required />
-                <input data-testid="checkout-address" value={form.address} onChange={upd("address")} placeholder="Street Address / House Line *" className="sm:col-span-2 bg-transparent border-b border-white/15 focus:border-foreground outline-none py-3 text-base font-body placeholder:text-foreground/35 text-white" required />
-                <input data-testid="checkout-city" value={form.city} onChange={upd("city")} placeholder="City *" className="bg-transparent border-b border-white/15 focus:border-foreground outline-none py-3 text-base font-body placeholder:text-foreground/35 text-white" required />
-                <input value={form.state} onChange={upd("state")} placeholder="State *" className="bg-transparent border-b border-white/15 focus:border-foreground outline-none py-3 text-base font-body placeholder:text-foreground/35 text-white" required />
-                <input data-testid="checkout-pincode" value={form.pincode} onChange={upd("pincode")} placeholder="PIN / Postal code *" className="sm:col-span-2 bg-transparent border-b border-white/15 focus:border-foreground outline-none py-3 text-base font-body placeholder:text-foreground/35 text-white font-mono" required />
+                <input data-testid="checkout-firstname" value={form.firstName} onChange={upd("firstName")} placeholder="First name *" className="bg-transparent border-b border-white/15 focus:border-white outline-none py-3 text-base font-body placeholder:text-foreground/35 text-white" required />
+                <input data-testid="checkout-lastname" value={form.lastName} onChange={upd("lastName")} placeholder="Last name *" className="bg-transparent border-b border-white/15 focus:border-white outline-none py-3 text-base placeholder:text-foreground/35 text-white" required />
+                <input data-testid="checkout-address" value={form.address} onChange={upd("address")} placeholder="Street Address / Residence *" className="sm:col-span-2 bg-transparent border-b border-white/15 focus:border-white outline-none py-3 text-base font-body placeholder:text-foreground/35 text-white" required />
+                <input data-testid="checkout-city" value={form.city} onChange={upd("city")} placeholder="City *" className="bg-transparent border-b border-white/15 focus:border-white outline-none py-3 text-base font-body placeholder:text-foreground/35 text-white" required />
+                <input value={form.state} onChange={upd("state")} placeholder="State *" className="bg-transparent border-b border-white/15 focus:border-white outline-none py-3 text-base font-body placeholder:text-foreground/35 text-white" required />
+                <input data-testid="checkout-pincode" value={form.pincode} onChange={upd("pincode")} placeholder="PIN Code *" className="sm:col-span-2 bg-transparent border-b border-white/15 focus:border-white outline-none py-3 text-base font-body placeholder:text-foreground/35 text-white font-mono" required />
               </div>
 
-              {/* Auto Save Checkbox */}
               <label className="flex items-center gap-3 cursor-pointer pt-2">
                 <input
                   type="checkbox"
@@ -474,14 +622,14 @@ const Checkout = () => {
                   className="accent-emerald-400 w-4 h-4"
                 />
                 <span className="text-xs text-foreground/80 font-body">
-                  Save this shipping address to my account profile for 1-click future checkouts
+                  Save this delivery address to my account profile
                 </span>
               </label>
             </section>
 
-            {/* BILLING ADDRESS SECTION */}
+            {/* Billing Address Toggle */}
             <section className="space-y-6 pt-4 border-t border-white/10">
-              <h2 className="text-[10px] uppercase tracking-[0.3em] text-foreground/45 font-body font-medium">— Billing Address</h2>
+              <h2 className="text-[10px] uppercase tracking-[0.3em] text-foreground/45 font-body font-medium">— Billing Information</h2>
               
               <label className="flex items-center gap-3 cursor-pointer p-4 border border-white/10 bg-white/5">
                 <input
@@ -491,7 +639,7 @@ const Checkout = () => {
                   className="accent-amber-400 w-4 h-4"
                 />
                 <span className="text-xs text-white font-body font-medium">
-                  Billing address is the same as my shipping address
+                  Billing address is identical to shipping address
                 </span>
               </label>
 
@@ -505,42 +653,41 @@ const Checkout = () => {
               )}
             </section>
 
-            {/* PAYMENT METHOD */}
+            {/* Payment Options */}
             <section>
-              <h2 className="text-[10px] uppercase tracking-[0.3em] text-foreground/45 font-body mb-6">— Payment Method</h2>
-              <div className="space-y-3">
-                {[
-                  { id: "card", label: "Credit / Debit Card (Online Razorpay)" },
-                  { id: "upi", label: "UPI Instant Pay" },
-                  { id: "cod", label: "Cash on Delivery (COD)" },
-                ].map((p) => (
-                  <label key={p.id} className={`flex items-center gap-4 border px-5 py-4 cursor-pointer transition-all ${form.payment === p.id ? "border-foreground bg-white/5" : "border-white/10 hover:border-white/30"}`}>
-                    <input
-                      data-testid={`payment-${p.id}`}
-                      type="radio"
-                      name="payment"
-                      checked={form.payment === p.id}
-                      onChange={() => setForm({ ...form, payment: p.id })}
-                      className="accent-foreground"
-                    />
-                    <span className="text-sm font-body text-white font-medium">{p.label}</span>
-                  </label>
-                ))}
+              <h2 className="text-[10px] uppercase tracking-[0.3em] text-foreground/45 font-body mb-6 font-medium">— Payment Gateway</h2>
+              <div className="border border-white/20 p-5 bg-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <CreditCard className="text-amber-400" size={20} />
+                  <div>
+                    <span className="text-sm font-body text-white font-bold block">Razorpay Secure Checkout</span>
+                    <span className="text-[10px] font-mono text-foreground/50 uppercase tracking-widest">Cards, UPI, Netbanking & Wallets</span>
+                  </div>
+                </div>
+                <ShieldCheck size={20} className="text-emerald-400" />
               </div>
             </section>
 
+            {/* Submit Action */}
             <button
               type="submit"
+              disabled={isInitializingPayment || (remainingSeconds !== null && remainingSeconds <= 0)}
               data-testid="place-order-btn"
-              className="w-full bg-foreground text-background py-5 text-[11px] uppercase tracking-[0.3em] font-body hover:bg-foreground/90 transition-all font-bold shadow-xl"
+              className="w-full bg-white text-black py-5 text-[11px] uppercase tracking-[0.3em] font-body hover:bg-white/90 transition-all font-bold shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Place Order · {formatINR(total)}
+              {isInitializingPayment ? (
+                <><Loader2 className="animate-spin" size={16} /> Initializing...</>
+              ) : remainingSeconds !== null && remainingSeconds <= 0 ? (
+                "Session Expired · Refresh Bag"
+              ) : (
+                `Proceed to Payment · ${formatINR(activeOrder ? Number(activeOrder.total) : total)}`
+              )}
             </button>
           </form>
 
-          {/* Summary Sidebar */}
+          {/* Sidebar Order Summary */}
           <aside className="lg:col-span-5 lg:sticky lg:top-32 self-start border border-white/10 p-8 bg-[#0a0a0c]/80 backdrop-blur-md">
-            <h3 className="font-display text-2xl mb-8">Your Order Summary</h3>
+            <h3 className="font-display text-2xl mb-8 text-white">Your Order Summary</h3>
             <ul className="space-y-6 mb-8 max-h-80 overflow-y-auto pr-2">
               {items.map((i) => (
                 <li key={i.key} className="flex gap-4">
@@ -554,52 +701,30 @@ const Checkout = () => {
               ))}
             </ul>
 
-            {/* Promo Voucher Section */}
+            {/* Voucher Section */}
             <div className="border-t border-white/10 pt-6 mb-8">
-              <label className="text-[10px] uppercase tracking-[0.2em] font-body text-foreground/50 block mb-2 font-medium">Have a Promo Coupon / Voucher?</label>
+              <label className="text-[10px] uppercase tracking-[0.2em] font-body text-foreground/50 block mb-2 font-medium">Apply Atelier Coupon Code</label>
               
               {!appliedCoupon ? (
-                <>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      placeholder="ENTER CODE (e.g. SUKO10)"
-                      className="flex-1 bg-black/40 border border-white/15 px-3 py-2 text-xs font-mono text-white placeholder:text-foreground/35 outline-none uppercase focus:border-foreground"
-                    />
-                    <button
-                      type="button"
-                      onClick={applyPromoCode}
-                      className="bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 text-[10px] uppercase tracking-[0.15em] font-body font-bold text-white transition-all"
-                    >
-                      Apply
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    <span className="text-[9px] text-foreground/40 font-mono self-center">Quick Tap Vouchers:</span>
-                    {[
-                      { code: "SUKO10", label: "SUKO10 (10% OFF)" },
-                      { code: "WELCOME20", label: "WELCOME20 (20% OFF)" },
-                      { code: "ATELIER500", label: "ATELIER500 (₹500 OFF)" }
-                    ].map((v) => (
-                      <button
-                        key={v.code}
-                        type="button"
-                        onClick={() => {
-                          setCouponCode(v.code);
-                          setCouponError("");
-                        }}
-                        className="text-[9px] font-mono bg-amber-500/10 border border-amber-500/30 text-amber-300 px-2 py-0.5 hover:bg-amber-500/20 transition-all font-bold"
-                      >
-                        + {v.code}
-                      </button>
-                    ))}
-                  </div>
-                </>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    placeholder="ENTER CODE (e.g. SUKO10)"
+                    className="flex-1 bg-black/40 border border-white/15 px-3 py-2 text-xs font-mono text-white placeholder:text-foreground/35 outline-none uppercase focus:border-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={applyPromoCode}
+                    className="bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 text-[10px] uppercase tracking-[0.15em] font-body font-bold text-white transition-all"
+                  >
+                    Apply
+                  </button>
+                </div>
               ) : (
                 <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 font-mono text-xs text-emerald-400">
-                  <span>Voucher: <strong>{appliedCoupon}</strong> (-{formatINR(discount)})</span>
+                  <span>Coupon: <strong>{appliedCoupon}</strong> (-{formatINR(discount)})</span>
                   <button onClick={removeCoupon} className="text-red-400 hover:text-red-300 text-[10px] uppercase tracking-widest font-bold">Remove</button>
                 </div>
               )}
@@ -609,6 +734,7 @@ const Checkout = () => {
               )}
             </div>
 
+            {/* Calculations Breakdown */}
             <div className="border-t border-white/10 pt-6 space-y-3 font-body text-xs">
               <div className="flex justify-between text-foreground/60">
                 <span>Subtotal</span>
@@ -626,7 +752,9 @@ const Checkout = () => {
               </div>
               <div className="flex justify-between text-base text-white font-medium border-t border-white/10 pt-4 mt-2">
                 <span>Total Payable</span>
-                <span className="font-mono text-lg font-bold text-emerald-400">{formatINR(total)}</span>
+                <span className="font-mono text-lg font-bold text-emerald-400">
+                  {formatINR(activeOrder ? Number(activeOrder.total) : total)}
+                </span>
               </div>
             </div>
           </aside>

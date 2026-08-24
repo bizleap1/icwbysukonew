@@ -8,7 +8,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { formatINR } from "../data/products";
-import { API_BASE_URL } from "../config/api";
+import { API_BASE_URL, apiClient } from "../config/api";
 
 const formatDateTime = (dateStr) => {
   if (!dateStr) return "N/A";
@@ -47,15 +47,13 @@ const Orders = () => {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/orders`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error("Failed to fetch orders");
-      const data = await res.json();
-      setOrders(data);
+      const data = await apiClient.get('/api/orders');
+      if (Array.isArray(data)) {
+        setOrders(data);
+      }
     } catch (err) {
       console.error(err);
-      toast.error("Could not load order history");
+      toast.error("Could not load order history.");
     } finally {
       setLoading(false);
     }
@@ -71,16 +69,21 @@ const Orders = () => {
       case "processing":
         return <span className="bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5 shadow-[0_0_12px_rgba(245,158,11,0.15)]"><RefreshCw size={12} className="animate-spin text-amber-400" /> Processing</span>;
       case "paid":
-        return <span className="bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><CheckCircle2 size={12} /> Paid</span>;
+        return <span className="bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><CheckCircle2 size={12} /> Order Confirmed</span>;
       case "shipped":
       case "in_transit":
-        return <span className="bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><Truck size={12} /> Shipped in Transit</span>;
+        return <span className="bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><Truck size={12} /> Shipped</span>;
       case "cancel_requested":
         return <span className="bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><AlertCircle size={12} /> Cancellation Requested</span>;
       case "cancelled":
         return <span className="bg-red-500/10 border border-red-500/30 text-red-400 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><XCircle size={12} /> Cancelled</span>;
+      case "expired":
+      case "payment_failed":
+        return <span className="bg-zinc-500/15 border border-zinc-500/30 text-zinc-400 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><Clock size={12} /> Payment Session Expired</span>;
+      case "payment_pending":
+      case "pending":
       default:
-        return <span className="bg-white/10 border border-white/20 text-white/80 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><Clock size={12} /> Order Placed</span>;
+        return <span className="bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><Clock size={12} /> Awaiting Payment</span>;
     }
   };
 
@@ -100,22 +103,15 @@ const Orders = () => {
       : cancelReasonPreset;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/orders/${cancellingOrder.id}/cancel`, {
-        method: "PATCH",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ reason: finalReason })
+      await apiClient.patch(`/api/orders/${cancellingOrder.id}/cancel`, {
+        reason: finalReason
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to request order cancellation");
 
       toast.success(`Cancellation request for Order #SUKO-${1000 + cancellingOrder.id} submitted!`);
       setCancellingOrder(null);
       fetchOrders();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to request cancellation.");
     } finally {
       setSubmittingCancel(false);
     }

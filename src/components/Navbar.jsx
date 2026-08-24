@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { ShoppingBag, Search, User, Menu, X, Heart } from "lucide-react";
+import { ShoppingBag, Search, User, Menu, X, Heart, ChevronRight } from "lucide-react";
 import { useLenis } from "lenis/react";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
@@ -420,22 +420,29 @@ const Navbar = () => {
                   )}
                 </Link>
 
+                {/* Subtle Section Label */}
+                <div className="pt-3.5 pb-0.5">
+                  <span className="text-[10.5px] uppercase tracking-[0.28em] text-[#C2922E] font-medium font-body block">
+                    EXPLORE ICW
+                  </span>
+                </div>
+
                 <Link
                   to="/contact"
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-3 transition-colors font-medium text-[#222228] hover:text-black"
+                  className="group min-h-[44px] py-2.5 flex items-center justify-between transition-colors font-medium text-[#222228] hover:text-[#C2922E]"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]" />
                   <span>CUSTOMER CARE &amp; CONCIERGE</span>
+                  <ChevronRight size={13} className="text-[#C2922E] transition-transform duration-300 group-hover:translate-x-0.5" />
                 </Link>
 
                 <Link
                   to="/about"
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-3 transition-colors font-medium text-[#222228] hover:text-black"
+                  className="group min-h-[44px] py-2.5 flex items-center justify-between transition-colors font-medium text-[#222228] hover:text-[#C2922E]"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]/60" />
                   <span>THE ATELIER &amp; HERITAGE</span>
+                  <ChevronRight size={13} className="text-[#C2922E] transition-transform duration-300 group-hover:translate-x-0.5" />
                 </Link>
               </div>
             </div>

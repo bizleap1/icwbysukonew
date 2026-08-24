@@ -12,17 +12,11 @@ export const CATEGORIES = [
 
 export const SIZES = ["XS", "S", "M", "L", "XL", "Custom Bespoke"];
 export const COLOURS = [
-  { name: "Obsidian Black", hex: "#0E0E11" },
-  { name: "Merlot", hex: "#4A1521" },
-  { name: "Aubergine", hex: "#2E1729" },
-  { name: "Blush", hex: "#D6B8B8" },
-  { name: "Navy", hex: "#16233B" },
-  { name: "Ivory", hex: "#F5F3ED" },
-  { name: "Raspberry Pink", hex: "#C42E62" },
-  { name: "Dusty Rose", hex: "#C59A9A" },
-  { name: "Deep Plum", hex: "#4A1828" },
-  { name: "Camel", hex: "#9E7B56" },
-  { name: "Charcoal", hex: "#24242A" },
+  { id: "Navy", name: "Navy", label: "Navy", hex: "#16233B" },
+  { id: "Aubergine", name: "Aubergine", label: "Aubergine", hex: "#2E1729" },
+  { id: "Dusty Rose", name: "Dusty Rose", label: "Dusty Rose", hex: "#C59A9A" },
+  { id: "Deep Plum", name: "Deep Plum", label: "Deep Plum", hex: "#4A1828" },
+  { id: "Obsidian Black", name: "Obsidian Black", label: "Obsidian Black", hex: "#0E0E11" },
 ];
 
 export const PRODUCTS = [

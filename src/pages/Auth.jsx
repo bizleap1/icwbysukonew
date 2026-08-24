@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { Loader2, ArrowLeft, Sparkles, KeyRound, Mail, Lock, ShieldCheck, X, Eye, EyeOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { API_BASE_URL } from "../config/api";
+import { API_BASE_URL, apiClient } from "../config/api";
 
 const Auth = () => {
   const [authMode, setAuthMode] = useState("password"); // 'password', 'otp', 'register'
@@ -35,6 +35,13 @@ const Auth = () => {
   const { user, login, register, loginWithToken } = useAuth();
   const navigate = useNavigate();
 
+  // Helper for UTF-8 byte length validation matching backend bcrypt rule
+  const validatePasswordBytes = (pwd) => {
+    if (!pwd) return false;
+    const len = new TextEncoder().encode(pwd).length;
+    return len >= 8 && len <= 72;
+  };
+
   // Clear all form inputs on mount & mode change
   useEffect(() => {
     setName("");
@@ -64,64 +71,52 @@ const Auth = () => {
     try {
       if (authMode === "register") {
         if (!regOtpSent) {
-          if (!password || password.length < 4) {
-            throw new Error("Password must be at least 4 characters long");
+          if (!validatePasswordBytes(password)) {
+            throw new Error("Password must be between 8 and 72 bytes.");
           }
           // Step 1: Send Registration OTP
-          const res = await fetch(`${API_BASE_URL}/api/auth/send-register-otp`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, phone, email, password })
+          await apiClient.post('/api/auth/send-register-otp', {
+            name: name.trim(),
+            phone: phone.trim(),
+            email: email.trim().toLowerCase(),
+            password
           });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || "Failed to send registration OTP");
           toast.success(`6-digit verification OTP sent to ${email}! Check your Gmail inbox.`);
           setRegOtpSent(true);
         } else {
           // Step 2: Verify Registration OTP
-          const res = await fetch(`${API_BASE_URL}/api/auth/verify-register-otp`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, otp: regOtpCode })
+          const data = await apiClient.post('/api/auth/verify-register-otp', {
+            email: email.trim().toLowerCase(),
+            otp: regOtpCode.trim()
           });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || "Invalid OTP code");
 
           loginWithToken(data.token);
-          toast.success(`Welcome to Suko Atelier, ${data.user.name}! Account verified & created.`);
+          toast.success(`Welcome to SUKO Atelier, ${data.user?.name || ''}! Account verified.`);
         }
       } else if (authMode === "password") {
         await login(email, password);
       } else if (authMode === "otp") {
         if (!otpSent) {
           // Request Login OTP
-          const res = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: email.trim(), purpose: "Login Passcode" })
+          await apiClient.post('/api/auth/send-otp', {
+            email: email.trim().toLowerCase(),
+            purpose: "Login Passcode"
           });
-          const data = await res.json();
-          if (!res.ok) {
-            throw new Error(data.error || "Unable to send OTP. Please check your email or create an account.");
-          }
           toast.success(`6-digit OTP passcode sent to ${email}! Check your inbox/spam folder.`);
           setOtpSent(true);
         } else {
           // Verify Login OTP
-          const res = await fetch(`${API_BASE_URL}/api/auth/verify-otp-login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: email.trim(), otp: otpCode.trim() })
+          const data = await apiClient.post('/api/auth/verify-otp-login', {
+            email: email.trim().toLowerCase(),
+            otp: otpCode.trim()
           });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || "Invalid OTP code");
 
           loginWithToken(data.token);
           toast.success(`Welcome back, ${data.user?.name || "Client"}!`);
         }
       }
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || "Authentication request failed.");
     } finally {
       setIsLoading(false);
     }
@@ -134,17 +129,14 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: forgotEmail, purpose: "Password Reset" })
+      await apiClient.post('/api/auth/send-otp', {
+        email: forgotEmail.trim().toLowerCase(),
+        purpose: "password_reset"
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to send reset code");
-      toast.success(`Password reset OTP sent to ${forgotEmail}`);
+      toast.success(`Password reset verification code sent to ${forgotEmail}`);
       setForgotStep(2);
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to send reset code.");
     } finally {
       setIsLoading(false);
     }
@@ -156,25 +148,23 @@ const Auth = () => {
     if (!forgotOtp.trim() || !forgotNewPassword.trim()) {
       return toast.error("OTP and New Password are required");
     }
+    if (!validatePasswordBytes(forgotNewPassword)) {
+      return toast.error("New password must be between 8 and 72 bytes.");
+    }
     setIsLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/reset-password-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: forgotEmail,
-          otp: forgotOtp,
-          newPassword: forgotNewPassword
-        })
+      const data = await apiClient.post('/api/auth/reset-password-otp', {
+        email: forgotEmail.trim().toLowerCase(),
+        otp: forgotOtp.trim(),
+        newPassword: forgotNewPassword
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to reset password");
 
       loginWithToken(data.token);
+      toast.success("Password reset successful! All prior sessions have been invalidated.");
       setShowForgotModal(false);
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to reset password.");
     } finally {
       setIsLoading(false);
     }

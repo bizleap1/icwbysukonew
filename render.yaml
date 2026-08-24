@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: icw-suko-backend
+    runtime: node
+    plan: starter
+    rootDir: suko-backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: TRUST_PROXY
+        value: "1"
+      - key: BCRYPT_ROUNDS
+        value: "10"
+      - key: JWT_EXPIRES_IN
+        value: "7d"
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: OTP_HASH_SECRET
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: BREVO_SMTP_LOGIN
+        sync: false
+      - key: BREVO_SMTP_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: BREVO_SENDER_NAME
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false

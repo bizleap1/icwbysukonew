@@ -7,7 +7,7 @@ import {
   Package, Heart, Shield, ArrowRight, CheckCircle2, Clock, Key
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { API_BASE_URL } from "../config/api";
+import { API_BASE_URL, apiClient } from "../config/api";
 
 const Account = () => {
   const { user, token, loginWithToken } = useAuth();
@@ -40,24 +40,22 @@ const Account = () => {
   const fetchProfileAndAddresses = async () => {
     setLoading(true);
     try {
-      const headers = { "Authorization": `Bearer ${token}` };
-      const [profRes, addrRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/auth/profile`, { headers }),
-        fetch(`${API_BASE_URL}/api/addresses`, { headers })
+      const [profData, addrData] = await Promise.all([
+        apiClient.get('/api/auth/profile'),
+        apiClient.get('/api/addresses')
       ]);
 
-      if (profRes.ok) {
-        const data = await profRes.json();
-        setProfileData(data);
-        setName(data.name || "");
-        setPhone(data.phone || "");
+      if (profData) {
+        setProfileData(profData);
+        setName(profData.name || "");
+        setPhone(profData.phone || "");
       }
-      if (addrRes.ok) {
-        setAddresses(await addrRes.json());
+      if (Array.isArray(addrData)) {
+        setAddresses(addrData);
       }
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load account details");
+      toast.error("Failed to load account details.");
     } finally {
       setLoading(false);
     }
@@ -65,35 +63,31 @@ const Account = () => {
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
+    if (newPassword) {
+      const len = new TextEncoder().encode(newPassword).length;
+      if (len < 8 || len > 72) {
+        return toast.error("New password must be between 8 and 72 bytes.");
+      }
+    }
     setUpdatingProfile(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/profile`, {
-        method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          name,
-          phone,
-          currentPassword: currentPassword || undefined,
-          newPassword: newPassword || undefined
-        })
+      const data = await apiClient.put('/api/auth/profile', {
+        name: name.trim(),
+        phone: phone.trim(),
+        currentPassword: currentPassword || undefined,
+        newPassword: newPassword || undefined
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update profile");
 
       if (data.token) {
         loginWithToken(data.token);
       }
-      toast.success("Account profile updated successfully!");
+      toast.success(data.message || "Account profile updated successfully!");
       setCurrentPassword("");
       setNewPassword("");
       fetchProfileAndAddresses();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to update profile.");
     } finally {
       setUpdatingProfile(false);
     }
@@ -104,22 +98,15 @@ const Account = () => {
     setSavingAddr(true);
 
     try {
-      const url = editingAddressId
-        ? `${API_BASE_URL}/api/addresses/${editingAddressId}`
-        : `${API_BASE_URL}/api/addresses`;
-      const method = editingAddressId ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(addrForm)
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save address");
+      const endpoint = editingAddressId
+        ? `/api/addresses/${editingAddressId}`
+        : '/api/addresses';
+      
+      if (editingAddressId) {
+        await apiClient.put(endpoint, addrForm);
+      } else {
+        await apiClient.post(endpoint, addrForm);
+      }
 
       toast.success(editingAddressId ? "Address updated!" : "New address added!");
       setAddrForm({ line1: "", city: "", state: "", pincode: "", phone: "" });
@@ -127,7 +114,7 @@ const Account = () => {
       setEditingAddressId(null);
       fetchProfileAndAddresses();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to save address.");
     } finally {
       setSavingAddr(false);
     }
@@ -136,15 +123,11 @@ const Account = () => {
   const handleDeleteAddress = async (id) => {
     if (!window.confirm("Delete this delivery address?")) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/api/addresses/${id}`, {
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error("Failed to delete address");
+      await apiClient.delete(`/api/addresses/${id}`);
       toast.success("Address removed");
       fetchProfileAndAddresses();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || "Failed to delete address.");
     }
   };
 

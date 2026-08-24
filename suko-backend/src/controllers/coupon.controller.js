@@ -5,7 +5,7 @@ async function validateCoupon(req, res) {
   try {
     const { code, orderTotal } = req.body;
 
-    if (!code) {
+    if (!code || typeof code !== 'string' || code.trim() === '') {
       return res.status(400).json({ error: 'Coupon code is required' });
     }
 
@@ -67,16 +67,53 @@ async function createCoupon(req, res) {
   try {
     const { code, discount_percent, discount_flat, min_order_value } = req.body;
 
-    if (!code) {
+    if (!code || typeof code !== 'string' || code.trim() === '') {
       return res.status(400).json({ error: 'Coupon code is required' });
+    }
+
+    let percentNum = null;
+    let flatNum = null;
+    let minOrderNum = 0;
+
+    if (discount_percent !== undefined && discount_percent !== '' && discount_percent !== null) {
+      percentNum = parseInt(discount_percent, 10);
+      if (isNaN(percentNum) || percentNum < 1 || percentNum > 100) {
+        return res.status(400).json({ error: 'Discount percent must be an integer between 1 and 100' });
+      }
+    }
+
+    if (discount_flat !== undefined && discount_flat !== '' && discount_flat !== null) {
+      flatNum = parseFloat(discount_flat);
+      if (isNaN(flatNum) || flatNum <= 0) {
+        return res.status(400).json({ error: 'Flat discount must be a positive number greater than zero' });
+      }
+    }
+
+    if (percentNum === null && flatNum === null) {
+      return res.status(400).json({ error: 'Please specify either a discount percentage (1-100) or flat discount amount' });
+    }
+
+    if (min_order_value !== undefined && min_order_value !== '' && min_order_value !== null) {
+      minOrderNum = parseFloat(min_order_value);
+      if (isNaN(minOrderNum) || minOrderNum < 0) {
+        return res.status(400).json({ error: 'Minimum order value cannot be negative' });
+      }
+    }
+
+    const cleanCode = code.trim().toUpperCase();
+
+    // Check duplicate code
+    const existing = await prisma.coupon.findUnique({ where: { code: cleanCode } });
+    if (existing) {
+      return res.status(409).json({ error: `Coupon code "${cleanCode}" already exists` });
     }
 
     const coupon = await prisma.coupon.create({
       data: {
-        code: code.trim().toUpperCase(),
-        discount_percent: discount_percent ? parseInt(discount_percent) : null,
-        discount_flat: discount_flat ? parseFloat(discount_flat) : null,
-        min_order_value: min_order_value ? parseFloat(min_order_value) : 0
+        code: cleanCode,
+        discount_percent: percentNum,
+        discount_flat: flatNum,
+        min_order_value: minOrderNum
       }
     });
 
@@ -90,9 +127,11 @@ async function createCoupon(req, res) {
 // Delete coupon (Admin)
 async function deleteCoupon(req, res) {
   try {
-    const { id } = req.params;
+    const couponId = parseInt(req.params.id, 10);
+    if (isNaN(couponId)) return res.status(400).json({ error: 'Invalid coupon ID' });
+
     await prisma.coupon.delete({
-      where: { id: parseInt(id) }
+      where: { id: couponId }
     });
     res.json({ message: 'Coupon deleted successfully' });
   } catch (err) {

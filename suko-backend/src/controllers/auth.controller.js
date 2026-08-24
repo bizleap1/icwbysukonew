@@ -1,51 +1,109 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const prisma = require('../prisma/client');
-const { sendLoginNotificationEmail, sendOTPEmail } = require('../utils/email.service');
+const { 
+  validateEmail, 
+  validatePassword, 
+  validateOtpFormat, 
+  rejectForbiddenFields 
+} = require('../utils/validator');
+const { 
+  issueOtp, 
+  invalidateOtp, 
+  verifyAndConsumeOtp, 
+  hashOtp 
+} = require('../utils/otp.service');
+const { sendOTPEmail } = require('../utils/email.service');
 
-// Memory store for OTPs (Key: email, Value: { code, expires })
-const otpStore = new Map();
+const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
+/**
+ * Generates an HS256 JWT containing verified userId and active token_version
+ */
+function generateToken(user) {
+  return jwt.sign(
+    { 
+      userId: user.id, 
+      role: user.role, 
+      token_version: user.token_version || 1,
+      email: user.email 
+    },
+    process.env.JWT_SECRET,
+    { 
+      algorithm: 'HS256',
+      expiresIn: JWT_EXPIRES_IN 
+    }
+  );
+}
+
+/**
+ * Standard Email & Password Registration
+ */
 async function register(req, res) {
   try {
+    rejectForbiddenFields(req.body);
     const { name, phone, email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    const cleanEmail = validateEmail(email);
+    validatePassword(password);
+
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ error: 'Full name is required' });
+    }
+    if (!phone || typeof phone !== 'string' || !phone.trim()) {
+      return res.status(400).json({ error: 'Phone number is required' });
     }
 
-    if (!name || !phone) {
-      return res.status(400).json({ error: 'Full name and phone number are required for new accounts' });
-    }
-
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
     if (existingUser) {
-      return res.status(409).json({ error: 'User already exists with this email' });
+      return res.status(409).json({ error: 'An account already exists with this email' });
     }
 
-    const password_hash = await bcrypt.hash(password, 10);
+    const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     const user = await prisma.user.create({
-      data: { name, phone, email, password_hash }
+      data: {
+        name: name.trim(),
+        phone: phone.trim(),
+        email: cleanEmail,
+        password_hash,
+        token_version: 1
+      }
     });
 
-    res.status(201).json({ id: user.id, name: user.name, phone: user.phone, email: user.email });
+    const token = generateToken(user);
+
+    res.status(201).json({
+      token,
+      user: { id: user.id, name: user.name, phone: user.phone, email: user.email, role: user.role }
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Something went wrong during registration' });
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error("Register error:", err.message);
+    res.status(500).json({ error: 'Something went wrong during registration.' });
   }
 }
 
+/**
+ * Password Login (Enumeration Safe)
+ */
 async function login(req, res) {
   try {
+    rejectForbiddenFields(req.body);
     const { email, password } = req.body;
+
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
     const cleanEmail = email.trim().toLowerCase();
     const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+
     if (!user) {
+      // Dummy comparison to prevent timing side-channel enumeration
+      await bcrypt.compare(password, '$2a$10$dummyhashfortimingpreventionxxxxxxxxxxxxxxxxxxxxxxxx');
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
@@ -54,252 +112,258 @@ async function login(req, res) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const token = jwt.sign(
-      { userId: user.id, role: user.role, name: user.name, phone: user.phone, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.json({ token, user: { id: user.id, name: user.name, phone: user.phone, email: user.email, role: user.role } });
-  } catch (err) {
-    console.error('Login error:', err);
-    res.status(500).json({ error: 'Login failed. Please check your network connection.' });
-  }
-}
-
-// 1. Generate & Send OTP for Login / General Purpose
-async function sendOTP(req, res) {
-  try {
-    const { email, purpose } = req.body;
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(cleanEmail)) {
-      return res.status(400).json({ error: 'Please enter a valid email address' });
-    }
-
-    // Check if user exists for login OTP
-    const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
-    if (!user) {
-      return res.status(404).json({ error: 'No account found with this email. Please register first.' });
-    }
-
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Store in memory (10 mins expiration)
-    otpStore.set(cleanEmail, {
-      code: otpCode,
-      expires: Date.now() + 10 * 60 * 1000
-    });
-
-    // Send email and wait for result
-    await sendOTPEmail(cleanEmail, otpCode, purpose || 'Login Verification');
+    const token = generateToken(user);
 
     res.json({
-      message: `Security OTP sent to ${cleanEmail}`
+      token,
+      user: { id: user.id, name: user.name, phone: user.phone, email: user.email, role: user.role }
     });
   } catch (err) {
-    console.error('Send OTP error:', err);
-    res.status(500).json({ error: 'Failed to send OTP. Please check your email and try again.' });
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error('Login error:', err.message);
+    res.status(500).json({ error: 'Login failed. Please check your connection.' });
   }
 }
 
-// 1b. Generate & Send OTP for Account Registration
-async function sendRegisterOTP(req, res) {
+/**
+ * Send OTP for Login / Password Reset (Enumeration-Safe)
+ */
+async function sendOTP(req, res) {
   try {
-    const { name, phone, email, password } = req.body;
-    if (!email || !password || !name || !phone) {
-      return res.status(400).json({ error: 'Full name, phone, email, and password are required' });
+    rejectForbiddenFields(req.body);
+    const { email, purpose } = req.body;
+    const cleanEmail = validateEmail(email);
+    const otpPurpose = purpose === 'password_reset' ? 'password_reset' : 'login';
+
+    const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+
+    // If user does not exist, perform dummy HMAC timing calculation and return identical neutral message
+    if (!user) {
+      try {
+        hashOtp(cleanEmail, '999999', otpPurpose);
+        await new Promise(r => setTimeout(r, 60)); // Simulates DB / crypto duration
+      } catch (e) {}
+      return res.json({
+        message: 'If an account is associated with this email, a security verification code has been dispatched.'
+      });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    // User exists: Issue OTP transactionally
+    const { otpCode, otpRecord } = await issueOtp(cleanEmail, otpPurpose);
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(cleanEmail)) {
-      return res.status(400).json({ error: 'Please enter a valid email address' });
+    try {
+      await sendOTPEmail(cleanEmail, otpCode, otpPurpose === 'password_reset' ? 'Password Reset Verification' : 'Login Verification');
+    } catch (mailErr) {
+      // Invalidate unusable OTP so user is not trapped behind 60s cooldown
+      await invalidateOtp(otpRecord.id);
+      console.error("Email delivery failed for OTP:", mailErr.message);
+      return res.status(500).json({ error: 'Failed to deliver security verification email. Please try again.' });
+    }
+
+    res.json({
+      message: 'If an account is associated with this email, a security verification code has been dispatched.'
+    });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error('Send OTP error:', err.message);
+    res.status(500).json({ error: 'Failed to dispatch verification code. Please try again.' });
+  }
+}
+
+/**
+ * Send OTP for Registration Verification
+ */
+async function sendRegisterOTP(req, res) {
+  try {
+    rejectForbiddenFields(req.body);
+    const { name, phone, email, password } = req.body;
+
+    const cleanEmail = validateEmail(email);
+    validatePassword(password);
+
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ error: 'Full name is required' });
+    }
+    if (!phone || typeof phone !== 'string' || !phone.trim()) {
+      return res.status(400).json({ error: 'Phone number is required' });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
     if (existingUser) {
-      return res.status(409).json({ error: 'User already exists with this email' });
+      return res.status(409).json({ error: 'An account already exists with this email' });
     }
 
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // Pre-hash password before saving to metadata (NEVER store plaintext passwords in metadata)
+    const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-    otpStore.set(cleanEmail, {
-      code: otpCode,
-      expires: Date.now() + 10 * 60 * 1000,
-      regData: { name, phone, email: cleanEmail, password }
+    const { otpCode, otpRecord } = await issueOtp(cleanEmail, 'register', {
+      name: name.trim(),
+      phone: phone.trim(),
+      password_hash
     });
 
-    // Send email and wait for result
-    await sendOTPEmail(cleanEmail, otpCode, 'Account Registration Verification');
+    try {
+      await sendOTPEmail(cleanEmail, otpCode, 'Account Registration Verification');
+    } catch (mailErr) {
+      await invalidateOtp(otpRecord.id);
+      console.error("Email delivery failed for register OTP:", mailErr.message);
+      return res.status(500).json({ error: 'Failed to deliver registration verification email. Please try again.' });
+    }
 
     res.json({
-      message: `Registration verification OTP sent to ${cleanEmail}`
+      message: `Registration verification code sent to ${cleanEmail}`
     });
   } catch (err) {
-    console.error('Send Register OTP error:', err);
-    res.status(500).json({ error: 'Failed to send registration OTP. Please check your email and try again.' });
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error('Send Register OTP error:', err.message);
+    res.status(500).json({ error: 'Failed to dispatch registration verification code.' });
   }
 }
 
-// 1c. Verify Register OTP & Create Account
+/**
+ * Verify Register OTP & Create Account
+ */
 async function verifyRegisterOTP(req, res) {
   try {
+    rejectForbiddenFields(req.body);
     const { email, otp } = req.body;
-    if (!email || !otp) {
-      return res.status(400).json({ error: 'Email and OTP are required' });
+
+    const cleanEmail = validateEmail(email);
+    const cleanOtp = validateOtpFormat(otp);
+
+    const result = await verifyAndConsumeOtp(cleanEmail, cleanOtp, 'register');
+    if (!result.valid) {
+      return res.status(400).json({ error: result.error || 'Invalid or expired verification code.' });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
-    const record = otpStore.get(cleanEmail);
-
-    if (!record || !record.regData || record.code !== otp.trim()) {
-      return res.status(400).json({ error: 'Invalid OTP code' });
+    const metadata = result.otpRecord.metadata || {};
+    if (!metadata.password_hash || !metadata.name) {
+      return res.status(400).json({ error: 'Registration session expired. Please register again.' });
     }
-
-    if (Date.now() > record.expires) {
-      otpStore.delete(cleanEmail);
-      return res.status(400).json({ error: 'OTP has expired. Please request a new code.' });
-    }
-
-    const { name, phone, password } = record.regData;
-    const password_hash = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
-      data: { name, phone, email: cleanEmail, password_hash }
+      data: {
+        name: metadata.name,
+        phone: metadata.phone || '',
+        email: cleanEmail,
+        password_hash: metadata.password_hash,
+        token_version: 1
+      }
     });
 
-    otpStore.delete(cleanEmail);
-
-    const token = jwt.sign(
-      { userId: user.id, role: user.role, name: user.name, phone: user.phone, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = generateToken(user);
 
     res.status(201).json({
       token,
       user: { id: user.id, name: user.name, phone: user.phone, email: user.email, role: user.role }
     });
   } catch (err) {
-    console.error('Verify register OTP error:', err);
-    res.status(500).json({ error: 'Failed to complete registration' });
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error('Verify register OTP error:', err.message);
+    res.status(500).json({ error: 'Failed to complete registration.' });
   }
 }
 
-// 2. Verify OTP Login
+/**
+ * Verify OTP Login
+ */
 async function verifyOTPLogin(req, res) {
   try {
+    rejectForbiddenFields(req.body);
     const { email, otp } = req.body;
-    if (!email || !otp) {
-      return res.status(400).json({ error: 'Email and OTP are required' });
+
+    const cleanEmail = validateEmail(email);
+    const cleanOtp = validateOtpFormat(otp);
+
+    const result = await verifyAndConsumeOtp(cleanEmail, cleanOtp, 'login');
+    if (!result.valid) {
+      return res.status(400).json({ error: result.error || 'Invalid or expired verification code.' });
     }
-
-    const cleanEmail = email.trim().toLowerCase();
-    const record = otpStore.get(cleanEmail);
-
-    if (!record || record.code !== otp.trim()) {
-      return res.status(400).json({ error: 'Invalid OTP code' });
-    }
-
-    if (Date.now() > record.expires) {
-      otpStore.delete(cleanEmail);
-      return res.status(400).json({ error: 'OTP has expired. Please request a new code.' });
-    }
-
-    // Clear OTP after successful verification
-    otpStore.delete(cleanEmail);
 
     let user = await prisma.user.findUnique({ where: { email: cleanEmail } });
     if (!user) {
-      // Auto-create passwordless client user
-      const defaultPasswordHash = await bcrypt.hash('SukoPass' + Math.random(), 10);
+      // Auto-create passwordless client user with secure random hash
+      const randomPasswordHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), BCRYPT_ROUNDS);
       user = await prisma.user.create({
         data: {
           name: cleanEmail.split('@')[0],
           phone: '',
           email: cleanEmail,
-          password_hash: defaultPasswordHash
+          password_hash: randomPasswordHash,
+          token_version: 1
         }
       });
     }
 
-    const token = jwt.sign(
-      { userId: user.id, role: user.role, name: user.name, phone: user.phone, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = generateToken(user);
 
     res.json({
       token,
       user: { id: user.id, name: user.name, phone: user.phone, email: user.email, role: user.role }
     });
   } catch (err) {
-    console.error('Verify OTP login error:', err);
-    res.status(500).json({ error: 'Failed to verify OTP login' });
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error('Verify OTP login error:', err.message);
+    res.status(500).json({ error: 'Failed to verify login code.' });
   }
 }
 
-// 3. Reset Password with OTP
+/**
+ * Reset Password with OTP (Atomic Session Invalidation)
+ */
 async function resetPasswordWithOTP(req, res) {
   try {
+    rejectForbiddenFields(req.body);
     const { email, otp, newPassword } = req.body;
-    if (!email || !otp || !newPassword) {
-      return res.status(400).json({ error: 'Email, OTP, and new password are required' });
-    }
 
-    const cleanEmail = email.trim().toLowerCase();
-    const record = otpStore.get(cleanEmail);
+    const cleanEmail = validateEmail(email);
+    const cleanOtp = validateOtpFormat(otp);
+    validatePassword(newPassword);
 
-    if (!record || record.code !== otp.trim()) {
-      return res.status(400).json({ error: 'Invalid OTP code' });
-    }
-
-    if (Date.now() > record.expires) {
-      otpStore.delete(cleanEmail);
-      return res.status(400).json({ error: 'OTP has expired. Please request a new code.' });
+    const result = await verifyAndConsumeOtp(cleanEmail, cleanOtp, 'password_reset');
+    if (!result.valid) {
+      return res.status(400).json({ error: result.error || 'Invalid or expired verification code.' });
     }
 
     const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
     if (!user) {
-      return res.status(404).json({ error: 'Account not found with this email' });
+      return res.status(400).json({ error: 'Invalid verification session.' });
     }
 
-    // Hash new password and update
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({
+    // Hash new password & atomically increment token_version to invalidate all prior sessions
+    const newPasswordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+
+    const updatedUser = await prisma.user.update({
       where: { id: user.id },
-      data: { password_hash: newPasswordHash }
+      data: {
+        password_hash: newPasswordHash,
+        token_version: { increment: 1 }
+      }
     });
 
-    otpStore.delete(cleanEmail);
-
-    const token = jwt.sign(
-      { userId: user.id, role: user.role, name: user.name, phone: user.phone, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = generateToken(updatedUser);
 
     res.json({
-      message: 'Password reset successful!',
+      message: 'Password reset successful! All prior sessions have been invalidated.',
       token,
-      user: { id: user.id, name: user.name, phone: user.phone, email: user.email, role: user.role }
+      user: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        phone: updatedUser.phone,
+        email: updatedUser.email,
+        role: updatedUser.role
+      }
     });
   } catch (err) {
-    console.error('Reset password OTP error:', err);
-    res.status(500).json({ error: 'Failed to reset password' });
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error('Reset password OTP error:', err.message);
+    res.status(500).json({ error: 'Failed to reset password.' });
   }
 }
 
-// Get User Profile & Addresses
+/**
+ * Get User Profile & Addresses
+ */
 async function getProfile(req, res) {
   try {
     const user = await prisma.user.findUnique({
@@ -319,14 +383,17 @@ async function getProfile(req, res) {
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
   } catch (err) {
-    console.error("Get profile error:", err);
+    console.error("Get profile error:", err.message);
     res.status(500).json({ error: 'Failed to fetch user profile' });
   }
 }
 
-// Update User Profile & Password
+/**
+ * Update User Profile & Password (Increments token_version on password change)
+ */
 async function updateProfile(req, res) {
   try {
+    rejectForbiddenFields(req.body);
     const { name, phone, currentPassword, newPassword } = req.body;
     const userId = req.user.userId;
 
@@ -334,18 +401,24 @@ async function updateProfile(req, res) {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     let updateData = {};
-    if (name) updateData.name = name.trim();
-    if (phone) updateData.phone = phone.trim();
+    if (name && typeof name === 'string') updateData.name = name.trim();
+    if (phone && typeof phone === 'string') updateData.phone = phone.trim();
 
+    let passwordChanged = false;
     if (newPassword) {
       if (!currentPassword) {
         return res.status(400).json({ error: 'Current password is required to set a new password' });
       }
+      validatePassword(newPassword);
+
       const isValid = await bcrypt.compare(currentPassword, user.password_hash);
       if (!isValid) {
         return res.status(401).json({ error: 'Incorrect current password' });
       }
-      updateData.password_hash = await bcrypt.hash(newPassword, 10);
+
+      updateData.password_hash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+      updateData.token_version = { increment: 1 };
+      passwordChanged = true;
     }
 
     const updatedUser = await prisma.user.update({
@@ -353,14 +426,10 @@ async function updateProfile(req, res) {
       data: updateData
     });
 
-    const token = jwt.sign(
-      { userId: updatedUser.id, role: updatedUser.role, name: updatedUser.name, phone: updatedUser.phone, email: updatedUser.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = generateToken(updatedUser);
 
     res.json({
-      message: 'Profile updated successfully!',
+      message: passwordChanged ? 'Password changed successfully! Other sessions invalidated.' : 'Profile updated successfully!',
       token,
       user: {
         id: updatedUser.id,
@@ -371,7 +440,8 @@ async function updateProfile(req, res) {
       }
     });
   } catch (err) {
-    console.error("Update profile error:", err);
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error("Update profile error:", err.message);
     res.status(500).json({ error: 'Failed to update profile' });
   }
 }
@@ -385,5 +455,5 @@ module.exports = {
   verifyOTPLogin,
   resetPasswordWithOTP,
   getProfile,
-  updateProfile,
+  updateProfile
 };

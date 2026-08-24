@@ -6,12 +6,12 @@ import {
   Package, Users, ShoppingCart, DollarSign, Trash2, Edit2,
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, 
   Search, Download, AlertTriangle, Clock, X, Crop, Image as ImageIcon, Star, Eye, Tag, Mail, Send, MessageSquare, ShoppingBag,
-  LayoutDashboard, Layers
+  LayoutDashboard, Layers, ShieldCheck, CheckCircle, RefreshCw
 } from "lucide-react";
 import { formatINR } from "../data/products";
 import { useProducts } from "../context/ProductContext";
 import ImageCropperModal from "../components/ImageCropperModal";
-import { API_BASE_URL } from "../config/api";
+import { apiClient, API_BASE_URL } from "../config/api";
 
 const dataURLtoFile = (dataurl, filename) => {
   try {
@@ -360,7 +360,7 @@ const Admin = () => {
     if (!e.target.files || e.target.files.length === 0) return;
     const selected = Array.from(e.target.files);
     
-    const toastId = toast.loading(`Auto-optimizing ${selected.length} image(s)...`);
+    const toastId = toast.loading(`Optimizing ${selected.length} image(s)...`);
     const compressedResults = await Promise.all(selected.map(file => compressAndResizeImage(file)));
     
     const newItems = compressedResults.map((res, idx) => ({
@@ -373,14 +373,14 @@ const Admin = () => {
 
     setGalleryFiles(prev => [...prev, ...newItems]);
     toast.dismiss(toastId);
-    toast.success("Images auto-compressed for high-speed loading!");
+    toast.success("Images optimized for high-speed luxury catalog view!");
   };
 
   const handleEditAddGalleryFiles = async (e) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const selected = Array.from(e.target.files);
     
-    const toastId = toast.loading(`Auto-optimizing ${selected.length} image(s)...`);
+    const toastId = toast.loading(`Optimizing ${selected.length} image(s)...`);
     const compressedResults = await Promise.all(selected.map(file => compressAndResizeImage(file)));
 
     const newItems = compressedResults.map((res, idx) => ({
@@ -393,7 +393,7 @@ const Admin = () => {
 
     setEditGalleryImages(prev => [...prev, ...newItems]);
     toast.dismiss(toastId);
-    toast.success("Images auto-compressed!");
+    toast.success("Images optimized!");
   };
 
   const handleUploadSubmit = async (e) => {
@@ -434,7 +434,7 @@ const Admin = () => {
       const result = await res.json();
       if (!res.ok) throw new Error(result.message || result.error || "Failed to upload product");
 
-      toast.success("Product successfully created!");
+      toast.success("Product successfully created in catalog!");
       setFormData({ name: "", price: "", stock: "", description: "", category_id: "", sub_category: "", sizes: "" });
       setSizeStockMap({ "38": 10, "40": 10, "42": 5 });
       setImage(null);
@@ -782,31 +782,31 @@ const Admin = () => {
   if (user.role !== "admin") return <Navigate to="/" />;
 
   return (
-    <div className="grain pt-8 pb-32 px-6 lg:px-12 min-h-screen">
+    <div className="grain bg-[#FAF8F5] text-[#121215] font-body selection:bg-[#C2922E] selection:text-white pt-8 pb-32 px-4 sm:px-6 lg:px-12 min-h-screen">
       <div className="max-w-[1400px] mx-auto space-y-8">
         
-        {/* Revamped Luxury Header Bar */}
-        <div className="relative bg-gradient-to-r from-stone-950 via-zinc-900 to-stone-950 border border-white/10 p-5 px-6 md:px-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl rounded-2xl overflow-hidden">
-          <div className="absolute -left-12 -top-12 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        {/* Luxury Studio Control Header Bar */}
+        <div className="relative bg-[#121215] text-white border border-[#E8E4DC]/20 p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl rounded-2xl overflow-hidden">
+          <div className="absolute -left-12 -top-12 w-48 h-48 bg-[#C2922E]/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute right-0 bottom-0 w-64 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
 
           {/* Left Title & Status */}
           <div className="relative z-10 flex flex-col gap-1.5">
             <div className="flex items-center gap-3 flex-wrap">
               <img src="/logo-light.png" alt="ICW BY SUKO" className="h-10 w-auto object-contain" />
-              <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-amber-400/90 font-medium px-2.5 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/20">
-                Control Panel
+              <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-[#C2922E] font-medium px-2.5 py-0.5 rounded-full bg-[#C2922E]/10 border border-[#C2922E]/20">
+                Studio Control
               </span>
               <span className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 shadow-sm">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
                 </span>
-                Live Production
+                Live Studio
               </span>
             </div>
-            <p className="text-xs text-foreground/50 font-body font-light tracking-wide">
-              Manage inventory, client orders, categories, and studio operations
+            <p className="text-xs text-white/60 font-body font-light tracking-wide">
+              Manage inventory, atelier orders, categories, vouchers & concierge operations
             </p>
           </div>
 
@@ -814,15 +814,15 @@ const Admin = () => {
           <div className="relative z-10 flex items-center gap-3 w-full md:w-auto justify-end">
             <button
               onClick={exportOrdersCSV}
-              className="text-[11px] uppercase tracking-[0.18em] font-body font-medium py-2.5 px-4 rounded-xl border border-white/15 bg-white/[0.04] text-white hover:bg-white/10 hover:border-amber-400/40 transition-all flex items-center gap-2 shadow-sm group"
+              className="text-[11px] uppercase tracking-[0.18em] font-body font-medium py-2.5 px-4 rounded-xl border border-white/15 bg-white/[0.04] text-white hover:bg-white/10 hover:border-[#C2922E]/40 transition-all flex items-center gap-2 shadow-sm group"
             >
-              <Download size={14} className="text-amber-400 group-hover:scale-110 transition-transform" />
+              <Download size={14} className="text-[#C2922E] group-hover:scale-110 transition-transform" />
               <span>Export CSV</span>
             </button>
 
             <Link
               to="/"
-              className="text-[11px] uppercase tracking-[0.18em] font-body font-bold py-2.5 px-5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 hover:from-amber-300 hover:to-amber-400 transition-all flex items-center gap-2 shadow-[0_4px_20px_rgba(245,158,11,0.25)] hover:shadow-[0_6px_24px_rgba(245,158,11,0.35)] active:scale-98"
+              className="text-[11px] uppercase tracking-[0.18em] font-body font-bold py-2.5 px-5 rounded-xl bg-[#C2922E] text-white hover:bg-[#a67c24] transition-all flex items-center gap-2 shadow-md active:scale-98"
             >
               <ShoppingBag size={15} className="stroke-[2.5]" />
               <span>Storefront</span>
@@ -831,7 +831,7 @@ const Admin = () => {
         </div>
 
         {/* Tab Navigation Segmented Bar */}
-        <div className="w-full bg-stone-900/60 backdrop-blur-2xl border border-white/10 p-1.5 rounded-2xl shadow-2xl">
+        <div className="w-full bg-white border border-[#E8E4DC] p-1.5 rounded-2xl shadow-sm">
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
             {[
               { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -854,17 +854,17 @@ const Admin = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`text-[11px] uppercase tracking-[0.15em] font-body py-2.5 px-4 rounded-xl transition-all whitespace-nowrap flex items-center gap-2 font-medium shrink-0 ${
+                  className={`text-[11px] uppercase tracking-[0.16em] font-body py-2.5 px-4 rounded-xl transition-all whitespace-nowrap flex items-center gap-2 font-medium shrink-0 ${
                     isActive
-                      ? "bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-amber-600/20 border border-amber-500/40 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.15)] font-semibold"
-                      : "border border-transparent text-foreground/60 hover:text-white hover:bg-white/[0.05]"
+                      ? "bg-[#121215] text-[#C2922E] border border-[#C2922E]/30 shadow-md font-semibold"
+                      : "text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5]"
                   }`}
                 >
-                  <Icon size={14} className={isActive ? "text-amber-400" : "text-foreground/50"} />
+                  <Icon size={14} className={isActive ? "text-[#C2922E]" : "text-[#888890]"} />
                   <span>{tab.label}</span>
                   {tab.badge && (
-                    <span className="flex items-center gap-1 text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    <span className="flex items-center gap-1 text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 border border-amber-500/30 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                       {tab.badge}
                     </span>
                   )}
@@ -875,9 +875,9 @@ const Admin = () => {
         </div>
 
         {loading ? (
-          <div className="text-center py-20 text-foreground/50 text-[10px] uppercase tracking-[0.3em] font-body flex items-center justify-center gap-3">
-            <div className="w-4 h-4 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
-            Loading Control Panel...
+          <div className="text-center py-20 text-[#888890] text-[10px] uppercase tracking-[0.3em] font-body flex items-center justify-center gap-3">
+            <div className="w-4 h-4 rounded-full border-2 border-[#121215] border-t-transparent animate-spin" />
+            Loading Studio Control...
           </div>
         ) : (
           <div className="space-y-12">
@@ -887,10 +887,10 @@ const Admin = () => {
               <div className="space-y-8">
 
                 {/* Global Date Filter Bar */}
-                <div className="bg-white/5 border border-white/10 p-4 flex flex-wrap items-center justify-between gap-4">
+                <div className="bg-white border border-[#E8E4DC] p-4 rounded-2xl shadow-sm flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
-                    <CalendarIcon size={16} className="text-emerald-400" />
-                    <span className="text-xs uppercase tracking-[0.2em] font-body text-white font-medium">Date-Wise Analytics Filter:</span>
+                    <CalendarIcon size={16} className="text-[#C2922E]" />
+                    <span className="text-xs uppercase tracking-[0.2em] font-mono text-[#121215] font-medium">Date-Wise Analytics:</span>
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-3">
@@ -905,10 +905,10 @@ const Admin = () => {
                         key={preset.id}
                         type="button"
                         onClick={() => setDatePreset(preset.id)}
-                        className={`text-[10px] uppercase tracking-[0.15em] font-body px-3 py-1.5 border transition-all ${
+                        className={`text-[10px] uppercase tracking-[0.15em] font-body px-3.5 py-1.5 rounded-xl border transition-all ${
                           datePreset === preset.id
-                            ? "border-emerald-400 bg-emerald-500/10 text-emerald-400 font-bold shadow-md"
-                            : "border-white/15 text-foreground/60 hover:text-white hover:border-white/40"
+                            ? "border-[#C2922E] bg-[#C2922E]/10 text-[#C2922E] font-bold shadow-sm"
+                            : "border-[#E8E4DC] text-[#555560] hover:text-[#121215] hover:border-[#C2922E]"
                         }`}
                       >
                         {preset.label}
@@ -921,14 +921,14 @@ const Admin = () => {
                           type="date"
                           value={startDate}
                           onChange={(e) => setStartDate(e.target.value)}
-                          className="bg-black/50 border border-white/20 px-2 py-1 text-white outline-none focus:border-emerald-400"
+                          className="bg-[#FAF8F5] border border-[#E8E4DC] rounded-lg px-2.5 py-1 text-[#121215] outline-none focus:border-[#C2922E]"
                         />
-                        <span className="text-foreground/40">to</span>
+                        <span className="text-[#888890]">to</span>
                         <input
                           type="date"
                           value={endDate}
                           onChange={(e) => setEndDate(e.target.value)}
-                          className="bg-black/50 border border-white/20 px-2 py-1 text-white outline-none focus:border-emerald-400"
+                          className="bg-[#FAF8F5] border border-[#E8E4DC] rounded-lg px-2.5 py-1 text-[#121215] outline-none focus:border-[#C2922E]"
                         />
                       </div>
                     )}
@@ -950,32 +950,32 @@ const Admin = () => {
                     subText={`${filteredDeliveredCount} Delivered`} 
                   />
                   <StatCard icon={<Package size={20} />} label="Total Products" value={stats.totalProducts} subText={`${lowStockProducts.length} Low Stock Alert`} />
-                  <StatCard icon={<Users size={20} />} label="Registered Users" value={stats.totalUsers} subText="Active Accounts" />
+                  <StatCard icon={<Users size={20} />} label="Registered Clients" value={stats.totalUsers} subText="Active Accounts" />
                 </div>
 
                 {/* Dashboard Grid: Calendar + Low Stock & Recent Activity */}
                 <div className="grid lg:grid-cols-12 gap-8">
                   
                   {/* Calendar Widget (Left Column) */}
-                  <div className="lg:col-span-7 border border-white/10 p-6 bg-background/50 backdrop-blur-md">
+                  <div className="lg:col-span-7 border border-[#E8E4DC] p-6 bg-white rounded-2xl shadow-sm">
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-2">
-                        <CalendarIcon size={18} className="text-foreground/70" />
-                        <h2 className="font-display text-xl">Schedule & Events Calendar</h2>
+                        <CalendarIcon size={18} className="text-[#C2922E]" />
+                        <h2 className="font-quiche text-xl font-light text-[#121215]">Schedule & Events Calendar</h2>
                       </div>
                       <div className="flex items-center gap-3">
                         <button 
                           onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
-                          className="p-1.5 hover:bg-white/10 transition-colors border border-white/10"
+                          className="p-1.5 hover:bg-[#FAF8F5] transition-colors border border-[#E8E4DC] rounded-lg text-[#555560] hover:text-[#121215]"
                         >
                           <ChevronLeft size={16} />
                         </button>
-                        <span className="text-xs uppercase tracking-[0.2em] font-body">
+                        <span className="text-xs uppercase tracking-[0.2em] font-mono text-[#121215]">
                           {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
                         </span>
                         <button 
                           onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-                          className="p-1.5 hover:bg-white/10 transition-colors border border-white/10"
+                          className="p-1.5 hover:bg-[#FAF8F5] transition-colors border border-[#E8E4DC] rounded-lg text-[#555560] hover:text-[#121215]"
                         >
                           <ChevronRight size={16} />
                         </button>
@@ -983,7 +983,7 @@ const Admin = () => {
                     </div>
 
                     {/* Calendar Grid Header */}
-                    <div className="grid grid-cols-7 text-center mb-2 text-[10px] uppercase tracking-widest text-foreground/40 font-body">
+                    <div className="grid grid-cols-7 text-center mb-2 text-[10px] uppercase tracking-widest text-[#888890] font-mono">
                       <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
                     </div>
 
@@ -1001,23 +1001,23 @@ const Admin = () => {
                           <button
                             key={idx}
                             onClick={() => setSelectedDate(day)}
-                            className={`h-12 border p-1 text-left flex flex-col justify-between transition-all relative ${
+                            className={`h-12 border rounded-lg p-1.5 text-left flex flex-col justify-between transition-all relative ${
                               isSelected 
-                                ? "border-foreground bg-white/10" 
+                                ? "border-[#C2922E] bg-[#C2922E]/10 text-[#C2922E] font-bold" 
                                 : isToday 
-                                ? "border-white/40 bg-white/5" 
-                                : "border-white/5 hover:border-white/20"
+                                ? "border-[#121215] bg-[#121215]/5" 
+                                : "border-[#E8E4DC]/60 hover:border-[#C2922E] bg-white"
                             }`}
                           >
-                            <span className={`text-xs font-body ${isToday ? "font-bold text-foreground" : "text-foreground/70"}`}>
+                            <span className={`text-xs font-body ${isToday ? "font-bold text-[#121215]" : "text-[#555560]"}`}>
                               {day.getDate()}
                             </span>
                             <div className="flex gap-1 items-center">
                               {dayOrders.length > 0 && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title={`${dayOrders.length} orders`} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title={`${dayOrders.length} orders`} />
                               )}
                               {hasNotes && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Notes added" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]" title="Notes added" />
                               )}
                             </div>
                           </button>
@@ -1026,9 +1026,9 @@ const Admin = () => {
                     </div>
 
                     {/* Selected Date Details & Reminders */}
-                    <div className="mt-6 pt-6 border-t border-white/10">
+                    <div className="mt-6 pt-6 border-t border-[#E8E4DC]">
                       <div className="flex items-center justify-between mb-4">
-                        <p className="text-xs uppercase tracking-[0.2em] font-body text-foreground/70">
+                        <p className="text-xs uppercase tracking-[0.2em] font-mono text-[#555560]">
                           Notes for {selectedDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                         </p>
                       </div>
@@ -1039,13 +1039,13 @@ const Admin = () => {
                           type="text"
                           value={noteInput}
                           onChange={(e) => setNoteInput(e.target.value)}
-                          placeholder="Add event reminder or note..."
+                          placeholder="Add studio reminder or task note..."
                           onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
-                          className="flex-1 bg-transparent border border-white/15 px-3 py-2 text-xs font-body focus:border-foreground outline-none"
+                          className="flex-1 bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-3.5 py-2 text-xs font-body focus:border-[#C2922E] focus:bg-white outline-none"
                         />
                         <button 
                           onClick={handleAddNote}
-                          className="bg-foreground text-background px-4 py-2 text-[10px] uppercase tracking-widest font-body hover:bg-foreground/90 transition-all flex items-center gap-1"
+                          className="bg-[#121215] hover:bg-[#C2922E] text-white px-4 py-2 rounded-xl text-[10px] uppercase tracking-widest font-body transition-all flex items-center gap-1 font-bold shadow-sm"
                         >
                           <Plus size={14} /> Add
                         </button>
@@ -1053,78 +1053,84 @@ const Admin = () => {
 
                       {/* Notes List */}
                       <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
-                        {(calendarNotes[dateKey(selectedDate)] || []).map((n) => (
-                          <div key={n.id} className="flex items-center justify-between p-2.5 bg-white/5 border border-white/5 text-xs font-body">
-                            <span className="text-foreground/90">{n.text}</span>
+                        {(calendarNotes[dateKey(selectedDate)] || []).map((note) => (
+                          <div key={note.id} className="flex items-center justify-between p-2.5 bg-[#FAF8F5] border border-[#E8E4DC] rounded-lg text-xs font-body">
+                            <span className="text-[#121215]">{note.text}</span>
                             <button 
-                              onClick={() => handleDeleteNote(dateKey(selectedDate), n.id)} 
-                              className="text-foreground/40 hover:text-red-400"
+                              onClick={() => handleDeleteNote(dateKey(selectedDate), note.id)}
+                              className="text-red-500 hover:text-red-700 p-1"
                             >
-                              <X size={14} />
+                              <X size={12} />
                             </button>
                           </div>
                         ))}
-                        {(calendarNotes[dateKey(selectedDate)] || []).length === 0 && (
-                          <p className="text-[11px] text-foreground/40 italic font-body">No notes scheduled for this date.</p>
+                        {(!calendarNotes[dateKey(selectedDate)] || calendarNotes[dateKey(selectedDate)].length === 0) && (
+                          <p className="text-xs text-[#888890] font-body text-center py-2">No notes for this date.</p>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Right Column: Low Stock Alerts & Quick Orders */}
+                  {/* Low Stock & Activity Stream (Right Column) */}
                   <div className="lg:col-span-5 space-y-6">
                     
-                    {/* Low Stock Alert Box */}
-                    <div className="border border-white/10 p-6 bg-background/50 backdrop-blur-md">
+                    {/* Low Stock Alert */}
+                    <div className="border border-[#E8E4DC] p-6 bg-white rounded-2xl shadow-sm">
                       <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2 text-amber-400">
-                          <AlertTriangle size={18} />
-                          <h3 className="font-display text-lg text-foreground">Low Stock Inventory</h3>
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle size={18} className="text-amber-600" />
+                          <h3 className="font-quiche text-lg font-light text-[#121215]">Low Stock Alerts</h3>
                         </div>
-                        <span className="text-[10px] uppercase tracking-[0.2em] font-body bg-amber-400/10 text-amber-400 px-2 py-0.5 border border-amber-400/20">
+                        <span className="text-[10px] font-mono uppercase tracking-widest text-amber-700 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
                           {lowStockProducts.length} Items
                         </span>
                       </div>
-
-                      <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                      <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
                         {lowStockProducts.map(p => (
-                          <div key={p.id} className="flex items-center justify-between p-3 bg-white/5 border border-white/5">
-                            <div>
-                              <p className="text-xs font-medium font-body">{p.name}</p>
-                              <p className="text-[10px] text-foreground/50">{formatINR(p.price)}</p>
+                          <div key={p.id} className="flex items-center justify-between p-3 bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl font-body">
+                            <div className="flex items-center gap-3">
+                              {p.image_url ? (
+                                <img src={p.image_url} alt={p.name} className="w-9 h-12 object-cover rounded-md border border-[#E8E4DC]" />
+                              ) : (
+                                <div className="w-9 h-12 bg-white flex items-center justify-center text-[9px] text-[#888890] border border-[#E8E4DC] rounded-md">N/A</div>
+                              )}
+                              <div>
+                                <p className="text-xs font-medium text-[#121215] truncate max-w-[150px]">{p.name}</p>
+                                <p className="text-[10px] text-[#888890]">{formatINR(p.price)}</p>
+                              </div>
                             </div>
-                            <span className="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 px-2 py-1 border border-amber-400/20">
+                            <span className="text-xs font-mono font-bold text-amber-700 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20">
                               {p.stock} left
                             </span>
                           </div>
                         ))}
                         {lowStockProducts.length === 0 && (
-                          <p className="text-xs text-foreground/50 font-body py-4 text-center">All product stocks are healthy!</p>
+                          <p className="text-xs text-emerald-600 font-body py-4 text-center">All product stocks are healthy!</p>
                         )}
                       </div>
                     </div>
 
                     {/* Activity Feed */}
-                    <div className="border border-white/10 p-6 bg-background/50 backdrop-blur-md">
+                    <div className="border border-[#E8E4DC] p-6 bg-white rounded-2xl shadow-sm">
                       <div className="flex items-center gap-2 mb-4">
-                        <Clock size={18} className="text-foreground/70" />
-                        <h3 className="font-display text-lg">Recent Order Stream</h3>
+                        <Clock size={18} className="text-[#C2922E]" />
+                        <h3 className="font-quiche text-lg font-light text-[#121215]">Recent Orders Stream</h3>
                       </div>
                       <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
                         {orders.slice(0, 5).map(o => (
-                          <div key={o.id} className="flex items-center justify-between p-3 bg-white/5 border border-white/5 font-body">
+                          <div key={o.id} className="flex items-center justify-between p-3 bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl font-body">
                             <div>
-                              <p className="text-xs font-medium">Order #{o.id}</p>
-                              <p className="text-[10px] text-foreground/50">{new Date(o.created_at).toLocaleDateString()}</p>
+                              <p className="text-xs font-medium text-[#121215]">Order #SUKO-{1000 + o.id}</p>
+                              <p className="text-[10px] text-[#888890]">{new Date(o.created_at).toLocaleDateString("en-IN")}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-xs font-medium">{formatINR(o.total)}</p>
-                              <span className="text-[9px] uppercase tracking-wider text-emerald-400">{o.status}</span>
+                              <p className="text-xs font-medium text-[#121215]">{formatINR(o.total)}</p>
+                              <span className="text-[9px] uppercase tracking-wider font-mono text-emerald-700 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">{o.status}</span>
                             </div>
                           </div>
                         ))}
                         {orders.length === 0 && (
-                          <p className="text-xs text-foreground/50 font-body py-4 text-center">No recent orders.</p>
+                          <p className="text-xs text-[#888890] font-body py-4 text-center">No recent orders.</p>
                         )}
                       </div>
                     </div>
@@ -1136,25 +1142,25 @@ const Admin = () => {
 
             {/* CALENDAR TAB FULL */}
             {activeTab === "calendar" && (
-              <div className="border border-white/10 p-8 bg-background/50 backdrop-blur-md">
+              <div className="border border-[#E8E4DC] p-8 bg-white rounded-2xl shadow-sm">
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h2 className="font-display text-3xl">Full Calendar & Scheduler</h2>
-                    <p className="text-xs text-foreground/50 font-body mt-1">Manage events, track daily sales highlights & add admin tasks.</p>
+                    <h2 className="font-quiche text-3xl font-light text-[#121215]">Full Calendar & Scheduler</h2>
+                    <p className="text-xs text-[#555560] font-body mt-1">Manage events, track daily sales highlights & add studio tasks.</p>
                   </div>
                   <div className="flex items-center gap-4">
                     <button 
                       onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
-                      className="p-2 border border-white/15 hover:border-foreground transition-all"
+                      className="p-2 border border-[#E8E4DC] rounded-xl hover:border-[#C2922E] transition-all text-[#555560] hover:text-[#121215]"
                     >
                       <ChevronLeft size={18} />
                     </button>
-                    <span className="text-sm uppercase tracking-[0.2em] font-body">
+                    <span className="text-sm uppercase tracking-[0.2em] font-mono text-[#121215]">
                       {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
                     </span>
                     <button 
                       onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-                      className="p-2 border border-white/15 hover:border-foreground transition-all"
+                      className="p-2 border border-[#E8E4DC] rounded-xl hover:border-[#C2922E] transition-all text-[#555560] hover:text-[#121215]"
                     >
                       <ChevronRight size={18} />
                     </button>
@@ -1162,7 +1168,7 @@ const Admin = () => {
                 </div>
 
                 {/* Grid */}
-                <div className="grid grid-cols-7 text-center mb-3 text-xs uppercase tracking-widest text-foreground/50 font-body">
+                <div className="grid grid-cols-7 text-center mb-3 text-xs uppercase tracking-widest text-[#888890] font-mono">
                   <span>Sunday</span><span>Monday</span><span>Tuesday</span><span>Wednesday</span><span>Thursday</span><span>Friday</span><span>Saturday</span>
                 </div>
                 <div className="grid grid-cols-7 gap-2">
@@ -1178,23 +1184,23 @@ const Admin = () => {
                       <div
                         key={idx}
                         onClick={() => setSelectedDate(day)}
-                        className={`h-28 border p-2 text-left cursor-pointer flex flex-col justify-between transition-all ${
-                          isSelected ? "border-foreground bg-white/10" : isToday ? "border-white/40 bg-white/5" : "border-white/10 hover:border-white/20"
+                        className={`h-28 border rounded-xl p-2.5 text-left cursor-pointer flex flex-col justify-between transition-all ${
+                          isSelected ? "border-[#C2922E] bg-[#C2922E]/10" : isToday ? "border-[#121215] bg-[#121215]/5" : "border-[#E8E4DC]/60 hover:border-[#C2922E] bg-[#FAF8F5]"
                         }`}
                       >
                         <div className="flex justify-between items-center">
-                          <span className={`text-xs font-body ${isToday ? "font-bold text-foreground" : "text-foreground/70"}`}>
+                          <span className={`text-xs font-body ${isToday ? "font-bold text-[#121215]" : "text-[#555560]"}`}>
                             {day.getDate()}
                           </span>
                           {dayOrders.length > 0 && (
-                            <span className="text-[9px] uppercase tracking-wider bg-emerald-500/20 text-emerald-400 px-1 py-0.5 border border-emerald-500/30">
+                            <span className="text-[9px] uppercase tracking-wider bg-emerald-500/10 text-emerald-700 px-1.5 py-0.5 rounded-full border border-emerald-500/20 font-mono">
                               {dayOrders.length} orders
                             </span>
                           )}
                         </div>
                         <div className="space-y-1 max-h-16 overflow-y-auto">
                           {notes.map(n => (
-                            <div key={n.id} className="text-[9px] bg-white/10 px-1.5 py-0.5 truncate text-foreground/80">
+                            <div key={n.id} className="text-[9px] bg-white border border-[#E8E4DC] px-1.5 py-0.5 rounded truncate text-[#555560]">
                               • {n.text}
                             </div>
                           ))}
@@ -1210,22 +1216,22 @@ const Admin = () => {
             {activeTab === "products" && (
               <div className="space-y-6">
                 {/* Title & Count + Add Product Button */}
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="flex items-center justify-between border-b border-[#E8E4DC] pb-4">
                   <div>
-                    <h2 className="text-2xl font-display">Product Catalog</h2>
-                    <p className="text-xs text-foreground/50 font-body">Showing {filteredProducts.length} of {products.length} products</p>
+                    <h2 className="text-2xl font-quiche font-light text-[#121215]">Product Catalog</h2>
+                    <p className="text-xs text-[#555560] font-body">Showing {filteredProducts.length} of {products.length} products</p>
                   </div>
                   <button
                     onClick={() => setActiveTab("categories")}
-                    className="bg-foreground text-background px-4 py-2 text-[10px] uppercase tracking-[0.2em] font-body hover:bg-foreground/90 transition-all flex items-center gap-2 font-bold"
+                    className="bg-[#121215] hover:bg-[#C2922E] text-white px-5 py-2.5 rounded-xl text-[10px] uppercase tracking-[0.2em] font-body transition-all flex items-center gap-2 font-bold shadow-md"
                   >
                     <Plus size={14} /> Add New Product
                   </button>
                 </div>
 
                 {/* Mini Navigation Bar */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-white/10 pb-4 gap-4">
-                  <div className="flex items-center gap-1.5 bg-white/5 p-1 border border-white/10 overflow-x-auto">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-[#E8E4DC] pb-4 gap-4">
+                  <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-[#E8E4DC] overflow-x-auto shadow-sm">
                     {[
                       { id: "all", label: "All Products" },
                       { id: "womens", label: "Womenswear" },
@@ -1238,10 +1244,10 @@ const Admin = () => {
                           setProductGenderFilter(tab.id);
                           setSelectedCategory("all");
                         }}
-                        className={`px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] font-body transition-all whitespace-nowrap ${
+                        className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase tracking-[0.18em] font-body transition-all whitespace-nowrap ${
                           productGenderFilter === tab.id 
-                            ? "bg-foreground text-background font-bold shadow" 
-                            : "text-foreground/60 hover:text-foreground hover:bg-white/5"
+                            ? "bg-[#121215] text-[#C2922E] font-bold shadow-sm" 
+                            : "text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5]"
                         }`}
                       >
                         {tab.label}
@@ -1252,19 +1258,19 @@ const Admin = () => {
                   {/* Search & Category Filter */}
                   <div className="flex items-center gap-3">
                     <div className="relative flex-1 sm:flex-initial">
-                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" />
+                      <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#888890]" />
                       <input
                         type="text"
                         placeholder="Search product..."
                         value={productSearch}
                         onChange={(e) => setProductSearch(e.target.value)}
-                        className="w-full sm:w-56 bg-transparent border border-white/15 pl-9 pr-3 py-1.5 text-xs font-body focus:border-foreground outline-none"
+                        className="w-full sm:w-56 bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl pl-9 pr-3 py-2 text-xs font-body focus:border-[#C2922E] focus:bg-white outline-none"
                       />
                     </div>
                     <select 
                       value={selectedCategory} 
                       onChange={(e) => setSelectedCategory(e.target.value)}
-                      className="bg-transparent border border-white/15 px-3 py-1.5 text-xs font-body focus:border-foreground outline-none [&>option]:bg-background"
+                      className="bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-3 py-2 text-xs font-body focus:border-[#C2922E] focus:bg-white outline-none text-[#121215]"
                     >
                       <option value="all">All Categories</option>
                       {categories.map(c => (
@@ -1274,9 +1280,9 @@ const Admin = () => {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto border border-white/5 bg-background/50 backdrop-blur-sm">
+                <div className="overflow-x-auto border border-[#E8E4DC] bg-white rounded-2xl shadow-sm">
                   <table className="w-full text-left font-body text-sm">
-                    <thead className="bg-white/5 text-[10px] uppercase tracking-[0.2em] text-foreground/60 border-b border-white/10">
+                    <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono border-b border-[#E8E4DC]">
                       <tr>
                         <th className="p-4 font-normal">Image</th>
                         <th className="p-4 font-normal">Name & Details</th>
@@ -1285,51 +1291,53 @@ const Admin = () => {
                         <th className="p-4 font-normal text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-[#E8E4DC]/60 text-[#121215]">
                       {filteredProducts.map(p => (
-                        <tr key={p.id} className="hover:bg-white/[0.02] transition-colors">
+                        <tr key={p.id} className="hover:bg-[#FAF8F5] transition-colors">
                           <td className="p-4">
                             {p.image_url ? (
-                              <img src={p.image_url} alt={p.name} className="w-12 h-16 object-cover bg-white/10 border border-white/10" />
+                              <img src={p.image_url} alt={p.name} className="w-12 h-16 object-cover bg-[#FAF8F5] border border-[#E8E4DC] rounded-md" />
                             ) : (
-                              <div className="w-12 h-16 bg-white/10 flex items-center justify-center text-[10px] text-white/30">N/A</div>
+                              <div className="w-12 h-16 bg-[#FAF8F5] rounded-md flex items-center justify-center text-[10px] text-[#888890] border border-[#E8E4DC]">N/A</div>
                             )}
                           </td>
                           <td className="p-4">
-                            <p className="font-medium text-base">{p.name}</p>
+                            <p className="font-medium text-sm text-[#121215]">{p.name}</p>
                             <div className="flex flex-wrap gap-1.5 mt-1">
-                              {p.category && <span className="text-[9px] uppercase tracking-wider text-foreground/60 border border-white/10 px-1.5 py-0.5">{p.category.name}</span>}
-                              {p.sub_category && <span className="text-[9px] uppercase tracking-wider text-emerald-400 border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5">{p.sub_category}</span>}
-                              {p.sizes?.length > 0 && <span className="text-[9px] uppercase tracking-wider text-foreground/40 border border-white/5 px-1.5 py-0.5">Sizes: {p.sizes.join(', ')}</span>}
+                              {p.category && <span className="text-[9px] uppercase tracking-wider text-[#555560] border border-[#E8E4DC] bg-[#FAF8F5] px-2 py-0.5 rounded-full">{p.category.name}</span>}
+                              {p.sub_category && <span className="text-[9px] uppercase tracking-wider text-[#C2922E] border border-[#C2922E]/30 bg-[#C2922E]/10 px-2 py-0.5 rounded-full">{p.sub_category}</span>}
+                              {p.sizes?.length > 0 && <span className="text-[9px] uppercase tracking-wider text-[#888890] border border-[#E8E4DC] px-2 py-0.5 rounded-full">Sizes: {p.sizes.join(', ')}</span>}
                             </div>
                           </td>
-                          <td className="p-4 text-foreground/90 font-medium">{formatINR(p.price)}</td>
+                          <td className="p-4 text-[#121215] font-medium">{formatINR(p.price)}</td>
                           <td className="p-4">
-                            <span className={p.stock < 5 ? "text-amber-400 font-bold block" : "text-foreground/80 block font-bold"}>
+                            <span className={p.stock < 5 ? "text-amber-700 font-bold block" : "text-[#121215] block font-bold"}>
                               {p.stock} Total Items
                             </span>
                             {p.size_stock && typeof p.size_stock === 'object' && Object.keys(p.size_stock).length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1 max-w-[200px]">
                                 {Object.entries(p.size_stock).map(([sz, qty]) => (
-                                  <span key={sz} className={`text-[9px] font-mono px-1.5 py-0.5 border ${qty < 2 ? "text-amber-400 border-amber-500/30 bg-amber-500/10 font-bold" : "text-foreground/60 border-white/10"}`}>
+                                  <span key={sz} className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${qty < 2 ? "text-amber-700 border-amber-500/30 bg-amber-500/10 font-bold" : "text-[#555560] border-[#E8E4DC] bg-[#FAF8F5]"}`}>
                                     {sz}:{qty}
                                   </span>
                                 ))}
                               </div>
                             )}
                           </td>
-                          <td className="p-4 text-right flex items-center justify-end gap-1">
-                            <button onClick={() => handleOpenEdit(p)} className="text-foreground/60 hover:text-foreground transition-colors p-2" title="Edit Product">
-                              <Edit2 size={16} />
-                            </button>
-                            <button onClick={() => handleDeleteProduct(p.id)} className="text-red-400/80 hover:text-red-400 transition-colors p-2" title="Delete Product">
-                              <Trash2 size={16} />
-                            </button>
+                          <td className="p-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button onClick={() => handleOpenEdit(p)} className="text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] border border-[#E8E4DC] rounded-lg p-2 transition-colors" title="Edit Product">
+                                <Edit2 size={15} />
+                              </button>
+                              <button onClick={() => handleDeleteProduct(p.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50 border border-[#E8E4DC] rounded-lg p-2 transition-colors" title="Delete Product">
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
                       {filteredProducts.length === 0 && (
-                        <tr><td colSpan="5" className="p-8 text-center text-foreground/50">No products found.</td></tr>
+                        <tr><td colSpan="5" className="p-8 text-center text-[#888890]">No products found.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -1342,32 +1350,32 @@ const Admin = () => {
               <div className="grid lg:grid-cols-12 gap-8">
                 {/* LEFT SIDE: CATEGORIES MANAGEMENT */}
                 <div className="lg:col-span-5 space-y-6">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                    <h2 className="text-xl font-display">Categories ({categories.length})</h2>
+                  <div className="flex items-center justify-between border-b border-[#E8E4DC] pb-3">
+                    <h2 className="text-xl font-quiche font-light text-[#121215]">Categories ({categories.length})</h2>
                     <button
                       type="button"
                       onClick={() => setShowAddCategoryInline(!showAddCategoryInline)}
-                      className="text-xs uppercase tracking-wider text-emerald-400 hover:underline font-body font-bold"
+                      className="text-xs uppercase tracking-wider text-[#C2922E] hover:underline font-body font-bold"
                     >
                       {showAddCategoryInline ? "Cancel" : "+ Add Category"}
                     </button>
                   </div>
 
                   {showAddCategoryInline && (
-                    <div className="p-4 border border-white/15 bg-white/5 space-y-3">
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body block">New Category Name</label>
+                    <div className="p-4 border border-[#E8E4DC] bg-white rounded-2xl shadow-sm space-y-3">
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono block">New Category Name</label>
                       <div className="flex gap-2">
                         <input
                           type="text"
                           value={newCategoryName}
                           onChange={(e) => setNewCategoryName(e.target.value)}
                           placeholder="e.g. Footwear, Outerwear..."
-                          className="flex-1 bg-transparent border-b border-white/20 px-2 py-1.5 text-sm font-body outline-none focus:border-foreground"
+                          className="flex-1 bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-3 py-2 text-sm font-body outline-none focus:border-[#C2922E]"
                         />
                         <button
                           type="button"
                           onClick={handleCreateCategory}
-                          className="bg-foreground text-background px-4 py-1.5 text-[10px] uppercase tracking-widest font-body font-bold"
+                          className="bg-[#121215] hover:bg-[#C2922E] text-white px-4 py-2 rounded-xl text-[10px] uppercase tracking-widest font-body font-bold transition-all shadow-sm"
                         >
                           Save
                         </button>
@@ -1375,37 +1383,34 @@ const Admin = () => {
                     </div>
                   )}
 
-                  <div className="border border-white/10 bg-background/50 backdrop-blur-sm overflow-hidden">
+                  <div className="border border-[#E8E4DC] bg-white rounded-2xl shadow-sm overflow-hidden">
                     <table className="w-full text-left font-body text-sm">
-                      <thead className="bg-white/5 text-[10px] uppercase tracking-[0.2em] text-foreground/60 border-b border-white/10">
+                      <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono border-b border-[#E8E4DC]">
                         <tr>
                           <th className="p-4 font-normal">Category Name</th>
                           <th className="p-4 font-normal">Products</th>
                           <th className="p-4 font-normal text-right">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/5">
+                      <tbody className="divide-y divide-[#E8E4DC]/60 text-[#121215]">
                         {categories.map(cat => {
                           const linkedCount = products.filter(p => p.category_id === cat.id).length;
                           return (
-                            <tr key={cat.id} className="hover:bg-white/[0.02] transition-colors">
-                              <td className="p-4 font-medium text-foreground">{cat.name}</td>
-                              <td className="p-4 text-foreground/70">{linkedCount} items</td>
+                            <tr key={cat.id} className="hover:bg-[#FAF8F5] transition-colors">
+                              <td className="p-4 font-medium text-[#121215]">{cat.name}</td>
+                              <td className="p-4 text-[#555560]">{linkedCount} items</td>
                               <td className="p-4 text-right">
                                 <button 
                                   onClick={() => handleDeleteCategory(cat.id)} 
-                                  className="text-red-400/80 hover:text-red-400 p-2 transition-colors"
+                                  className="text-red-500 hover:text-red-700 hover:bg-red-50 border border-[#E8E4DC] rounded-lg p-2 transition-colors"
                                   title="Delete Category"
                                 >
-                                  <Trash2 size={16} />
+                                  <Trash2 size={15} />
                                 </button>
                               </td>
                             </tr>
                           );
                         })}
-                        {categories.length === 0 && (
-                          <tr><td colSpan="3" className="p-8 text-center text-foreground/50">No custom categories added yet.</td></tr>
-                        )}
                       </tbody>
                     </table>
                   </div>
@@ -1413,252 +1418,191 @@ const Admin = () => {
 
                 {/* RIGHT SIDE: ADD NEW PRODUCT FORM */}
                 <div className="lg:col-span-7">
-                  <div className="border border-white/10 p-6 sm:p-8 bg-background/50 backdrop-blur-sm">
-                    <h2 className="text-xl font-display mb-6">— Add New Product</h2>
-                    <form onSubmit={handleUploadSubmit} className="space-y-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body">Product Name *</label>
-                        <input name="name" value={formData.name} onChange={handleInputChange} required className="w-full bg-transparent border-b border-white/15 focus:border-foreground outline-none py-2 text-sm font-body" />
+                  <div className="border border-[#E8E4DC] bg-white rounded-2xl shadow-sm p-6 sm:p-8 space-y-6">
+                    <div className="border-b border-[#E8E4DC] pb-4">
+                      <span className="text-[10px] uppercase tracking-[0.25em] text-[#C2922E] font-mono block mb-1">
+                        — ATELIER CATALOG ENTRY
+                      </span>
+                      <h2 className="text-2xl font-quiche font-light text-[#121215]">Add New Garment</h2>
+                    </div>
+
+                    <form onSubmit={handleUploadSubmit} className="space-y-5 font-body">
+                      <div>
+                        <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1.5">Garment Title *</label>
+                        <input
+                          type="text"
+                          name="name"
+                          value={formData.name}
+                          onChange={handleInputChange}
+                          placeholder="e.g. Silk Blend Nehru Kurta"
+                          required
+                          className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-4 py-2.5 text-xs text-[#121215] focus:border-[#C2922E] focus:bg-white outline-none"
+                        />
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body">Price (₹) *</label>
-                        <input name="price" type="number" value={formData.price} onChange={handleInputChange} required className="w-full bg-transparent border-b border-white/15 focus:border-foreground outline-none py-2 text-sm font-body" />
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        {/* CATEGORY (MAIN) */}
-                        <div className="space-y-2">
-                          <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body">Category *</label>
-                          <select name="category_id" value={formData.category_id} onChange={handleInputChange} className="w-full bg-transparent border-b border-white/15 focus:border-foreground outline-none py-2 text-sm font-body [&>option]:bg-background">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1.5">Price (INR) *</label>
+                          <input
+                            type="number"
+                            name="price"
+                            value={formData.price}
+                            onChange={handleInputChange}
+                            placeholder="4990"
+                            required
+                            className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-4 py-2.5 text-xs text-[#121215] focus:border-[#C2922E] focus:bg-white outline-none font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1.5">Category *</label>
+                          <select
+                            name="category_id"
+                            value={formData.category_id}
+                            onChange={handleInputChange}
+                            required
+                            className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-4 py-2.5 text-xs text-[#121215] focus:border-[#C2922E] focus:bg-white outline-none"
+                          >
                             <option value="">Select Category</option>
                             {categories.map(c => (
                               <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
                           </select>
                         </div>
+                      </div>
 
-                        {/* SUB CATEGORY */}
-                        <div className="space-y-2">
-                          <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body">Sub Category</label>
-                          <select name="sub_category" value={formData.sub_category} onChange={handleInputChange} className="w-full bg-transparent border-b border-white/15 focus:border-foreground outline-none py-2 text-sm font-body [&>option]:bg-background">
-                            <option value="">No Sub Category</option>
-                            <option value="Womens">Womens</option>
-                          </select>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1.5">Sub-Category Tag</label>
+                          <input
+                            type="text"
+                            name="sub_category"
+                            value={formData.sub_category}
+                            onChange={handleInputChange}
+                            placeholder="e.g. Luxury Velvet, Festive"
+                            className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-4 py-2.5 text-xs text-[#121215] focus:border-[#C2922E] focus:bg-white outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1.5">Total Fallback Stock</label>
+                          <input
+                            type="number"
+                            name="stock"
+                            value={formData.stock}
+                            onChange={handleInputChange}
+                            placeholder="25"
+                            className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-4 py-2.5 text-xs text-[#121215] focus:border-[#C2922E] focus:bg-white outline-none font-mono"
+                          />
                         </div>
                       </div>
 
-                      {/* SIZE-WISE STOCK MANAGER */}
-                      <div className="space-y-3 pt-2 border-t border-white/10">
+                      {/* Size Stock Distribution Map */}
+                      <div className="space-y-2 border border-[#E8E4DC] p-4 rounded-xl bg-[#FAF8F5]">
                         <div className="flex items-center justify-between">
-                          <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body">Size-Wise Stock Inventory *</label>
-                          <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 border border-emerald-500/20">
-                            Total Stock: {Object.values(sizeStockMap).reduce((a, b) => a + (Number(b) || 0), 0)}
+                          <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono">Exact Size Inventory Map</label>
+                          <span className="text-[10px] font-mono text-[#C2922E]">
+                            Total: {Object.values(sizeStockMap).reduce((a, b) => a + (Number(b) || 0), 0)} units
                           </span>
                         </div>
-
-                        {/* Quick Preset Toggles */}
-                        <div className="flex flex-wrap gap-1.5 bg-white/5 p-2 border border-white/10 items-center">
-                          <span className="text-[9px] uppercase tracking-wider text-foreground/40 self-center mr-1">Presets:</span>
-                          {["38", "40", "42", "44", "46", "S", "M", "L", "XL"].map(sz => {
-                            const isActive = sz in sizeStockMap;
-                            return (
-                              <button
-                                key={sz}
-                                type="button"
-                                onClick={() => {
-                                  if (isActive) {
-                                    const updated = { ...sizeStockMap };
-                                    delete updated[sz];
-                                    setSizeStockMap(updated);
-                                  } else {
-                                    setSizeStockMap({ ...sizeStockMap, [sz]: 5 });
-                                  }
-                                }}
-                                className={`px-2 py-0.5 text-[10px] font-mono border transition-all ${
-                                  isActive 
-                                    ? "bg-foreground text-background font-bold border-foreground" 
-                                    : "text-foreground/60 border-white/15 hover:border-white/40"
-                                }`}
-                              >
-                                {isActive ? `✓ ${sz}` : `+ ${sz}`}
-                              </button>
-                            );
-                          })}
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const customName = window.prompt("Enter custom size (e.g. 48, XXL, Free Size):");
-                              if (customName && customName.trim()) {
-                                const key = customName.trim();
-                                setSizeStockMap(prev => ({ ...prev, [key]: prev[key] || 5 }));
-                              }
-                            }}
-                            className="px-2 py-0.5 text-[10px] font-mono border border-emerald-400/50 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 font-bold transition-all ml-auto"
-                          >
-                            + Custom
-                          </button>
-                        </div>
-
-                        {/* Active Sizes Input List */}
-                        <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                          {Object.entries(sizeStockMap).map(([sz, qty]) => (
-                            <div key={sz} className="flex items-center justify-between gap-3 p-2 bg-white/5 border border-white/10 text-xs">
-                              <span className="font-mono font-bold text-foreground">Size {sz}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-foreground/50">Stock:</span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={qty}
-                                  onChange={(e) => setSizeStockMap({ ...sizeStockMap, [sz]: parseInt(e.target.value) || 0 })}
-                                  className="w-16 bg-black/40 border border-white/20 px-2 py-1 text-center font-mono outline-none focus:border-white text-foreground text-xs"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const updated = { ...sizeStockMap };
-                                    delete updated[sz];
-                                    setSizeStockMap(updated);
-                                  }}
-                                  className="text-foreground/40 hover:text-red-400 p-1"
-                                  title="Remove size"
-                                >
-                                  <X size={14} />
-                                </button>
-                              </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                          {["38", "40", "42", "44", "46", "Free"].map(sz => (
+                            <div key={sz} className="text-center">
+                              <span className="text-[10px] font-mono block text-[#888890] mb-1">{sz}</span>
+                              <input
+                                type="number"
+                                min="0"
+                                value={sizeStockMap[sz] ?? 0}
+                                onChange={(e) => setSizeStockMap({ ...sizeStockMap, [sz]: parseInt(e.target.value, 10) || 0 })}
+                                className="w-full bg-white border border-[#E8E4DC] rounded-lg p-1.5 text-center text-xs font-mono text-[#121215] focus:border-[#C2922E] outline-none"
+                              />
                             </div>
                           ))}
                         </div>
                       </div>
 
-                      {/* MULTIPLE IMAGE UPLOAD & GALLERY */}
-                      <div className="space-y-3 pt-2 border-t border-white/10">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body">Product Gallery Images ({galleryFiles.length}) *</label>
-                          <span className="text-[9px] text-foreground/50 font-body">Select multiple & crop</span>
+                      <div>
+                        <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1.5">Garment Description</label>
+                        <textarea
+                          name="description"
+                          rows={3}
+                          value={formData.description}
+                          onChange={handleInputChange}
+                          placeholder="Provide garment specifications, fabric weave, styling details..."
+                          className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-4 py-2.5 text-xs text-[#121215] focus:border-[#C2922E] focus:bg-white outline-none"
+                        />
+                      </div>
+
+                      {/* Image Upload / Cropping Zone */}
+                      <div className="space-y-3">
+                        <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block">Product Imagery Gallery</label>
+                        <div className="border-2 border-dashed border-[#E8E4DC] hover:border-[#C2922E] bg-[#FAF8F5] hover:bg-white rounded-2xl p-6 text-center transition-all">
+                          <ImageIcon size={28} className="mx-auto text-[#C2922E] mb-2" />
+                          <p className="text-xs text-[#121215] font-medium">Click or drag images to upload</p>
+                          <p className="text-[10px] text-[#888890] mt-1">JPEG, PNG, WebP up to 10MB each (Auto-optimized)</p>
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={handleAddGalleryFiles}
+                            className="mt-3 text-xs text-[#555560] file:mr-3 file:py-1.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#121215] file:text-white hover:file:bg-[#C2922E] cursor-pointer"
+                          />
                         </div>
 
-                        <input
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          onChange={handleAddGalleryFiles}
-                          className="w-full bg-transparent border border-white/15 py-2 px-3 text-xs font-body cursor-pointer file:mr-4 file:py-1 file:px-3 file:border-0 file:text-[10px] file:uppercase file:tracking-[0.2em] file:bg-foreground file:text-background font-semibold"
-                        />
-
+                        {/* Gallery Preview Items */}
                         {galleryFiles.length > 0 && (
-                          <div className="space-y-3">
-                            <div className="grid grid-cols-3 gap-2 bg-white/5 p-2 border border-white/10 max-h-56 overflow-y-auto">
-                              {galleryFiles.map((item, idx) => (
-                                <div key={idx} className="relative group border border-white/10 bg-black/40 overflow-hidden rounded-sm">
-                                  <img src={item.preview} alt={`Upload ${idx}`} className="w-full h-24 object-cover" />
-                                  
-                                  {item.isPrimary && (
-                                    <span className="absolute top-1 left-1 bg-amber-400 text-black font-bold text-[8px] uppercase tracking-wider px-1 py-0.5 shadow flex items-center gap-1">
-                                      <Star size={8} fill="black" /> Main
-                                    </span>
-                                  )}
-
-                                  {item.originalSize && item.compressedSize && item.originalSize > item.compressedSize && (
-                                    <span className="absolute bottom-1 right-1 bg-emerald-500 text-black font-bold text-[8px] font-mono px-1 py-0.5 shadow">
-                                      -{(100 - (item.compressedSize / item.originalSize) * 100).toFixed(0)}% Auto-Opt
-                                    </span>
-                                  )}
-
-                                  <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center items-center gap-1 p-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setCropperSrc(item.preview);
-                                        setCropperCallback(() => (croppedUrl) => {
-                                          const file = dataURLtoFile(croppedUrl, `cropped-${idx}.jpg`);
-                                          setGalleryFiles(prev => {
-                                            const copy = [...prev];
-                                            copy[idx] = { ...copy[idx], file, preview: croppedUrl };
-                                            return copy;
-                                          });
-                                        });
-                                      }}
-                                      className="bg-white/20 hover:bg-white/40 text-white text-[9px] uppercase tracking-wider px-2 py-1 w-full flex items-center justify-center gap-1"
-                                    >
-                                      <Crop size={10} /> Adjust Crop
-                                    </button>
-
-                                    {!item.isPrimary && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setGalleryFiles(prev => prev.map((g, i) => ({ ...g, isPrimary: i === idx })));
-                                        }}
-                                        className="bg-amber-500/30 hover:bg-amber-500/50 text-amber-300 text-[9px] uppercase tracking-wider px-2 py-1 w-full text-center"
-                                      >
-                                        Make Main
-                                      </button>
-                                    )}
-
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setGalleryFiles(prev => prev.filter((_, i) => i !== idx));
-                                      }}
-                                      className="bg-red-500/30 hover:bg-red-500/50 text-red-300 text-[9px] uppercase tracking-wider px-2 py-1 w-full text-center"
-                                    >
-                                      Remove
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* LIVE STOREFRONT DEMO PREVIEW & STORAGE METER */}
-                            <div className="p-3 border border-emerald-500/30 bg-emerald-950/20 space-y-3 rounded-sm">
-                              <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
-                                <span className="text-[10px] uppercase tracking-[0.2em] text-emerald-400 font-body font-bold flex items-center gap-1.5">
-                                  ✨ Storefront Customer View Demo
-                                </span>
-                                <span className="text-[9px] font-mono text-emerald-300">
-                                  {galleryFiles.length} Images • ~{galleryFiles.reduce((acc, curr) => acc + (curr.file?.size || 350000), 0) > 1024*1024 ? (galleryFiles.reduce((acc, curr) => acc + (curr.file?.size || 350000), 0)/(1024*1024)).toFixed(2) + " MB" : Math.round(galleryFiles.reduce((acc, curr) => acc + (curr.file?.size || 350000), 0)/1024) + " KB"}
-                                </span>
-                              </div>
-
-                              <div className="flex gap-3 items-center bg-black/60 p-2.5 border border-white/10 rounded-sm">
-                                <div className="w-20 h-28 relative border border-white/15 bg-black overflow-hidden flex-shrink-0">
-                                  <img
-                                    src={galleryFiles[demoActiveIndex]?.preview || galleryFiles[0]?.preview}
-                                    alt="Live Demo"
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-
-                                <div className="flex-1 space-y-1.5 overflow-hidden">
-                                  <p className="text-xs font-bold text-foreground truncate">{formData.name || "Product Name Preview"}</p>
-                                  <p className="text-xs font-mono text-emerald-400 font-bold">{formData.price ? formatINR(formData.price) : "₹0.00"}</p>
-                                  
-                                  <div className="flex flex-wrap gap-1 pt-1">
-                                    {galleryFiles.map((g, idx) => (
-                                      <button
-                                        key={idx}
-                                        type="button"
-                                        onClick={() => setDemoActiveIndex(idx)}
-                                        className={`w-7 h-9 border transition-all overflow-hidden ${
-                                          demoActiveIndex === idx ? "border-emerald-400 scale-105" : "border-white/20 opacity-50 hover:opacity-100"
-                                        }`}
-                                      >
-                                        <img src={g.preview} alt={`Thumb ${idx}`} className="w-full h-full object-cover" />
-                                      </button>
-                                    ))}
-                                  </div>
+                          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 pt-2">
+                            {galleryFiles.map((item, idx) => (
+                              <div key={idx} className="relative group border border-[#E8E4DC] rounded-xl overflow-hidden bg-white shadow-sm">
+                                <img src={item.preview} alt={`Upload ${idx}`} className="w-full h-24 object-cover" />
+                                {item.isPrimary && (
+                                  <span className="absolute top-1 left-1 bg-[#C2922E] text-white text-[8px] font-mono uppercase px-1.5 py-0.5 rounded">
+                                    Primary
+                                  </span>
+                                )}
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCropperSrc(item.preview);
+                                      setCropperCallback(() => (cropped) => {
+                                        setGalleryFiles(prev => prev.map((g, i) => i === idx ? { ...g, file: cropped.file, preview: cropped.preview } : g));
+                                        setCropperSrc(null);
+                                      });
+                                    }}
+                                    className="p-1 bg-white rounded text-[#121215] hover:bg-[#C2922E] hover:text-white transition-colors"
+                                    title="Crop Image"
+                                  >
+                                    <Crop size={12} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setGalleryFiles(prev => prev.filter((_, i) => i !== idx))}
+                                    className="p-1 bg-red-600 rounded text-white hover:bg-red-700 transition-colors"
+                                    title="Remove"
+                                  >
+                                    <X size={12} />
+                                  </button>
                                 </div>
                               </div>
-                            </div>
+                            ))}
                           </div>
                         )}
                       </div>
 
-                      <button type="submit" disabled={uploading} className="w-full bg-foreground text-background py-4 text-[11px] uppercase tracking-[0.3em] font-body hover:bg-foreground/90 transition-all disabled:opacity-50 mt-4 font-bold">
-                        {uploading ? "Uploading..." : "Publish Product"}
+                      <button
+                        type="submit"
+                        disabled={uploading}
+                        className="w-full bg-[#121215] hover:bg-[#C2922E] text-white py-3.5 px-8 rounded-xl text-xs uppercase tracking-[0.22em] font-bold shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {uploading ? (
+                          <>
+                            <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                            Creating Product Entry...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle size={15} /> Publish to Storefront
+                          </>
+                        )}
                       </button>
                     </form>
                   </div>
@@ -1669,179 +1613,122 @@ const Admin = () => {
             {/* ORDERS TAB */}
             {activeTab === "orders" && (
               <div className="space-y-6">
-                {/* PENDING CANCELLATION REQUESTS PANEL */}
-                {cancellationRequests.length > 0 && (
-                  <div className="border border-amber-500/40 bg-amber-500/10 p-6 rounded-sm space-y-4 mb-6">
-                    <div className="flex items-center justify-between border-b border-amber-500/30 pb-3">
-                      <div className="flex items-center gap-2 text-amber-400 font-mono text-xs uppercase tracking-widest font-bold">
-                        <AlertTriangle size={16} /> Pending Order Cancellation Requests ({cancellationRequests.length})
-                      </div>
-                      <span className="text-[10px] text-amber-300/80 font-body uppercase tracking-wider">Requires Admin Approval</span>
-                    </div>
-
-                    <div className="divide-y divide-amber-500/20">
-                      {cancellationRequests.map((reqOrder) => (
-                        <div key={reqOrder.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                          <div>
-                            <p className="font-mono text-sm font-bold text-white">Order #SUKO-{1000 + reqOrder.id} · <span className="text-amber-300">{formatINR(reqOrder.total)}</span></p>
-                            <p className="text-xs text-foreground/75 font-body mt-1">
-                              Customer: <strong className="text-white font-medium">{getUserDisplayName(reqOrder.user)}</strong> · Date & Time: <span className="text-amber-300 font-mono font-medium">{formatDateTime(reqOrder.created_at)}</span>
-                            </p>
-                            {reqOrder.cancel_reason && (
-                              <p className="text-xs text-amber-300 font-mono mt-1 bg-black/40 px-2.5 py-1 border border-amber-500/30 inline-block rounded-sm">
-                                Reason: "{reqOrder.cancel_reason}"
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateOrderStatus(reqOrder.id, "cancelled")}
-                              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 text-[10px] uppercase tracking-[0.2em] font-body font-bold rounded-sm shadow transition-all flex items-center gap-1.5"
-                            >
-                              Approve Cancellation
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateOrderStatus(reqOrder.id, "processing")}
-                              className="border border-white/20 hover:bg-white/10 text-white px-4 py-2 text-[10px] uppercase tracking-[0.2em] font-body rounded-sm transition-all"
-                            >
-                              Reject Request
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-[#E8E4DC] pb-4 gap-4">
+                  <div>
+                    <h2 className="text-2xl font-quiche font-light text-[#121215]">Client Orders ({filteredOrders.length})</h2>
+                    <p className="text-xs text-[#555560] font-body">Real-time atelier order lifecycle & fulfillment</p>
                   </div>
-                )}
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <h2 className="text-xl font-display">Manage Customer Orders</h2>
-                  
-                  {/* Status Filter */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-foreground/50 font-body">Filter Status:</span>
-                    <select
-                      value={orderStatusFilter}
-                      onChange={(e) => setOrderStatusFilter(e.target.value)}
-                      className="bg-transparent border border-white/15 px-3 py-1.5 text-xs font-body focus:border-foreground outline-none [&>option]:bg-background"
-                    >
-                      <option value="all">All Statuses ({orders.length})</option>
-                      <option value="cancel_requested">⚠️ Cancellation Requests ({cancellationRequests.length})</option>
-                      <option value="paid">💳 Paid Orders ({paidOrdersList.length})</option>
-                      <option value="pending">Pending</option>
-                      <option value="processing">Processing</option>
-                      <option value="completed">Completed / Delivered</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
+                  {/* Status Filter Tabs */}
+                  <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-[#E8E4DC] overflow-x-auto shadow-sm">
+                    {[
+                      { id: "all", label: "All" },
+                      { id: "paid", label: "Paid" },
+                      { id: "processing", label: "Processing" },
+                      { id: "cancel_requested", label: "Cancel Req" },
+                      { id: "completed", label: "Completed" },
+                      { id: "cancelled", label: "Cancelled" }
+                    ].map(st => (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => setOrderStatusFilter(st.id)}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-[0.18em] font-body transition-all whitespace-nowrap ${
+                          orderStatusFilter === st.id
+                            ? "bg-[#121215] text-[#C2922E] font-bold shadow-sm"
+                            : "text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5]"
+                        }`}
+                      >
+                        {st.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                <div className="overflow-x-auto border border-white/5 bg-background/50 backdrop-blur-sm">
+                {/* Orders Data Table */}
+                <div className="overflow-x-auto border border-[#E8E4DC] bg-white rounded-2xl shadow-sm">
                   <table className="w-full text-left font-body text-sm">
-                    <thead className="bg-white/5 text-[10px] uppercase tracking-[0.2em] text-foreground/60 border-b border-white/10">
+                    <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono border-b border-[#E8E4DC]">
                       <tr>
-                        <th className="p-4 font-normal">Order ID</th>
-                        <th className="p-4 font-normal">Customer Details (Name / Phone / Email)</th>
-                        <th className="p-4 font-normal">Garments & Sizes</th>
-                        <th className="p-4 font-normal">Date & Time</th>
-                        <th className="p-4 font-normal">Status Action</th>
-                        <th className="p-4 font-normal text-right">Amount / Info</th>
+                        <th className="p-4 font-normal">Order #</th>
+                        <th className="p-4 font-normal">Date</th>
+                        <th className="p-4 font-normal">Customer</th>
+                        <th className="p-4 font-normal">Items</th>
+                        <th className="p-4 font-normal">Total</th>
+                        <th className="p-4 font-normal">Status</th>
+                        <th className="p-4 font-normal text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-[#E8E4DC]/60 text-[#121215]">
                       {filteredOrders.map(o => (
-                        <tr key={o.id} className="hover:bg-white/[0.03] transition-colors">
-                          <td className="p-4 font-medium font-mono">
-                            <span className="text-white font-bold">#SUKO-{1000 + o.id}</span>
-                            {o.cancel_reason && (
-                              <span className="text-[9px] text-amber-400 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 block mt-1 font-mono">
-                                ⚠️ Cancel Req
-                              </span>
-                            )}
+                        <tr key={o.id} className="hover:bg-[#FAF8F5] transition-colors">
+                          <td className="p-4 font-mono font-bold text-[#121215]">
+                            #SUKO-{1000 + o.id}
+                          </td>
+                          <td className="p-4 text-xs text-[#555560]">
+                            {new Date(o.created_at || Date.now()).toLocaleDateString("en-IN")}
                           </td>
                           <td className="p-4">
-                            <p className="font-bold text-white text-sm">{getUserDisplayName(o.user)}</p>
-                            <p className="text-xs text-emerald-400 font-mono flex items-center gap-1 mt-0.5">
-                              📞 {getUserPhone(o.user)}
-                            </p>
-                            <p className="text-xs text-foreground/60 mt-0.5">{o.user?.email || "No Email"}</p>
-                            {o.user?.addresses?.[0] && (
-                              <p className="text-[10px] text-foreground/50 bg-white/5 p-1.5 mt-1 border border-white/5 font-mono truncate max-w-[220px]" title={`${o.user.addresses[0].line1}, ${o.user.addresses[0].city}, ${o.user.addresses[0].state} - ${o.user.addresses[0].pincode}`}>
-                                🏠 {o.user.addresses[0].line1}, {o.user.addresses[0].city}
-                              </p>
-                            )}
+                            <p className="font-medium text-xs text-[#121215]">{getUserDisplayName(o.user)}</p>
+                            <p className="text-[10px] font-mono text-[#888890]">{o.user?.email || "Guest Client"}</p>
                           </td>
-                          <td className="p-4">
-                            <div className="space-y-1.5">
-                              {o.items && o.items.length > 0 ? (
-                                o.items.map((item, idx) => (
-                                  <div key={idx} className="text-xs flex items-center gap-2">
-                                    <span className="font-medium text-white">{item.product?.name || "Atelier Garment"}</span>
-                                    <span className="text-[9px] font-mono text-amber-300 border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5">
-                                      Size: {item.size || "38"} (x{item.quantity})
-                                    </span>
-                                  </div>
-                                ))
-                              ) : (
-                                <span className="text-xs text-foreground/50">Custom Garment Order</span>
-                              )}
-                            </div>
+                          <td className="p-4 text-xs text-[#555560]">
+                            {o.items?.length || 1} item(s)
                           </td>
-                          <td className="p-4 text-xs font-mono text-emerald-400/90 whitespace-nowrap">
-                            {formatDateTime(o.created_at)}
+                          <td className="p-4 font-bold text-xs text-[#121215]">
+                            {formatINR(o.total)}
                           </td>
                           <td className="p-4">
                             <select
                               value={o.status}
                               onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
-                              className={`bg-transparent border px-2 py-1 text-xs font-body focus:border-foreground outline-none [&>option]:bg-background cursor-pointer ${
-                                o.status === 'cancel_requested' ? 'border-amber-400 text-amber-400 font-bold' :
-                                o.status === 'paid' || o.status === 'completed' ? 'border-emerald-400 text-emerald-400 font-bold' :
-                                'border-white/20'
+                              className={`text-[10px] font-mono uppercase tracking-wider px-2.5 py-1 rounded-full border outline-none cursor-pointer ${
+                                o.status === "paid" || o.status === "completed"
+                                  ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 font-bold"
+                                  : o.status === "cancel_requested"
+                                  ? "bg-rose-500/10 text-rose-700 border-rose-500/30 font-bold animate-pulse"
+                                  : o.status === "cancelled"
+                                  ? "bg-stone-500/10 text-stone-600 border-stone-500/20"
+                                  : "bg-amber-500/10 text-amber-700 border-amber-500/30 font-medium"
                               }`}
                             >
-                              <option value="pending">Pending</option>
+                              <option value="payment_pending">Payment Pending</option>
                               <option value="paid">Paid</option>
                               <option value="processing">Processing</option>
                               <option value="cancel_requested">⚠️ Cancel Requested</option>
-                              <option value="completed">Completed / Delivered</option>
+                              <option value="completed">Completed</option>
                               <option value="cancelled">Cancelled</option>
                             </select>
                           </td>
                           <td className="p-4 text-right">
-                            <p className="font-bold text-white font-mono text-sm">{formatINR(o.total)}</p>
-                            
-                            <div className="flex items-center justify-end gap-2 mt-1.5 font-mono">
+                            <div className="flex items-center justify-end gap-1.5">
                               <button
-                                type="button"
                                 onClick={() => setSelectedOrderDetails(o)}
-                                className="text-[9px] uppercase tracking-[0.1em] text-emerald-400 hover:underline font-bold"
+                                className="text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] border border-[#E8E4DC] rounded-lg p-2 transition-colors"
+                                title="Inspect Details"
                               >
-                                Inspect →
+                                <Eye size={15} />
                               </button>
-                              <span className="text-white/20">|</span>
                               <button
-                                type="button"
                                 onClick={() => handleOpenEditOrder(o)}
-                                className="text-[9px] uppercase tracking-[0.1em] text-amber-400 hover:underline font-bold flex items-center gap-0.5"
+                                className="text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] border border-[#E8E4DC] rounded-lg p-2 transition-colors"
+                                title="Edit Order"
                               >
-                                <Edit2 size={10} /> Edit
+                                <Edit2 size={15} />
                               </button>
-                              <span className="text-white/20">|</span>
                               <button
-                                type="button"
                                 onClick={() => handleDeleteOrder(o.id)}
-                                className="text-[9px] uppercase tracking-[0.1em] text-red-400 hover:underline font-bold flex items-center gap-0.5"
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 border border-[#E8E4DC] rounded-lg p-2 transition-colors"
+                                title="Delete Order"
                               >
-                                <Trash2 size={10} /> Delete
+                                <Trash2 size={15} />
                               </button>
                             </div>
                           </td>
                         </tr>
                       ))}
                       {filteredOrders.length === 0 && (
-                        <tr><td colSpan="6" className="p-8 text-center text-foreground/50">No orders found matching criteria.</td></tr>
+                        <tr><td colSpan="7" className="p-8 text-center text-[#888890]">No orders found for this filter.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -1852,192 +1739,188 @@ const Admin = () => {
             {/* COUPONS TAB */}
             {activeTab === "coupons" && (
               <div className="grid lg:grid-cols-12 gap-8">
-                {/* Left: Create Coupon Form */}
                 <div className="lg:col-span-5">
-                  <div className="border border-white/10 p-6 bg-background/50 backdrop-blur-sm space-y-6">
-                    <h2 className="text-xl font-display flex items-center gap-2">
-                      <Tag className="w-5 h-5 text-emerald-400" /> Create Promo Voucher
-                    </h2>
+                  <div className="border border-[#E8E4DC] bg-white rounded-2xl shadow-sm p-6 space-y-5">
+                    <div className="border-b border-[#E8E4DC] pb-3">
+                      <span className="text-[10px] uppercase tracking-[0.25em] text-[#C2922E] font-mono block mb-1">
+                        — PROMOTIONAL VOUCHERS
+                      </span>
+                      <h2 className="text-xl font-quiche font-light text-[#121215]">Create Coupon</h2>
+                    </div>
 
                     <form onSubmit={handleCreateCouponSubmit} className="space-y-4 font-body">
                       <div>
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-1">Coupon Code *</label>
+                        <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Coupon Code *</label>
                         <input
                           type="text"
                           value={newCouponForm.code}
-                          onChange={(e) => setNewCouponForm({ ...newCouponForm, code: e.target.value })}
-                          placeholder="e.g. FESTIVE20, SUKO500"
-                          className="w-full bg-transparent border-b border-white/15 focus:border-foreground outline-none py-2 text-sm uppercase text-white font-mono"
+                          onChange={(e) => setNewCouponForm({ ...newCouponForm, code: e.target.value.toUpperCase() })}
+                          placeholder="e.g. SUKO10, FESTIVE500"
                           required
+                          className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-3.5 py-2 text-xs font-mono uppercase text-[#121215] focus:border-[#C2922E] outline-none"
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-1">Discount (%)</label>
+                          <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Discount %</label>
                           <input
                             type="number"
+                            min="1"
+                            max="100"
                             value={newCouponForm.discount_percent}
                             onChange={(e) => setNewCouponForm({ ...newCouponForm, discount_percent: e.target.value })}
-                            placeholder="e.g. 15"
-                            className="w-full bg-transparent border-b border-white/15 focus:border-foreground outline-none py-2 text-sm text-white"
+                            placeholder="10"
+                            className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-3.5 py-2 text-xs font-mono text-[#121215] focus:border-[#C2922E] outline-none"
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-1">Flat Discount (₹)</label>
+                          <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Flat Discount (₹)</label>
                           <input
                             type="number"
                             value={newCouponForm.discount_flat}
                             onChange={(e) => setNewCouponForm({ ...newCouponForm, discount_flat: e.target.value })}
-                            placeholder="e.g. 500"
-                            className="w-full bg-transparent border-b border-white/15 focus:border-foreground outline-none py-2 text-sm text-white"
+                            placeholder="500"
+                            className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-3.5 py-2 text-xs font-mono text-[#121215] focus:border-[#C2922E] outline-none"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-1">Min Order Total (₹)</label>
+                        <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Min Order Value (₹)</label>
                         <input
                           type="number"
                           value={newCouponForm.min_order_value}
                           onChange={(e) => setNewCouponForm({ ...newCouponForm, min_order_value: e.target.value })}
-                          placeholder="e.g. 2000"
-                          className="w-full bg-transparent border-b border-white/15 focus:border-foreground outline-none py-2 text-sm text-white"
+                          placeholder="2000"
+                          className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-3.5 py-2 text-xs font-mono text-[#121215] focus:border-[#C2922E] outline-none"
                         />
                       </div>
 
                       <button
                         type="submit"
-                        className="w-full bg-foreground text-background py-3 text-[10px] uppercase tracking-[0.25em] font-bold hover:bg-foreground/90 transition-all mt-4"
+                        className="w-full bg-[#121215] hover:bg-[#C2922E] text-white py-3 rounded-xl text-xs uppercase tracking-[0.2em] font-bold shadow-md transition-all"
                       >
-                        Publish Coupon
+                        Create Voucher
                       </button>
                     </form>
                   </div>
                 </div>
 
-                {/* Right: Active Coupons List */}
                 <div className="lg:col-span-7">
-                  <div className="border border-white/10 bg-background/50 backdrop-blur-sm p-6">
-                    <h2 className="text-xl font-display mb-6">Active Vouchers & Promo Codes ({couponsList.length})</h2>
-
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left font-body text-sm">
-                        <thead className="bg-white/5 text-[10px] uppercase tracking-[0.2em] text-foreground/60 border-b border-white/10">
-                          <tr>
-                            <th className="p-3 font-normal">Code</th>
-                            <th className="p-3 font-normal">Discount</th>
-                            <th className="p-3 font-normal">Min Order</th>
-                            <th className="p-3 font-normal text-right">Action</th>
+                  <div className="border border-[#E8E4DC] bg-white rounded-2xl shadow-sm overflow-hidden">
+                    <table className="w-full text-left font-body text-sm">
+                      <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono border-b border-[#E8E4DC]">
+                        <tr>
+                          <th className="p-4 font-normal">Code</th>
+                          <th className="p-4 font-normal">Discount</th>
+                          <th className="p-4 font-normal">Min Order</th>
+                          <th className="p-4 font-normal text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#E8E4DC]/60 text-[#121215]">
+                        {couponsList.map(c => (
+                          <tr key={c.id} className="hover:bg-[#FAF8F5] transition-colors">
+                            <td className="p-4 font-mono font-bold text-[#121215]">{c.code}</td>
+                            <td className="p-4 text-xs font-mono text-[#C2922E]">
+                              {c.discount_percent ? `${c.discount_percent}% OFF` : `₹${c.discount_flat} Flat`}
+                            </td>
+                            <td className="p-4 text-xs text-[#555560]">₹{c.min_order_value || 0}</td>
+                            <td className="p-4 text-right">
+                              <button 
+                                onClick={() => handleDeleteCoupon(c.id)} 
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 border border-[#E8E4DC] rounded-lg p-2 transition-colors"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                          {couponsList.map((c) => (
-                            <tr key={c.id} className="hover:bg-white/[0.02] transition-colors">
-                              <td className="p-3 font-mono font-bold text-amber-400">{c.code}</td>
-                              <td className="p-3 text-white">
-                                {c.discount_percent ? `${c.discount_percent}% OFF` : c.discount_flat ? `${formatINR(c.discount_flat)} OFF` : 'Special Discount'}
-                              </td>
-                              <td className="p-3 text-foreground/70">{formatINR(c.min_order_value || 0)}</td>
-                              <td className="p-3 text-right">
-                                <button
-                                  onClick={() => handleDeleteCoupon(c.id)}
-                                  className="text-red-400/80 hover:text-red-400 p-1.5 transition-colors"
-                                  title="Delete Coupon"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                          {couponsList.length === 0 && (
-                            <tr><td colSpan="4" className="p-6 text-center text-foreground/50">No coupons active. Create one using the form.</td></tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                        {couponsList.length === 0 && (
+                          <tr><td colSpan="4" className="p-8 text-center text-[#888890]">No active coupons found.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* BROADCAST EMAIL DISPATCHER TAB */}
+            {/* BROADCAST EMAIL TAB */}
             {activeTab === "broadcast" && (
-              <div className="max-w-3xl mx-auto border border-white/10 bg-background/50 backdrop-blur-sm p-8 space-y-6">
-                <div>
-                  <h2 className="text-2xl font-display flex items-center gap-2">
-                    <Mail className="w-6 h-6 text-emerald-400" /> Direct Client Email Dispatcher
-                  </h2>
-                  <p className="text-xs font-body text-foreground/60 mt-1">
-                    Send custom announcements, tracking updates, or exclusive invitations via Gmail SMTP (<code className="text-emerald-400">bizleap1@gmail.com</code>).
-                  </p>
+              <div className="border border-[#E8E4DC] bg-white rounded-2xl shadow-sm p-6 sm:p-8 max-w-3xl mx-auto space-y-6">
+                <div className="border-b border-[#E8E4DC] pb-4">
+                  <span className="text-[10px] uppercase tracking-[0.25em] text-[#C2922E] font-mono block mb-1">
+                    — CONCIERGE EMAIL DISPATCHER
+                  </span>
+                  <h2 className="text-2xl font-quiche font-light text-[#121215]">Client Broadcast Notification</h2>
+                  <p className="text-xs text-[#555560] font-body mt-1">Send official updates, invitations, and promotional notices to registered clients.</p>
                 </div>
 
-                <form onSubmit={handleSendEmailSubmit} className="space-y-6 font-body">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-2">Recipient Audience *</label>
-                      <select
-                        value={emailForm.target}
-                        onChange={(e) => setEmailForm({ ...emailForm, target: e.target.value })}
-                        className="w-full bg-transparent border border-white/15 px-3 py-2 text-xs font-body focus:border-foreground outline-none [&>option]:bg-background text-white"
-                      >
-                        <option value="single">Single Specific Client Email</option>
-                        <option value="all">Broadcast to ALL Registered Clients</option>
-                      </select>
-                    </div>
-
-                    {emailForm.target === "single" && (
-                      <div>
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-2">Client Email Address *</label>
-                        <input
-                          type="email"
-                          value={emailForm.recipientEmail}
-                          onChange={(e) => setEmailForm({ ...emailForm, recipientEmail: e.target.value })}
-                          placeholder="client@gmail.com"
-                          className="w-full bg-transparent border border-white/15 px-3 py-2 text-xs font-body text-white outline-none focus:border-foreground"
-                          required={emailForm.target === "single"}
-                        />
-                      </div>
-                    )}
+                <form onSubmit={handleSendEmailSubmit} className="space-y-4 font-body">
+                  <div>
+                    <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Target Audience</label>
+                    <select
+                      value={emailForm.target}
+                      onChange={(e) => setEmailForm({ ...emailForm, target: e.target.value })}
+                      className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-4 py-2.5 text-xs text-[#121215] focus:border-[#C2922E] outline-none"
+                    >
+                      <option value="single">Single Client Email</option>
+                      <option value="all">All Registered Clients ({stats.totalUsers})</option>
+                    </select>
                   </div>
 
+                  {emailForm.target === "single" && (
+                    <div>
+                      <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Recipient Email *</label>
+                      <input
+                        type="email"
+                        value={emailForm.recipientEmail}
+                        onChange={(e) => setEmailForm({ ...emailForm, recipientEmail: e.target.value })}
+                        placeholder="client@luxury.com"
+                        required
+                        className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-4 py-2.5 text-xs text-[#121215] focus:border-[#C2922E] outline-none"
+                      />
+                    </div>
+                  )}
+
                   <div>
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-2">Email Subject Line *</label>
+                    <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Subject Header *</label>
                     <input
                       type="text"
                       value={emailForm.subject}
                       onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })}
-                      placeholder="e.g. Exclusive Private Invitation / Order Update"
-                      className="w-full bg-transparent border border-white/15 px-3 py-2 text-xs font-body text-white outline-none focus:border-foreground"
+                      placeholder="e.g. Exclusive Preview: Festive Couture Collection"
                       required
+                      className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-4 py-2.5 text-xs text-[#121215] focus:border-[#C2922E] outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-2">Message Body *</label>
+                    <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Message Body *</label>
                     <textarea
-                      rows={6}
+                      rows={5}
                       value={emailForm.message}
                       onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })}
-                      placeholder="Type your bespoke message here..."
-                      className="w-full bg-transparent border border-white/15 p-3 text-xs font-body text-white outline-none focus:border-foreground placeholder:text-foreground/30"
+                      placeholder="Compose your personalized message to the client..."
                       required
+                      className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-4 py-2.5 text-xs text-[#121215] focus:border-[#C2922E] outline-none"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={sendingEmail}
-                    className="w-full bg-foreground text-background py-4 text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-foreground/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full bg-[#121215] hover:bg-[#C2922E] text-white py-3.5 rounded-xl text-xs uppercase tracking-[0.22em] font-bold shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {sendingEmail ? (
                       <>
-                        <div className="w-4 h-4 rounded-full border-2 border-background border-t-transparent animate-spin" /> Dispatching Emails...
+                        <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                        Transmitting Email...
                       </>
                     ) : (
                       <>
-                        <Send size={14} /> Send Email Broadcast
+                        <Send size={15} /> Dispatch Email
                       </>
                     )}
                   </button>
@@ -2045,299 +1928,170 @@ const Admin = () => {
               </div>
             )}
 
-            {/* REVIEWS MODERATION TAB */}
+            {/* CLIENT REVIEWS TAB */}
             {activeTab === "reviews" && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-display flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-amber-400" /> Customer Product Reviews Moderation ({adminReviewsList.length})
-                  </h2>
+                <div className="border-b border-[#E8E4DC] pb-4">
+                  <h2 className="text-2xl font-quiche font-light text-[#121215]">Client Reviews ({adminReviewsList.length})</h2>
+                  <p className="text-xs text-[#555560] font-body">Moderate and manage published client reviews.</p>
                 </div>
 
-                <div className="overflow-x-auto border border-white/5 bg-background/50 backdrop-blur-sm">
+                <div className="border border-[#E8E4DC] bg-white rounded-2xl shadow-sm overflow-hidden">
                   <table className="w-full text-left font-body text-sm">
-                    <thead className="bg-white/5 text-[10px] uppercase tracking-[0.2em] text-foreground/60 border-b border-white/10">
+                    <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono border-b border-[#E8E4DC]">
                       <tr>
-                        <th className="p-4 font-normal">Garment</th>
                         <th className="p-4 font-normal">Client</th>
                         <th className="p-4 font-normal">Rating</th>
-                        <th className="p-4 font-normal">Comment</th>
+                        <th className="p-4 font-normal">Feedback</th>
                         <th className="p-4 font-normal text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {adminReviewsList.map((rev) => (
-                        <tr key={rev.id} className="hover:bg-white/[0.02] transition-colors">
-                          <td className="p-4 font-medium text-white flex items-center gap-3">
-                            {rev.product?.images?.[0] && (
-                              <img src={rev.product.images[0]} alt="" className="w-10 h-12 object-cover rounded-sm" />
-                            )}
-                            <span>{rev.product?.name || "Garment"}</span>
+                    <tbody className="divide-y divide-[#E8E4DC]/60 text-[#121215]">
+                      {adminReviewsList.map(r => (
+                        <tr key={r.id} className="hover:bg-[#FAF8F5] transition-colors">
+                          <td className="p-4 font-medium text-xs">{r.user?.name || "Client"}</td>
+                          <td className="p-4">
+                            <div className="flex items-center text-[#C2922E]">
+                              {[...Array(r.rating || 5)].map((_, i) => (
+                                <Star key={i} size={13} fill="#C2922E" />
+                              ))}
+                            </div>
                           </td>
-                          <td className="p-4 text-foreground/80">{rev.user?.email || rev.user?.name || "Client"}</td>
-                          <td className="p-4 font-mono font-bold text-amber-400">⭐ {rev.rating}/5</td>
-                          <td className="p-4 text-foreground/90 max-w-md italic">"{rev.comment}"</td>
+                          <td className="p-4 text-xs text-[#555560] max-w-md">"{r.comment}"</td>
                           <td className="p-4 text-right">
                             <button
-                              onClick={() => handleDeleteReview(rev.id)}
-                              className="text-red-400/80 hover:text-red-400 p-2 transition-colors"
-                              title="Delete Review"
+                              onClick={() => handleDeleteReview(r.id)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 border border-[#E8E4DC] rounded-lg p-2 transition-colors"
                             >
-                              <Trash2 size={16} />
+                              <Trash2 size={15} />
                             </button>
                           </td>
                         </tr>
                       ))}
                       {adminReviewsList.length === 0 && (
-                        <tr><td colSpan="5" className="p-8 text-center text-foreground/50">No customer reviews submitted yet.</td></tr>
+                        <tr><td colSpan="4" className="p-8 text-center text-[#888890]">No reviews submitted yet.</td></tr>
                       )}
                     </tbody>
                   </table>
                 </div>
               </div>
             )}
-            
+
           </div>
         )}
 
+        {/* IMAGE CROPPER MODAL */}
+        {cropperSrc && (
+          <ImageCropperModal
+            imageSrc={cropperSrc}
+            onSave={(cropped) => {
+              if (cropperCallback) cropperCallback(cropped);
+            }}
+            onCancel={() => setCropperSrc(null)}
+          />
+        )}
+
         {/* EDIT PRODUCT MODAL */}
-      {editingProduct && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[9999] flex items-start justify-center pt-24 pb-8 px-4 overflow-y-auto">
-          <div className="max-w-[480px] w-full border border-white/20 p-6 sm:p-8 bg-[#121214] text-foreground shadow-2xl relative rounded-sm my-auto sm:my-0">
-            <button 
-              type="button"
-              onClick={() => setEditingProduct(null)}
-              className="absolute top-4 right-4 text-foreground/60 hover:text-foreground p-1 transition-colors bg-white/5 rounded-full"
-            >
-              <X size={18} />
-            </button>
+        {editingProduct && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+            <div className="bg-white border border-[#E8E4DC] max-w-2xl w-full p-6 sm:p-8 rounded-2xl relative shadow-2xl space-y-5 text-[#121215]">
+              <button
+                onClick={() => setEditingProduct(null)}
+                className="absolute top-5 right-5 text-[#888890] hover:text-[#121215] p-1.5 rounded-lg hover:bg-[#FAF8F5] transition-all"
+              >
+                <X size={18} />
+              </button>
 
-            <span className="text-[10px] uppercase tracking-[0.3em] text-foreground/45 font-body block mb-1">— Product Editor</span>
-            <h2 className="font-display text-2xl mb-6">Edit Item Details</h2>
-
-            <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body">Product Name *</label>
-                <input 
-                  type="text" 
-                  value={editFormData.name} 
-                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })} 
-                  required 
-                  className="w-full bg-black/40 border-b border-white/20 focus:border-white outline-none py-2 px-2 text-sm font-body text-foreground"
-                />
+              <div className="border-b border-[#E8E4DC] pb-3">
+                <span className="text-[10px] uppercase tracking-[0.25em] text-[#C2922E] font-mono block mb-1">
+                  — ATELIER EDIT ENTRY
+                </span>
+                <h2 className="text-2xl font-quiche font-light text-[#121215]">
+                  Edit "{editingProduct.name}"
+                </h2>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body">Price (₹) *</label>
-                <input 
-                  type="number" 
-                  value={editFormData.price} 
-                  onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value })} 
-                  required 
-                  className="w-full bg-black/40 border-b border-white/20 focus:border-white outline-none py-2 px-2 text-sm font-body text-foreground"
-                />
-              </div>
-
-              {/* EDIT SIZE-WISE STOCK MANAGER */}
-              <div className="space-y-3 pt-2 border-t border-white/10">
-                <div className="flex items-center justify-between">
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body">Size-Wise Stock Inventory *</label>
-                  <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 border border-emerald-500/20">
-                    Total: {Object.values(editSizeStockMap).reduce((a, b) => a + (Number(b) || 0), 0)} items
-                  </span>
+              <form onSubmit={handleEditSubmit} className="space-y-4 font-body text-xs">
+                <div>
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Garment Name</label>
+                  <input
+                    type="text"
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                    className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-3.5 py-2 text-xs text-[#121215] focus:border-[#C2922E] outline-none"
+                    required
+                  />
                 </div>
 
-                {/* Quick Preset Toggles */}
-                <div className="flex flex-wrap gap-1.5 bg-white/5 p-2 border border-white/10 items-center">
-                  <span className="text-[9px] uppercase tracking-wider text-foreground/40 self-center mr-1">Presets:</span>
-                  {["38", "40", "42", "44", "46", "S", "M", "L", "XL"].map(sz => {
-                    const isActive = sz in editSizeStockMap;
-                    return (
-                      <button
-                        key={sz}
-                        type="button"
-                        onClick={() => {
-                          if (isActive) {
-                            const updated = { ...editSizeStockMap };
-                            delete updated[sz];
-                            setEditSizeStockMap(updated);
-                          } else {
-                            setEditSizeStockMap({ ...editSizeStockMap, [sz]: 5 });
-                          }
-                        }}
-                        className={`px-2 py-0.5 text-[10px] font-mono border transition-all ${
-                          isActive 
-                            ? "bg-foreground text-background font-bold border-foreground" 
-                            : "text-foreground/60 border-white/15 hover:border-white/40"
-                        }`}
-                      >
-                        {isActive ? `✓ ${sz}` : `+ ${sz}`}
-                      </button>
-                    );
-                  })}
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const customName = window.prompt("Enter custom size (e.g. 48, XXL, Free Size):");
-                      if (customName && customName.trim()) {
-                        const key = customName.trim();
-                        setEditSizeStockMap(prev => ({ ...prev, [key]: prev[key] || 5 }));
-                      }
-                    }}
-                    className="px-2 py-0.5 text-[10px] font-mono border border-emerald-400/50 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 font-bold transition-all ml-auto"
-                  >
-                    + Custom
-                  </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Price (INR)</label>
+                    <input
+                      type="number"
+                      value={editFormData.price}
+                      onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value })}
+                      className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-3.5 py-2 text-xs text-[#121215] focus:border-[#C2922E] outline-none font-mono"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Category</label>
+                    <select
+                      value={editFormData.category_id}
+                      onChange={(e) => setEditFormData({ ...editFormData, category_id: e.target.value })}
+                      className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-3.5 py-2 text-xs text-[#121215] focus:border-[#C2922E] outline-none"
+                    >
+                      <option value="">Select Category</option>
+                      {categories.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                {/* Active Sizes Input List */}
-                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                  {Object.entries(editSizeStockMap).map(([sz, qty]) => (
-                    <div key={sz} className="flex items-center justify-between gap-3 p-2 bg-white/5 border border-white/10 text-xs">
-                      <span className="font-mono font-bold text-foreground">Size {sz}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-foreground/50">Stock:</span>
+                {/* Size Stock Distribution */}
+                <div className="space-y-2 border border-[#E8E4DC] p-3 rounded-xl bg-[#FAF8F5]">
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono block">Exact Size Inventory</label>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {["38", "40", "42", "44", "46", "Free"].map(sz => (
+                      <div key={sz} className="text-center">
+                        <span className="text-[10px] font-mono block text-[#888890] mb-1">{sz}</span>
                         <input
                           type="number"
                           min="0"
-                          value={qty}
-                          onChange={(e) => setEditSizeStockMap({ ...editSizeStockMap, [sz]: parseInt(e.target.value) || 0 })}
-                          className="w-16 bg-black/40 border border-white/20 px-2 py-1 text-center font-mono outline-none focus:border-white text-foreground text-xs"
+                          value={editSizeStockMap[sz] ?? 0}
+                          onChange={(e) => setEditSizeStockMap({ ...editSizeStockMap, [sz]: parseInt(e.target.value, 10) || 0 })}
+                          className="w-full bg-white border border-[#E8E4DC] rounded-lg p-1.5 text-center text-xs font-mono text-[#121215] focus:border-[#C2922E] outline-none"
                         />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = { ...editSizeStockMap };
-                            delete updated[sz];
-                            setEditSizeStockMap(updated);
-                          }}
-                          className="text-foreground/40 hover:text-red-400 p-1"
-                          title="Remove size"
-                        >
-                          <X size={14} />
-                        </button>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body">Category</label>
-                  <select 
-                    value={editFormData.category_id} 
-                    onChange={(e) => setEditFormData({ ...editFormData, category_id: e.target.value })} 
-                    className="w-full bg-black/40 border-b border-white/20 focus:border-white outline-none py-2 px-2 text-sm font-body text-foreground [&>option]:bg-neutral-900"
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body">Sub Category</label>
-                  <select 
-                    value={editFormData.sub_category} 
-                    onChange={(e) => setEditFormData({ ...editFormData, sub_category: e.target.value })} 
-                    className="w-full bg-black/40 border-b border-white/20 focus:border-white outline-none py-2 px-2 text-sm font-body text-foreground [&>option]:bg-neutral-900"
-                  >
-                    <option value="">No Sub Category</option>
-                    <option value="Womens">Womens</option>
-                  </select>
-                </div>
-              </div>
-
-                      {/* MULTIPLE IMAGE GALLERY IN EDIT MODAL */}
-                <div className="space-y-3 pt-3 border-t border-white/10">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-body">Product Gallery Images ({editGalleryImages.length})</label>
-                    <span className="text-[9px] text-foreground/50 font-body">Add more / crop existing</span>
                   </div>
-
-                  <input 
-                    type="file" 
-                    multiple
-                    accept="image/*" 
-                    onChange={handleEditAddGalleryFiles} 
-                    className="w-full bg-black/40 border border-white/20 py-2 px-3 text-xs font-body cursor-pointer file:mr-3 file:py-1 file:px-2 file:border-0 file:text-[9px] file:uppercase file:tracking-[0.2em] file:bg-white file:text-black font-semibold"
-                  />
-
-                  {editGalleryImages.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2 bg-white/5 p-2 border border-white/10 max-h-56 overflow-y-auto">
-                      {editGalleryImages.map((item, idx) => (
-                        <div key={idx} className="relative group border border-white/10 bg-black/40 overflow-hidden rounded-sm">
-                          <img src={item.preview} alt={`Edit Gallery ${idx}`} className="w-full h-24 object-cover" />
-                          
-                          {item.isPrimary && (
-                            <span className="absolute top-1 left-1 bg-amber-400 text-black font-bold text-[8px] uppercase tracking-wider px-1 py-0.5 shadow flex items-center gap-1">
-                              <Star size={8} fill="black" /> Main Cover
-                            </span>
-                          )}
-
-                          <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center items-center gap-1 p-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCropperSrc(item.preview);
-                                setCropperCallback(() => (croppedUrl) => {
-                                  const file = dataURLtoFile(croppedUrl, `edit-cropped-${idx}.jpg`);
-                                  setEditGalleryImages(prev => {
-                                    const copy = [...prev];
-                                    copy[idx] = { ...copy[idx], file, preview: croppedUrl };
-                                    return copy;
-                                  });
-                                });
-                              }}
-                              className="bg-white/20 hover:bg-white/40 text-white text-[9px] uppercase tracking-wider px-2 py-1 w-full flex items-center justify-center gap-1"
-                            >
-                              <Crop size={10} /> Crop
-                            </button>
-
-                            {!item.isPrimary && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditGalleryImages(prev => prev.map((g, i) => ({ ...g, isPrimary: i === idx })));
-                                }}
-                                className="bg-amber-500/30 hover:bg-amber-500/50 text-amber-300 text-[9px] uppercase tracking-wider px-2 py-1 w-full text-center"
-                              >
-                                Set Cover
-                              </button>
-                            )}
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditGalleryImages(prev => prev.filter((_, i) => i !== idx));
-                              }}
-                              className="bg-red-500/30 hover:bg-red-500/50 text-red-300 text-[9px] uppercase tracking-wider px-2 py-1 w-full text-center"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
-                <div className="flex gap-3 pt-4">
-                  <button 
-                    type="button" 
+                <div>
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Description</label>
+                  <textarea
+                    rows={3}
+                    value={editFormData.description}
+                    onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                    className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-3.5 py-2 text-xs text-[#121215] focus:border-[#C2922E] outline-none"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-3">
+                  <button
+                    type="button"
                     onClick={() => setEditingProduct(null)}
-                    className="flex-1 border border-white/20 py-3 text-[10px] uppercase tracking-[0.2em] font-body hover:bg-white/10 transition-all text-foreground"
+                    className="flex-1 py-3 border border-[#E8E4DC] rounded-xl text-[10px] uppercase tracking-[0.2em] font-body text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] transition-all"
                   >
                     Cancel
                   </button>
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={updatingProduct}
-                    className="flex-1 bg-white text-black py-3 text-[10px] uppercase tracking-[0.2em] font-body hover:bg-white/90 font-bold transition-all disabled:opacity-50"
+                    className="flex-1 py-3 bg-[#121215] hover:bg-[#C2922E] text-white font-bold text-[10px] uppercase tracking-[0.2em] font-body rounded-xl shadow-md transition-all"
                   >
-                    {updatingProduct ? "Saving..." : "Save Changes"}
+                    {updatingProduct ? "Saving..." : "Save Product Changes"}
                   </button>
                 </div>
               </form>
@@ -2345,82 +2099,68 @@ const Admin = () => {
           </div>
         )}
 
-        {/* FULL ORDER INSPECTION MODAL */}
+        {/* INSPECT ORDER DETAILS MODAL */}
         {selectedOrderDetails && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 md:pt-14 bg-black/85 backdrop-blur-md overflow-y-auto">
-            <div ref={inspectModalRef} className="bg-[#121218] border border-white/15 max-w-2xl w-full p-8 rounded-xl relative shadow-2xl font-body space-y-6 max-h-[85vh] overflow-y-auto my-auto md:my-0">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+            <div ref={inspectModalRef} className="bg-white border border-[#E8E4DC] max-w-xl w-full p-6 sm:p-8 rounded-2xl relative shadow-2xl space-y-5 text-[#121215]">
               <button
                 onClick={() => setSelectedOrderDetails(null)}
-                className="absolute top-4 right-4 text-foreground/50 hover:text-white"
+                className="absolute top-5 right-5 text-[#888890] hover:text-[#121215] p-1.5 rounded-lg hover:bg-[#FAF8F5] transition-all"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
 
-              <div className="border-b border-white/10 pb-4">
-                <span className="text-[10px] uppercase tracking-[0.3em] text-emerald-400 font-mono block mb-1">
-                  — FULL CLIENT & ORDER INSPECTION
+              <div className="border-b border-[#E8E4DC] pb-3">
+                <span className="text-[10px] uppercase tracking-[0.25em] text-[#C2922E] font-mono block mb-1">
+                  — ORDER AUDIT INSPECTOR
                 </span>
-                <h2 className="text-2xl font-display text-white">
+                <h2 className="text-2xl font-quiche font-light text-[#121215]">
                   Order #SUKO-{1000 + selectedOrderDetails.id}
                 </h2>
-                <p className="text-xs text-foreground/60 mt-1 font-mono">
-                  Placed on: <span className="text-emerald-400 font-bold">{formatDateTime(selectedOrderDetails.created_at)}</span>
-                </p>
               </div>
 
-              {/* Customer Full Specs */}
-              <div className="grid sm:grid-cols-2 gap-6 bg-white/5 p-4 border border-white/10 text-xs">
-                <div className="space-y-1.5 font-mono">
-                  <p className="text-[10px] uppercase tracking-wider text-amber-400 font-bold mb-2">👤 CLIENT INFORMATION</p>
-                  <p className="text-white text-sm font-bold">{getUserDisplayName(selectedOrderDetails.user)}</p>
-                  <p className="text-emerald-400">📞 Phone: {getUserPhone(selectedOrderDetails.user)}</p>
-                  <p className="text-foreground/70">✉️ Email: {selectedOrderDetails.user?.email || "N/A"}</p>
-                  <p className="text-foreground/50 text-[10px]">User Account ID: #{selectedOrderDetails.user?.id || selectedOrderDetails.user_id}</p>
+              {/* Client Info Grid */}
+              <div className="grid grid-cols-2 gap-4 bg-[#FAF8F5] border border-[#E8E4DC] p-4 rounded-xl text-xs font-body">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider font-mono text-[#888890]">Client Name</p>
+                  <p className="font-bold text-[#121215]">{getUserDisplayName(selectedOrderDetails.user)}</p>
                 </div>
-
-                <div className="space-y-1.5 font-mono">
-                  <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold mb-2">🏠 SHIPPING ADDRESS</p>
-                  {selectedOrderDetails.user?.addresses?.[0] ? (
-                    <>
-                      <p className="text-white font-medium">{selectedOrderDetails.user.addresses[0].line1}</p>
-                      <p className="text-foreground/70">{selectedOrderDetails.user.addresses[0].city}, {selectedOrderDetails.user.addresses[0].state}</p>
-                      <p className="text-foreground/70">PIN Code: {selectedOrderDetails.user.addresses[0].pincode}</p>
-                      <p className="text-foreground/50">Contact Phone: {selectedOrderDetails.user.addresses[0].phone}</p>
-                    </>
-                  ) : (
-                    <p className="text-foreground/40 italic">No delivery address saved on profile.</p>
-                  )}
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider font-mono text-[#888890]">Client Email</p>
+                  <p className="font-mono text-[#121215]">{selectedOrderDetails.user?.email || "Guest Client"}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider font-mono text-[#888890]">Phone</p>
+                  <p className="font-mono text-[#121215]">{getUserPhone(selectedOrderDetails.user)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider font-mono text-[#888890]">Order Status</p>
+                  <span className="inline-block mt-0.5 text-[9px] uppercase tracking-wider font-mono px-2 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 font-bold">
+                    {selectedOrderDetails.status}
+                  </span>
                 </div>
               </div>
-
-              {/* Cancellation Reason alert if present */}
-              {selectedOrderDetails.cancel_reason && (
-                <div className="bg-amber-500/10 border border-amber-500/30 p-4 font-mono text-xs text-amber-300">
-                  <p className="font-bold text-[10px] uppercase tracking-widest mb-1 text-amber-400">⚠️ CANCELLATION REASON SUBMITTED BY CLIENT:</p>
-                  <p className="text-sm">"{selectedOrderDetails.cancel_reason}"</p>
-                </div>
-              )}
 
               {/* Items Purchased List */}
               <div className="space-y-3">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-mono">PURCHASED GARMENT ITEMS ({selectedOrderDetails.items?.length || 1})</p>
-                <div className="divide-y divide-white/10 border-t border-b border-white/10">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono">PURCHASED GARMENT ITEMS ({selectedOrderDetails.items?.length || 1})</p>
+                <div className="divide-y divide-[#E8E4DC]/60 border-t border-b border-[#E8E4DC]">
                   {selectedOrderDetails.items?.map((item, idx) => (
-                    <div key={idx} className="py-3 flex items-center justify-between text-xs font-mono">
+                    <div key={idx} className="py-3 flex items-center justify-between text-xs font-body">
                       <div className="flex items-center gap-3">
                         {item.product?.image_url && (
-                          <img src={item.product.image_url} alt={item.product.name} className="w-10 h-12 object-cover border border-white/15" />
+                          <img src={item.product.image_url} alt={item.product.name} className="w-10 h-14 object-cover border border-[#E8E4DC] rounded-md" />
                         )}
                         <div>
-                          <p className="text-white font-bold text-sm">{item.product?.name || "Atelier Garment"}</p>
-                          <p className="text-foreground/50 text-[10px]">Category: {item.product?.category_id ? "Atelier" : "Custom"}</p>
+                          <p className="text-[#121215] font-bold text-sm">{item.product?.name || "Atelier Garment"}</p>
+                          <p className="text-[#888890] text-[10px]">Category: {item.product?.category?.name || "Atelier"}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="text-amber-300 bg-amber-500/10 px-2 py-0.5 border border-amber-500/30 font-bold block mb-1">
-                          Size: {item.size || "38"} (Qty: {item.quantity})
+                        <span className="text-[#C2922E] bg-[#C2922E]/10 px-2 py-0.5 border border-[#C2922E]/30 rounded font-mono font-bold block mb-1 text-[10px]">
+                          Size: {item.size || "STD"} (Qty: {item.quantity})
                         </span>
-                        <span className="text-white font-bold">{formatINR(item.price_at_purchase || item.product?.price || 0)}</span>
+                        <span className="text-[#121215] font-bold font-mono">{formatINR(item.price_at_purchase || item.product?.price || 0)}</span>
                       </div>
                     </div>
                   ))}
@@ -2428,9 +2168,9 @@ const Admin = () => {
               </div>
 
               {/* Total Summary */}
-              <div className="flex justify-between items-center pt-2 font-mono text-sm border-t border-white/10">
-                <span className="text-foreground/60 uppercase tracking-widest text-xs">Total Amount Paid:</span>
-                <span className="text-emerald-400 font-bold text-xl">{formatINR(selectedOrderDetails.total)}</span>
+              <div className="flex justify-between items-center pt-2 font-mono text-sm border-t border-[#E8E4DC]">
+                <span className="text-[#555560] uppercase tracking-widest text-xs">Total Amount Paid:</span>
+                <span className="text-emerald-700 font-bold text-xl">{formatINR(selectedOrderDetails.total)}</span>
               </div>
             </div>
           </div>
@@ -2438,43 +2178,43 @@ const Admin = () => {
 
         {/* EDIT / MODIFY ORDER MODAL */}
         {editingOrder && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 md:pt-14 bg-black/85 backdrop-blur-md overflow-y-auto">
-            <div ref={editModalRef} className="bg-[#121218] border border-white/15 max-w-md w-full p-6 rounded-xl relative shadow-2xl font-body space-y-5 my-auto md:my-0">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+            <div ref={editModalRef} className="bg-white border border-[#E8E4DC] max-w-md w-full p-6 sm:p-8 rounded-2xl relative shadow-2xl space-y-5 text-[#121215]">
               <button
                 onClick={() => setEditingOrder(null)}
-                className="absolute top-4 right-4 text-foreground/50 hover:text-white"
+                className="absolute top-5 right-5 text-[#888890] hover:text-[#121215] p-1.5 rounded-lg hover:bg-[#FAF8F5] transition-all"
               >
                 <X size={18} />
               </button>
 
-              <div className="border-b border-white/10 pb-3">
-                <span className="text-[10px] uppercase tracking-[0.3em] text-amber-400 font-mono block mb-1">
+              <div className="border-b border-[#E8E4DC] pb-3">
+                <span className="text-[10px] uppercase tracking-[0.25em] text-[#C2922E] font-mono block mb-1">
                   — MODIFY ORDER SPECS
                 </span>
-                <h2 className="text-xl font-display text-white">
+                <h2 className="text-2xl font-quiche font-light text-[#121215]">
                   Edit Order #SUKO-{1000 + editingOrder.id}
                 </h2>
               </div>
 
               <form onSubmit={handleSaveEditedOrder} className="space-y-4 font-mono text-xs">
                 <div>
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-1">Order Total Amount (₹) *</label>
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] block mb-1">Order Total Amount (₹) *</label>
                   <input
                     type="number"
                     step="0.01"
                     value={editOrderForm.total}
                     onChange={(e) => setEditOrderForm({ ...editOrderForm, total: e.target.value })}
-                    className="w-full bg-black/50 border border-white/15 p-2.5 text-white outline-none focus:border-amber-400 text-sm font-mono"
+                    className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-3.5 py-2 text-xs font-mono text-[#121215] focus:border-[#C2922E] outline-none"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-1">Order Status *</label>
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] block mb-1">Order Status *</label>
                   <select
                     value={editOrderForm.status}
                     onChange={(e) => setEditOrderForm({ ...editOrderForm, status: e.target.value })}
-                    className="w-full bg-black/50 border border-white/15 p-2.5 text-white outline-none focus:border-amber-400 [&>option]:bg-background"
+                    className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-3.5 py-2 text-xs font-mono text-[#121215] focus:border-[#C2922E] outline-none"
                   >
                     <option value="pending">Pending</option>
                     <option value="paid">Paid</option>
@@ -2486,13 +2226,13 @@ const Admin = () => {
                 </div>
 
                 <div>
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-1">Cancellation / Modification Note</label>
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] block mb-1">Modification Note</label>
                   <textarea
                     rows={3}
                     value={editOrderForm.cancel_reason}
                     onChange={(e) => setEditOrderForm({ ...editOrderForm, cancel_reason: e.target.value })}
                     placeholder="Optional Admin note or reason..."
-                    className="w-full bg-black/50 border border-white/15 p-2.5 text-white outline-none focus:border-amber-400 text-xs font-mono"
+                    className="w-full bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-3.5 py-2 text-xs font-body text-[#121215] focus:border-[#C2922E] outline-none"
                   />
                 </div>
 
@@ -2500,13 +2240,13 @@ const Admin = () => {
                   <button
                     type="button"
                     onClick={() => setEditingOrder(null)}
-                    className="flex-1 border border-white/20 py-2.5 text-[10px] uppercase tracking-[0.2em] hover:bg-white/10 text-foreground transition-all"
+                    className="flex-1 py-3 border border-[#E8E4DC] rounded-xl text-[10px] uppercase tracking-[0.2em] font-body text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-amber-400 hover:bg-amber-300 text-black py-2.5 text-[10px] uppercase tracking-[0.2em] font-bold transition-all shadow"
+                    className="flex-1 py-3 bg-[#121215] hover:bg-[#C2922E] text-white font-bold text-[10px] uppercase tracking-[0.2em] font-body rounded-xl shadow-md transition-all"
                   >
                     Save Changes
                   </button>
@@ -2521,12 +2261,14 @@ const Admin = () => {
 };
 
 const StatCard = ({ icon, label, value, subText }) => (
-  <div className="border border-white/10 p-6 bg-background/50 backdrop-blur-sm flex items-start gap-4">
-    <div className="text-foreground/40 mt-1">{icon}</div>
+  <div className="border border-[#E8E4DC] p-6 bg-white rounded-2xl shadow-sm hover:border-[#C2922E]/50 transition-all flex items-start gap-4">
+    <div className="w-11 h-11 rounded-xl bg-[#C2922E]/10 text-[#C2922E] flex items-center justify-center shrink-0 mt-0.5">
+      {icon}
+    </div>
     <div>
-      <p className="text-[10px] uppercase tracking-[0.2em] text-foreground/50 font-body mb-1">{label}</p>
-      <p className="font-display text-3xl font-medium">{value}</p>
-      {subText && <p className="text-[10px] text-foreground/40 font-body mt-1">{subText}</p>}
+      <p className="text-[10.5px] uppercase tracking-[0.22em] text-[#888890] font-mono mb-1">{label}</p>
+      <p className="font-quiche text-3xl font-light text-[#121215] tracking-tight">{value}</p>
+      {subText && <p className="text-[11px] text-[#555560] font-body mt-1">{subText}</p>}
     </div>
   </div>
 );

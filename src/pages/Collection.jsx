@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { useLenis } from "lenis/react";
+import SEO from "../components/SEO";
 
 // Curated Collection Tabs in exact sequential page flow
 const COLLECTIONS_TABS = [
@@ -160,7 +161,11 @@ const Collection = () => {
   };
 
   return (
-    <div data-testid="collections-hub-page" className="grain bg-[#FAF8F5] dark:bg-transparent text-[#121215] dark:text-[#F6F6F0] font-body selection:bg-[#C2922E] selection:text-white transition-colors duration-300">
+    <div data-testid="collections-hub-page" className="grain bg-[#FAF8F5] text-[#121215] font-body selection:bg-[#C2922E] selection:text-white transition-colors duration-300">
+      <SEO 
+        title="Curated Collections &amp; Edits"
+        description="Discover ICW by Suko suiting editions — Boardroom, Signature, and Atelier creations designed for high-ranking authority."
+      />
       
       {/* =========================================================================
           SECTION 1: HERO / COLLECTION INTRO (Mobile-Native 78vh-85vh)

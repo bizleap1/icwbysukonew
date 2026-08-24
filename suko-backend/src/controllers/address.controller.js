@@ -1,4 +1,5 @@
 const prisma = require('../prisma/client');
+const { validateIntegerId, rejectForbiddenFields } = require('../utils/validator');
 
 async function getAddresses(req, res) {
   try {
@@ -14,6 +15,7 @@ async function getAddresses(req, res) {
 
 async function addAddress(req, res) {
   try {
+    rejectForbiddenFields(req.body);
     const { line1, city, state, pincode, phone } = req.body;
 
     if (!line1 || !city || !state || !pincode || !phone) {
@@ -49,7 +51,8 @@ async function addAddress(req, res) {
 
 async function updateAddress(req, res) {
   try {
-    const addressId = parseInt(req.params.id);
+    rejectForbiddenFields(req.body);
+    const addressId = validateIntegerId(req.params.id, 'address ID');
     const { line1, city, state, pincode, phone } = req.body;
 
     const existing = await prisma.address.findUnique({ where: { id: addressId } });
@@ -70,6 +73,7 @@ async function updateAddress(req, res) {
 
     res.json(updated);
   } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
     console.error("Update address error:", err);
     res.status(500).json({ error: 'Failed to update address' });
   }
@@ -77,7 +81,7 @@ async function updateAddress(req, res) {
 
 async function deleteAddress(req, res) {
   try {
-    const addressId = parseInt(req.params.id);
+    const addressId = validateIntegerId(req.params.id, 'address ID');
 
     const existing = await prisma.address.findUnique({ where: { id: addressId } });
     if (!existing || existing.user_id !== req.user.userId) {
@@ -87,6 +91,7 @@ async function deleteAddress(req, res) {
     await prisma.address.delete({ where: { id: addressId } });
     res.json({ message: 'Address deleted successfully' });
   } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
     console.error("Delete address error:", err);
     res.status(500).json({ error: 'Failed to delete address' });
   }

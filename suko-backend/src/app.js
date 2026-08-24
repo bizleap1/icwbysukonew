@@ -1,23 +1,66 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const dotenv = require('dotenv');
+const { validateEnv } = require('./config/env.validator');
 const { authMiddleware } = require('./middleware/auth.middleware');
+const { generalApiLimiter } = require('./middleware/rateLimiter.middleware');
+const { handleRazorpayWebhook } = require('./controllers/webhook.controller');
+const { sweepExpiredReservations } = require('./utils/inventory.service');
+const { sweepExpiredOtps } = require('./utils/otp.service');
 
 dotenv.config();
+
+// Validate critical environment configurations at startup
+validateEnv();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// Configure reverse proxy trust based on environment proxy topology
+const trustProxyVal = process.env.TRUST_PROXY;
+if (trustProxyVal === 'true' || trustProxyVal === '1') {
+  app.set('trust proxy', 1);
+} else if (trustProxyVal && !isNaN(parseInt(trustProxyVal, 10))) {
+  app.set('trust proxy', parseInt(trustProxyVal, 10));
+} else if (trustProxyVal === 'loopback' || trustProxyVal === 'linklocal' || trustProxyVal === 'uniquelocal') {
+  app.set('trust proxy', trustProxyVal);
+} else {
+  app.set('trust proxy', false);
+}
+
+// 1. Backend Security Headers (API-focused; frontend CSP handled at hosting layer)
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  hsts: process.env.NODE_ENV === 'production' 
+    ? { maxAge: 15552000, includeSubDomains: true } 
+    : false
+}));
+
+// 2. Strict CORS Allowlist
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow localhost, local IPs, Vercel deployments, or all origins in production
-    callback(null, true);
+    if (!origin) return callback(null, true); // Allow server-to-server and tools like curl
+    const allowed = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:5173,https://icw-by-suko.vercel.app')
+      .split(',')
+      .map(o => o.trim());
+    if (allowed.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS request blocked by security policy.'));
   },
   credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// 3. Phase 1 PRESERVED: Razorpay Webhook Raw Route (MOUNTED BEFORE global body parsers & general rate limiting)
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), handleRazorpayWebhook);
+
+// 4. Global Body Parsers with 100kb payload limit for standard API routes
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+
+// 5. Static uploads directory
 const path = require('path');
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
@@ -26,10 +69,9 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// Email Delivery Test Endpoint (for debugging Render email)
+// Email Delivery Test Endpoint
 app.get('/health/email-test', async (req, res) => {
   const results = { steps: [] };
-  
   try {
     if (process.env.RESEND_API_KEY) {
       const { Resend } = require('resend');
@@ -73,7 +115,10 @@ app.get('/api/protected-test', authMiddleware, (req, res) => {
   res.json({ message: 'You are authenticated!', user: req.user });
 });
 
-// Routes
+// 6. Apply General API Rate Limiter to API routes
+app.use('/api', generalApiLimiter);
+
+// 7. Route Modules
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/products', require('./routes/product.routes'));
 app.use('/api/cart', require('./routes/cart.routes'));
@@ -112,7 +157,6 @@ app.post('/api/admin/send-email', authMiddleware, adminOnly, async (req, res) =>
         try {
           await sendCustomAdminBroadcastEmail(email, subject, message);
           sentCount++;
-          // Small 200ms spacing to prevent SMTP server throttling
           await new Promise(r => setTimeout(r, 200));
         } catch (err) {
           console.error(`Broadcast failed for ${email}:`, err.message);
@@ -130,25 +174,42 @@ app.post('/api/admin/send-email', authMiddleware, adminOnly, async (req, res) =>
       return res.json({ message: `Email delivered to ${recipientEmail.trim()}` });
     }
   } catch (err) {
-    console.error("Admin send email error:", err);
-    res.status(500).json({ error: err.message || 'Failed to send broadcast email' });
+    console.error("Admin send email error:", err.message);
+    res.status(500).json({ error: 'Failed to send broadcast email' });
   }
 });
 
-// Global Error Handler
+// 8. Global Error Handler (Production Safe: No internal stack traces or Prisma internals leaked)
 app.use((err, req, res, next) => {
-  console.error('Global error:', err);
-  res.status(500).json({ 
-    error: 'Internal Server Error', 
-    message: err.message || err,
-    details: err
+  console.error('Global API Error:', err.message || err);
+  const status = err.status || (err.message && err.message.includes('CORS') ? 403 : 500);
+  res.status(status).json({ 
+    error: err.message || 'An internal server error occurred.'
   });
 });
 
-// Start Server if not imported by test module
-if (require.main === module) {
+// 9. Periodic Background Sweepers (Reservations & Expired OTPs)
+if (process.env.NODE_ENV !== 'test') {
+  sweepExpiredReservations().catch(err => {
+    console.error("Startup reservation sweep error:", err.message);
+  });
+  sweepExpiredOtps().catch(err => {
+    console.error("Startup OTP sweep error:", err.message);
+  });
+  
+  setInterval(() => {
+    sweepExpiredReservations().catch(err => {
+      console.error("Periodic reservation sweep error:", err.message);
+    });
+    sweepExpiredOtps().catch(err => {
+      console.error("Periodic OTP sweep error:", err.message);
+    });
+  }, 60 * 1000);
+}
+
+if (process.env.NODE_ENV !== 'test' && require.main === module) {
   app.listen(PORT, () => {
-    console.log(`Suko backend server running on port ${PORT}`);
+    console.log(`✨ SUKO Atelier Backend running on port ${PORT}`);
   });
 }
 

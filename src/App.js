@@ -23,16 +23,22 @@ const NewIn = lazy(() => import("./pages/NewIn"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail"));
 const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
+const Shipping = lazy(() => import("./pages/Shipping"));
+const Returns = lazy(() => import("./pages/Returns"));
+const SizeGuide = lazy(() => import("./pages/SizeGuide"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const Terms = lazy(() => import("./pages/Terms"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Orders = lazy(() => import("./pages/Orders"));
 const Account = lazy(() => import("./pages/Account"));
 const Wishlist = lazy(() => import("./pages/Wishlist"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const PageLoader = () => (
-  <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#0A0A0C] flex items-center justify-center">
-    <div className="w-8 h-8 border-2 border-[#111113] dark:border-white border-t-transparent animate-spin rounded-full" />
+  <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
+    <div className="w-8 h-8 border-2 border-[#111113] border-t-transparent animate-spin rounded-full" />
   </div>
 );
 
@@ -90,11 +96,20 @@ const AnimatedRoutes = () => {
           <Route path="/wishlist" element={<PageWrapper><Wishlist /></PageWrapper>} />
           <Route path="/about" element={<PageWrapper><About /></PageWrapper>} />
           <Route path="/contact" element={<PageWrapper><Contact /></PageWrapper>} />
+          <Route path="/shipping" element={<PageWrapper><Shipping /></PageWrapper>} />
+          <Route path="/returns" element={<PageWrapper><Returns /></PageWrapper>} />
+          <Route path="/returns-exchanges" element={<PageWrapper><Returns /></PageWrapper>} />
+          <Route path="/size-guide" element={<PageWrapper><SizeGuide /></PageWrapper>} />
+          <Route path="/privacy" element={<PageWrapper><PrivacyPolicy /></PageWrapper>} />
+          <Route path="/privacy-policy" element={<PageWrapper><PrivacyPolicy /></PageWrapper>} />
+          <Route path="/terms" element={<PageWrapper><Terms /></PageWrapper>} />
+          <Route path="/terms-conditions" element={<PageWrapper><Terms /></PageWrapper>} />
           <Route path="/checkout" element={<PageWrapper><Checkout /></PageWrapper>} />
           <Route path="/auth" element={<PageWrapper><Auth /></PageWrapper>} />
           <Route path="/admin" element={<PageWrapper><Admin /></PageWrapper>} />
           <Route path="/orders" element={<PageWrapper><Orders /></PageWrapper>} />
           <Route path="/account" element={<PageWrapper><Account /></PageWrapper>} />
+          <Route path="*" element={<PageWrapper><NotFound /></PageWrapper>} />
         </Routes>
       </Suspense>
     </AnimatePresence>
@@ -133,18 +148,6 @@ function LayoutContent() {
 }
 
 function App() {
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "Backspace" || e.keyCode === 8) {
-        if (e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
-          e.preventDefault();
-        }
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
   return (
     <ReactLenis root options={{ lerp: 0.08, smoothWheel: true }}>
       <div className="App relative min-h-screen">

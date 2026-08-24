@@ -89,10 +89,10 @@ const Footer = () => {
             </button>
             {openMobileAccordion === "care" && (
               <ul className="mt-3 space-y-2 text-[13px] text-[#A8A8B4] font-light pl-1">
-                <li><Link to="/contact" className="hover:text-white block py-0.5">Shipping</Link></li>
-                <li><Link to="/contact" className="hover:text-white block py-0.5">Returns &amp; Exchanges</Link></li>
-                <li><Link to="/contact" className="hover:text-white block py-0.5">Contact</Link></li>
-                <li><Link to="/contact" className="hover:text-white block py-0.5">Size Guide</Link></li>
+                <li><Link to="/contact" className="hover:text-white block py-0.5">Customer Care &amp; Concierge</Link></li>
+                <li><Link to="/shipping" className="hover:text-white block py-0.5">Shipping &amp; Delivery</Link></li>
+                <li><Link to="/returns" className="hover:text-white block py-0.5">Returns &amp; Exchanges</Link></li>
+                <li><Link to="/size-guide" className="hover:text-white block py-0.5">Size Guide</Link></li>
                 <li>
                   <a href="https://wa.me/917666168147" target="_blank" rel="noopener noreferrer" className="hover:text-white flex items-center gap-1.5 text-[#C2922E] py-0.5">
                     <MessageCircle size={13} /> Concierge (+91 76661 68147)
@@ -102,7 +102,26 @@ const Footer = () => {
             )}
           </div>
 
-          {/* Mobile Accordion 3: CONNECT */}
+          {/* Mobile Accordion 3: THE ATELIER & HERITAGE */}
+          <div className="py-3.5">
+            <button
+              type="button"
+              onClick={() => toggleAccordion("atelier")}
+              className="w-full flex items-center justify-between text-[11px] uppercase tracking-[0.26em] font-medium text-white text-left"
+            >
+              <span>THE HOUSE</span>
+              {openMobileAccordion === "atelier" ? <Minus size={14} className="text-[#C2922E]" /> : <Plus size={14} className="text-white/60" />}
+            </button>
+            {openMobileAccordion === "atelier" && (
+              <ul className="mt-3 space-y-2 text-[13px] text-[#A8A8B4] font-light pl-1">
+                <li><Link to="/about" className="hover:text-white block py-0.5">The Atelier &amp; Heritage</Link></li>
+                <li><Link to="/privacy-policy" className="hover:text-white block py-0.5">Privacy Policy</Link></li>
+                <li><Link to="/terms-conditions" className="hover:text-white block py-0.5">Terms &amp; Conditions</Link></li>
+              </ul>
+            )}
+          </div>
+
+          {/* Mobile Accordion 4: CONNECT */}
           <div className="py-3.5">
             <button
               type="button"
@@ -127,8 +146,8 @@ const Footer = () => {
 
         </div>
 
-        {/* Desktop 3-Column Directory (>= md) */}
-        <div className="hidden md:grid grid-cols-3 gap-8 lg:gap-16 max-w-[1500px]">
+        {/* Desktop 4-Column Directory (>= md) */}
+        <div className="hidden md:grid grid-cols-4 gap-8 lg:gap-14 max-w-[1500px]">
           
           {/* Column 1: SHOP */}
           <div>
@@ -148,10 +167,10 @@ const Footer = () => {
               CUSTOMER CARE
             </h4>
             <ul className="space-y-2.5 text-[13px] sm:text-[13.5px] text-[#A8A8B4] font-normal tracking-normal">
-              <li><Link to="/contact" className="hover:text-white transition-colors">Shipping</Link></li>
-              <li><Link to="/contact" className="hover:text-white transition-colors">Returns &amp; Exchanges</Link></li>
-              <li><Link to="/contact" className="hover:text-white transition-colors">Contact</Link></li>
-              <li><Link to="/contact" className="hover:text-white transition-colors">Size Guide</Link></li>
+              <li><Link to="/contact" className="hover:text-white transition-colors">Customer Care &amp; Concierge</Link></li>
+              <li><Link to="/shipping" className="hover:text-white transition-colors">Shipping &amp; Delivery</Link></li>
+              <li><Link to="/returns" className="hover:text-white transition-colors">Returns &amp; Exchanges</Link></li>
+              <li><Link to="/size-guide" className="hover:text-white transition-colors">Size Guide</Link></li>
               <li>
                 <a
                   href="https://wa.me/917666168147"
@@ -165,7 +184,19 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Column 3: CONNECT */}
+          {/* Column 3: THE HOUSE */}
+          <div>
+            <h4 className="font-body text-[10.5px] sm:text-[11px] uppercase tracking-[0.26em] font-semibold text-white mb-3.5">
+              THE HOUSE
+            </h4>
+            <ul className="space-y-2.5 text-[13px] sm:text-[13.5px] text-[#A8A8B4] font-normal tracking-normal">
+              <li><Link to="/about" className="hover:text-white transition-colors">The Atelier &amp; Heritage</Link></li>
+              <li><Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms-conditions" className="hover:text-white transition-colors">Terms &amp; Conditions</Link></li>
+            </ul>
+          </div>
+
+          {/* Column 4: CONNECT */}
           <div>
             <h4 className="font-body text-[10.5px] sm:text-[11px] uppercase tracking-[0.26em] font-semibold text-white mb-3.5">
               CONNECT
