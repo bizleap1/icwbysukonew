@@ -80,7 +80,7 @@ app.get('/health/email-test', async (req, res) => {
       results.steps.push('Resend client created');
       
       const { data, error } = await resend.emails.send({
-        from: 'SUKO Test <onboarding@resend.dev>',
+        from: process.env.RESEND_FROM_EMAIL || 'SUKO Test <noreply@indiancorporatewear.com>',
         to: process.env.SMTP_EMAIL || 'bizleap1@gmail.com',
         subject: 'Render Email Test (Resend) - ' + new Date().toISOString(),
         text: 'This email was sent from Render server via Resend API to test email delivery.'

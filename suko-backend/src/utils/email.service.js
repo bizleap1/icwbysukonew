@@ -5,7 +5,7 @@ const { generateInvoicePDF } = require('./pdfGenerator');
 const resendApiKey = (process.env.RESEND_API_KEY || '').trim();
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
-const SENDER_EMAIL = process.env.RESEND_FROM_EMAIL || 'ICW by Suko <onboarding@resend.dev>';
+const SENDER_EMAIL = process.env.RESEND_FROM_EMAIL || 'ICW by Suko <noreply@indiancorporatewear.com>';
 
 console.log(`📧 Email Provider: Resend HTTPS API (Sender: "${SENDER_EMAIL}")`);
 
