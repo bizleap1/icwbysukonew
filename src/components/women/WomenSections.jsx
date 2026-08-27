@@ -195,7 +195,7 @@ export const WomenSignatureEdit = () => {
       tag: "Sculptural Flared Set",
       price: "₹76,000",
       desc: "Longline single-breasted blazer paired with high-rise flared trousers.",
-      image: "/products/dusty-rose-sculpted-flare-suit/1.JPG",
+      image: "/products/dusty-rose-sculpted-flare-suit/1.png",
       link: "/product/the-dusty-rose-flare-suit"
     },
     {

@@ -165,13 +165,13 @@ export const PRODUCTS = [
       care: "Follow the garment care label instructions."
     },
     images: [
-      "/products/dusty-rose-sculpted-flare-suit/1.JPG",
+      "/products/dusty-rose-sculpted-flare-suit/1.png",
       "/products/dusty-rose-sculpted-flare-suit/2.png",
       "/products/dusty-rose-sculpted-flare-suit/3.png",
-      "/products/dusty-rose-sculpted-flare-suit/4.JPG",
-      "/products/dusty-rose-sculpted-flare-suit/5.JPG",
-      "/products/dusty-rose-sculpted-flare-suit/6.JPG",
-      "/products/dusty-rose-sculpted-flare-suit/7.JPG"
+      "/products/dusty-rose-sculpted-flare-suit/4.png",
+      "/products/dusty-rose-sculpted-flare-suit/5.png",
+      "/products/dusty-rose-sculpted-flare-suit/6.png",
+      "/products/dusty-rose-sculpted-flare-suit/7.png"
     ],
     badge: "New Season",
     isNew: true
@@ -343,7 +343,7 @@ export const getProductsByGender = (gender) => PRODUCTS.filter((p) => p.gender =
 export const LOOKBOOK = [
   { id: 1, title: "Chapter I — The Boardroom", season: "Autumn / Winter 26", image: "/products/the-noir-tailored-suit/1.JPG" },
   { id: 2, title: "Chapter II — After Eight", season: "Evening Edit", image: "/products/the-plum-sculpted-suit/1.JPG" },
-  { id: 3, title: "Chapter III — The City", season: "Capsule 04", image: "/products/dusty-rose-sculpted-flare-suit/1.JPG" },
+  { id: 3, title: "Chapter III — The City", season: "Capsule 04", image: "/products/dusty-rose-sculpted-flare-suit/1.png" },
   { id: 4, title: "Chapter IV — Private Hours", season: "Limited", image: "/products/midnight-peplum-fishtail-set/1.JPG" },
 ];
 

@@ -30,7 +30,7 @@ const CURATED_SETS = [
     tag: "Flared 2-Piece Suit",
     price: "₹76,000",
     desc: "Longline single-breasted blazer paired with exaggerated sculptural flared trousers.",
-    image: "/products/dusty-rose-sculpted-flare-suit/1.JPG",
+    image: "/products/dusty-rose-sculpted-flare-suit/1.png",
     link: "/product/the-dusty-rose-flare-suit"
   },
   {
@@ -98,7 +98,7 @@ const SHOP_BY_COLLECTION_TILES = [
     id: "shop-sculpted-flare",
     title: "THE SCULPTED FLARE",
     sub: "Fluid Proportions",
-    image: "/products/dusty-rose-sculpted-flare-suit/1.JPG",
+    image: "/products/dusty-rose-sculpted-flare-suit/1.png",
     link: "/new-in?category=suits&gender=women"
   },
   {
@@ -438,7 +438,7 @@ const Collection = () => {
             {/* Editorial Image */}
             <div className="lg:col-span-7 relative h-[52vh] sm:h-[58vh] lg:h-auto lg:aspect-[16/10] overflow-hidden bg-[#151518] order-2 lg:order-2 mt-2 sm:mt-0">
               <img
-                src="/products/dusty-rose-sculpted-flare-suit/1.JPG"
+                src="/products/dusty-rose-sculpted-flare-suit/1.png"
                 alt="The Atelier Edit"
                 loading="lazy"
                 className="w-full h-full object-cover object-[50%_25%] transition-transform duration-700 ease-out hover:scale-[1.02]"

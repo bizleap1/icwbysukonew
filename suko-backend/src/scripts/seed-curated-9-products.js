@@ -91,15 +91,15 @@ const CURATED_9_PRODUCTS = [
     sizes: ["XS", "S", "M", "L", "XL"],
     size_stock: { "XS": 5, "S": 10, "M": 15, "L": 5, "XL": 5 },
     description: "A coordinated two-piece suit featuring a longline single-breasted blazer with a defined notch lapel, tailored waist and single-button closure, paired with matching high-rise trousers finished with an exaggerated sculptural flare.",
-    image_url: "/products/dusty-rose-sculpted-flare-suit/1.JPG",
+    image_url: "/products/dusty-rose-sculpted-flare-suit/1.png",
     images: [
-      "/products/dusty-rose-sculpted-flare-suit/1.JPG",
+      "/products/dusty-rose-sculpted-flare-suit/1.png",
       "/products/dusty-rose-sculpted-flare-suit/2.png",
       "/products/dusty-rose-sculpted-flare-suit/3.png",
-      "/products/dusty-rose-sculpted-flare-suit/4.JPG",
-      "/products/dusty-rose-sculpted-flare-suit/5.JPG",
-      "/products/dusty-rose-sculpted-flare-suit/6.JPG",
-      "/products/dusty-rose-sculpted-flare-suit/7.JPG"
+      "/products/dusty-rose-sculpted-flare-suit/4.png",
+      "/products/dusty-rose-sculpted-flare-suit/5.png",
+      "/products/dusty-rose-sculpted-flare-suit/6.png",
+      "/products/dusty-rose-sculpted-flare-suit/7.png"
     ]
   },
   {
