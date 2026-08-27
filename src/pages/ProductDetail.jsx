@@ -52,20 +52,17 @@ const ProductDetail = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Lock body scroll and pause Lenis when Expanded Mode is open
+  // Lock background body scroll when Expanded Mode is open
   useEffect(() => {
     if (isExpandedMode) {
       document.body.style.overflow = "hidden";
-      lenis?.stop();
     } else {
       document.body.style.overflow = "";
-      lenis?.start();
     }
     return () => {
       document.body.style.overflow = "";
-      lenis?.start();
     };
-  }, [isExpandedMode, lenis]);
+  }, [isExpandedMode]);
 
   if (loading) {
     return (

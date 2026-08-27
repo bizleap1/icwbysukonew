@@ -20,15 +20,13 @@ export const ExpandedGalleryModal = ({
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    // Auto-scroll to the clicked image
+    // Auto-scroll to the clicked image inside the modal container
     const timer = setTimeout(() => {
-      if (imageRefs.current[activeImage]) {
-        imageRefs.current[activeImage].scrollIntoView({
-          behavior: "auto",
-          block: "start"
-        });
+      const targetEl = imageRefs.current[activeImage];
+      if (targetEl && containerRef.current) {
+        containerRef.current.scrollTop = targetEl.offsetTop;
       }
-    }, 40);
+    }, 50);
 
     return () => {
       document.body.style.overflow = originalOverflow;
@@ -55,8 +53,13 @@ export const ExpandedGalleryModal = ({
   return createPortal(
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[99999] bg-[#FFFFFF] overflow-y-auto overflow-x-hidden font-body text-[#121215] selection:bg-[#C2922E] selection:text-white"
-      style={{ WebkitOverflowScrolling: "touch" }}
+      data-lenis-prevent="true"
+      data-lenis-prevent-wheel="true"
+      data-lenis-prevent-touch="true"
+      onWheel={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
+      className="fixed inset-0 z-[99999] bg-[#FFFFFF] w-full h-full min-h-screen overflow-y-scroll overflow-x-hidden font-body text-[#121215] selection:bg-[#C2922E] selection:text-white"
+      style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}
     >
       {/* Floating Top-Right Close Button (matches reference design) */}
       <button
