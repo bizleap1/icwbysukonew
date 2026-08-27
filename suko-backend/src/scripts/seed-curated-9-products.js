@@ -51,15 +51,15 @@ const CURATED_9_PRODUCTS = [
     sizes: ["XS", "S", "M", "L", "XL"],
     size_stock: { "XS": 5, "S": 10, "M": 10, "L": 5, "XL": 5 },
     description: "A coordinated two-piece set featuring a sleeveless structured vest with layered draped lapels, an asymmetric front panel and a single gold-tone button detail, paired with a matching tailored mini skirt.",
-    image_url: "/products/aubergine-draped-vest-mini-set/1.JPG",
+    image_url: "/products/aubergine-draped-vest-mini-set/1.png",
     images: [
-      "/products/aubergine-draped-vest-mini-set/1.JPG",
+      "/products/aubergine-draped-vest-mini-set/1.png",
       "/products/aubergine-draped-vest-mini-set/2.png",
       "/products/aubergine-draped-vest-mini-set/3.png",
-      "/products/aubergine-draped-vest-mini-set/4.JPG",
-      "/products/aubergine-draped-vest-mini-set/5.JPG",
-      "/products/aubergine-draped-vest-mini-set/6.JPG",
-      "/products/aubergine-draped-vest-mini-set/7.JPG"
+      "/products/aubergine-draped-vest-mini-set/4.png",
+      "/products/aubergine-draped-vest-mini-set/5.png",
+      "/products/aubergine-draped-vest-mini-set/6.png",
+      "/products/aubergine-draped-vest-mini-set/7.png"
     ]
   },
   {

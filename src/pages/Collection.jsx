@@ -112,7 +112,7 @@ const SHOP_BY_COLLECTION_TILES = [
     id: "shop-draped-mini",
     title: "THE DRAPED ATELIER",
     sub: "Contemporary Sets",
-    image: "/products/aubergine-draped-vest-mini-set/1.JPG",
+    image: "/products/aubergine-draped-vest-mini-set/1.png",
     link: "/new-in?category=suits&gender=women"
   }
 ];

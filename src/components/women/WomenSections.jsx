@@ -203,7 +203,7 @@ export const WomenSignatureEdit = () => {
       tag: "Executive Co-ord Set",
       price: "₹68,000",
       desc: "Asymmetric draped vest paired with coordinated tailored mini skirt.",
-      image: "/products/aubergine-draped-vest-mini-set/1.JPG",
+      image: "/products/aubergine-draped-vest-mini-set/1.png",
       link: "/product/the-aubergine-draped-set"
     },
     {

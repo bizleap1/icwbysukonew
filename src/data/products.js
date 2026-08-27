@@ -103,13 +103,13 @@ export const PRODUCTS = [
       care: "Follow the garment care label instructions."
     },
     images: [
-      "/products/aubergine-draped-vest-mini-set/1.JPG",
+      "/products/aubergine-draped-vest-mini-set/1.png",
       "/products/aubergine-draped-vest-mini-set/2.png",
       "/products/aubergine-draped-vest-mini-set/3.png",
-      "/products/aubergine-draped-vest-mini-set/4.JPG",
-      "/products/aubergine-draped-vest-mini-set/5.JPG",
-      "/products/aubergine-draped-vest-mini-set/6.JPG",
-      "/products/aubergine-draped-vest-mini-set/7.JPG"
+      "/products/aubergine-draped-vest-mini-set/4.png",
+      "/products/aubergine-draped-vest-mini-set/5.png",
+      "/products/aubergine-draped-vest-mini-set/6.png",
+      "/products/aubergine-draped-vest-mini-set/7.png"
     ],
     badge: "New Season",
     isNew: true
