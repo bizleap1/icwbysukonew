@@ -48,7 +48,7 @@ const CURATED_SETS = [
     tag: "Single-Breasted 2-Piece Suit",
     price: "₹82,000",
     desc: "Sharp notch-lapel tailored blazer paired with coordinated straight-leg trousers in deep aubergine.",
-    image: "/products/aubergine-tailored-power-suit/1.JPG",
+    image: "/products/aubergine-tailored-power-suit/1.png",
     link: "/product/the-aubergine-tailored-suit"
   }
 ];

@@ -134,13 +134,13 @@ export const PRODUCTS = [
       care: "Follow the garment care label instructions."
     },
     images: [
-      "/products/aubergine-tailored-power-suit/1.JPG",
+      "/products/aubergine-tailored-power-suit/1.png",
       "/products/aubergine-tailored-power-suit/2.png",
       "/products/aubergine-tailored-power-suit/3.png",
-      "/products/aubergine-tailored-power-suit/4.JPG",
-      "/products/aubergine-tailored-power-suit/5.JPG",
-      "/products/aubergine-tailored-power-suit/6.JPG",
-      "/products/aubergine-tailored-power-suit/7.JPG"
+      "/products/aubergine-tailored-power-suit/4.png",
+      "/products/aubergine-tailored-power-suit/5.png",
+      "/products/aubergine-tailored-power-suit/6.png",
+      "/products/aubergine-tailored-power-suit/7.png"
     ],
     badge: "Signature",
     isNew: true

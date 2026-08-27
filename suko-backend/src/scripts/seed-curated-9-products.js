@@ -71,15 +71,15 @@ const CURATED_9_PRODUCTS = [
     sizes: ["XS", "S", "M", "L", "XL"],
     size_stock: { "XS": 5, "S": 15, "M": 15, "L": 5, "XL": 5 },
     description: "A coordinated two-piece suit featuring a tailored single-button blazer with a soft shawl-style lapel, structured shoulders, front pockets and buttoned cuffs, paired with matching wide-leg trousers.",
-    image_url: "/products/aubergine-tailored-power-suit/1.JPG",
+    image_url: "/products/aubergine-tailored-power-suit/1.png",
     images: [
-      "/products/aubergine-tailored-power-suit/1.JPG",
+      "/products/aubergine-tailored-power-suit/1.png",
       "/products/aubergine-tailored-power-suit/2.png",
       "/products/aubergine-tailored-power-suit/3.png",
-      "/products/aubergine-tailored-power-suit/4.JPG",
-      "/products/aubergine-tailored-power-suit/5.JPG",
-      "/products/aubergine-tailored-power-suit/6.JPG",
-      "/products/aubergine-tailored-power-suit/7.JPG"
+      "/products/aubergine-tailored-power-suit/4.png",
+      "/products/aubergine-tailored-power-suit/5.png",
+      "/products/aubergine-tailored-power-suit/6.png",
+      "/products/aubergine-tailored-power-suit/7.png"
     ]
   },
   {
