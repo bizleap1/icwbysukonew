@@ -108,8 +108,7 @@ export const PRODUCTS = [
       "/products/aubergine-draped-vest-mini-set/3.png",
       "/products/aubergine-draped-vest-mini-set/4.png",
       "/products/aubergine-draped-vest-mini-set/5.png",
-      "/products/aubergine-draped-vest-mini-set/6.png",
-      "/products/aubergine-draped-vest-mini-set/7.png"
+      "/products/aubergine-draped-vest-mini-set/6.png"
     ],
     badge: "New Season",
     isNew: true
