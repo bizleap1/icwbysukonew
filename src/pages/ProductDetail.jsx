@@ -224,7 +224,13 @@ const ProductDetail = () => {
               <button
                 key={idx}
                 type="button"
-                onClick={() => setActiveImage(idx)}
+                onClick={() => {
+                  if (activeImage === idx) {
+                    setIsExpandedMode(true);
+                  } else {
+                    setActiveImage(idx);
+                  }
+                }}
                 className={`relative aspect-[3/4] w-full overflow-hidden bg-[#F2ECE1] transition-all duration-200 cursor-pointer ${
                   activeImage === idx
                     ? "border border-[#111113] opacity-100 ring-1 ring-[#111113]"
@@ -280,6 +286,15 @@ const ProductDetail = () => {
             >
               <ChevronRight size={28} strokeWidth={1.2} />
             </button>
+
+            {/* Floating Expand Icon on Desktop Hover */}
+            <div 
+              onClick={() => setIsExpandedMode(true)}
+              className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-white/80 hover:bg-white text-[#111113] shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer backdrop-blur-sm"
+              title="Expand Lookbook"
+            >
+              <Maximize2 size={15} />
+            </div>
 
           </div>
 
