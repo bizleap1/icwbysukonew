@@ -172,9 +172,6 @@ const ProductDetail = () => {
               <Maximize2 size={13} />
             </div>
 
-            <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white font-mono rounded-full">
-              {activeImage + 1} / {galleryImages.length}
-            </div>
 
             {galleryImages.length > 1 && (
               <>
@@ -284,9 +281,6 @@ const ProductDetail = () => {
               <ChevronRight size={28} strokeWidth={1.2} />
             </button>
 
-            <div className="absolute bottom-4 right-4 bg-black/40 backdrop-blur-md px-2.5 py-1 text-[9.5px] uppercase tracking-[0.2em] text-white/90 font-mono">
-              {activeImage + 1} / {galleryImages.length}
-            </div>
           </div>
 
           {/* 3. Product Info & Actions Panel */}
