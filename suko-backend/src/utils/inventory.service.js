@@ -17,7 +17,7 @@ async function releaseOrderReservation(orderId, reason = ORDER_STATUS.EXPIRED, c
     const claimResult = await tx.order.updateMany({
       where: {
         id: parseInt(orderId),
-        reservation_status: RESERVATION_STATUS.RESERVED,
+        reservation_status: { in: [RESERVATION_STATUS.RESERVED, RESERVATION_STATUS.FINALIZED] },
         inventory_released_at: null
       },
       data: {

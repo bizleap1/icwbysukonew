@@ -2,36 +2,49 @@ const prisma = require('../prisma/client');
 const { ORDER_STATUS } = require('../utils/orderStateMachine');
 
 /**
- * Calculates authoritative dashboard metrics directly from the live database.
- * Revenue is strictly computed from paid/captured/delivered orders only.
+ * Calculates authoritative dashboard metrics directly from the live database using SQL aggregates.
+ * Revenue is strictly computed from paid/captured/delivered orders only via DB _sum.
  */
 async function getStats(req, res) {
   try {
-    const totalUsers = await prisma.user.count();
-    const totalProducts = await prisma.product.count();
-    const totalOrders = await prisma.order.count();
-    
-    // Revenue is strictly computed from valid paid/captured orders, never from pending, expired or cancelled
-    const paidOrders = await prisma.order.findMany({
-      where: {
-        status: {
-          in: [
-            ORDER_STATUS.PAID,
-            ORDER_STATUS.PROCESSING,
-            ORDER_STATUS.SHIPPED,
-            ORDER_STATUS.DELIVERED
-          ]
-        }
-      },
-      select: { total: true }
-    });
+    const PAID_STATUSES = [
+      ORDER_STATUS.PAID,
+      ORDER_STATUS.PROCESSING,
+      ORDER_STATUS.SHIPPED,
+      ORDER_STATUS.DELIVERED
+    ];
 
-    const totalRevenue = paidOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+    const [
+      totalUsers,
+      totalProducts,
+      totalOrders,
+      revenueAggregate,
+      statusBreakdown
+    ] = await Promise.all([
+      prisma.user.count(),
+      prisma.product.count(),
+      prisma.order.count(),
+      prisma.order.aggregate({
+        _sum: { total: true },
+        where: { status: { in: PAID_STATUSES } }
+      }),
+      prisma.order.groupBy({
+        by: ['status'],
+        _count: { id: true }
+      })
+    ]);
 
-    const paidOrdersCount = paidOrders.length;
-    const pendingOrdersCount = await prisma.order.count({ where: { status: ORDER_STATUS.PAYMENT_PENDING } });
-    const cancelRequestedCount = await prisma.order.count({ where: { status: ORDER_STATUS.CANCEL_REQUESTED } });
-    const cancelledOrdersCount = await prisma.order.count({ where: { status: ORDER_STATUS.CANCELLED } });
+    const totalRevenue = Number(revenueAggregate._sum.total || 0);
+
+    const countsByStatus = {};
+    for (const item of statusBreakdown) {
+      countsByStatus[item.status] = item._count.id;
+    }
+
+    const paidCount = PAID_STATUSES.reduce((acc, st) => acc + (countsByStatus[st] || 0), 0);
+    const pendingOrdersCount = countsByStatus[ORDER_STATUS.PAYMENT_PENDING] || 0;
+    const cancelRequestedCount = countsByStatus[ORDER_STATUS.CANCEL_REQUESTED] || 0;
+    const cancelledOrdersCount = countsByStatus[ORDER_STATUS.CANCELLED] || 0;
 
     res.json({
       totalUsers,
@@ -39,7 +52,7 @@ async function getStats(req, res) {
       totalOrders,
       totalRevenue,
       breakdown: {
-        paid: paidOrdersCount,
+        paid: paidCount,
         pending: pendingOrdersCount,
         cancel_requested: cancelRequestedCount,
         cancelled: cancelledOrdersCount

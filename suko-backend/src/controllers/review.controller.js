@@ -25,22 +25,83 @@ async function getProductReviews(req, res) {
   }
 }
 
-// Add a review for a product
+const { ORDER_STATUS } = require('../utils/orderStateMachine');
+
+// Add a review for a product (Verified purchase only)
 async function addReview(req, res) {
   try {
     const { product_id, rating, comment } = req.body;
     const userId = req.user.userId;
 
-    if (!product_id || !comment) {
-      return res.status(400).json({ error: 'product_id and comment are required' });
+    // 1. Strict Rating Validation
+    if (rating === undefined || rating === null) {
+      return res.status(400).json({ error: 'Rating is required.' });
+    }
+    if (typeof rating !== 'number' || !Number.isInteger(rating) || Number.isNaN(rating)) {
+      return res.status(400).json({ error: 'Rating must be an integer between 1 and 5.' });
+    }
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Rating must be between 1 and 5.' });
+    }
+
+    // 2. Product ID and Comment validation
+    const productId = parseInt(product_id, 10);
+    if (isNaN(productId) || productId <= 0) {
+      return res.status(400).json({ error: 'Valid product_id is required.' });
+    }
+
+    if (!comment || typeof comment !== 'string' || !comment.trim()) {
+      return res.status(400).json({ error: 'Comment is required.' });
+    }
+    const cleanComment = comment.trim();
+    if (cleanComment.length > 2000) {
+      return res.status(400).json({ error: 'Review comment exceeds maximum allowed limit of 2000 characters.' });
+    }
+
+    // 3. Ensure product exists
+    const product = await prisma.product.findUnique({ where: { id: productId } });
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found.' });
+    }
+
+    // 4. Verified Purchase Check: User must have a paid/completed order containing this product
+    const verifiedPurchase = await prisma.order.findFirst({
+      where: {
+        user_id: userId,
+        status: {
+          in: [
+            ORDER_STATUS.PAID,
+            ORDER_STATUS.PROCESSING,
+            ORDER_STATUS.SHIPPED,
+            ORDER_STATUS.DELIVERED
+          ]
+        },
+        items: {
+          some: { product_id: productId }
+        }
+      }
+    });
+
+    if (!verifiedPurchase) {
+      return res.status(403).json({
+        error: 'Verified purchase required. You can only review products that you have purchased and paid for.'
+      });
+    }
+
+    // 5. Prevent duplicate reviews for the same product by the same user
+    const existingReview = await prisma.review.findFirst({
+      where: { user_id: userId, product_id: productId }
+    });
+    if (existingReview) {
+      return res.status(400).json({ error: 'You have already submitted a review for this product.' });
     }
 
     const review = await prisma.review.create({
       data: {
         user_id: userId,
-        product_id: parseInt(product_id),
-        rating: rating ? parseInt(rating) : 5,
-        comment
+        product_id: productId,
+        rating,
+        comment: cleanComment
       },
       include: { user: { select: { name: true, email: true } } }
     });

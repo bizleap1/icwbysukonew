@@ -44,11 +44,41 @@ async function getAllProducts(req, res) {
     if (sort === 'low') orderBy = { price: 'asc' };
     else if (sort === 'high') orderBy = { price: 'desc' };
 
-    const products = await prisma.product.findMany({
-      where,
-      include: { category: true },
-      orderBy
-    });
+    // 1. Pagination Parameters
+    const isExplicitPagination = req.query.page !== undefined || req.query.limit !== undefined;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 24));
+    const skip = (page - 1) * limit;
+
+    // 2. Query Total and Paginated Products
+    const [total, products] = await Promise.all([
+      prisma.product.count({ where }),
+      prisma.product.findMany({
+        where,
+        include: { category: true },
+        orderBy,
+        skip,
+        take: limit
+      })
+    ]);
+
+    const totalPages = Math.ceil(total / limit) || 1;
+
+    res.set('X-Total-Count', String(total));
+    res.set('X-Total-Pages', String(totalPages));
+    res.set('X-Current-Page', String(page));
+
+    if (isExplicitPagination) {
+      return res.json({
+        products,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages
+        }
+      });
+    }
 
     res.json(products);
   } catch (err) {

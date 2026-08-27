@@ -22,9 +22,10 @@ export const ProductProvider = ({ children }) => {
 
       if (prodRes.ok) {
         const rawProducts = await prodRes.json();
+        const productsList = Array.isArray(rawProducts) ? rawProducts : (rawProducts?.products || []);
         const rawCategories = catRes.ok ? await catRes.json() : [];
 
-        if (Array.isArray(rawProducts) && rawProducts.length > 0) {
+        if (Array.isArray(productsList) && productsList.length > 0) {
           // Map categories
           const mappedCategories = rawCategories.map(c => ({
             ...c,
@@ -33,7 +34,7 @@ export const ProductProvider = ({ children }) => {
           }));
 
           // Merge live backend products with curated defaults
-          const mappedProducts = rawProducts.map(bp => {
+          const mappedProducts = productsList.map(bp => {
             const prodNameLower = (bp.name || '').toLowerCase();
             const defaultMatch = DEFAULT_PRODUCTS.find(dp => 
               dp.id === bp.id || 

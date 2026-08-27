@@ -182,10 +182,14 @@ async function createOrder(req, res) {
     const productIds = [...new Set(checkoutItems.map(i => i.product_id))].sort((a, b) => a - b);
 
     const orderResult = await prisma.$transaction(async (tx) => {
-      // Fetch locked product records
-      const products = await Promise.all(
-        productIds.map(pId => tx.product.findUnique({ where: { id: pId } }))
-      );
+      // Explicit PostgreSQL row-level lock in deterministic ascending order to prevent deadlocks and race conditions
+      const products = await tx.$queryRaw`
+        SELECT id, name, price, stock, sizes, size_stock 
+        FROM "Product" 
+        WHERE id = ANY(${productIds}::int[]) 
+        ORDER BY id ASC 
+        FOR UPDATE
+      `;
 
       const productMap = new Map();
       for (const p of products) {
@@ -193,6 +197,10 @@ async function createOrder(req, res) {
           throw new Error('One or more selected items no longer exist in our catalog.');
         }
         productMap.set(p.id, p);
+      }
+
+      if (productMap.size !== productIds.length) {
+        throw new Error('One or more selected items could not be found or locked.');
       }
 
       // Validate Stock, Sizes, and Calculate Server-Side Subtotal
@@ -316,14 +324,21 @@ async function createOrder(req, res) {
           totalDeductQty += it.quantity;
           if (it.size && (product.sizes?.length > 0 || Object.keys(updatedSizeStock).length > 0)) {
             const currentSizeVal = parseInt(updatedSizeStock[it.size] || 0, 10);
-            updatedSizeStock[it.size] = Math.max(0, currentSizeVal - it.quantity);
+            if (currentSizeVal < it.quantity) {
+              throw new Error(`Insufficient stock for ${product.name} (Size: ${it.size}). Available: ${currentSizeVal}, requested: ${it.quantity}.`);
+            }
+            updatedSizeStock[it.size] = currentSizeVal - it.quantity;
           }
         }
 
         const hasSizeStock = Object.keys(updatedSizeStock).length > 0;
         const newOverallStock = hasSizeStock
           ? Object.values(updatedSizeStock).reduce((acc, val) => acc + (parseInt(val, 10) || 0), 0)
-          : Math.max(0, product.stock - totalDeductQty);
+          : (product.stock - totalDeductQty);
+
+        if (newOverallStock < 0) {
+          throw new Error(`Insufficient stock for ${product.name}. Stock cannot be negative.`);
+        }
 
         await tx.product.update({
           where: { id: pId },
@@ -450,8 +465,13 @@ async function requestOrderCancellation(req, res) {
 
     const statusBefore = order.status;
 
-    const updated = await prisma.order.update({
-      where: { id: orderId },
+    // Atomic conditional claim to prevent double-cancellation race condition
+    const claim = await prisma.order.updateMany({
+      where: {
+        id: orderId,
+        user_id: req.user.userId,
+        status: { in: [ORDER_STATUS.PAID, ORDER_STATUS.PROCESSING] }
+      },
       data: {
         status: ORDER_STATUS.CANCEL_REQUESTED,
         cancel_reason: reason || 'Customer requested cancellation via portal',
@@ -459,6 +479,13 @@ async function requestOrderCancellation(req, res) {
       }
     });
 
+    if (claim.count === 0) {
+      return res.status(400).json({
+        error: 'Order is no longer in a cancellable state or cancellation was already requested.'
+      });
+    }
+
+    const updated = await prisma.order.findUnique({ where: { id: orderId } });
     res.json({ message: 'Cancellation request submitted for admin review.', order: updated });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -530,6 +557,12 @@ async function updateOrderStatusAdmin(req, res) {
       return res.status(400).json({ error });
     }
 
+    if (status === ORDER_STATUS.CANCELLED) {
+      await releaseOrderReservation(orderId, ORDER_STATUS.CANCELLED).catch(err => {
+        console.warn(`Could not release stock on order #${orderId} cancellation:`, err.message);
+      });
+    }
+
     const updated = await prisma.order.update({
       where: { id: orderId },
       data: { status }
@@ -545,7 +578,8 @@ async function updateOrderStatusAdmin(req, res) {
 
 /**
  * Permanently deletes an order and its associated records (Admin only).
- * If the order holds active reserved stock, releases the reservation prior to deletion.
+ * Restricted to unpaid, cancelled, or expired draft orders.
+ * Historical paid/fulfilled orders are strictly protected from permanent deletion.
  */
 async function deleteOrderAdmin(req, res) {
   try {
@@ -560,6 +594,20 @@ async function deleteOrderAdmin(req, res) {
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found.' });
+    }
+
+    // Historical Orders Protection: Never permanently delete paid or fulfilled financial records
+    const PROTECTED_STATUSES = [
+      ORDER_STATUS.PAID,
+      ORDER_STATUS.PROCESSING,
+      ORDER_STATUS.SHIPPED,
+      ORDER_STATUS.DELIVERED
+    ];
+
+    if (PROTECTED_STATUSES.includes(order.status)) {
+      return res.status(400).json({ 
+        error: `Order #SUKO-${1000 + orderId} is in "${order.status}" status with confirmed financial/payment records. Historical paid orders cannot be permanently deleted.` 
+      });
     }
 
     // Release stock reservation if order was pending payment

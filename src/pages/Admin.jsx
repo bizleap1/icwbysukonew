@@ -533,7 +533,10 @@ const Admin = () => {
       ]);
 
       if (statsRes.ok) setStats(await statsRes.json());
-      if (prodRes.ok) setProducts(await prodRes.json());
+      if (prodRes.ok) {
+        const pData = await prodRes.json();
+        setProducts(Array.isArray(pData) ? pData : (pData?.products || []));
+      }
       if (ordRes.ok) setOrders(await ordRes.json());
       if (catRes.ok) setCategories(await catRes.json());
       if (couponRes.ok) setCouponsList(await couponRes.json());

@@ -1,47 +1,82 @@
 const prisma = require('../prisma/client');
 
-// Validate a coupon code at checkout
+// Validate a coupon code at checkout (Derives authoritative amount from database products if provided)
 async function validateCoupon(req, res) {
   try {
-    const { code, orderTotal } = req.body;
+    const { code, orderTotal, items, cart_item_ids } = req.body || {};
 
     if (!code || typeof code !== 'string' || code.trim() === '') {
       return res.status(400).json({ error: 'Coupon code is required' });
     }
 
+    const cleanCode = code.trim().toUpperCase();
     const coupon = await prisma.coupon.findUnique({
-      where: { code: code.trim().toUpperCase() }
+      where: { code: cleanCode }
     });
 
     if (!coupon || !coupon.is_active) {
       return res.status(404).json({ error: 'Invalid or expired coupon code' });
     }
 
-    const total = parseFloat(orderTotal || 0);
+    // Derive authoritative total from trusted database items if passed, otherwise sanitize orderTotal
+    let authoritativeTotal = 0;
+
+    if (Array.isArray(items) && items.length > 0) {
+      const pIds = [...new Set(items.map(i => parseInt(i.product_id || i.id, 10)).filter(id => !isNaN(id) && id > 0))];
+      if (pIds.length > 0) {
+        const dbProducts = await prisma.product.findMany({
+          where: { id: { in: pIds } },
+          select: { id: true, price: true }
+        });
+        const pMap = new Map(dbProducts.map(p => [p.id, parseFloat(p.price)]));
+        for (const item of items) {
+          const pId = parseInt(item.product_id || item.id, 10);
+          const qty = Math.max(1, parseInt(item.quantity || item.qty, 10) || 1);
+          const price = pMap.get(pId) || 0;
+          authoritativeTotal += price * qty;
+        }
+      }
+    } else if (Array.isArray(cart_item_ids) && cart_item_ids.length > 0) {
+      const cIds = cart_item_ids.map(id => parseInt(id, 10)).filter(id => !isNaN(id) && id > 0);
+      const cartItems = await prisma.cartItem.findMany({
+        where: { id: { in: cIds } },
+        include: { product: { select: { price: true } } }
+      });
+      for (const ci of cartItems) {
+        const price = parseFloat(ci.product?.price || 0);
+        authoritativeTotal += price * Math.max(1, ci.quantity);
+      }
+    } else {
+      const parsed = parseFloat(orderTotal);
+      authoritativeTotal = !isNaN(parsed) && parsed > 0 ? parsed : 0;
+    }
+
     const minOrderVal = parseFloat(coupon.min_order_value || 0);
 
-    if (total < minOrderVal) {
+    if (authoritativeTotal < minOrderVal) {
       return res.status(400).json({
-        error: `Minimum order total of ₹${minOrderVal} required for coupon ${coupon.code}`
+        error: `Minimum order total of ₹${minOrderVal} required for coupon ${coupon.code}. Current total: ₹${authoritativeTotal.toFixed(2)}`
       });
     }
 
     let discountAmount = 0;
     if (coupon.discount_percent) {
-      discountAmount = (total * coupon.discount_percent) / 100;
+      discountAmount = (authoritativeTotal * coupon.discount_percent) / 100;
     } else if (coupon.discount_flat) {
       discountAmount = parseFloat(coupon.discount_flat);
     }
 
-    // Ensure discount does not exceed order total
-    discountAmount = Math.min(discountAmount, total);
+    // Ensure discount does not exceed order total and cannot be negative
+    discountAmount = Math.max(0, Math.min(discountAmount, authoritativeTotal));
 
     res.json({
       valid: true,
       code: coupon.code,
       discount_percent: coupon.discount_percent,
       discount_flat: coupon.discount_flat,
-      discountAmount: Math.round(discountAmount * 100) / 100
+      discountAmount: Math.round(discountAmount * 100) / 100,
+      applicableTotal: Math.round(authoritativeTotal * 100) / 100,
+      finalTotal: Math.round(Math.max(0, authoritativeTotal - discountAmount) * 100) / 100
     });
   } catch (err) {
     console.error("Validate coupon error:", err);

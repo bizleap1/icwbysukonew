@@ -69,46 +69,8 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// Email Delivery Test Endpoint
-app.get('/health/email-test', async (req, res) => {
-  const results = { steps: [] };
-  try {
-    if (process.env.RESEND_API_KEY) {
-      const { Resend } = require('resend');
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      results.provider = 'Resend';
-      results.steps.push('Resend client created');
-      
-      const { data, error } = await resend.emails.send({
-        from: process.env.RESEND_FROM_EMAIL || 'SUKO Test <noreply@indiancorporatewear.com>',
-        to: process.env.SMTP_EMAIL || 'bizleap1@gmail.com',
-        subject: 'Render Email Test (Resend) - ' + new Date().toISOString(),
-        text: 'This email was sent from Render server via Resend API to test email delivery.'
-      });
-      
-      if (error) {
-        results.steps.push('FAILED: ' + error.message);
-        results.error = error.message;
-        results.success = false;
-        return res.status(500).json(results);
-      }
-      
-      results.steps.push('Email sent via Resend');
-      results.emailId = data?.id;
-      results.success = true;
-      res.json(results);
-    } else {
-      results.error = 'RESEND_API_KEY not configured';
-      results.success = false;
-      res.status(500).json(results);
-    }
-  } catch (err) {
-    results.steps.push('FAILED: ' + err.message);
-    results.error = err.message;
-    results.success = false;
-    res.status(500).json(results);
-  }
-});
+// Note: Root /health remains public for Render deploy health checks.
+// Email test functionality is strictly restricted to authenticated Admins under /api/admin/email-test.
 
 // Protected Test Route
 app.get('/api/protected-test', authMiddleware, (req, res) => {
@@ -132,17 +94,28 @@ app.use('/api/coupons', require('./routes/coupon.routes'));
 app.use('/api/reviews', require('./routes/review.routes'));
 app.use('/api/stock-notifications', require('./routes/stockNotification.routes'));
 
-// Admin Email Broadcast Endpoint
-const { adminOnly } = require('./middleware/auth.middleware');
-const { sendCustomAdminBroadcastEmail } = require('./utils/email.service');
-const prisma = require('./prisma/client');
+// Broadcast lock to prevent concurrent overlapping email broadcasts
+let isBroadcastingActive = false;
 
+// Admin Email Broadcast Endpoint with Batch Processing & Concurrency Protection
 app.post('/api/admin/send-email', authMiddleware, adminOnly, async (req, res) => {
   try {
     const { target, recipientEmail, subject, message } = req.body;
-    if (!message) return res.status(400).json({ error: 'Message body is required' });
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ error: 'Message body is required' });
+    }
+    const cleanSubject = (subject || 'Announcement from SUKO Atelier').trim();
+    const cleanMessage = message.trim();
+
+    if (cleanMessage.length > 10000) {
+      return res.status(400).json({ error: 'Message exceeds maximum length of 10000 characters' });
+    }
 
     if (target === 'all') {
+      if (isBroadcastingActive) {
+        return res.status(409).json({ error: 'Another email broadcast is currently in progress. Please wait for it to complete.' });
+      }
+
       const users = await prisma.user.findMany({ select: { email: true } });
       const emails = [...new Set(users.map(u => u.email).filter(Boolean))];
 
@@ -150,32 +123,128 @@ app.post('/api/admin/send-email', authMiddleware, adminOnly, async (req, res) =>
         return res.status(400).json({ error: 'No registered user emails found in database' });
       }
 
-      let sentCount = 0;
-      let failCount = 0;
+      isBroadcastingActive = true;
 
-      for (const email of emails) {
+      // For small lists (<= 5), process synchronously to return exact results;
+      // For larger lists, process in background chunks to prevent HTTP 504 gateway timeouts.
+      if (emails.length <= 5) {
+        let sentCount = 0;
+        let failCount = 0;
         try {
-          await sendCustomAdminBroadcastEmail(email, subject, message);
-          sentCount++;
-          await new Promise(r => setTimeout(r, 200));
-        } catch (err) {
-          console.error(`Broadcast failed for ${email}:`, err.message);
-          failCount++;
+          for (const email of emails) {
+            try {
+              await sendCustomAdminBroadcastEmail(email, cleanSubject, cleanMessage);
+              sentCount++;
+              await new Promise(r => setTimeout(r, 250));
+            } catch (err) {
+              console.error(`Broadcast error for ${email}:`, err.message);
+              failCount++;
+            }
+          }
+        } finally {
+          isBroadcastingActive = false;
         }
+
+        return res.json({ 
+          message: `Broadcast delivered: ${sentCount} successfully sent${failCount > 0 ? `, ${failCount} failed` : ''} (Total: ${emails.length} clients)` 
+        });
+      } else {
+        // Asynchronous chunked execution for large user bases
+        (async () => {
+          console.log(`🚀 [Admin Broadcast] Starting background broadcast to ${emails.length} recipients...`);
+          const BATCH_SIZE = 5;
+          let sent = 0;
+          let failed = 0;
+          try {
+            for (let i = 0; i < emails.length; i += BATCH_SIZE) {
+              const chunk = emails.slice(i, i + BATCH_SIZE);
+              await Promise.all(chunk.map(async (email) => {
+                try {
+                  await sendCustomAdminBroadcastEmail(email, cleanSubject, cleanMessage);
+                  sent++;
+                } catch (e) {
+                  console.error(`Broadcast failed for ${email}:`, e.message);
+                  failed++;
+                }
+              }));
+              await new Promise(r => setTimeout(r, 600)); // Respect Resend rate limits
+            }
+            console.log(`✅ [Admin Broadcast] Complete. Sent: ${sent}, Failed: ${failed}`);
+          } finally {
+            isBroadcastingActive = false;
+          }
+        })().catch(err => {
+          console.error("Background broadcast fatal error:", err);
+          isBroadcastingActive = false;
+        });
+
+        return res.status(202).json({
+          message: `Broadcast initiated for ${emails.length} recipients. Processing in background batches to prevent gateway timeout.`,
+          recipientCount: emails.length
+        });
       }
-      return res.json({ 
-        message: `Broadcast delivered: ${sentCount} successfully sent${failCount > 0 ? `, ${failCount} failed` : ''} (Total: ${emails.length} clients)` 
-      });
     } else {
       if (!recipientEmail || !recipientEmail.trim()) {
         return res.status(400).json({ error: 'Recipient email is required' });
       }
-      await sendCustomAdminBroadcastEmail(recipientEmail.trim(), subject, message);
+      await sendCustomAdminBroadcastEmail(recipientEmail.trim(), cleanSubject, cleanMessage);
       return res.json({ message: `Email delivered to ${recipientEmail.trim()}` });
     }
   } catch (err) {
     console.error("Admin send email error:", err.message);
     res.status(500).json({ error: 'Failed to send broadcast email' });
+  }
+});
+
+// Admin-Only Email Configuration Test Endpoint (Protected from public abuse)
+app.post('/api/admin/email-test', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    if (!process.env.RESEND_API_KEY) {
+      return res.status(500).json({ success: false, error: 'RESEND_API_KEY not configured on server' });
+    }
+    const { Resend } = require('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const targetEmail = req.body?.to || req.user?.email || 'bizleap1@gmail.com';
+
+    const { data, error } = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL || 'SUKO Test <noreply@indiancorporatewear.com>',
+      to: targetEmail,
+      subject: `Admin Gateway Email Test - ${new Date().toISOString()}`,
+      text: 'Verified test email from SUKO backend admin diagnostic service.'
+    });
+
+    if (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+
+    res.json({ success: true, emailId: data?.id, deliveredTo: targetEmail });
+  } catch (err) {
+    console.error("Admin email test error:", err.message);
+    res.status(500).json({ success: false, error: err.message });
+});
+
+// Secure Cron Trigger Endpoint for external schedulers (Render Cron Jobs, GitHub Actions, cron-job.org)
+app.post('/api/cron/sweep', async (req, res) => {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const secret = process.env.CRON_SECRET;
+
+  if (secret && token !== secret) {
+    return res.status(401).json({ error: 'Unauthorized cron request.' });
+  }
+
+  try {
+    const resSweep = await sweepExpiredReservations();
+    const otpSweep = await sweepExpiredOtps();
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      reservations: resSweep,
+      otps: otpSweep
+    });
+  } catch (err) {
+    console.error("Cron sweep error:", err.message);
+    res.status(500).json({ error: 'Sweep failed', details: err.message });
   }
 });
 
