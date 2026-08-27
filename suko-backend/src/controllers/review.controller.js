@@ -57,7 +57,7 @@ async function getAllReviews(req, res) {
   try {
     const reviews = await prisma.review.findMany({
       include: {
-        product: { select: { id: true, name: true, slug: true, images: true } },
+        product: { select: { id: true, name: true, images: true } },
         user: { select: { name: true, email: true } }
       },
       orderBy: { created_at: 'desc' }

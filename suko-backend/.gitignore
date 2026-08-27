@@ -12,3 +12,10 @@ node_modules/
 dist/
 build/
 *.log
+
+# Scratch notes & manual debug scripts
+Untitled-*.txt
+src/tests/test-resend.js
+src/tests/test-email-service-resend.js
+src/tests/test-brevo-*.js
+src/tests/test-*-ping.js
