@@ -11,17 +11,30 @@ export const HeroSection = () => {
       data-testid="hero-section"
       className="relative h-[78vh] sm:h-[85vh] lg:h-screen w-full bg-[#0A0A0C] overflow-hidden"
     >
-      {/* Fullscreen Background Image with Focal Point Right */}
+      {/* Fullscreen Background Video with Poster Fallback */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-[#0A0A0C]">
-        <img
-          src="/boardroom_banner.jpg"
-          alt="ICW Executive Luxury Tailoring Collection"
-          fetchPriority="high"
-          className="w-full h-full object-cover object-[78%_25%] sm:object-top opacity-90"
-        />
-        {/* Gradients ensuring uninterrupted typography legibility on the left */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent z-[2]" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 sm:via-black/35 to-transparent z-[2]" />
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          poster="/boardroom_banner.jpg"
+          className="w-full h-full object-cover object-center opacity-85 scale-105"
+        >
+          <source src="/hero_bg.mp4" type="video/mp4" />
+          <source src="/hero_bg.MOV" type="video/quicktime" />
+          {/* Image Fallback if video does not load */}
+          <img
+            src="/boardroom_banner.jpg"
+            alt="ICW Executive Luxury Tailoring Collection"
+            fetchPriority="high"
+            className="w-full h-full object-cover object-[78%_25%] sm:object-top opacity-90"
+          />
+        </video>
+        {/* Gradients ensuring uninterrupted typography legibility on the left and bottom */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent z-[2] pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 sm:via-black/35 to-transparent z-[2] pointer-events-none" />
       </div>
 
       {/* Lower-Third Anchored Hero Content */}
