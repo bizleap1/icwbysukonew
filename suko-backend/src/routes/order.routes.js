@@ -1,24 +1,29 @@
-const express = require('express');
-const router = express.Router();
-const { authMiddleware, adminOnly } = require('../middleware/auth.middleware');
-const { 
-  createOrder, 
-  getMyOrders, 
-  getOrderById, 
-  requestOrderCancellation, 
-  getAllOrdersAdmin, 
-  updateOrderStatusAdmin,
-  deleteOrderAdmin
-} = require('../controllers/order.controller');
+import { Router } from 'express';
+import {
+  createOrder,
+  getMyOrders,
+  getAllOrders,
+  updateOrderStatus,
+  cancelOrder,
+  getInvoice,
+  resetAllOrdersController,
+} from '../controllers/order.controller.js';
+import { authMiddleware, adminMiddleware } from '../middleware/auth.middleware.js';
 
-router.post('/', authMiddleware, createOrder);
-router.get('/', authMiddleware, getMyOrders);
-router.get('/all', authMiddleware, adminOnly, getAllOrdersAdmin);
-router.get('/:id', authMiddleware, getOrderById);
-router.put('/:id', authMiddleware, adminOnly, updateOrderStatusAdmin);
-router.patch('/:id', authMiddleware, adminOnly, updateOrderStatusAdmin);
-router.patch('/:id/status', authMiddleware, adminOnly, updateOrderStatusAdmin);
-router.patch('/:id/cancel', authMiddleware, requestOrderCancellation);
-router.delete('/:id', authMiddleware, adminOnly, deleteOrderAdmin);
+const router = Router();
 
-module.exports = router;
+router.use(authMiddleware);
+
+router.post('/', createOrder);
+router.get('/', getMyOrders);
+router.get('/my-orders', getMyOrders);
+router.post('/:id/cancel', cancelOrder);
+router.get('/:id/invoice', getInvoice);
+
+// Admin endpoints
+router.get('/all', adminMiddleware, getAllOrders);
+router.put('/:id/status', adminMiddleware, updateOrderStatus);
+router.post('/reset-all', adminMiddleware, resetAllOrdersController);
+
+export default router;
+

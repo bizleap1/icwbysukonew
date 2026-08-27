@@ -1,8 +1,10 @@
-const express = require('express');
-const router = express.Router();
-const { authMiddleware, adminOnly } = require('../middleware/auth.middleware');
-const { getStats } = require('../controllers/stats.controller');
+import { Router } from 'express';
+import { getAdminStats } from '../controllers/stats.controller.js';
+import { authMiddleware, authorizeRoles } from '../middleware/auth.middleware.js';
 
-router.get('/', authMiddleware, adminOnly, getStats);
+const router = Router();
 
-module.exports = router;
+// Stats accessible by store_manager, admin, super_admin
+router.get('/', authMiddleware, authorizeRoles('store_manager', 'admin'), getAdminStats);
+
+export default router;

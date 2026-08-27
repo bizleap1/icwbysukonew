@@ -1,120 +1,74 @@
-const prisma = require('../prisma/client');
+import prisma from '../prisma/client.js';
 
-// Get all reviews for a specific product
-async function getProductReviews(req, res) {
-  try {
-    const productId = parseInt(req.params.productId);
-    const reviews = await prisma.review.findMany({
-      where: { product_id: productId },
-      include: { user: { select: { name: true, email: true } } },
-      orderBy: { created_at: 'desc' }
-    });
-
-    const averageRating = reviews.length > 0
-      ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
-      : 5.0;
-
-    res.json({
-      total: reviews.length,
-      averageRating: parseFloat(averageRating),
-      reviews
-    });
-  } catch (err) {
-    console.error("Get product reviews error:", err);
-    res.status(500).json({ error: 'Failed to fetch reviews' });
-  }
-}
-
-const { ORDER_STATUS } = require('../utils/orderStateMachine');
-
-// Add a review for a product (Verified purchase only)
-async function addReview(req, res) {
+export const addReview = async (req, res) => {
   try {
     const { product_id, rating, comment } = req.body;
-    const userId = req.user.userId;
 
-    // 1. Strict Rating Validation
+    if (!product_id || !comment) {
+      return res.status(400).json({ message: 'Product ID and comment are required' });
+    }
+
+    // Strict rating validation: must be an integer between 1 and 5
     if (rating === undefined || rating === null) {
-      return res.status(400).json({ error: 'Rating is required.' });
+      return res.status(400).json({ message: 'Rating is required' });
     }
-    if (typeof rating !== 'number' || !Number.isInteger(rating) || Number.isNaN(rating)) {
-      return res.status(400).json({ error: 'Rating must be an integer between 1 and 5.' });
-    }
-    if (rating < 1 || rating > 5) {
-      return res.status(400).json({ error: 'Rating must be between 1 and 5.' });
+    if (typeof rating !== 'number' || !Number.isInteger(rating) || Number.isNaN(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Rating must be an integer between 1 and 5' });
     }
 
-    // 2. Product ID and Comment validation
-    const productId = parseInt(product_id, 10);
-    if (isNaN(productId) || productId <= 0) {
-      return res.status(400).json({ error: 'Valid product_id is required.' });
+    const productIdNum = parseInt(product_id, 10);
+    if (isNaN(productIdNum)) {
+      return res.status(400).json({ message: 'Invalid product ID' });
     }
 
-    if (!comment || typeof comment !== 'string' || !comment.trim()) {
-      return res.status(400).json({ error: 'Comment is required.' });
-    }
-    const cleanComment = comment.trim();
-    if (cleanComment.length > 2000) {
-      return res.status(400).json({ error: 'Review comment exceeds maximum allowed limit of 2000 characters.' });
-    }
-
-    // 3. Ensure product exists
-    const product = await prisma.product.findUnique({ where: { id: productId } });
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found.' });
-    }
-
-    // 4. Verified Purchase Check: User must have a paid/completed order containing this product
-    const verifiedPurchase = await prisma.order.findFirst({
+    // Verified purchase check: only customers with paid orders can review
+    const verifiedOrder = await prisma.order.findFirst({
       where: {
-        user_id: userId,
-        status: {
-          in: [
-            ORDER_STATUS.PAID,
-            ORDER_STATUS.PROCESSING,
-            ORDER_STATUS.SHIPPED,
-            ORDER_STATUS.DELIVERED
-          ]
-        },
-        items: {
-          some: { product_id: productId }
-        }
+        user_id: req.user.id,
+        status: { in: ['paid', 'processing', 'shipped', 'delivered'] },
+        items: { some: { product_id: productIdNum } }
       }
     });
 
-    if (!verifiedPurchase) {
+    if (!verifiedOrder) {
       return res.status(403).json({
-        error: 'Verified purchase required. You can only review products that you have purchased and paid for.'
+        message: 'Only verified purchasers of this item can leave a review'
       });
     }
 
-    // 5. Prevent duplicate reviews for the same product by the same user
+    // Prevent duplicate reviews
     const existingReview = await prisma.review.findFirst({
-      where: { user_id: userId, product_id: productId }
+      where: {
+        user_id: req.user.id,
+        product_id: productIdNum
+      }
     });
+
     if (existingReview) {
-      return res.status(400).json({ error: 'You have already submitted a review for this product.' });
+      return res.status(400).json({
+        message: 'You have already reviewed this product'
+      });
     }
 
     const review = await prisma.review.create({
       data: {
-        user_id: userId,
-        product_id: productId,
+        user_id: req.user.id,
+        product_id: productIdNum,
         rating,
-        comment: cleanComment
+        comment: String(comment).trim(),
       },
-      include: { user: { select: { name: true, email: true } } }
+      include: {
+        user: { select: { name: true } },
+      },
     });
 
-    res.status(201).json(review);
-  } catch (err) {
-    console.error("Add review error:", err);
-    res.status(500).json({ error: 'Failed to add review' });
+    res.status(201).json({ message: 'Review added successfully', review });
+  } catch (error) {
+    res.status(500).json({ message: 'Error adding review', error: error.message });
   }
-}
+};
 
-// Get all reviews for Admin moderation
-async function getAllReviews(req, res) {
+export const getAllReviews = async (req, res) => {
   try {
     const reviews = await prisma.review.findMany({
       include: {
@@ -124,24 +78,17 @@ async function getAllReviews(req, res) {
       orderBy: { created_at: 'desc' }
     });
     res.json(reviews);
-  } catch (err) {
-    console.error("Get all reviews error:", err);
-    res.status(500).json({ error: 'Failed to fetch all reviews' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching reviews', error: error.message });
   }
-}
+};
 
-// Delete a review (Admin)
-async function deleteReview(req, res) {
+export const deleteReview = async (req, res) => {
   try {
     const { id } = req.params;
-    await prisma.review.delete({
-      where: { id: parseInt(id) }
-    });
-    res.json({ message: 'Review deleted successfully' });
-  } catch (err) {
-    console.error("Delete review error:", err);
-    res.status(500).json({ error: 'Failed to delete review' });
+    await prisma.review.delete({ where: { id: parseInt(id) } });
+    res.json({ message: 'Review deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting review', error: error.message });
   }
-}
-
-module.exports = { getProductReviews, addReview, getAllReviews, deleteReview };
+};

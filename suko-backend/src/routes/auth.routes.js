@@ -1,36 +1,53 @@
-const express = require('express');
-const router = express.Router();
-const { 
-  register, 
-  login, 
-  sendOTP, 
-  sendRegisterOTP, 
-  verifyRegisterOTP, 
-  verifyOTPLogin, 
-  resetPasswordWithOTP,
-  getProfile,
-  updateProfile
-} = require('../controllers/auth.controller');
-const { authMiddleware } = require('../middleware/auth.middleware');
-const { 
-  authIpLimiter, 
-  authAccountLimiter, 
-  otpSendLimiter 
-} = require('../middleware/rateLimiter.middleware');
+import { Router } from 'express';
+import {
+  register,
+  login,
+  getMe,
+  updateProfile,
+  forgotPassword,
+  resetPassword,
+  makeAdmin,
+  setUserRole,
+  sendLoginOtp,
+  verifyLoginOtp,
+  sendRegisterOtp,
+  verifyRegisterOtp,
+  heartbeat,
+  logout,
+  getRealtimeLogins,
+} from '../controllers/auth.controller.js';
+import { authMiddleware, authorizeRoles } from '../middleware/auth.middleware.js';
+import { authLimiter, otpLimiter } from '../middleware/rateLimiter.middleware.js';
 
-// Public Auth Endpoints protected with independent IP and Account limiters
-router.post('/register', authIpLimiter, authAccountLimiter, register);
-router.post('/login', authIpLimiter, authAccountLimiter, login);
+const router = Router();
 
-router.post('/send-otp', authIpLimiter, otpSendLimiter, sendOTP);
-router.post('/send-register-otp', authIpLimiter, otpSendLimiter, sendRegisterOTP);
+// ─── PUBLIC AUTH ROUTES (with rate limiting) ─────────────────────────────────
+router.post('/register', authLimiter, register);
+router.post('/login', authLimiter, login);
+router.post('/send-login-otp', otpLimiter, sendLoginOtp);
+router.post('/verify-login-otp', authLimiter, verifyLoginOtp);
+router.post('/send-register-otp', otpLimiter, sendRegisterOtp);
+router.post('/verify-register-otp', authLimiter, verifyRegisterOtp);
+router.post('/forgot-password', otpLimiter, forgotPassword);
+router.post('/reset-password', authLimiter, resetPassword);
 
-router.post('/verify-register-otp', authIpLimiter, authAccountLimiter, verifyRegisterOTP);
-router.post('/verify-otp-login', authIpLimiter, authAccountLimiter, verifyOTPLogin);
-router.post('/reset-password-otp', authIpLimiter, authAccountLimiter, resetPasswordWithOTP);
-
-// Protected User Profile
-router.get('/profile', authMiddleware, getProfile);
+// ─── AUTHENTICATED USER ROUTES ───────────────────────────────────────────────
+router.get('/me', authMiddleware, getMe);
+router.get('/profile', authMiddleware, getMe);
+router.put('/update-profile', authMiddleware, updateProfile);
 router.put('/profile', authMiddleware, updateProfile);
+router.post('/heartbeat', authMiddleware, heartbeat);
+router.post('/logout', authMiddleware, logout);
 
-module.exports = router;
+// ─── REAL-TIME ADMIN MONITORING ──────────────────────────────────────────────
+router.get('/realtime-logins', authMiddleware, authorizeRoles('admin', 'super_admin', 'store_manager'), getRealtimeLogins);
+
+// ─── ADMIN ROLE MANAGEMENT ───────────────────────────────────────────────────
+// make-admin: kept for backward compat, restricted to admin/super_admin
+router.post('/make-admin', authMiddleware, authorizeRoles('admin'), makeAdmin);
+
+// set-role: super_admin only — can set any role
+router.post('/set-role', authMiddleware, authorizeRoles('super_admin'), setUserRole);
+
+export default router;
+

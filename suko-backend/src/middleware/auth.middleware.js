@@ -1,87 +1,225 @@
-const jwt = require('jsonwebtoken');
-const prisma = require('../prisma/client');
+/**
+ * =========================================================================
+ * SUKO ATELIER — AUTHENTICATION & AUTHORIZATION MIDDLEWARE
+ * Production-grade JWT verification and Role-Based Access Control
+ * =========================================================================
+ */
+
+import jwt from 'jsonwebtoken';
+import prisma from '../prisma/client.js';
+import { JWT_SECRET } from '../config/env.js';
 
 /**
- * Authenticates JWT with strict algorithm enforcement (HS256)
- * and verifies active token_version against the database for session revocation.
+ * Role hierarchy — higher roles include all lower permissions
+ * super_admin > admin > store_manager > inventory_staff / cashier > customer
  */
-async function authMiddleware(req, res, next) {
-  const authHeader = req.headers.authorization;
+const ROLE_HIERARCHY = {
+  super_admin: 6,
+  admin: 5,
+  store_manager: 4,
+  inventory_staff: 3,
+  cashier: 2,
+  customer: 1,
+};
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
-
-  const token = authHeader.split(' ')[1];
-
+/**
+ * Authentication middleware
+ * Verifies JWT from Authorization header. No fallback secrets. No path bypass.
+ */
+export const authMiddleware = async (req, res, next) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
-      algorithms: ['HS256']
-    });
+    let token = null;
+    const authHeader = req.headers.authorization;
 
-    if (!decoded || !decoded.userId || typeof decoded.userId !== 'number') {
-      return res.status(401).json({ error: 'Malformed token payload.' });
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (req.query && req.query.token) {
+      token = req.query.token;
     }
 
-    // Verify session validity against database token_version
-    const dbUser = await prisma.user.findUnique({
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        code: 'NO_TOKEN',
+        message: 'Unauthorized: Please sign in or create an account to proceed.',
+      });
+    }
+
+    // Verify with required secret — NEVER a fallback
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (jwtErr) {
+      if (jwtErr.name === 'TokenExpiredError') {
+        return res.status(401).json({
+          success: false,
+          code: 'TOKEN_EXPIRED',
+          message: 'Unauthorized: Session expired. Please log in again.',
+        });
+      }
+      return res.status(401).json({
+        success: false,
+        code: 'INVALID_TOKEN',
+        message: 'Unauthorized: Invalid authentication token. Please log in.',
+      });
+    }
+
+    const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, email: true, role: true, token_version: true }
+      select: { id: true, email: true, name: true, role: true, phone: true },
     });
 
-    if (!dbUser) {
-      return res.status(401).json({ error: 'User account no longer exists.' });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        code: 'USER_NOT_FOUND',
+        message: 'Unauthorized: User account not found. Please log in again.',
+      });
     }
 
-    // If token_version was incremented (e.g. password changed/reset), invalidate this token
-    if (decoded.token_version !== undefined && decoded.token_version !== dbUser.token_version) {
-      return res.status(401).json({ error: 'Session has been invalidated. Please log in again.' });
-    }
-
-    req.user = {
-      userId: dbUser.id,
-      email: dbUser.email,
-      role: dbUser.role,
-      token_version: dbUser.token_version
-    };
-
+    req.user = user;
     next();
-  } catch (err) {
-    if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Session expired. Please log in again.' });
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        code: 'TOKEN_EXPIRED',
+        message: 'Unauthorized: Token has expired. Please log in again.',
+      });
     }
-    return res.status(401).json({ error: 'Invalid or forged authorization token.' });
+    return res.status(401).json({
+      success: false,
+      code: 'INVALID_TOKEN',
+      message: 'Unauthorized: Invalid authentication token',
+    });
   }
-}
+};
 
 /**
- * Admin-only authorization middleware.
- * Verifies live database role directly instead of relying solely on token claims.
+ * Optional authentication middleware
+ * Attaches user to req.user if valid token exists, otherwise proceeds without failing.
  */
-async function adminOnly(req, res, next) {
-  if (!req.user || !req.user.userId) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-
+export const optionalAuthMiddleware = async (req, res, next) => {
   try {
-    const dbUser = await prisma.user.findUnique({
-      where: { id: req.user.userId },
-      select: { role: true, token_version: true }
-    });
-
-    if (!dbUser || dbUser.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
+    let token = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (req.query && req.query.token) {
+      token = req.query.token;
     }
 
-    if (req.user.token_version !== undefined && req.user.token_version !== dbUser.token_version) {
-      return res.status(401).json({ error: 'Admin session invalidated. Please log in again.' });
+    if (!token) {
+      return next();
     }
 
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (_) {
+      return next();
+    }
+
+    if (decoded && decoded.userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: { id: true, email: true, name: true, role: true, phone: true },
+      });
+      if (user) {
+        req.user = user;
+      }
+    }
     next();
-  } catch (err) {
-    console.error("adminOnly verification error:", err.message);
-    res.status(500).json({ error: 'Authorization check failed.' });
+  } catch (_) {
+    next();
   }
-}
+};
 
-module.exports = { authMiddleware, adminOnly };
+/**
+ * Admin middleware — allows admin and super_admin
+ * Kept for backward compatibility with existing route files
+ */
+export const adminMiddleware = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      code: 'NOT_AUTHENTICATED',
+      message: 'Authentication required',
+    });
+  }
+
+  const role = req.user.role?.toLowerCase();
+  if (role === 'admin' || role === 'super_admin') {
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    code: 'FORBIDDEN',
+    message: 'Forbidden: Admin access required',
+  });
+};
+
+/**
+ * Role-based authorization middleware factory
+ * Usage: authorizeRoles('admin', 'super_admin', 'store_manager')
+ * 
+ * super_admin always has access to everything.
+ */
+export const authorizeRoles = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        code: 'NOT_AUTHENTICATED',
+        message: 'Authentication required',
+      });
+    }
+
+    const userRole = req.user.role?.toLowerCase();
+
+    // super_admin always has full access
+    if (userRole === 'super_admin') {
+      return next();
+    }
+
+    if (allowedRoles.includes(userRole)) {
+      return next();
+    }
+
+    return res.status(403).json({
+      success: false,
+      code: 'INSUFFICIENT_ROLE',
+      message: `Forbidden: This action requires one of the following roles: ${allowedRoles.join(', ')}`,
+    });
+  };
+};
+
+/**
+ * Resource owner middleware — checks if user owns the resource OR is admin/super_admin
+ * Used for invoice access, order details, etc.
+ */
+export const ownerOrAdmin = (ownerIdExtractor) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        code: 'NOT_AUTHENTICATED',
+        message: 'Authentication required',
+      });
+    }
+
+    const role = req.user.role?.toLowerCase();
+
+    // Admin/super_admin always has access
+    if (role === 'admin' || role === 'super_admin' || role === 'store_manager') {
+      return next();
+    }
+
+    // For other roles, check if they own the resource
+    // The actual ownership check happens in the controller where we have the data
+    // This middleware just passes through and sets a flag
+    req.requireOwnershipCheck = true;
+    next();
+  };
+};

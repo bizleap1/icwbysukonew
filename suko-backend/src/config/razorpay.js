@@ -1,8 +1,22 @@
-const Razorpay = require('razorpay');
+/**
+ * =========================================================================
+ * SUKO ATELIER — RAZORPAY CONFIGURATION
+ * No dummy fallback keys. Payment features disabled if keys not set.
+ * =========================================================================
+ */
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || '',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || ''
-});
+import Razorpay from 'razorpay';
+import { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET } from './env.js';
 
-module.exports = razorpay;
+let razorpay = null;
+
+if (RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) {
+  razorpay = new Razorpay({
+    key_id: RAZORPAY_KEY_ID,
+    key_secret: RAZORPAY_KEY_SECRET,
+  });
+} else {
+  console.warn('[Razorpay] API keys not configured. Payment endpoints will return errors.');
+}
+
+export default razorpay;

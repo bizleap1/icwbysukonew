@@ -1,44 +1,38 @@
-const prisma = require('../prisma/client');
+import prisma from '../prisma/client.js';
 
-async function getAllCategories(req, res) {
+export const getCategories = async (req, res) => {
   try {
-    const categories = await prisma.category.findMany();
+    const categories = await prisma.category.findMany({
+      include: {
+        _count: {
+          select: { products: true },
+        },
+      },
+    });
     res.json(categories);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message || 'Something went wrong' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching categories', error: error.message });
   }
-}
+};
 
-async function createCategory(req, res) {
+export const createCategory = async (req, res) => {
   try {
     const { name } = req.body;
-    if (!name) return res.status(400).json({ error: 'Name is required' });
-    const category = await prisma.category.create({ data: { name } });
-    res.status(201).json(category);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message || 'Something went wrong' });
-  }
-}
+    if (!name) return res.status(400).json({ message: 'Category name is required' });
 
-async function deleteCategory(req, res) {
+    const category = await prisma.category.create({ data: { name } });
+    res.status(201).json({ message: 'Category created', category });
+  } catch (error) {
+    res.status(500).json({ message: 'Error creating category', error: error.message });
+  }
+};
+
+export const deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const catId = parseInt(id);
-
-    // Unlink any products assigned to this category
-    await prisma.product.updateMany({
-      where: { category_id: catId },
-      data: { category_id: null }
-    });
-
-    await prisma.category.delete({ where: { id: catId } });
+    await prisma.category.delete({ where: { id: parseInt(id) } });
     res.json({ message: 'Category deleted successfully' });
-  } catch (err) {
-    console.error("Delete Category Error:", err);
-    res.status(500).json({ error: err.message || 'Something went wrong' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting category', error: error.message });
   }
-}
-
-module.exports = { getAllCategories, createCategory, deleteCategory };
+};

@@ -1,71 +1,79 @@
-const rateLimit = require('express-rate-limit');
+/**
+ * =========================================================================
+ * SUKO ATELIER — RATE LIMITING MIDDLEWARE
+ * Protects auth, OTP, and payment endpoints from brute-force attacks
+ * =========================================================================
+ */
+
+import rateLimit from 'express-rate-limit';
+
+const isDev = process.env.NODE_ENV === 'development';
 
 /**
- * Standardized JSON response handler for rate limit exceeded
+ * Auth rate limiter — login, register
+ * 20 requests per 15 minutes per IP (Skipped in dev)
  */
-const rateLimitHandler = (req, res) => {
-  res.status(429).json({
-    error: 'Too many requests from this client. Please try again later.'
-  });
-};
-
-/**
- * Standard key generator helper extracting normalized email if present in request body
- */
-const emailKeyGenerator = (req) => {
-  const email = req.body && typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : 'anonymous';
-  return email;
-};
-
-// 1. General IP Rate Limiter (Protects all general API routes)
-const generalApiLimiter = rateLimit({
+export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300,
+  max: 20,
+  skip: () => isDev,
+  message: {
+    success: false,
+    code: 'RATE_LIMIT_EXCEEDED',
+    message: 'Too many authentication attempts. Please try again in 15 minutes.',
+  },
   standardHeaders: true,
   legacyHeaders: false,
-  handler: rateLimitHandler
 });
 
-// 2. IP-based Auth Limiter (Protects login, register, OTP endpoints against rapid IP-based brute forcing)
-const authIpLimiter = rateLimit({
+/**
+ * OTP rate limiter — send-login-otp, send-register-otp, forgot-password
+ * 5 requests per 10 minutes per IP (Skipped in dev)
+ */
+export const otpLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 5,
+  skip: () => isDev,
+  message: {
+    success: false,
+    code: 'OTP_RATE_LIMIT',
+    message: 'Too many OTP requests. Please wait 10 minutes before trying again.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/**
+ * Payment rate limiter — create-order, verify
+ * 10 requests per 5 minutes per IP (Skipped in dev)
+ */
+export const paymentLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 10,
+  skip: () => isDev,
+  message: {
+    success: false,
+    code: 'PAYMENT_RATE_LIMIT',
+    message: 'Too many payment requests. Please try again shortly.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/**
+ * General API rate limiter
+ * 600 requests per 15 minutes per IP (Skipped in dev)
+ * Higher limit to accommodate admin dashboard live polling (8s intervals across multiple sections)
+ */
+export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30, // 30 attempts per 15 minutes per IP
+  max: 600,
+  skip: () => isDev,
+  message: {
+    success: false,
+    code: 'RATE_LIMIT_EXCEEDED',
+    message: 'Too many requests. Please slow down.',
+  },
   standardHeaders: true,
   legacyHeaders: false,
-  handler: rateLimitHandler
 });
-
-// 3. Account / Email-based Limiter (Protects specific target accounts against distributed credential stuffing / OTP flooding across rotating IPs)
-const authAccountLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10, // 10 attempts per 15 minutes per target email
-  keyGenerator: emailKeyGenerator,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req, res) => {
-    res.status(429).json({
-      error: 'Too many verification attempts for this account. Please wait 15 minutes.'
-    });
-  }
-});
-
-// 4. Stricter OTP Generation Limiter (Limits outbound SMS/Email dispatch per target address)
-const otpSendLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5, // Max 5 OTP emails per 15 minutes per target email
-  keyGenerator: emailKeyGenerator,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req, res) => {
-    res.status(429).json({
-      error: 'Security rate limit exceeded: Maximum OTP requests reached for this email. Please try again later.'
-    });
-  }
-});
-
-module.exports = {
-  generalApiLimiter,
-  authIpLimiter,
-  authAccountLimiter,
-  otpSendLimiter
-};

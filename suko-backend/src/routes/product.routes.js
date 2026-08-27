@@ -1,26 +1,22 @@
-const express = require('express');
-const router = express.Router();
-const {
-  getAllProducts,
+import { Router } from 'express';
+import {
+  getProducts,
   getProductById,
   createProduct,
-  createProductWithImage,
   updateProduct,
-  deleteProduct
-} = require('../controllers/product.controller');
-const upload = require('../middleware/upload.middleware');
-const { authMiddleware, adminOnly } = require('../middleware/auth.middleware');
+  deleteProduct,
+} from '../controllers/product.controller.js';
+import { authMiddleware, authorizeRoles } from '../middleware/auth.middleware.js';
+import { upload } from '../middleware/upload.middleware.js';
 
-const uploadFields = upload.fields([
-  { name: 'image', maxCount: 1 },
-  { name: 'images', maxCount: 10 }
-]);
+const router = Router();
 
-router.get('/', getAllProducts);
+router.get('/', getProducts);
 router.get('/:id', getProductById);
-router.post('/', authMiddleware, adminOnly, createProduct);
-router.post('/upload', authMiddleware, adminOnly, uploadFields, createProductWithImage);
-router.put('/:id', authMiddleware, adminOnly, uploadFields, updateProduct);
-router.delete('/:id', authMiddleware, adminOnly, deleteProduct);
 
-module.exports = router;
+router.post('/', authMiddleware, authorizeRoles('admin', 'super_admin', 'store_manager', 'inventory_staff'), upload.array('images', 5), createProduct);
+router.put('/:id', authMiddleware, authorizeRoles('admin', 'super_admin', 'store_manager', 'inventory_staff'), upload.array('images', 5), updateProduct);
+router.delete('/:id', authMiddleware, authorizeRoles('admin', 'super_admin', 'store_manager', 'inventory_staff'), deleteProduct);
+
+export default router;
+
