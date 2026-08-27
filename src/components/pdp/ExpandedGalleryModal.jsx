@@ -68,23 +68,21 @@ export const ExpandedGalleryModal = ({
         <X size={18} strokeWidth={1.3} />
       </button>
 
-      {/* Vertical Feed of All Product Images */}
-      <div className="w-full max-w-[1300px] mx-auto px-3 sm:px-8 py-6 sm:py-14 flex flex-col items-center gap-6 sm:gap-14">
+      {/* Vertical Feed of All Product Images (Seamless Touching) */}
+      <div className="w-full max-w-[950px] mx-auto flex flex-col items-center p-0 m-0">
         {images.map((imgUrl, idx) => (
           <div
             key={idx}
             ref={(el) => (imageRefs.current[idx] = el)}
-            className="w-full flex flex-col items-center justify-center scroll-mt-6 sm:scroll-mt-10"
+            className="w-full p-0 m-0 leading-none flex flex-col items-center"
           >
-            <div className="w-full max-w-[950px] flex items-center justify-center bg-white">
-              <img
-                src={imgUrl}
-                alt={`${productName} — Look ${idx + 1}`}
-                loading={idx === activeImage ? "eager" : "lazy"}
-                decoding="async"
-                className="w-full h-auto max-h-[92vh] sm:max-h-[95vh] object-contain select-none"
-              />
-            </div>
+            <img
+              src={imgUrl}
+              alt={`${productName} — Look ${idx + 1}`}
+              loading={idx === activeImage ? "eager" : "lazy"}
+              decoding="async"
+              className="w-full h-auto block object-cover select-none"
+            />
           </div>
         ))}
       </div>
