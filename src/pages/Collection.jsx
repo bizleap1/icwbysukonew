@@ -66,7 +66,7 @@ const COLLECTION_TILES = [
     id: "atelier-tile",
     title: "THE ATELIER EDIT",
     sub: "Sculpted Co-ords",
-    image: "/products/midnight-peplum-fishtail-set/1.JPG",
+    image: "/products/midnight-peplum-fishtail-set/1.png",
     link: "/new-in?category=suits&gender=women"
   },
   {

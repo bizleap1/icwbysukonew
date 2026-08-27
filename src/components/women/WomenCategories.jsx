@@ -36,7 +36,7 @@ export const WomenCategories = () => {
       num: "03",
       title: "Peplum & Co-ords",
       tagline: "Fishtail & Modular Sets",
-      image: "/products/midnight-peplum-fishtail-set/1.JPG",
+      image: "/products/midnight-peplum-fishtail-set/1.png",
       link: "/new-in?category=suits&gender=women"
     },
     {

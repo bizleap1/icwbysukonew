@@ -211,7 +211,7 @@ export const WomenSignatureEdit = () => {
       tag: "Architectural Suiting",
       price: "₹72,000",
       desc: "Fitted peplum jacket with gold-tone buttons and matching fishtail skirt.",
-      image: "/products/midnight-peplum-fishtail-set/1.JPG",
+      image: "/products/midnight-peplum-fishtail-set/1.png",
       link: "/product/the-midnight-peplum-set"
     }
   ];

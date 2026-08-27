@@ -38,7 +38,7 @@ const ProductDetail = () => {
   // Gallery Images Array
   const galleryImages = (product?.images && product.images.length > 0)
     ? product.images
-    : ["/products/midnight-peplum-fishtail-set/1.JPG"];
+    : ["/products/midnight-peplum-fishtail-set/1.png"];
 
   // Scroll spy to toggle mobile bottom sticky bar
   useEffect(() => {

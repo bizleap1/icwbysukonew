@@ -41,13 +41,13 @@ export const PRODUCTS = [
       care: "Follow the garment care label instructions."
     },
     images: [
-      "/products/midnight-peplum-fishtail-set/1.JPG",
+      "/products/midnight-peplum-fishtail-set/1.png",
       "/products/midnight-peplum-fishtail-set/2.png",
       "/products/midnight-peplum-fishtail-set/3.png",
-      "/products/midnight-peplum-fishtail-set/4.JPG",
-      "/products/midnight-peplum-fishtail-set/5.JPG",
-      "/products/midnight-peplum-fishtail-set/6.JPG",
-      "/products/midnight-peplum-fishtail-set/7.JPG"
+      "/products/midnight-peplum-fishtail-set/4.png",
+      "/products/midnight-peplum-fishtail-set/5.png",
+      "/products/midnight-peplum-fishtail-set/6.png",
+      "/products/midnight-peplum-fishtail-set/7.png"
     ],
     badge: "Signature",
     isNew: true
@@ -344,7 +344,7 @@ export const LOOKBOOK = [
   { id: 1, title: "Chapter I — The Boardroom", season: "Autumn / Winter 26", image: "/products/the-noir-tailored-suit/1.JPG" },
   { id: 2, title: "Chapter II — After Eight", season: "Evening Edit", image: "/products/the-plum-sculpted-suit/1.JPG" },
   { id: 3, title: "Chapter III — The City", season: "Capsule 04", image: "/products/dusty-rose-sculpted-flare-suit/1.png" },
-  { id: 4, title: "Chapter IV — Private Hours", season: "Limited", image: "/products/midnight-peplum-fishtail-set/1.JPG" },
+  { id: 4, title: "Chapter IV — Private Hours", season: "Limited", image: "/products/midnight-peplum-fishtail-set/1.png" },
 ];
 
 export const HERO_VIDEO = "/images/Flow_1080p_202606241721.mp4";

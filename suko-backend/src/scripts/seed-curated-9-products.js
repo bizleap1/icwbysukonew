@@ -11,15 +11,15 @@ const CURATED_9_PRODUCTS = [
     sizes: ["XS", "S", "M", "L", "XL"],
     size_stock: { "XS": 5, "S": 10, "M": 15, "L": 5, "XL": 5 },
     description: "A coordinated two-piece set featuring a fitted peplum jacket with gold-tone buttons and a matching fishtail skirt. Designed with a defined waist and softly flared silhouette.",
-    image_url: "/products/midnight-peplum-fishtail-set/1.JPG",
+    image_url: "/products/midnight-peplum-fishtail-set/1.png",
     images: [
-      "/products/midnight-peplum-fishtail-set/1.JPG",
+      "/products/midnight-peplum-fishtail-set/1.png",
       "/products/midnight-peplum-fishtail-set/2.png",
       "/products/midnight-peplum-fishtail-set/3.png",
-      "/products/midnight-peplum-fishtail-set/4.JPG",
-      "/products/midnight-peplum-fishtail-set/5.JPG",
-      "/products/midnight-peplum-fishtail-set/6.JPG",
-      "/products/midnight-peplum-fishtail-set/7.JPG"
+      "/products/midnight-peplum-fishtail-set/4.png",
+      "/products/midnight-peplum-fishtail-set/5.png",
+      "/products/midnight-peplum-fishtail-set/6.png",
+      "/products/midnight-peplum-fishtail-set/7.png"
     ]
   },
   {
