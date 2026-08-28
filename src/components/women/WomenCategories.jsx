@@ -29,7 +29,7 @@ export const WomenCategories = () => {
       num: "02",
       title: "Waistcoat Sets",
       tagline: "Vest & Trouser Co-ords",
-      image: "/products/midnight-sculpted-vest-set/1.JPG",
+      image: "/products/midnight-sculpted-vest-set/1.png",
       link: "/new-in?category=suits&gender=women"
     },
     {

@@ -72,13 +72,13 @@ export const PRODUCTS = [
       care: "Follow the garment care label instructions."
     },
     images: [
-      "/products/midnight-sculpted-vest-set/1.JPG",
+      "/products/midnight-sculpted-vest-set/1.png",
       "/products/midnight-sculpted-vest-set/2.png",
       "/products/midnight-sculpted-vest-set/3.png",
-      "/products/midnight-sculpted-vest-set/4.JPG",
-      "/products/midnight-sculpted-vest-set/5.JPG",
-      "/products/midnight-sculpted-vest-set/6.JPG",
-      "/products/midnight-sculpted-vest-set/7.JPG"
+      "/products/midnight-sculpted-vest-set/4.png",
+      "/products/midnight-sculpted-vest-set/5.png",
+      "/products/midnight-sculpted-vest-set/6.png",
+      "/products/midnight-sculpted-vest-set/7.png"
     ],
     badge: "New Season",
     isNew: true

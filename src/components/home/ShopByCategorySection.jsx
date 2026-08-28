@@ -8,7 +8,7 @@ export const ShopByCategorySection = () => {
       num: "02",
       title: "Waistcoat Sets",
       tagline: "Vest & Trouser Co-ords",
-      image: "/products/midnight-sculpted-vest-set/1.JPG",
+      image: "/products/midnight-sculpted-vest-set/1.png",
       link: "/collection?category=waistcoats&gender=women"
     },
     {

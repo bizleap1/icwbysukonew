@@ -31,15 +31,15 @@ const CURATED_9_PRODUCTS = [
     sizes: ["XS", "S", "M", "L", "XL"],
     size_stock: { "XS": 5, "S": 10, "M": 10, "L": 5, "XL": 5 },
     description: "A tailored two-piece set featuring a sculpted sleeveless vest with ivory cowl contrast neckline and a coordinating column skirt in deep midnight navy.",
-    image_url: "/products/midnight-sculpted-vest-set/1.JPG",
+    image_url: "/products/midnight-sculpted-vest-set/1.png",
     images: [
-      "/products/midnight-sculpted-vest-set/1.JPG",
+      "/products/midnight-sculpted-vest-set/1.png",
       "/products/midnight-sculpted-vest-set/2.png",
       "/products/midnight-sculpted-vest-set/3.png",
-      "/products/midnight-sculpted-vest-set/4.JPG",
-      "/products/midnight-sculpted-vest-set/5.JPG",
-      "/products/midnight-sculpted-vest-set/6.JPG",
-      "/products/midnight-sculpted-vest-set/7.JPG"
+      "/products/midnight-sculpted-vest-set/4.png",
+      "/products/midnight-sculpted-vest-set/5.png",
+      "/products/midnight-sculpted-vest-set/6.png",
+      "/products/midnight-sculpted-vest-set/7.png"
     ]
   },
   {

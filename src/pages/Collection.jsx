@@ -105,7 +105,7 @@ const SHOP_BY_COLLECTION_TILES = [
     id: "shop-waistcoat-coords",
     title: "EXECUTIVE WAISTCOATS",
     sub: "Vest & Trouser Co-ords",
-    image: "/products/midnight-sculpted-vest-set/1.JPG",
+    image: "/products/midnight-sculpted-vest-set/1.png",
     link: "/new-in?category=suits&gender=women"
   },
   {
