@@ -131,15 +131,15 @@ const CURATED_9_PRODUCTS = [
     sizes: ["XS", "S", "M", "L", "XL"],
     size_stock: { "XS": 5, "S": 10, "M": 10, "L": 5, "XL": 5 },
     description: "A refined two-piece set pairing a fluid longline tunic with coordinated wide-leg trousers. Deep burgundy embroidery frames the neckline and shoulders, introducing sculptural contrast against the muted dusty-rose base.",
-    image_url: "/products/the-dusty-rose-embroidered-set/1.JPG",
+    image_url: "/products/the-dusty-rose-embroidered-set/1.png",
     images: [
-      "/products/the-dusty-rose-embroidered-set/1.JPG",
+      "/products/the-dusty-rose-embroidered-set/1.png",
       "/products/the-dusty-rose-embroidered-set/2.png",
       "/products/the-dusty-rose-embroidered-set/3.png",
-      "/products/the-dusty-rose-embroidered-set/4.JPG",
-      "/products/the-dusty-rose-embroidered-set/5.JPG",
-      "/products/the-dusty-rose-embroidered-set/6.JPG",
-      "/products/the-dusty-rose-embroidered-set/7.JPG"
+      "/products/the-dusty-rose-embroidered-set/4.png",
+      "/products/the-dusty-rose-embroidered-set/5.png",
+      "/products/the-dusty-rose-embroidered-set/6.png",
+      "/products/the-dusty-rose-embroidered-set/7.png"
     ]
   },
   {
@@ -171,15 +171,15 @@ const CURATED_9_PRODUCTS = [
     sizes: ["XS", "S", "M", "L", "XL"],
     size_stock: { "XS": 5, "S": 15, "M": 15, "L": 5, "XL": 5 },
     description: "A modern three-piece interpretation of black tailoring, designed around layered sleeveless structure and fluid proportions. Two sharply tailored vest layers create depth through the neckline, while coordinated wide-leg trousers complete the silhouette.",
-    image_url: "/products/the-noir-layered-suit/1.JPG",
+    image_url: "/products/the-noir-layered-suit/1.png",
     images: [
-      "/products/the-noir-layered-suit/1.JPG",
+      "/products/the-noir-layered-suit/1.png",
       "/products/the-noir-layered-suit/2.png",
       "/products/the-noir-layered-suit/3.png",
       "/products/the-noir-layered-suit/4.png",
-      "/products/the-noir-layered-suit/5.JPG",
-      "/products/the-noir-layered-suit/6.JPG",
-      "/products/the-noir-layered-suit/7.JPG"
+      "/products/the-noir-layered-suit/5.png",
+      "/products/the-noir-layered-suit/6.png",
+      "/products/the-noir-layered-suit/7.png"
     ]
   }
 ];

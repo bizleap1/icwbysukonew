@@ -43,7 +43,7 @@ export const WomenCategories = () => {
       num: "04",
       title: "All Women's Sets",
       tagline: "The Complete Suiting Edit",
-      image: "/products/the-noir-layered-suit/1.JPG",
+      image: "/products/the-noir-layered-suit/1.png",
       link: "/new-in?gender=women"
     }
   ];

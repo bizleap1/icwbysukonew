@@ -22,7 +22,7 @@ export const ShopByCategorySection = () => {
       num: "04",
       title: "All Women's Sets",
       tagline: "The Complete Suiting Edit",
-      image: "/products/the-noir-layered-suit/1.JPG",
+      image: "/products/the-noir-layered-suit/1.png",
       link: "/collection?gender=women"
     }
   ];

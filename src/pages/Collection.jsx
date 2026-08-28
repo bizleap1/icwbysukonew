@@ -80,7 +80,7 @@ const COLLECTION_TILES = [
     id: "new-season-tile",
     title: "NEW SEASON",
     sub: "Atelier Creations",
-    image: "/products/the-dusty-rose-embroidered-set/1.JPG",
+    image: "/products/the-dusty-rose-embroidered-set/1.png",
     link: "/new-in"
   }
 ];
@@ -91,7 +91,7 @@ const SHOP_BY_COLLECTION_TILES = [
     id: "shop-power-suits",
     title: "THE POWER SUITS EDIT",
     sub: "Architectural Suiting",
-    image: "/products/the-noir-layered-suit/1.JPG",
+    image: "/products/the-noir-layered-suit/1.png",
     link: "/new-in?category=suits&gender=women"
   },
   {

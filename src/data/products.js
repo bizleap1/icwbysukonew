@@ -227,13 +227,13 @@ export const PRODUCTS = [
       care: "Follow the garment care label instructions."
     },
     images: [
-      "/products/the-dusty-rose-embroidered-set/1.JPG",
+      "/products/the-dusty-rose-embroidered-set/1.png",
       "/products/the-dusty-rose-embroidered-set/2.png",
       "/products/the-dusty-rose-embroidered-set/3.png",
-      "/products/the-dusty-rose-embroidered-set/4.JPG",
-      "/products/the-dusty-rose-embroidered-set/5.JPG",
-      "/products/the-dusty-rose-embroidered-set/6.JPG",
-      "/products/the-dusty-rose-embroidered-set/7.JPG"
+      "/products/the-dusty-rose-embroidered-set/4.png",
+      "/products/the-dusty-rose-embroidered-set/5.png",
+      "/products/the-dusty-rose-embroidered-set/6.png",
+      "/products/the-dusty-rose-embroidered-set/7.png"
     ],
     badge: "Signature",
     isNew: true
@@ -289,13 +289,13 @@ export const PRODUCTS = [
       care: "Follow the garment care label instructions."
     },
     images: [
-      "/products/the-noir-layered-suit/1.JPG",
+      "/products/the-noir-layered-suit/1.png",
       "/products/the-noir-layered-suit/2.png",
       "/products/the-noir-layered-suit/3.png",
       "/products/the-noir-layered-suit/4.png",
-      "/products/the-noir-layered-suit/5.JPG",
-      "/products/the-noir-layered-suit/6.JPG",
-      "/products/the-noir-layered-suit/7.JPG"
+      "/products/the-noir-layered-suit/5.png",
+      "/products/the-noir-layered-suit/6.png",
+      "/products/the-noir-layered-suit/7.png"
     ],
     badge: "Signature",
     isNew: true
