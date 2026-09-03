@@ -1,56 +1,61 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { AnimatePresence } from "framer-motion";
-import { ArrowRight } from "lucide-react";
 import ProductCard from "../ProductCard";
-import { useProducts } from "../../context/ProductContext";
-import { PRODUCTS as FALLBACK_PRODUCTS } from "../../data/products";
+import { PRODUCTS } from "../../data/products";
 
 export const NewArrivalsSection = () => {
-  const { products } = useProducts();
-  const rawList = products && products.length > 0 ? products : FALLBACK_PRODUCTS;
-  
-  // Exclusively Women Luxury Corporate Wear (4 initial new arrival pieces)
-  const displayedNewArrivals = rawList
-    .filter(p => p.gender === "female" || !p.gender)
-    .slice(0, 4);
+  // 4 Core Latest Individual Upper Silhouettes
+  const displayedSlugs = [
+    "the-noir-tailored-blazer",
+    "the-plum-sculpted-double-breasted-blazer",
+    "the-lilac-sculpted-flare-blazer",
+    "the-noir-structured-vest"
+  ];
+
+  const displayedProducts = displayedSlugs
+    .map((slug) => PRODUCTS.find((p) => p.slug === slug))
+    .filter(Boolean);
 
   return (
-    <section className="bg-[#F6F2EA] pt-10 sm:pt-14 lg:pt-16 pb-10 sm:pb-12 lg:pb-14 px-4 sm:px-6 lg:px-[3.5vw] border-b border-[#E8E4DC] transition-colors duration-300">
-      <div className="max-w-[1600px] mx-auto">
+    <section className="bg-[#FAF8F5] pt-8 sm:pt-10 lg:pt-12 pb-6 sm:pb-8 lg:pb-9 transition-colors duration-300">
+      <div className="w-full mx-auto px-6 sm:px-10 lg:px-12 xl:px-14">
         
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 sm:gap-4 mb-5 sm:mb-10 text-center md:text-left">
+        {/* Minimal Luxury Section Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6 sm:mb-8 lg:mb-9">
           <div>
-            <span className="text-[10.5px] sm:text-[11px] lg:text-[11.5px] uppercase tracking-[0.26em] text-[#6A6A74] font-medium block mb-3 sm:mb-3.5">
-              THE LATEST FROM ICW
-            </span>
-            <h2 className="font-quiche text-2xl sm:text-4xl lg:text-5xl font-light tracking-tight text-[#111113]">
-              NEW ARRIVALS
+            <div className="flex items-center gap-2 mb-2 sm:mb-3">
+              <span className="w-4 h-[1px] bg-[#C2922E]" />
+              <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.34em] text-[#C2922E] font-medium font-body">
+                THE LATEST FROM SUKO
+              </span>
+            </div>
+            <h2 className="font-quiche text-3xl sm:text-5xl lg:text-6xl font-light tracking-tight text-[#121215]">
+              New <span className="italic font-normal">Arrivals.</span>
             </h2>
           </div>
-        </div>
 
-        {/* 2-Column Mobile Grid / 4-Column Desktop */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-7">
-          <AnimatePresence mode="wait">
-            {displayedNewArrivals.map((product, idx) => (
-              <ProductCard key={product.id || product.slug || idx} product={product} index={idx} />
-            ))}
-          </AnimatePresence>
-        </div>
-
-        {/* Bottom Link */}
-        <div className="mt-7 sm:mt-9 text-center">
+          {/* Top-Right Header Link (Hero Luxury Signature Style) */}
           <Link
             to="/new-in"
-            className="group inline-flex items-center gap-2.5 text-[10.5px] sm:text-[11px] uppercase tracking-[0.24em] font-normal text-[#111113] hover:text-[#C2922E] transition-all duration-300"
+            className="group relative inline-block pt-1 pb-1.5 select-none self-start md:self-end"
           >
-            <span className="border-b border-[#111113] group-hover:border-[#C2922E] pb-1 transition-all duration-300">
+            <span className="text-[11.5px] sm:text-[12.5px] uppercase tracking-[0.20em] sm:tracking-[0.22em] font-medium text-[#121215] block">
               VIEW ALL NEW ARRIVALS
             </span>
-            <ArrowRight size={13} className="transition-transform duration-300 group-hover:translate-x-1" />
+            <span className="absolute bottom-0 left-0 w-full h-[1px] bg-[#121215]/30" />
+            <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-[#121215] transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]" />
           </Link>
+        </div>
+
+        {/* 4 Clean Editorial Product Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 items-stretch">
+          {displayedProducts.map((product, idx) => (
+            <ProductCard 
+              key={product.id || product.slug || idx} 
+              product={product} 
+              index={idx} 
+            />
+          ))}
         </div>
 
       </div>

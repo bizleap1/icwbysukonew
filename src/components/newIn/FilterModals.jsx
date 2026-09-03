@@ -9,6 +9,8 @@ export const FilterDrawer = ({
   onClose,
   selectedCategory,
   setSelectedCategory,
+  selectedSubCategory = "all",
+  setSelectedSubCategory,
   selectedSize,
   setSelectedSize,
   selectedColour,
@@ -37,10 +39,13 @@ export const FilterDrawer = ({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 280 }}
-            className="relative w-full max-w-md bg-[#FAF8F5] h-full shadow-2xl flex flex-col justify-between z-10 overflow-hidden font-body"
+            data-lenis-prevent="true"
+            data-lenis-prevent-wheel="true"
+            data-lenis-prevent-touch="true"
+            className="relative w-full max-w-md bg-[#FAF8F5] h-full h-[100dvh] max-h-[100dvh] shadow-2xl flex flex-col justify-between z-10 overflow-hidden font-body overscroll-contain"
           >
             {/* Header */}
-            <div className="p-5 sm:p-6 border-b border-[#E8E4DC] flex items-center justify-between bg-[#FAF8F5]">
+            <div className="p-5 sm:p-6 border-b border-[#E8E4DC] flex items-center justify-between bg-[#FAF8F5] shrink-0">
               <div>
                 <span className="text-[10px] uppercase tracking-[0.22em] text-[#C2922E] font-medium block mb-1">
                   FILTERS
@@ -53,14 +58,20 @@ export const FilterDrawer = ({
                 type="button"
                 onClick={onClose}
                 aria-label="Close filter drawer"
-                className="w-9 h-9 rounded-full bg-[#F3EFE6] border border-[#E8E4DC] flex items-center justify-center text-[#111113] hover:text-[#C2922E] transition-colors"
+                className="w-9 h-9 rounded-full bg-[#F3EFE6] border border-[#E8E4DC] flex items-center justify-center text-[#111113] hover:text-[#C2922E] transition-colors cursor-pointer"
               >
                 <X size={16} />
               </button>
             </div>
 
             {/* Scrollable Filters */}
-            <div className="p-5 sm:p-6 space-y-7 overflow-y-auto flex-1">
+            <div 
+              data-lenis-prevent="true"
+              data-lenis-prevent-wheel="true"
+              data-lenis-prevent-touch="true"
+              className="p-5 sm:p-6 space-y-7 overflow-y-auto overscroll-contain touch-pan-y flex-1 min-h-0"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
               {/* Category */}
               <div>
                 <h4 className="text-xs uppercase tracking-[0.22em] text-[#111113] font-semibold mb-3">
@@ -69,21 +80,27 @@ export const FilterDrawer = ({
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedCategory("all")}
-                    className={`px-3.5 py-2 text-xs uppercase tracking-wider border transition-all ${
+                    onClick={() => {
+                      setSelectedCategory("all");
+                      if (setSelectedSubCategory) setSelectedSubCategory("all");
+                    }}
+                    className={`px-3.5 py-2 text-xs uppercase tracking-wider border transition-all cursor-pointer ${
                       selectedCategory === "all"
                         ? "bg-[#111113] text-white border-[#111113]"
                         : "bg-[#F3EFE6] text-[#555560] border-[#E8E4DC] hover:border-[#111113]"
                     }`}
                   >
-                    All Categories
+                    All Pieces
                   </button>
                   {CATEGORIES.map((cat) => (
                     <button
-                      key={cat.id}
+                      key={cat.id || cat.slug}
                       type="button"
-                      onClick={() => setSelectedCategory(cat.slug)}
-                      className={`px-3.5 py-2 text-xs uppercase tracking-wider border transition-all ${
+                      onClick={() => {
+                        setSelectedCategory(cat.slug);
+                        if (setSelectedSubCategory) setSelectedSubCategory("all");
+                      }}
+                      className={`px-3.5 py-2 text-xs uppercase tracking-wider border transition-all cursor-pointer ${
                         selectedCategory === cat.slug
                           ? "bg-[#111113] text-white border-[#111113]"
                           : "bg-[#F3EFE6] text-[#555560] border-[#E8E4DC] hover:border-[#111113]"
@@ -93,6 +110,37 @@ export const FilterDrawer = ({
                     </button>
                   ))}
                 </div>
+
+                {/* Tailored Separates Subcategory Pills */}
+                {selectedCategory === "separates" && (
+                  <div className="mt-3 pt-3 border-t border-[#E8E4DC]/80">
+                    <span className="text-[10px] uppercase tracking-[0.22em] text-[#C2922E] font-medium block mb-2">
+                      Filter Separates By:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["All Separates", "Blazers", "Jackets", "Vests", "Tunics", "Trousers", "Skirts"].map((sub) => {
+                        const subKey = sub === "All Separates" ? "all" : sub.toLowerCase();
+                        const isSubActive = (selectedSubCategory || "all") === subKey;
+                        return (
+                          <button
+                            key={sub}
+                            type="button"
+                            onClick={() => {
+                              if (setSelectedSubCategory) setSelectedSubCategory(subKey);
+                            }}
+                            className={`px-2.5 py-1.5 text-[10.5px] uppercase tracking-wider border transition-all rounded-[1px] cursor-pointer ${
+                              isSubActive
+                                ? "bg-[#C2922E] text-white border-[#C2922E] font-medium"
+                                : "bg-white text-[#555560] border-[#E8E4DC] hover:border-[#111113]"
+                            }`}
+                          >
+                            {sub}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Size */}
@@ -170,7 +218,7 @@ export const FilterDrawer = ({
             </div>
 
             {/* Footer Actions */}
-            <div className="p-5 sm:p-6 border-t border-[#E8E4DC] bg-[#F3EFE6] flex items-center gap-3">
+            <div className="p-5 sm:p-6 border-t border-[#E8E4DC] bg-[#F3EFE6] flex items-center gap-3 shrink-0">
               <button
                 type="button"
                 onClick={onClearAll}
@@ -225,7 +273,10 @@ export const SortSheet = ({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="relative w-full max-w-lg bg-[#FAF8F5] rounded-t-2xl shadow-2xl z-10 overflow-hidden font-body p-6"
+            data-lenis-prevent="true"
+            data-lenis-prevent-wheel="true"
+            data-lenis-prevent-touch="true"
+            className="relative w-full max-w-lg bg-[#FAF8F5] rounded-t-2xl shadow-2xl z-10 overflow-hidden font-body p-6 overscroll-contain max-h-[90dvh] overflow-y-auto"
           >
             <div className="flex items-center justify-between pb-4 border-b border-[#E8E4DC] mb-4">
               <div>

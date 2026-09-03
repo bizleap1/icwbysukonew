@@ -11,10 +11,15 @@ export const EditorialSection = () => {
           className="group relative h-[65vh] sm:h-[72vh] lg:h-[680px] xl:h-[720px] overflow-hidden bg-[#1A1A1E] block focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C99A2E]"
         >
           <img
-            src="/editorial.JPG"
+            src="/editorial.webp"
             alt="The ICW Woman Signature Tailoring Campaign"
             loading="lazy"
             decoding="async"
+            onError={(e) => {
+              if (e.currentTarget.src !== "/editorial.JPG") {
+                e.currentTarget.src = "/editorial.JPG";
+              }
+            }}
             className="absolute inset-0 w-full h-full object-cover object-[68%_12%] sm:object-[62%_10%] transition-transform duration-1000 ease-out group-hover:scale-105"
           />
           {/* Multi-Stop Left-to-Right + Bottom Fade Gradient */}

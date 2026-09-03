@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { getHighResImage } from "../../utils/mediaUtils";
 
 export const ExpandedGalleryModal = ({
   isOpen,
@@ -80,10 +81,15 @@ export const ExpandedGalleryModal = ({
             className="w-full p-0 m-0 leading-none flex flex-col items-center"
           >
             <img
-              src={imgUrl}
+              src={getHighResImage(imgUrl)}
               alt={`${productName} — Look ${idx + 1}`}
               loading={idx === activeImage ? "eager" : "lazy"}
               decoding="async"
+              onError={(e) => {
+                if (e.currentTarget.src !== imgUrl) {
+                  e.currentTarget.src = imgUrl;
+                }
+              }}
               className="w-full h-auto block object-cover select-none"
             />
           </div>

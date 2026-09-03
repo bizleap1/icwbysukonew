@@ -19,8 +19,8 @@ export const GallerySection = ({
             onClick={() => setActiveImage(idx)}
             className={`relative aspect-[3/4] overflow-hidden bg-[#EAE6DF] border transition-all ${
               activeImage === idx
-                ? "border-[#111113] ring-1 ring-[#111113]"
-                : "border-transparent opacity-70 hover:opacity-100"
+                ? "border-[#C2922E] opacity-100"
+                : "border-[#E8E4DC] opacity-50 hover:opacity-90"
             }`}
           >
             <img

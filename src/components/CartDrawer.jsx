@@ -4,6 +4,7 @@ import { X, Minus, Plus, ShoppingBag, ArrowRight } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { formatINR } from "../data/products";
+import { getThumbImage } from "../utils/mediaUtils";
 
 const CartDrawer = () => {
   const { isOpen, closeCart, items, removeItem, updateQty, subtotal } = useCart();
@@ -88,8 +89,13 @@ const CartDrawer = () => {
                     <li key={item.key} data-testid={`cart-item-${item.id}`} className="py-5 first:pt-0 last:pb-0 flex gap-4 sm:gap-5">
                       <div className="w-20 h-28 sm:w-24 sm:h-32 shrink-0 bg-[#F3EFE6] border border-[#EAE6DF] overflow-hidden">
                         <img 
-                          src={item.image} 
+                          src={getThumbImage(item.image)} 
                           alt={item.name} 
+                          onError={(e) => {
+                            if (e.currentTarget.src !== item.image) {
+                              e.currentTarget.src = item.image;
+                            }
+                          }}
                           className="w-full h-full object-cover object-top" 
                         />
                       </div>
@@ -108,9 +114,11 @@ const CartDrawer = () => {
                               <X size={14} strokeWidth={1.3} />
                             </button>
                           </div>
-                          <p className="text-[9.5px] uppercase tracking-[0.2em] text-[#777782] mt-1 font-medium">
-                            Size: {item.size}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-1.5 text-[9.5px] uppercase tracking-[0.18em] text-[#777782] mt-1 font-medium">
+                            <span>Size: {item.size}</span>
+                            {item.color && <span>&middot; {item.color}</span>}
+                            {item.garmentLabel && <span className="text-[#C2922E]">&middot; {item.garmentLabel}</span>}
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-between pt-3">

@@ -1,12 +1,12 @@
 import React from "react";
 import SEO from "../components/SEO";
 import HeroSection from "../components/home/HeroSection";
+import ShopByMomentSection from "../components/home/ShopByMomentSection";
 import NewArrivalsSection from "../components/home/NewArrivalsSection";
-import EditorialSection from "../components/home/EditorialSection";
-import ManifestoSection from "../components/home/ManifestoSection";
-import ShopByCategorySection from "../components/home/ShopByCategorySection";
-import SignaturePillarsSection from "../components/home/SignaturePillarsSection";
-import CampaignVideoSection from "../components/home/CampaignVideoSection";
+import StylingFilmSection from "../components/home/StylingFilmSection";
+import WhySukoSection from "../components/home/WhySukoSection";
+import SignaturePiecesSection from "../components/home/SignaturePiecesSection";
+import WardrobeConciergeSection from "../components/home/WardrobeConciergeSection";
 import ServiceStrip from "../components/home/ServiceStrip";
 
 const Home = () => {
@@ -16,31 +16,32 @@ const Home = () => {
       className="grain bg-[#FAF8F5] text-[#121215] font-body selection:bg-[#C2922E] selection:text-white transition-colors duration-300"
     >
       <SEO 
-        description="Structured blazers, executive power suits, and tailored co-ord sets designed for the modern female leader."
+        title="SUKO — The Indian Corporate Wear"
+        description="SUKO — Precision tailored corporate suits, structured silhouettes and executive ensembles designed for modern Indian women leaders."
       />
 
-      {/* 1. Hero Section (75-85vh mobile / Fullscreen desktop) */}
+      {/* 01 — HERO SECTION (Fullscreen Cinematic Fashion Hero) */}
       <HeroSection />
 
-      {/* 2. New Arrivals (2-Col Mobile / 4-Col Desktop) */}
+      {/* 02 — NEW ARRIVALS (The Latest from SUKO — 4 Editorial Product Visuals) */}
       <NewArrivalsSection />
 
-      {/* 3. Women Editorial (High-Fashion Panoramic Campaign) */}
-      <EditorialSection />
+      {/* 03 — THE MOMENTS ARCHITECTURE (5 Visual Professional Moments) */}
+      <ShopByMomentSection />
 
-      {/* 4. Brand Statement & Manifesto */}
-      <ManifestoSection />
+      {/* 04 — STYLING FILM SECTION (One Woman. Multiple Moments.) */}
+      <StylingFilmSection />
 
-      {/* 5. Shop By Category */}
-      <ShopByCategorySection />
+      {/* 05 — WHY SUKO (Trust & Tailoring Philosophy) */}
+      <WhySukoSection />
 
-      {/* 6. Signature Craftsmanship & Accordions */}
-      <SignaturePillarsSection />
+      {/* 06 — SIGNATURE PIECES (The Pieces That Define SUKO) */}
+      <SignaturePiecesSection />
 
-      {/* 7. Final Campaign Video / World of Suko */}
-      <CampaignVideoSection />
+      {/* 07 — WARDROBE CONCIERGE (Private Styling & Capsule Services) */}
+      <WardrobeConciergeSection />
 
-      {/* 8. Service Strip */}
+      {/* 08 — SERVICE STRIP */}
       <ServiceStrip />
     </div>
   );

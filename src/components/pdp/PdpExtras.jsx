@@ -72,9 +72,30 @@ export const SizeGuideModal = ({ isOpen, onClose }) => {
             </table>
           </div>
 
-          <p className="text-[11px] text-[#555560] leading-relaxed italic">
-            * All measurements are in inches. If you fall between sizes or require custom tailoring, reach out to our Private Concierge.
-          </p>
+          <div className="space-y-4 pt-2 border-t border-[#E8E4DC]">
+            <p className="text-[11px] text-[#555560] leading-relaxed">
+              <strong className="text-[#111113] font-medium">Fit Note:</strong> Designed with attention to balanced proportions, structured silhouettes and comfortable movement for the modern professional wardrobe.
+            </p>
+
+            <div className="p-3.5 bg-[#F3EFE6] border border-[#E8E4DC] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] uppercase tracking-[0.2em] font-medium text-[#111113] block">
+                  Need help finding your fit?
+                </span>
+                <span className="text-[11px] text-[#666672] font-light">
+                  Our SUKO stylists can assist you with size selection and fit guidance.
+                </span>
+              </div>
+              <a
+                href="https://wa.me/917666168147?text=Hello%20SUKO%20Stylist%2C%20I%20would%20like%20assistance%20with%20sizing%20and%20fit%20guidance."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center px-4 py-2 bg-[#111113] text-white text-[10.5px] uppercase tracking-[0.18em] font-medium hover:bg-[#C2922E] transition-colors shrink-0 cursor-pointer"
+              >
+                Chat with a SUKO Stylist
+              </a>
+            </div>
+          </div>
         </motion.div>
       </div>
     </AnimatePresence>,

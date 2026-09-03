@@ -27,10 +27,10 @@ export const WomenCategories = () => {
   const categoryTiles = [
     {
       num: "02",
-      title: "Waistcoat Sets",
-      tagline: "Vest & Trouser Co-ords",
-      image: "/products/midnight-sculpted-vest-set/1.png",
-      link: "/new-in?category=suits&gender=women"
+      title: "Tailored Separates",
+      tagline: "Blazers · Jackets · Vests · Tunics · Pants · Skirts",
+      image: "/products/midnight-sculpted-vest/1.png",
+      link: "/collection?category=separates&gender=women"
     },
     {
       num: "03",
@@ -71,7 +71,7 @@ export const WomenCategories = () => {
             className="lg:col-span-4 group relative overflow-hidden bg-[#1A1A1E] min-h-[460px] sm:min-h-[540px] flex flex-col justify-end p-6 sm:p-8 pb-9 sm:pb-12 text-white block focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C99A2E]"
           >
             <img
-              src="/products/the-plum-sculpted-suit/1.JPG"
+              src="/products/the-plum-sculpted-suit/1.png"
               alt="Power Suits & 2-Piece Sets"
               loading="lazy"
               decoding="async"

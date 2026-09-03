@@ -31,10 +31,15 @@ export const SignaturePillarsSection = () => {
           {/* Top/Left: Detail Image */}
           <div className="lg:col-span-6 relative aspect-[4/5] sm:aspect-[16/14] lg:aspect-[4/5] w-full bg-[#EAE6DF] overflow-hidden shadow-sm">
             <img
-              src="/home_signature.png"
+              src="/home_signature.webp"
               alt="ICW Signature Lapel Craftsmanship"
               loading="lazy"
               decoding="async"
+              onError={(e) => {
+                if (e.currentTarget.src !== "/home_signature.png") {
+                  e.currentTarget.src = "/home_signature.png";
+                }
+              }}
               className="w-full h-full object-cover transition-transform duration-1000 ease-out hover:scale-105"
             />
           </div>

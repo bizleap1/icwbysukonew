@@ -6,23 +6,23 @@ export const ShopByCategorySection = () => {
   const categoryCards = [
     {
       num: "02",
-      title: "Waistcoat Sets",
-      tagline: "Vest & Trouser Co-ords",
-      image: "/products/midnight-sculpted-vest-set/1.png",
-      link: "/collection?category=waistcoats&gender=women"
+      title: "Tailored Separates",
+      tagline: "Blazers · Jackets · Vests · Tunics · Pants · Skirts",
+      image: "/products/midnight-sculpted-vest/1.webp",
+      link: "/collection?category=separates&gender=women"
     },
     {
       num: "03",
       title: "Peplum & Co-ords",
       tagline: "Fishtail & Modular Sets",
-      image: "/products/midnight-peplum-fishtail-set/1.png",
+      image: "/products/midnight-peplum-fishtail-set/1.webp",
       link: "/collection?category=suits&gender=women"
     },
     {
       num: "04",
       title: "All Women's Sets",
       tagline: "The Complete Suiting Edit",
-      image: "/products/the-noir-layered-suit/1.png",
+      image: "/products/the-noir-layered-suit/1.webp",
       link: "/collection?gender=women"
     }
   ];
@@ -52,10 +52,15 @@ export const ShopByCategorySection = () => {
             className="lg:col-span-4 group relative overflow-hidden bg-[#1A1A1E] min-h-[460px] sm:min-h-[540px] flex flex-col justify-end p-6 sm:p-8 pb-9 sm:pb-12 text-white block focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C99A2E]"
           >
             <img
-              src="/products/the-plum-sculpted-suit/1.JPG"
+              src="/products/the-plum-sculpted-suit/1.webp"
               alt="Women's Power Suits & Co-ord Sets"
               loading="lazy"
               decoding="async"
+              onError={(e) => {
+                if (e.currentTarget.src !== "/products/the-plum-sculpted-suit/1.png") {
+                  e.currentTarget.src = "/products/the-plum-sculpted-suit/1.png";
+                }
+              }}
               className="absolute inset-0 w-full h-full object-cover object-[50%_15%] transition-transform duration-1000 ease-out group-hover:scale-105"
             />
             {/* Lower 60-65% Soft Dark Gradient */}

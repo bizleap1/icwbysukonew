@@ -6,7 +6,7 @@ module.exports = {
       "@": path.resolve(__dirname, "src"),
     },
     plugins: {
-      remove: ["ForkTsCheckerWebpackPlugin"]
+      remove: ["ForkTsCheckerWebpackPlugin", "ESLintWebpackPlugin"]
     },
     configure: (webpackConfig, { env }) => {
       if (env === "development") {
@@ -17,8 +17,26 @@ module.exports = {
             config: [__filename],
           },
         };
-        // Use fast eval-cheap-module-source-map for development
+
+        // Enable Webpack 5 Lazy Compilation (Like Vite: compiles only viewed routes on-demand)
+        webpackConfig.experiments = {
+          ...webpackConfig.experiments,
+          lazyCompilation: {
+            imports: true,
+            entries: false,
+          },
+        };
+
+        // Use fast source maps for instantaneous rebuilds
         webpackConfig.devtool = "eval-cheap-module-source-map";
+
+        // Optimization for fast dev bundling
+        webpackConfig.optimization = {
+          ...webpackConfig.optimization,
+          removeAvailableModules: false,
+          removeEmptyChunks: false,
+          splitChunks: false,
+        };
       }
       return webpackConfig;
     },

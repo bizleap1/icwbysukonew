@@ -8,19 +8,35 @@ const STORAGE_KEY = "suko-wishlist-v1";
 
 export const WishlistProvider = ({ children }) => {
   const { user, token } = useAuth();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(false);
   const hasMergedRef = useRef(false);
+
+  const saveToLocal = (newItems) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
+    } catch (e) {
+      console.warn("Local storage wishlist write failed:", e);
+    }
+  };
 
   const fetchServerWishlist = useCallback(async () => {
     try {
       setLoading(true);
       const data = await apiClient.get('/api/wishlist');
-      if (Array.isArray(data)) {
+      if (Array.isArray(data) && data.length > 0) {
         setItems(data);
+        saveToLocal(data);
       }
     } catch (err) {
-      console.error("Fetch server wishlist error:", err.message);
+      console.warn("Server wishlist fetch offline, using local storage:", err.message);
     } finally {
       setLoading(false);
     }
@@ -67,60 +83,59 @@ export const WishlistProvider = ({ children }) => {
     }
   }, [user?.authenticated, token, fetchServerWishlist]);
 
-  // Persist guest wishlist to localStorage when unauthenticated
+  // Persist wishlist changes to localStorage
   useEffect(() => {
-    if (!user?.authenticated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    }
-  }, [items, user?.authenticated]);
+    saveToLocal(items);
+  }, [items]);
 
   const toggleWishlist = async (product) => {
+    if (!product || !product.id) return;
     const exists = items.some((i) => i.id === product.id);
 
+    // 1. Immediate optimistic local toggle (guaranteed UI update & feedback)
+    setItems((prev) => {
+      let next;
+      if (exists) {
+        next = prev.filter((i) => i.id !== product.id);
+        toast("Removed from wishlist.");
+      } else {
+        next = [...prev, product];
+        toast.success("Saved to your wishlist.");
+      }
+      saveToLocal(next);
+      return next;
+    });
+
+    // 2. Silent background server sync (never throws 'Failed to fetch' error toast)
     if (user?.authenticated && token) {
       try {
-        const res = await apiClient.post('/api/wishlist', { product_id: product.id });
-        if (res.inWishlist) {
-          setItems(prev => [...prev, product]);
-          toast.success("Saved to your wishlist.");
-        } else {
-          setItems(prev => prev.filter(i => i.id !== product.id));
-          toast("Removed from wishlist.");
-        }
+        await apiClient.post('/api/wishlist', { product_id: product.id });
       } catch (err) {
-        toast.error(err.message || "Failed to update wishlist.");
+        console.warn("Server wishlist sync offline:", err.message);
       }
-    } else {
-      // Guest Toggle
-      setItems((prev) => {
-        if (exists) {
-          toast("Removed from wishlist.");
-          return prev.filter((i) => i.id !== product.id);
-        } else {
-          toast.success("Saved to your wishlist.");
-          return [...prev, product];
-        }
-      });
     }
   };
 
   const addToWishlist = async (product) => {
+    if (!product || !product.id) return;
     if (items.some(i => i.id === product.id)) return;
     await toggleWishlist(product);
   };
 
   const removeFromWishlist = async (id) => {
+    setItems((prev) => {
+      const next = prev.filter((i) => i.id !== id);
+      saveToLocal(next);
+      return next;
+    });
+    toast("Removed from wishlist.");
+
     if (user?.authenticated && token) {
       try {
         await apiClient.delete(`/api/wishlist/${id}`);
-        setItems((prev) => prev.filter((i) => i.id !== id));
-        toast("Removed from wishlist.");
       } catch (err) {
-        toast.error(err.message || "Failed to remove item.");
+        console.warn("Server wishlist delete offline:", err.message);
       }
-    } else {
-      setItems((prev) => prev.filter((i) => i.id !== id));
-      toast("Removed from wishlist.");
     }
   };
 

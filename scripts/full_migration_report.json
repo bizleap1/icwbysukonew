@@ -1,0 +1,799 @@
+{
+  "videosProcessed": 9,
+  "imagesProcessed": 170,
+  "webpGenerated": 579,
+  "derivativesGenerated": 409,
+  "beforeBytes": 356824143,
+  "afterBytes": 40170476,
+  "oversizedCameraHandled": 14,
+  "intentionallyLargeDetails": [
+    {
+      "file": "products/aubergine-tailored-mini-skirt/4.webp",
+      "sizeKB": 268,
+      "dimensions": "1024x1536",
+      "reason": "Macro embroidery / fabric texture preservation"
+    },
+    {
+      "file": "products/aubergine-tailored-power-suit/7.webp",
+      "sizeKB": 265,
+      "dimensions": "1023x1537",
+      "reason": "High detail photography"
+    },
+    {
+      "file": "products/aubergine-tailored-wide-leg-trousers/4.webp",
+      "sizeKB": 288,
+      "dimensions": "1024x1536",
+      "reason": "Macro embroidery / fabric texture preservation"
+    },
+    {
+      "file": "products/dusty-rose-embroidered-farchi-tunic/4.webp",
+      "sizeKB": 292,
+      "dimensions": "1023x1537",
+      "reason": "Macro embroidery / fabric texture preservation"
+    },
+    {
+      "file": "products/dusty-rose-trousers/4.webp",
+      "sizeKB": 385,
+      "dimensions": "1024x1536",
+      "reason": "Macro embroidery / fabric texture preservation"
+    },
+    {
+      "file": "products/lilac-flare-trousers/4.webp",
+      "sizeKB": 330,
+      "dimensions": "1024x1536",
+      "reason": "Macro embroidery / fabric texture preservation"
+    },
+    {
+      "file": "products/lilac-sculpted-flare-blazer/4.webp",
+      "sizeKB": 347,
+      "dimensions": "1023x1537",
+      "reason": "Macro embroidery / fabric texture preservation"
+    },
+    {
+      "file": "products/midnight-sculpted-vest/4.webp",
+      "sizeKB": 258,
+      "dimensions": "1024x1536",
+      "reason": "Macro embroidery / fabric texture preservation"
+    },
+    {
+      "file": "home_signature.webp",
+      "sizeKB": 372,
+      "dimensions": "1122x1402",
+      "reason": "High detail photography"
+    }
+  ],
+  "skippedAssets": [
+    {
+      "file": "C:\\Users\\SHREYA\\OneDrive\\Desktop\\Bizleap\\ICW-by-Suko-main\\public\\about_suko_brand.png",
+      "reason": "Brand identity asset (strictly preserved)"
+    },
+    {
+      "file": "C:\\Users\\SHREYA\\OneDrive\\Desktop\\Bizleap\\ICW-by-Suko-main\\public\\logo-light.png",
+      "reason": "Brand identity asset (strictly preserved)"
+    },
+    {
+      "file": "C:\\Users\\SHREYA\\OneDrive\\Desktop\\Bizleap\\ICW-by-Suko-main\\public\\logo.png",
+      "reason": "Brand identity asset (strictly preserved)"
+    }
+  ],
+  "largestImagesAfter": [
+    {
+      "file": "products/dusty-rose-trousers/4.webp",
+      "sizeKB": 385
+    },
+    {
+      "file": "home_signature.webp",
+      "sizeKB": 372
+    },
+    {
+      "file": "products/lilac-sculpted-flare-blazer/4.webp",
+      "sizeKB": 347
+    },
+    {
+      "file": "products/lilac-flare-trousers/4.webp",
+      "sizeKB": 330
+    },
+    {
+      "file": "products/dusty-rose-embroidered-farchi-tunic/4.webp",
+      "sizeKB": 292
+    },
+    {
+      "file": "products/aubergine-tailored-wide-leg-trousers/4.webp",
+      "sizeKB": 288
+    },
+    {
+      "file": "products/aubergine-tailored-mini-skirt/4.webp",
+      "sizeKB": 268
+    },
+    {
+      "file": "products/aubergine-tailored-power-suit/7.webp",
+      "sizeKB": 265
+    },
+    {
+      "file": "products/midnight-sculpted-vest/4.webp",
+      "sizeKB": 258
+    },
+    {
+      "file": "products/aubergine-draped-vest-mini-set/7.webp",
+      "sizeKB": 236
+    },
+    {
+      "file": "after_hour_woman.webp",
+      "sizeKB": 227
+    },
+    {
+      "file": "products/midnight-contour-jacket/4.webp",
+      "sizeKB": 225
+    },
+    {
+      "file": "products/midnight-column-skirt/4.webp",
+      "sizeKB": 217
+    },
+    {
+      "file": "products/the-dusty-rose-embroidered-farchi-set/7.webp",
+      "sizeKB": 217
+    },
+    {
+      "file": "products/noir-tailored-trousers/4.webp",
+      "sizeKB": 216
+    },
+    {
+      "file": "products/plum-sculpted-trousers/4.webp",
+      "sizeKB": 214
+    },
+    {
+      "file": "products/midnight-flare-skirt/4.webp",
+      "sizeKB": 210
+    },
+    {
+      "file": "products/lilac-sculpted-flare-suit/7.webp",
+      "sizeKB": 198
+    },
+    {
+      "file": "products/midnight-peplum-fishtail-set/7.webp",
+      "sizeKB": 184
+    },
+    {
+      "file": "executive_woman.webp",
+      "sizeKB": 168
+    },
+    {
+      "file": "products/aubergine-draped-blazer/4.webp",
+      "sizeKB": 166
+    },
+    {
+      "file": "boardroom_women.webp",
+      "sizeKB": 143
+    },
+    {
+      "file": "presentation_woman.webp",
+      "sizeKB": 143
+    },
+    {
+      "file": "collection_hero.webp",
+      "sizeKB": 142
+    },
+    {
+      "file": "personal_styling.webp",
+      "sizeKB": 142
+    },
+    {
+      "file": "products/dusty-rose-embroidered-farchi-tunic/1.JPG.webp",
+      "sizeKB": 141
+    },
+    {
+      "file": "products/noir-layered-longline-vest/4.webp",
+      "sizeKB": 133
+    },
+    {
+      "file": "products/plum-sculpted-double-breasted-blazer/4.webp",
+      "sizeKB": 133
+    },
+    {
+      "file": "founder_women.webp",
+      "sizeKB": 131
+    },
+    {
+      "file": "products/the-plum-sculpted-suit/7.webp",
+      "sizeKB": 128
+    },
+    {
+      "file": "products/aubergine-asymmetric-wrap-vest/4.webp",
+      "sizeKB": 127
+    },
+    {
+      "file": "products/dusty-rose-embroidered-farchi-tunic/2.webp",
+      "sizeKB": 121
+    },
+    {
+      "file": "products/the-dusty-rose-embroidered-farchi-set/2.webp",
+      "sizeKB": 121
+    },
+    {
+      "file": "products/midnight-sculpted-vest-set/7.webp",
+      "sizeKB": 120
+    },
+    {
+      "file": "products/noir-structured-vest/4.webp",
+      "sizeKB": 109
+    },
+    {
+      "file": "products/dusty-rose-embroidered-farchi-tunic/3.webp",
+      "sizeKB": 107
+    },
+    {
+      "file": "products/lilac-sculpted-flare-blazer/1.JPG.webp",
+      "sizeKB": 106
+    },
+    {
+      "file": "products/the-noir-layered-suit/7.webp",
+      "sizeKB": 104
+    },
+    {
+      "file": "products/noir-tailored-blazer/4.webp",
+      "sizeKB": 103
+    },
+    {
+      "file": "products/the-noir-tailored-suit/7.webp",
+      "sizeKB": 103
+    },
+    {
+      "file": "shop_by_moment_founder.webp",
+      "sizeKB": 99
+    },
+    {
+      "file": "products/dusty-rose-embroidered-farchi-tunic/5.JPG.webp",
+      "sizeKB": 95
+    },
+    {
+      "file": "products/aubergine-asymmetric-wrap-vest/1.JPG.webp",
+      "sizeKB": 91
+    },
+    {
+      "file": "products/aubergine-draped-blazer/1.JPG.webp",
+      "sizeKB": 89
+    },
+    {
+      "file": "signature.webp",
+      "sizeKB": 89
+    },
+    {
+      "file": "products/the-dusty-rose-embroidered-farchi-set/4.webp",
+      "sizeKB": 86
+    },
+    {
+      "file": "products/dusty-rose-trousers/5.JPG.webp",
+      "sizeKB": 85
+    },
+    {
+      "file": "products/midnight-sculpted-vest/2.webp",
+      "sizeKB": 84
+    },
+    {
+      "file": "products/midnight-sculpted-vest-set/2.webp",
+      "sizeKB": 84
+    },
+    {
+      "file": "products/the-dusty-rose-embroidered-farchi-set/1.webp",
+      "sizeKB": 82
+    },
+    {
+      "file": "products/midnight-contour-jacket/1.webp",
+      "sizeKB": 80
+    },
+    {
+      "file": "about_noir_tailoring_detail.webp",
+      "sizeKB": 80
+    },
+    {
+      "file": "products/noir-tailored-blazer/1.JPG.webp",
+      "sizeKB": 79
+    },
+    {
+      "file": "products/midnight-contour-jacket/2.webp",
+      "sizeKB": 77
+    },
+    {
+      "file": "products/midnight-peplum-fishtail-set/2.webp",
+      "sizeKB": 77
+    },
+    {
+      "file": "products/dusty-rose-trousers/1.webp",
+      "sizeKB": 76
+    },
+    {
+      "file": "products/midnight-sculpted-vest/1.webp",
+      "sizeKB": 75
+    },
+    {
+      "file": "products/aubergine-draped-vest-mini-set/4.webp",
+      "sizeKB": 74
+    },
+    {
+      "file": "products/aubergine-draped-vest-mini-set/6.webp",
+      "sizeKB": 74
+    },
+    {
+      "file": "products/lilac-sculpted-flare-suit/4.webp",
+      "sizeKB": 72
+    },
+    {
+      "file": "products/the-dusty-rose-embroidered-farchi-set/6.webp",
+      "sizeKB": 71
+    },
+    {
+      "file": "products/the-plum-sculpted-suit/1.webp",
+      "sizeKB": 70
+    },
+    {
+      "file": "products/midnight-flare-skirt/2.webp",
+      "sizeKB": 69
+    },
+    {
+      "file": "products/midnight-peplum-fishtail-set/3.webp",
+      "sizeKB": 69
+    },
+    {
+      "file": "products/aubergine-draped-blazer/5.JPG.webp",
+      "sizeKB": 68
+    },
+    {
+      "file": "products/aubergine-tailored-wide-leg-trousers/5.JPG.webp",
+      "sizeKB": 68
+    },
+    {
+      "file": "products/the-dusty-rose-embroidered-farchi-set/5.webp",
+      "sizeKB": 68
+    },
+    {
+      "file": "shop_by_moment_presntation.webp",
+      "sizeKB": 68
+    },
+    {
+      "file": "products/midnight-column-skirt/2.webp",
+      "sizeKB": 67
+    },
+    {
+      "file": "products/midnight-sculpted-vest-set/3.webp",
+      "sizeKB": 67
+    },
+    {
+      "file": "products/the-noir-layered-suit/1.webp",
+      "sizeKB": 67
+    },
+    {
+      "file": "products/the-plum-sculpted-suit/4.webp",
+      "sizeKB": 67
+    },
+    {
+      "file": "products/aubergine-tailored-power-suit/4.webp",
+      "sizeKB": 66
+    },
+    {
+      "file": "products/lilac-sculpted-flare-suit/6.webp",
+      "sizeKB": 66
+    },
+    {
+      "file": "products/plum-sculpted-double-breasted-blazer/1.JPG.webp",
+      "sizeKB": 66
+    },
+    {
+      "file": "products/aubergine-draped-vest-mini-set/1.webp",
+      "sizeKB": 65
+    },
+    {
+      "file": "products/lilac-flare-trousers/5.JPG.webp",
+      "sizeKB": 65
+    },
+    {
+      "file": "products/lilac-sculpted-flare-blazer/5.JPG.webp",
+      "sizeKB": 65
+    },
+    {
+      "file": "products/midnight-sculpted-vest-set/4.webp",
+      "sizeKB": 65
+    },
+    {
+      "file": "products/lilac-sculpted-flare-suit/1.webp",
+      "sizeKB": 64
+    },
+    {
+      "file": "shop_by_moment_after_hours.webp",
+      "sizeKB": 64
+    },
+    {
+      "file": "shop_by_moment_executive.webp",
+      "sizeKB": 64
+    },
+    {
+      "file": "products/aubergine-asymmetric-wrap-vest/5.JPG.webp",
+      "sizeKB": 62
+    },
+    {
+      "file": "products/aubergine-tailored-mini-skirt/5.JPG.webp",
+      "sizeKB": 62
+    },
+    {
+      "file": "products/midnight-peplum-fishtail-set/4.webp",
+      "sizeKB": 62
+    },
+    {
+      "file": "products/midnight-sculpted-vest-set/1.webp",
+      "sizeKB": 62
+    },
+    {
+      "file": "products/the-noir-layered-suit/5.webp",
+      "sizeKB": 62
+    },
+    {
+      "file": "products/the-noir-tailored-suit/4.webp",
+      "sizeKB": 62
+    },
+    {
+      "file": "products/dusty-rose-trousers/3.webp",
+      "sizeKB": 61
+    },
+    {
+      "file": "products/midnight-peplum-fishtail-set/6.webp",
+      "sizeKB": 61
+    },
+    {
+      "file": "products/lilac-sculpted-flare-suit/5.webp",
+      "sizeKB": 60
+    },
+    {
+      "file": "products/aubergine-draped-blazer/3.webp",
+      "sizeKB": 59
+    },
+    {
+      "file": "products/lilac-flare-trousers/1.webp",
+      "sizeKB": 59
+    },
+    {
+      "file": "products/lilac-sculpted-flare-blazer/3.webp",
+      "sizeKB": 59
+    },
+    {
+      "file": "products/noir-structured-vest/1.JPG.webp",
+      "sizeKB": 59
+    },
+    {
+      "file": "products/plum-sculpted-double-breasted-blazer/3.webp",
+      "sizeKB": 59
+    },
+    {
+      "file": "shop_by_moment_boardroom.webp",
+      "sizeKB": 59
+    },
+    {
+      "file": "products/noir-layered-longline-vest/1.JPG.webp",
+      "sizeKB": 58
+    },
+    {
+      "file": "products/plum-sculpted-double-breasted-blazer/5.JPG.webp",
+      "sizeKB": 58
+    },
+    {
+      "file": "products/aubergine-asymmetric-wrap-vest/3.webp",
+      "sizeKB": 57
+    },
+    {
+      "file": "products/plum-sculpted-trousers/5.JPG.webp",
+      "sizeKB": 57
+    },
+    {
+      "file": "products/aubergine-draped-vest-mini-set/5.webp",
+      "sizeKB": 56
+    },
+    {
+      "file": "products/midnight-column-skirt/5.JPG.webp",
+      "sizeKB": 56
+    },
+    {
+      "file": "products/midnight-sculpted-vest/5.JPG.webp",
+      "sizeKB": 56
+    },
+    {
+      "file": "products/midnight-sculpted-vest-set/5.webp",
+      "sizeKB": 56
+    },
+    {
+      "file": "products/plum-sculpted-trousers/1.JPG.webp",
+      "sizeKB": 56
+    },
+    {
+      "file": "editorial.JPG.webp",
+      "sizeKB": 56
+    },
+    {
+      "file": "products/noir-structured-vest/5.JPG.webp",
+      "sizeKB": 55
+    },
+    {
+      "file": "products/noir-tailored-blazer/5.JPG.webp",
+      "sizeKB": 55
+    },
+    {
+      "file": "products/noir-tailored-trousers/5.JPG.webp",
+      "sizeKB": 55
+    },
+    {
+      "file": "products/the-noir-tailored-suit/1.webp",
+      "sizeKB": 54
+    },
+    {
+      "file": "products/aubergine-tailored-mini-skirt/1.JPG.webp",
+      "sizeKB": 53
+    },
+    {
+      "file": "products/midnight-contour-jacket/5.JPG.webp",
+      "sizeKB": 53
+    },
+    {
+      "file": "products/aubergine-tailored-power-suit/1.webp",
+      "sizeKB": 52
+    },
+    {
+      "file": "products/midnight-peplum-fishtail-set/5.webp",
+      "sizeKB": 52
+    },
+    {
+      "file": "products/midnight-sculpted-vest-set/6.webp",
+      "sizeKB": 52
+    },
+    {
+      "file": "products/midnight-column-skirt/1.JPG.webp",
+      "sizeKB": 51
+    },
+    {
+      "file": "products/midnight-peplum-fishtail-set/1.webp",
+      "sizeKB": 50
+    },
+    {
+      "file": "products/plum-sculpted-trousers/3.webp",
+      "sizeKB": 50
+    },
+    {
+      "file": "products/the-noir-layered-suit/6.webp",
+      "sizeKB": 50
+    },
+    {
+      "file": "products/the-plum-sculpted-suit/6.webp",
+      "sizeKB": 50
+    },
+    {
+      "file": "products/aubergine-tailored-power-suit/6.webp",
+      "sizeKB": 49
+    },
+    {
+      "file": "products/midnight-contour-jacket/3.webp",
+      "sizeKB": 49
+    },
+    {
+      "file": "products/aubergine-tailored-power-suit/5.webp",
+      "sizeKB": 48
+    },
+    {
+      "file": "products/aubergine-tailored-wide-leg-trousers/1.webp",
+      "sizeKB": 48
+    },
+    {
+      "file": "products/the-noir-tailored-suit/6.webp",
+      "sizeKB": 47
+    },
+    {
+      "file": "products/aubergine-draped-blazer/2.webp",
+      "sizeKB": 46
+    },
+    {
+      "file": "products/aubergine-tailored-power-suit/2.webp",
+      "sizeKB": 46
+    },
+    {
+      "file": "products/the-plum-sculpted-suit/5.webp",
+      "sizeKB": 46
+    },
+    {
+      "file": "products/plum-sculpted-double-breasted-blazer/2.webp",
+      "sizeKB": 45
+    },
+    {
+      "file": "products/the-dusty-rose-embroidered-farchi-set/3.webp",
+      "sizeKB": 45
+    },
+    {
+      "file": "products/the-plum-sculpted-suit/2.webp",
+      "sizeKB": 45
+    },
+    {
+      "file": "products/noir-layered-longline-vest/5.JPG.webp",
+      "sizeKB": 44
+    },
+    {
+      "file": "products/noir-tailored-blazer/2.webp",
+      "sizeKB": 43
+    },
+    {
+      "file": "products/noir-tailored-trousers/1.JPG.webp",
+      "sizeKB": 43
+    },
+    {
+      "file": "products/the-noir-tailored-suit/2.webp",
+      "sizeKB": 43
+    },
+    {
+      "file": "products/midnight-flare-skirt/5.JPG.webp",
+      "sizeKB": 42
+    },
+    {
+      "file": "products/noir-tailored-blazer/3.webp",
+      "sizeKB": 42
+    },
+    {
+      "file": "products/the-noir-tailored-suit/5.webp",
+      "sizeKB": 42
+    },
+    {
+      "file": "products/dusty-rose-trousers/2.webp",
+      "sizeKB": 41
+    },
+    {
+      "file": "products/lilac-sculpted-flare-blazer/2.webp",
+      "sizeKB": 41
+    },
+    {
+      "file": "products/lilac-sculpted-flare-suit/2.webp",
+      "sizeKB": 41
+    },
+    {
+      "file": "products/midnight-flare-skirt/1.JPG.webp",
+      "sizeKB": 41
+    },
+    {
+      "file": "products/aubergine-draped-vest-mini-set/3.webp",
+      "sizeKB": 40
+    },
+    {
+      "file": "products/aubergine-tailored-mini-skirt/2.webp",
+      "sizeKB": 40
+    },
+    {
+      "file": "products/noir-tailored-trousers/3.webp",
+      "sizeKB": 40
+    },
+    {
+      "file": "products/aubergine-tailored-mini-skirt/3.webp",
+      "sizeKB": 39
+    },
+    {
+      "file": "products/noir-structured-vest/3.webp",
+      "sizeKB": 39
+    },
+    {
+      "file": "products/lilac-flare-trousers/3.webp",
+      "sizeKB": 38
+    },
+    {
+      "file": "products/noir-layered-longline-vest/2.webp",
+      "sizeKB": 38
+    },
+    {
+      "file": "products/aubergine-asymmetric-wrap-vest/2.webp",
+      "sizeKB": 37
+    },
+    {
+      "file": "products/aubergine-draped-vest-mini-set/2.webp",
+      "sizeKB": 37
+    },
+    {
+      "file": "products/noir-layered-longline-vest/3.webp",
+      "sizeKB": 36
+    },
+    {
+      "file": "products/lilac-flare-trousers/2.webp",
+      "sizeKB": 35
+    },
+    {
+      "file": "products/lilac-sculpted-flare-suit/3.webp",
+      "sizeKB": 35
+    },
+    {
+      "file": "products/aubergine-tailored-wide-leg-trousers/3.webp",
+      "sizeKB": 34
+    },
+    {
+      "file": "products/midnight-sculpted-vest/3.webp",
+      "sizeKB": 33
+    },
+    {
+      "file": "products/plum-sculpted-trousers/2.webp",
+      "sizeKB": 32
+    },
+    {
+      "file": "products/the-plum-sculpted-suit/3.webp",
+      "sizeKB": 32
+    },
+    {
+      "file": "products/midnight-flare-skirt/3.webp",
+      "sizeKB": 30
+    },
+    {
+      "file": "products/noir-tailored-trousers/2.webp",
+      "sizeKB": 30
+    },
+    {
+      "file": "products/the-noir-tailored-suit/3.webp",
+      "sizeKB": 30
+    },
+    {
+      "file": "products/the-noir-layered-suit/3.webp",
+      "sizeKB": 28
+    },
+    {
+      "file": "products/midnight-column-skirt/3.webp",
+      "sizeKB": 27
+    },
+    {
+      "file": "products/aubergine-tailored-power-suit/3.webp",
+      "sizeKB": 26
+    },
+    {
+      "file": "products/aubergine-tailored-wide-leg-trousers/2.webp",
+      "sizeKB": 26
+    },
+    {
+      "file": "products/the-noir-layered-suit/4.webp",
+      "sizeKB": 23
+    },
+    {
+      "file": "products/noir-structured-vest/2.webp",
+      "sizeKB": 21
+    },
+    {
+      "file": "products/the-noir-layered-suit/2.webp",
+      "sizeKB": 21
+    },
+    {
+      "file": "women_bg.webp",
+      "sizeKB": 21
+    }
+  ],
+  "largestVideosAfter": [
+    {
+      "name": "hero_bg.mp4",
+      "sizeMB": 3.83
+    },
+    {
+      "name": "world_of_suko.mp4",
+      "sizeMB": 3.29
+    },
+    {
+      "name": "about_suko.mp4",
+      "sizeMB": 2.92
+    },
+    {
+      "name": "Woman_walking_in_business_district_202608311458.mp4",
+      "sizeMB": 2.42
+    },
+    {
+      "name": "atlier_women.mp4",
+      "sizeMB": 2.41
+    },
+    {
+      "name": "Woman_presenting_in_office_1080p_202608311521.mp4",
+      "sizeMB": 2.38
+    },
+    {
+      "name": "Woman_walking_in_luxury_interior_202608311530.mp4",
+      "sizeMB": 2.26
+    },
+    {
+      "name": "Woman_walking_in_luxury_boardroom_202608311517.mp4",
+      "sizeMB": 2.2
+    },
+    {
+      "name": "manifesto.mp4",
+      "sizeMB": 1.41
+    }
+  ]
+}

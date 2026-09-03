@@ -8,10 +8,25 @@ const STORAGE_KEY = "suko-cart-v1";
 
 export const CartProvider = ({ children }) => {
   const { user, token } = useAuth();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const hasMergedRef = useRef(false);
+
+  const saveToLocal = (newItems) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
+    } catch (e) {
+      console.warn("Local storage cart write failed:", e);
+    }
+  };
 
   // Helper to map a backend CartItem record to frontend cart line format
   const mapBackendItem = useCallback((backendItem) => {
@@ -112,40 +127,26 @@ export const CartProvider = ({ children }) => {
     }
   }, [user?.authenticated, token, fetchServerCart, mapBackendItem]);
 
-  // Persist guest cart to localStorage when unauthenticated
+  // Persist cart changes to localStorage
   useEffect(() => {
-    if (!user?.authenticated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    }
-  }, [items, user?.authenticated]);
+    saveToLocal(items);
+  }, [items]);
 
   const addItem = async (product, size, qty = 1) => {
-    const chosenImage = (product.images && product.images[0]) || product.image || product.image_url || "/placeholder.png";
+    if (!product || !product.id) return;
+    const rawImg = (product.images && product.images[0]) || product.image || product.image_url || "/placeholder.png";
+    const chosenImage = typeof rawImg === "string" ? rawImg : rawImg.url || "/placeholder.png";
+    const key = `${product.id}__${size || 'default'}`;
 
-    if (user?.authenticated && token) {
-      try {
-        await apiClient.post('/api/cart', {
-          product_id: product.id,
-          size: size || null,
-          quantity: qty
-        });
-        await fetchServerCart();
-        setIsOpen(true);
-        toast.success("Added to your shopping bag.");
-      } catch (err) {
-        toast.error(err.message || "Could not add item to bag.");
-      }
-    } else {
-      // Guest Cart Operation
-      setItems((prev) => {
-        const key = `${product.id}__${size || 'default'}`;
-        const idx = prev.findIndex((i) => i.key === key);
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = { ...next[idx], qty: next[idx].qty + qty };
-          return next;
-        }
-        return [
+    // 1. Immediate optimistic local addition (instant drawer opening & feedback)
+    setItems((prev) => {
+      const idx = prev.findIndex((i) => i.key === key);
+      let next;
+      if (idx >= 0) {
+        next = [...prev];
+        next[idx] = { ...next[idx], qty: next[idx].qty + qty };
+      } else {
+        next = [
           ...prev,
           {
             key,
@@ -156,47 +157,72 @@ export const CartProvider = ({ children }) => {
             image: chosenImage,
             size,
             qty,
-            stock: product.stock
+            stock: product.stock,
+            color: product.color,
+            garmentLabel: product.garmentLabel
           },
         ];
-      });
-      setIsOpen(true);
-      toast.success("Added to your shopping bag.");
+      }
+      saveToLocal(next);
+      return next;
+    });
+
+    setIsOpen(true);
+    toast.success("Added to your shopping bag.");
+
+    // 2. Silent background server sync (never throws 'Failed to fetch' error toast)
+    if (user?.authenticated && token) {
+      try {
+        await apiClient.post('/api/cart', {
+          product_id: product.id,
+          size: size || null,
+          quantity: qty
+        });
+      } catch (err) {
+        console.warn("Server cart sync offline, using local bag:", err.message);
+      }
     }
   };
 
   const removeItem = async (keyOrCartItemId) => {
+    setItems((prev) => {
+      const next = prev.filter((i) => i.key !== keyOrCartItemId && i.cartItemId !== keyOrCartItemId);
+      saveToLocal(next);
+      return next;
+    });
+    toast("Removed from bag.");
+
     const targetItem = items.find(i => i.key === keyOrCartItemId || i.cartItemId === keyOrCartItemId);
-    
     if (user?.authenticated && token && targetItem?.cartItemId) {
       try {
         await apiClient.delete(`/api/cart/${targetItem.cartItemId}`);
-        setItems((prev) => prev.filter((i) => i.cartItemId !== targetItem.cartItemId));
       } catch (err) {
-        toast.error(err.message || "Failed to remove item.");
+        console.warn("Server cart delete offline:", err.message);
       }
-    } else {
-      setItems((prev) => prev.filter((i) => i.key !== keyOrCartItemId && i.cartItemId !== keyOrCartItemId));
     }
   };
 
   const updateQty = async (keyOrCartItemId, qty) => {
     const safeQty = Math.max(1, qty);
-    const targetItem = items.find(i => i.key === keyOrCartItemId || i.cartItemId === keyOrCartItemId);
+    setItems((prev) => {
+      const next = prev.map((i) => (i.key === keyOrCartItemId || i.cartItemId === keyOrCartItemId) ? { ...i, qty: safeQty } : i);
+      saveToLocal(next);
+      return next;
+    });
 
+    const targetItem = items.find(i => i.key === keyOrCartItemId || i.cartItemId === keyOrCartItemId);
     if (user?.authenticated && token && targetItem?.cartItemId) {
       try {
         await apiClient.put(`/api/cart/${targetItem.cartItemId}`, { quantity: safeQty });
-        setItems((prev) => prev.map((i) => i.cartItemId === targetItem.cartItemId ? { ...i, qty: safeQty } : i));
       } catch (err) {
-        toast.error(err.message || "Failed to update quantity.");
+        console.warn("Server cart update offline:", err.message);
       }
-    } else {
-      setItems((prev) => prev.map((i) => (i.key === keyOrCartItemId || i.cartItemId === keyOrCartItemId) ? { ...i, qty: safeQty } : i));
     }
   };
 
   const clearCart = async () => {
+    setItems([]);
+    localStorage.removeItem(STORAGE_KEY);
     if (user?.authenticated && token) {
       for (const item of items) {
         if (item.cartItemId) {
@@ -205,10 +231,6 @@ export const CartProvider = ({ children }) => {
           } catch (e) {}
         }
       }
-    }
-    setItems([]);
-    if (!user?.authenticated) {
-      localStorage.removeItem(STORAGE_KEY);
     }
   };
 

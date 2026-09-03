@@ -5,6 +5,7 @@ import ProductCard from "../ProductCard";
 
 export const EditorialGrid = ({
   editorialBlocks,
+  products = [],
   totalResults,
   onClearFilters
 }) => {
@@ -20,7 +21,7 @@ export const EditorialGrid = ({
         <button
           type="button"
           onClick={onClearFilters}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-[#111113] text-white text-xs uppercase tracking-[0.2em] font-medium hover:bg-[#C2922E] transition-colors"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-[#111113] text-white text-xs uppercase tracking-[0.2em] font-medium hover:bg-[#C2922E] transition-colors cursor-pointer"
         >
           <RotateCcw size={13} />
           <span>Reset All Filters</span>
@@ -29,15 +30,38 @@ export const EditorialGrid = ({
     );
   }
 
+  // When filtered results are 1 to 4 products, render a clean, standard symmetrical grid (same as collection)
+  const allProds = products && products.length > 0
+    ? products
+    : editorialBlocks.flatMap((b) => b.allProducts || [b.featureProduct, ...(b.smallProducts || [])]).filter(Boolean);
+
+  if (totalResults < 5) {
+    return (
+      <div className="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-14 xl:px-16 pt-8 sm:pt-12 pb-20 sm:pb-28">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-3.5 sm:gap-x-5 lg:gap-x-6 gap-y-6 sm:gap-y-10">
+          {allProds.map((prod, idx) => (
+            <ProductCard
+              key={prod.id || prod.slug || idx}
+              product={prod}
+              index={idx}
+              isFeatured={false}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-14 xl:px-16 pt-8 sm:pt-12 pb-20 sm:pb-28">
+    <div className="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-14 xl:px-16 pt-8 sm:pt-12 pb-6 sm:pb-8">
       {editorialBlocks.map((block, blockIndex) => {
         const isLeftFeature = block.type === "left-feature";
+        const isLastBlock = blockIndex === editorialBlocks.length - 1;
 
         return (
           <React.Fragment key={block.id}>
             {/* 5-Item Asymmetric Grid Block */}
-            <div className="mb-14 sm:mb-20">
+            <div className={isLastBlock ? "mb-0" : "mb-14 sm:mb-20"}>
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-7 items-stretch">
                 
                 {/* 1. Large Featured Product (50% desktop width / col-span-6) */}
@@ -64,7 +88,7 @@ export const EditorialGrid = ({
                 >
                   {block.smallProducts.map((prod, pIdx) => (
                     <ProductCard
-                      key={prod.id || prod.slug || pIdx}
+                      key={`${block.id}-${prod.id || prod.slug || pIdx}`}
                       product={prod}
                       index={block.startIndex + pIdx + 1}
                       isFeatured={false}

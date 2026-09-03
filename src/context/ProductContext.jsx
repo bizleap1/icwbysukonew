@@ -48,13 +48,15 @@ export const ProductProvider = ({ children }) => {
 
             return {
               ...(defaultMatch || {}),
-              id: bp.id,
+              id: bp.id || defaultMatch?.id,
               backendId: bp.id,
-              name: bp.name,
-              slug: bp.slug || bp.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
-              price: Number(bp.price) || 0,
+              name: bp.name || defaultMatch?.name,
+              slug: bp.slug || defaultMatch?.slug || bp.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
+              price: Number(bp.price) || defaultMatch?.price || 0,
               description: bp.description || defaultMatch?.description || '',
-              category: bp.category?.name?.toLowerCase() || bp.sub_category || defaultMatch?.category || 'all',
+              category: defaultMatch?.category || bp.category?.name?.toLowerCase() || bp.sub_category || 'all',
+              categoryName: defaultMatch?.categoryName || bp.category?.name || '',
+              subCategory: defaultMatch?.subCategory || bp.sub_category || '',
               images: imagesList,
               image_url: bp.image_url || imagesList[0] || '/placeholder.png',
               stock: typeof bp.stock !== 'undefined' ? bp.stock : (defaultMatch?.stock || 0),
@@ -63,8 +65,18 @@ export const ProductProvider = ({ children }) => {
             };
           });
 
+          // Include any products from DEFAULT_PRODUCTS not yet returned by backend
+          const unmappedDefaults = DEFAULT_PRODUCTS.filter(dp => 
+            !mappedProducts.some(mp => 
+              mp.slug === dp.slug || 
+              mp.id === dp.id || 
+              (mp.name && dp.name && mp.name.toLowerCase() === dp.name.toLowerCase())
+            )
+          );
+          const allMergedProducts = [...mappedProducts, ...unmappedDefaults];
+
           setCategories(mappedCategories.length > 0 ? mappedCategories : DEFAULT_CATEGORIES);
-          setProducts(mappedProducts);
+          setProducts(allMergedProducts);
         }
       }
     } catch (err) {

@@ -11,6 +11,7 @@ export const CampaignVideoSection = () => {
         muted
         playsInline
         preload="metadata"
+        poster="/world_of_suko_poster.webp"
         className="absolute inset-0 w-full h-full object-cover object-[50%_20%] opacity-65 scale-105"
         src="/world_of_suko.mp4"
       />

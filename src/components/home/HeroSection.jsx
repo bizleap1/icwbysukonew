@@ -1,17 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
 
 export const HeroSection = () => {
-  const shouldReduceMotion = useReducedMotion();
-
   return (
-    <section 
+    <section
       data-testid="hero-section"
-      className="relative h-[78vh] sm:h-[85vh] lg:h-screen w-full bg-[#0A0A0C] overflow-hidden"
+      className="relative w-full h-[100dvh] min-h-[580px] sm:min-h-[640px] lg:min-h-[720px] bg-[#0A0A0C] overflow-hidden flex items-end justify-center"
     >
-      {/* Fullscreen Background Video with Poster Fallback */}
+      {/* 1. Fullscreen Background Video */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-[#0A0A0C]">
         <video
           autoPlay
@@ -19,66 +15,47 @@ export const HeroSection = () => {
           muted
           playsInline
           preload="auto"
-          poster="/boardroom_banner.jpg"
-          className="w-full h-full object-cover object-center opacity-85 scale-105"
+          poster="/hero_bg_poster.webp"
+          className="w-full h-full object-cover object-[50%_18%] sm:object-[52%_20%] lg:object-[54%_20%] scale-[1.03] brightness-[1.06] contrast-[1.02]"
         >
           <source src="/hero_bg.mp4" type="video/mp4" />
-          <source src="/hero_bg.MOV" type="video/quicktime" />
-          {/* Image Fallback if video does not load */}
-          <img
-            src="/boardroom_banner.jpg"
-            alt="ICW Executive Luxury Tailoring Collection"
-            fetchPriority="high"
-            className="w-full h-full object-cover object-[78%_25%] sm:object-top opacity-90"
-          />
         </video>
-        {/* Gradients ensuring uninterrupted typography legibility on the left and bottom */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent z-[2] pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 sm:via-black/35 to-transparent z-[2] pointer-events-none" />
+        {/* Soft Ambient Contrast Gradient (Lightened for garment detail clarity) */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 sm:from-black/65 via-black/10 to-black/20 pointer-events-none" />
       </div>
 
-      {/* Lower-Third Anchored Hero Content */}
-      <div className="absolute inset-x-0 bottom-[7vh] sm:bottom-[9vh] lg:bottom-[10vh] z-10 pointer-events-none">
-        <div className="max-w-[1700px] w-full mx-auto px-5 sm:px-8 lg:px-14 xl:px-16 flex items-end justify-between">
-          <div className="w-full max-w-[620px] pointer-events-auto">
-            <motion.div
-              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 30 }}
-              animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-              transition={{ duration: shouldReduceMotion ? 0.2 : 1.1, ease: [0.22, 1, 0.36, 1] }}
+      {/* 2. Direct Campaign Text Overlay (Crisp on All Screens) */}
+      <div className="relative z-10 w-full mx-auto px-6 sm:px-10 lg:px-12 xl:px-14 pb-8 sm:pb-12 lg:pb-14 text-center flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center text-center max-w-4xl mx-auto select-none">
+
+          {/* Brand Title: SUKO */}
+          <h1 className="font-quiche text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light tracking-[0.20em] sm:tracking-[0.24em] uppercase leading-none text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
+            SUKO
+          </h1>
+
+          {/* Subtitle Statement: The Indian Corporate Wear */}
+          <p className="font-quiche italic text-sm sm:text-lg md:text-xl lg:text-2xl text-white/95 font-light tracking-[0.08em] sm:tracking-[0.12em] mt-2.5 sm:mt-3 mb-4 sm:mb-6 drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+            The Indian Corporate Wear
+          </p>
+
+          {/* Luxury Editorial CTA: DISCOVER THE EDIT */}
+          <div>
+            <Link
+              to="/new-in"
+              className="group relative inline-block pt-1 pb-1.5 select-none focus-visible:outline-none cursor-pointer"
             >
-              {/* Eyebrow Label with Gold Accent */}
-              <div className="flex items-center gap-2.5 mb-2.5 sm:mb-[14px]">
-                <span className="w-4 h-[1px] bg-[#C2922E]" />
-                <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.18em] text-[#C2922E] font-medium font-body">
-                  ICW — BY SUKO
-                </span>
-              </div>
+              <span className="text-[12px] sm:text-[13.5px] lg:text-[15px] uppercase tracking-[0.18em] sm:tracking-[0.22em] font-medium text-white drop-shadow-md block">
+                DISCOVER THE EDIT
+              </span>
 
-              {/* Main Headline */}
-              <h1 className="font-quiche text-3xl sm:text-5xl lg:text-[4.2rem] xl:text-[4.75rem] tracking-tight text-white leading-[0.98] sm:leading-[0.96] font-light mb-3.5 sm:mb-[18px] drop-shadow-2xl">
-                The New <span className="italic font-normal text-white/90">Standard</span> <br />
-                of <span className="italic font-normal text-white/90">Corporate</span> Style.
-              </h1>
+              {/* Thin Base Line */}
+              <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white/40" />
 
-              {/* Concise 2-Line Subcopy */}
-              <p className="text-white/80 sm:text-white/65 font-body text-xs sm:text-[13.5px] lg:text-[14.5px] tracking-wide font-light leading-relaxed max-w-[400px] mb-6 sm:mb-[28px] drop-shadow-sm">
-                Impeccable structure designed for the modern female leader. Tailored for ambition.
-              </p>
-
-              {/* Editorial Underline CTA */}
-              <div className="flex flex-row items-center gap-7 sm:gap-11 lg:gap-12 pt-1 pb-1">
-                <Link
-                  to="/women"
-                  className="group inline-flex items-center gap-2 sm:gap-2.5 text-[10.5px] sm:text-[11.5px] uppercase tracking-[0.22em] font-normal text-white hover:text-[#C2922E] transition-all duration-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C2922E]"
-                >
-                  <span className="border-b border-[#C2922E] pb-0.5 sm:pb-1 transition-all duration-300">
-                    DISCOVER THE COLLECTION
-                  </span>
-                  <ArrowUpRight size={13} className="text-[#C2922E] transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </Link>
-              </div>
-            </motion.div>
+              {/* Animated Active Line on Hover */}
+              <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-white transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]" />
+            </Link>
           </div>
+
         </div>
       </div>
     </section>

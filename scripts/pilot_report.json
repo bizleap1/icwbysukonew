@@ -1,0 +1,204 @@
+{
+  "videos": [
+    {
+      "file": "hero_bg.mp4",
+      "originalSize": "4.08 MB",
+      "optimizedSize": "3.83 MB",
+      "reduction": "6.2%",
+      "poster": "hero_bg_poster.webp"
+    },
+    {
+      "file": "about_suko.mp4",
+      "originalSize": "29.48 MB",
+      "optimizedSize": "2.92 MB",
+      "reduction": "90.1%",
+      "poster": "about_suko_poster.webp"
+    }
+  ],
+  "images": [
+    {
+      "file": "products/the-noir-tailored-suit/1.png",
+      "dimensions": "1024x1536",
+      "originalSize": "1361.0 KB",
+      "fullWebpSize": "53.8 KB",
+      "card800wSize": "33.6 KB",
+      "thumbSize": "5.2 KB",
+      "reductionFull": "96.0%"
+    },
+    {
+      "file": "products/the-noir-tailored-suit/2.png",
+      "dimensions": "1448x1086",
+      "originalSize": "1321.9 KB",
+      "fullWebpSize": "43.0 KB",
+      "card800wSize": "14.6 KB",
+      "thumbSize": "2.5 KB",
+      "reductionFull": "96.7%"
+    },
+    {
+      "file": "products/the-noir-tailored-suit/3.png",
+      "dimensions": "1448x1086",
+      "originalSize": "872.8 KB",
+      "fullWebpSize": "30.2 KB",
+      "card800wSize": "7.6 KB",
+      "thumbSize": "1.5 KB",
+      "reductionFull": "96.5%"
+    },
+    {
+      "file": "products/the-noir-tailored-suit/4.png",
+      "dimensions": "1024x1536",
+      "originalSize": "1284.3 KB",
+      "fullWebpSize": "51.0 KB",
+      "card800wSize": "32.9 KB",
+      "thumbSize": "5.2 KB",
+      "reductionFull": "96.0%"
+    },
+    {
+      "file": "products/the-noir-tailored-suit/5.png",
+      "dimensions": "1024x1536",
+      "originalSize": "1211.0 KB",
+      "fullWebpSize": "41.5 KB",
+      "card800wSize": "27.5 KB",
+      "thumbSize": "4.3 KB",
+      "reductionFull": "96.6%"
+    },
+    {
+      "file": "products/the-noir-tailored-suit/6.png",
+      "dimensions": "1024x1536",
+      "originalSize": "1298.3 KB",
+      "fullWebpSize": "47.1 KB",
+      "card800wSize": "30.2 KB",
+      "thumbSize": "4.8 KB",
+      "reductionFull": "96.4%"
+    },
+    {
+      "file": "products/the-noir-tailored-suit/7.png",
+      "dimensions": "1023x1537",
+      "originalSize": "1579.9 KB",
+      "fullWebpSize": "102.7 KB",
+      "card800wSize": "52.1 KB",
+      "thumbSize": "7.7 KB",
+      "reductionFull": "93.5%"
+    },
+    {
+      "file": "products/the-plum-sculpted-suit/1.png",
+      "dimensions": "1023x1537",
+      "originalSize": "1418.7 KB",
+      "fullWebpSize": "69.9 KB",
+      "card800wSize": "37.3 KB",
+      "thumbSize": "6.0 KB",
+      "reductionFull": "95.1%"
+    },
+    {
+      "file": "products/the-plum-sculpted-suit/2.png",
+      "dimensions": "1448x1086",
+      "originalSize": "1176.8 KB",
+      "fullWebpSize": "45.5 KB",
+      "card800wSize": "16.6 KB",
+      "thumbSize": "2.9 KB",
+      "reductionFull": "96.1%"
+    },
+    {
+      "file": "products/the-plum-sculpted-suit/3.png",
+      "dimensions": "1448x1086",
+      "originalSize": "951.4 KB",
+      "fullWebpSize": "32.4 KB",
+      "card800wSize": "9.7 KB",
+      "thumbSize": "1.6 KB",
+      "reductionFull": "96.6%"
+    },
+    {
+      "file": "products/the-plum-sculpted-suit/4.png",
+      "dimensions": "1023x1537",
+      "originalSize": "1333.9 KB",
+      "fullWebpSize": "64.0 KB",
+      "card800wSize": "35.3 KB",
+      "thumbSize": "5.6 KB",
+      "reductionFull": "95.2%"
+    },
+    {
+      "file": "products/the-plum-sculpted-suit/5.png",
+      "dimensions": "1023x1537",
+      "originalSize": "1280.4 KB",
+      "fullWebpSize": "45.7 KB",
+      "card800wSize": "30.4 KB",
+      "thumbSize": "4.6 KB",
+      "reductionFull": "96.4%"
+    },
+    {
+      "file": "products/the-plum-sculpted-suit/6.png",
+      "dimensions": "1023x1537",
+      "originalSize": "1349.4 KB",
+      "fullWebpSize": "50.2 KB",
+      "card800wSize": "33.3 KB",
+      "thumbSize": "5.3 KB",
+      "reductionFull": "96.3%"
+    },
+    {
+      "file": "products/the-plum-sculpted-suit/7.png",
+      "dimensions": "1023x1537",
+      "originalSize": "1683.7 KB",
+      "fullWebpSize": "128.1 KB",
+      "card800wSize": "64.4 KB",
+      "thumbSize": "9.1 KB",
+      "reductionFull": "92.4%"
+    },
+    {
+      "file": "products/dusty-rose-embroidered-farchi-tunic/1.JPG",
+      "dimensions": "1200x1800",
+      "originalSize": "243.1 KB",
+      "fullWebpSize": "136.3 KB",
+      "card800wSize": "60.0 KB",
+      "thumbSize": "9.0 KB",
+      "reductionFull": "43.9%"
+    },
+    {
+      "file": "products/dusty-rose-embroidered-farchi-tunic/2.png",
+      "dimensions": "1448x1086",
+      "originalSize": "1381.8 KB",
+      "fullWebpSize": "105.2 KB",
+      "card800wSize": "27.6 KB",
+      "thumbSize": "4.3 KB",
+      "reductionFull": "92.4%"
+    },
+    {
+      "file": "products/dusty-rose-embroidered-farchi-tunic/3.png",
+      "dimensions": "1023x1537",
+      "originalSize": "1557.2 KB",
+      "fullWebpSize": "103.4 KB",
+      "card800wSize": "46.2 KB",
+      "thumbSize": "5.3 KB",
+      "reductionFull": "93.4%"
+    },
+    {
+      "file": "products/dusty-rose-embroidered-farchi-tunic/4.png",
+      "dimensions": "1023x1537",
+      "originalSize": "2079.4 KB",
+      "fullWebpSize": "262.0 KB",
+      "card800wSize": "126.5 KB",
+      "thumbSize": "11.8 KB",
+      "reductionFull": "87.4%"
+    },
+    {
+      "file": "products/dusty-rose-embroidered-farchi-tunic/5.JPG",
+      "dimensions": "1200x1800",
+      "originalSize": "188.2 KB",
+      "fullWebpSize": "85.0 KB",
+      "card800wSize": "42.3 KB",
+      "thumbSize": "7.1 KB",
+      "reductionFull": "54.8%"
+    },
+    {
+      "file": "home_signature.png",
+      "dimensions": "1122x1402",
+      "originalSize": "2490.7 KB",
+      "fullWebpSize": "372.3 KB",
+      "card800wSize": "211.1 KB",
+      "thumbSize": "10.6 KB",
+      "reductionFull": "85.1%"
+    }
+  ],
+  "summary": {
+    "originalTotalBytes": 61879795,
+    "optimizedTotalBytes": 8992476
+  }
+}

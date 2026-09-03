@@ -1,0 +1,3080 @@
+{
+  "timestamp": "2026-09-03T13:20:11.094Z",
+  "totalMediaFiles": 182,
+  "totalSizeBytes": 358269225,
+  "videos": [
+    {
+      "path": "about_suko.mp4",
+      "sizeMB": 29.48,
+      "sizeKB": 30184,
+      "duration": "00:00:14.23",
+      "resolution": "1920x1080",
+      "hasAudio": true
+    },
+    {
+      "path": "atlier_women.mp4",
+      "sizeMB": 8.07,
+      "sizeKB": 8266,
+      "duration": "00:00:07.34",
+      "resolution": "1920x1080",
+      "hasAudio": true
+    },
+    {
+      "path": "hero_bg.mp4",
+      "sizeMB": 4.08,
+      "sizeKB": 4182,
+      "duration": "00:00:10.00",
+      "resolution": "1920x1080",
+      "hasAudio": true
+    },
+    {
+      "path": "Woman_walking_in_business_district_202608311458.mp4",
+      "sizeMB": 2.88,
+      "sizeKB": 2952,
+      "duration": "00:00:06.00",
+      "resolution": "1920x1080",
+      "hasAudio": true
+    },
+    {
+      "path": "Woman_presenting_in_office_1080p_202608311521.mp4",
+      "sizeMB": 2.81,
+      "sizeKB": 2882,
+      "duration": "00:00:06.00",
+      "resolution": "1920x1080",
+      "hasAudio": true
+    },
+    {
+      "path": "Woman_walking_in_luxury_boardroom_202608311517.mp4",
+      "sizeMB": 2.71,
+      "sizeKB": 2775,
+      "duration": "00:00:06.00",
+      "resolution": "1920x1080",
+      "hasAudio": true
+    },
+    {
+      "path": "world_of_suko.mp4",
+      "sizeMB": 2.71,
+      "sizeKB": 2777,
+      "duration": "00:00:10.01",
+      "resolution": "1920x1080",
+      "hasAudio": true
+    },
+    {
+      "path": "Woman_walking_in_luxury_interior_202608311530.mp4",
+      "sizeMB": 2.59,
+      "sizeKB": 2655,
+      "duration": "00:00:06.00",
+      "resolution": "1920x1080",
+      "hasAudio": true
+    },
+    {
+      "path": "manifesto.mp4",
+      "sizeMB": 1.08,
+      "sizeKB": 1108,
+      "duration": "00:00:08.38",
+      "resolution": "1280x720",
+      "hasAudio": true
+    }
+  ],
+  "brandAssetsToExclude": [
+    {
+      "path": "about_suko_brand.png",
+      "sizeKB": 1162
+    },
+    {
+      "path": "logo-light.png",
+      "sizeKB": 97
+    },
+    {
+      "path": "logo.png",
+      "sizeKB": 152
+    }
+  ],
+  "oversizedCameraImages": [
+    {
+      "path": "products/plum-sculpted-trousers/5.JPG",
+      "width": 7008,
+      "height": 4672,
+      "format": "jpeg",
+      "sizeMB": 13.24,
+      "sizeKB": 13556,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/plum-sculpted-trousers/1.JPG",
+      "width": 7008,
+      "height": 4672,
+      "format": "jpeg",
+      "sizeMB": 12.56,
+      "sizeKB": 12862,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-tailored-trousers/1.JPG",
+      "width": 7008,
+      "height": 4672,
+      "format": "jpeg",
+      "sizeMB": 11.84,
+      "sizeKB": 12120,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-flare-skirt/1.JPG",
+      "width": 7008,
+      "height": 4672,
+      "format": "jpeg",
+      "sizeMB": 10.97,
+      "sizeKB": 11232,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-tailored-mini-skirt/1.JPG",
+      "width": 7008,
+      "height": 4672,
+      "format": "jpeg",
+      "sizeMB": 10.81,
+      "sizeKB": 11070,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-flare-skirt/5.JPG",
+      "width": 7008,
+      "height": 4672,
+      "format": "jpeg",
+      "sizeMB": 10.74,
+      "sizeKB": 11000,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-column-skirt/1.JPG",
+      "width": 7008,
+      "height": 4672,
+      "format": "jpeg",
+      "sizeMB": 10.48,
+      "sizeKB": 10729,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-structured-vest/1.JPG",
+      "width": 4672,
+      "height": 7008,
+      "format": "jpeg",
+      "sizeMB": 3.85,
+      "sizeKB": 3944,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-layered-longline-vest/1.JPG",
+      "width": 4672,
+      "height": 7008,
+      "format": "jpeg",
+      "sizeMB": 3.75,
+      "sizeKB": 3841,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-structured-vest/5.JPG",
+      "width": 4672,
+      "height": 7008,
+      "format": "jpeg",
+      "sizeMB": 3.68,
+      "sizeKB": 3768,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-layered-longline-vest/5.JPG",
+      "width": 4672,
+      "height": 7008,
+      "format": "jpeg",
+      "sizeMB": 3.45,
+      "sizeKB": 3533,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/plum-sculpted-double-breasted-blazer/1.JPG",
+      "width": 1600,
+      "height": 2400,
+      "format": "jpeg",
+      "sizeMB": 0.25,
+      "sizeKB": 260,
+      "hasAlpha": false
+    },
+    {
+      "path": "editorial.JPG",
+      "width": 1600,
+      "height": 2400,
+      "format": "jpeg",
+      "sizeMB": 0.21,
+      "sizeKB": 218,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/plum-sculpted-double-breasted-blazer/5.JPG",
+      "width": 1600,
+      "height": 2400,
+      "format": "jpeg",
+      "sizeMB": 0.21,
+      "sizeKB": 216,
+      "hasAlpha": false
+    }
+  ],
+  "uncompressedPngs": [
+    {
+      "path": "products/dusty-rose-trousers/4.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 2.63,
+      "sizeKB": 2696,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/lilac-flare-trousers/4.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 2.5,
+      "sizeKB": 2561,
+      "hasAlpha": false
+    },
+    {
+      "path": "home_signature.png",
+      "width": 1122,
+      "height": 1402,
+      "format": "png",
+      "sizeMB": 2.43,
+      "sizeKB": 2491,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-tailored-wide-leg-trousers/4.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 2.34,
+      "sizeKB": 2395,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-tailored-mini-skirt/4.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 2.26,
+      "sizeKB": 2311,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-column-skirt/4.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 2.12,
+      "sizeKB": 2172,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/lilac-sculpted-flare-blazer/4.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 2.11,
+      "sizeKB": 2164,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-flare-skirt/4.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 2.11,
+      "sizeKB": 2164,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/plum-sculpted-trousers/4.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 2.11,
+      "sizeKB": 2164,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-tailored-power-suit/7.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 2.08,
+      "sizeKB": 2132,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-draped-vest-mini-set/7.png",
+      "width": 1122,
+      "height": 1402,
+      "format": "png",
+      "sizeMB": 2.05,
+      "sizeKB": 2100,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/dusty-rose-embroidered-farchi-tunic/4.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 2.03,
+      "sizeKB": 2079,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-sculpted-vest/4.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.91,
+      "sizeKB": 1953,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-contour-jacket/4.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.87,
+      "sizeKB": 1917,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/lilac-sculpted-flare-suit/7.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.87,
+      "sizeKB": 1916,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-peplum-fishtail-set/7.png",
+      "width": 1122,
+      "height": 1402,
+      "format": "png",
+      "sizeMB": 1.86,
+      "sizeKB": 1907,
+      "hasAlpha": false
+    },
+    {
+      "path": "after_hour_woman.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.85,
+      "sizeKB": 1899,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-dusty-rose-embroidered-farchi-set/7.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.85,
+      "sizeKB": 1893,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-tailored-trousers/4.png",
+      "width": 1024,
+      "height": 1535,
+      "format": "png",
+      "sizeMB": 1.85,
+      "sizeKB": 1892,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-draped-blazer/4.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.7,
+      "sizeKB": 1744,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-layered-longline-vest/4.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.69,
+      "sizeKB": 1734,
+      "hasAlpha": false
+    },
+    {
+      "path": "boardroom_women.png",
+      "width": 1122,
+      "height": 1402,
+      "format": "png",
+      "sizeMB": 1.67,
+      "sizeKB": 1705,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/plum-sculpted-double-breasted-blazer/4.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.66,
+      "sizeKB": 1703,
+      "hasAlpha": false
+    },
+    {
+      "path": "presentation_woman.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.66,
+      "sizeKB": 1699,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-tailored-trousers/3.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.65,
+      "sizeKB": 1688,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/plum-sculpted-trousers/3.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.65,
+      "sizeKB": 1686,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-plum-sculpted-suit/7.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.64,
+      "sizeKB": 1684,
+      "hasAlpha": false
+    },
+    {
+      "path": "personal_styling.png",
+      "width": 1536,
+      "height": 1024,
+      "format": "png",
+      "sizeMB": 1.64,
+      "sizeKB": 1683,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-asymmetric-wrap-vest/4.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.64,
+      "sizeKB": 1683,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-structured-vest/4.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.64,
+      "sizeKB": 1676,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-sculpted-vest-set/7.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.63,
+      "sizeKB": 1669,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-tailored-blazer/4.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.62,
+      "sizeKB": 1660,
+      "hasAlpha": false
+    },
+    {
+      "path": "executive_woman.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.62,
+      "sizeKB": 1655,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/dusty-rose-trousers/1.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.62,
+      "sizeKB": 1655,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/lilac-flare-trousers/1.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.61,
+      "sizeKB": 1651,
+      "hasAlpha": false
+    },
+    {
+      "path": "collection_hero.png",
+      "width": 1536,
+      "height": 1024,
+      "format": "png",
+      "sizeMB": 1.6,
+      "sizeKB": 1639,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-tailored-wide-leg-trousers/1.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.58,
+      "sizeKB": 1616,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/lilac-flare-trousers/3.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.56,
+      "sizeKB": 1600,
+      "hasAlpha": false
+    },
+    {
+      "path": "founder_women.png",
+      "width": 1023,
+      "height": 1538,
+      "format": "png",
+      "sizeMB": 1.55,
+      "sizeKB": 1582,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-noir-tailored-suit/7.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.54,
+      "sizeKB": 1580,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/dusty-rose-embroidered-farchi-tunic/3.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.52,
+      "sizeKB": 1557,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-noir-layered-suit/7.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.51,
+      "sizeKB": 1548,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-contour-jacket/1.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.45,
+      "sizeKB": 1484,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-draped-blazer/3.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.44,
+      "sizeKB": 1472,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-layered-longline-vest/2.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.44,
+      "sizeKB": 1471,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-asymmetric-wrap-vest/3.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.43,
+      "sizeKB": 1461,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-draped-vest-mini-set/6.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.41,
+      "sizeKB": 1446,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-structured-vest/3.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.4,
+      "sizeKB": 1438,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/lilac-sculpted-flare-blazer/3.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.4,
+      "sizeKB": 1437,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-plum-sculpted-suit/1.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.39,
+      "sizeKB": 1419,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-dusty-rose-embroidered-farchi-set/1.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.38,
+      "sizeKB": 1409,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-sculpted-vest/1.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.37,
+      "sizeKB": 1408,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/dusty-rose-trousers/3.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.37,
+      "sizeKB": 1407,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-sculpted-vest-set/6.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.36,
+      "sizeKB": 1391,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-layered-longline-vest/3.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.36,
+      "sizeKB": 1389,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-draped-vest-mini-set/3.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.35,
+      "sizeKB": 1386,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-tailored-mini-skirt/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.35,
+      "sizeKB": 1386,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-dusty-rose-embroidered-farchi-set/4.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.35,
+      "sizeKB": 1385,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/dusty-rose-embroidered-farchi-tunic/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.35,
+      "sizeKB": 1382,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-dusty-rose-embroidered-farchi-set/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.35,
+      "sizeKB": 1382,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-sculpted-vest-set/1.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.35,
+      "sizeKB": 1381,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/lilac-sculpted-flare-suit/1.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.34,
+      "sizeKB": 1368,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-peplum-fishtail-set/5.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.33,
+      "sizeKB": 1361,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-noir-tailored-suit/1.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.33,
+      "sizeKB": 1361,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-sculpted-vest-set/5.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.32,
+      "sizeKB": 1355,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-column-skirt/3.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.32,
+      "sizeKB": 1351,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-plum-sculpted-suit/6.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.32,
+      "sizeKB": 1349,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/plum-sculpted-double-breasted-blazer/3.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.31,
+      "sizeKB": 1346,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-dusty-rose-embroidered-farchi-set/6.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.31,
+      "sizeKB": 1345,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-plum-sculpted-suit/4.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.3,
+      "sizeKB": 1334,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-peplum-fishtail-set/6.png",
+      "width": 1086,
+      "height": 1448,
+      "format": "png",
+      "sizeMB": 1.3,
+      "sizeKB": 1332,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-peplum-fishtail-set/4.png",
+      "width": 1122,
+      "height": 1402,
+      "format": "png",
+      "sizeMB": 1.3,
+      "sizeKB": 1329,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-noir-layered-suit/1.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.3,
+      "sizeKB": 1329,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-draped-vest-mini-set/4.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.3,
+      "sizeKB": 1328,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-tailored-blazer/3.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.3,
+      "sizeKB": 1328,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-tailored-power-suit/6.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.29,
+      "sizeKB": 1325,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-sculpted-vest-set/4.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.29,
+      "sizeKB": 1322,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-tailored-blazer/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.29,
+      "sizeKB": 1322,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-noir-tailored-suit/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.29,
+      "sizeKB": 1322,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/lilac-sculpted-flare-suit/4.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.29,
+      "sizeKB": 1320,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-tailored-power-suit/1.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.29,
+      "sizeKB": 1319,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-peplum-fishtail-set/1.png",
+      "width": 1122,
+      "height": 1402,
+      "format": "png",
+      "sizeMB": 1.29,
+      "sizeKB": 1317,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/lilac-sculpted-flare-suit/5.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.29,
+      "sizeKB": 1316,
+      "hasAlpha": false
+    },
+    {
+      "path": "signature.png",
+      "width": 1717,
+      "height": 916,
+      "format": "png",
+      "sizeMB": 1.29,
+      "sizeKB": 1316,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-dusty-rose-embroidered-farchi-set/5.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.28,
+      "sizeKB": 1313,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-tailored-wide-leg-trousers/3.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.28,
+      "sizeKB": 1311,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/lilac-flare-trousers/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.28,
+      "sizeKB": 1310,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/lilac-sculpted-flare-suit/3.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.28,
+      "sizeKB": 1310,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-tailored-power-suit/4.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.27,
+      "sizeKB": 1300,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-noir-layered-suit/5.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.27,
+      "sizeKB": 1300,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-draped-vest-mini-set/5.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.27,
+      "sizeKB": 1299,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/lilac-sculpted-flare-suit/6.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.27,
+      "sizeKB": 1299,
+      "hasAlpha": false
+    },
+    {
+      "path": "about_noir_tailoring_detail.png",
+      "width": 1023,
+      "height": 1278,
+      "format": "png",
+      "sizeMB": 1.27,
+      "sizeKB": 1298,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-draped-vest-mini-set/1.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.27,
+      "sizeKB": 1298,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-noir-tailored-suit/6.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.27,
+      "sizeKB": 1298,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-contour-jacket/3.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.26,
+      "sizeKB": 1291,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-tailored-power-suit/5.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.26,
+      "sizeKB": 1287,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-noir-tailored-suit/4.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.25,
+      "sizeKB": 1284,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-asymmetric-wrap-vest/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.25,
+      "sizeKB": 1282,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-draped-vest-mini-set/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.25,
+      "sizeKB": 1282,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-flare-skirt/3.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.25,
+      "sizeKB": 1281,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-plum-sculpted-suit/5.png",
+      "width": 1023,
+      "height": 1537,
+      "format": "png",
+      "sizeMB": 1.25,
+      "sizeKB": 1280,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-noir-layered-suit/6.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.24,
+      "sizeKB": 1268,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-noir-tailored-suit/5.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.18,
+      "sizeKB": 1211,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-tailored-mini-skirt/3.png",
+      "width": 1254,
+      "height": 1254,
+      "format": "png",
+      "sizeMB": 1.16,
+      "sizeKB": 1192,
+      "hasAlpha": false
+    },
+    {
+      "path": "shop_by_moment_founder.png",
+      "width": 1800,
+      "height": 647,
+      "format": "png",
+      "sizeMB": 1.15,
+      "sizeKB": 1182,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/plum-sculpted-double-breasted-blazer/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.15,
+      "sizeKB": 1177,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-plum-sculpted-suit/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.15,
+      "sizeKB": 1177,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-draped-blazer/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.13,
+      "sizeKB": 1157,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-tailored-power-suit/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.13,
+      "sizeKB": 1157,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/lilac-sculpted-flare-blazer/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.1,
+      "sizeKB": 1129,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/lilac-sculpted-flare-suit/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.1,
+      "sizeKB": 1129,
+      "hasAlpha": false
+    },
+    {
+      "path": "shop_by_moment_presntation.png",
+      "width": 1800,
+      "height": 619,
+      "format": "png",
+      "sizeMB": 1.09,
+      "sizeKB": 1117,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/midnight-sculpted-vest/3.png",
+      "width": 1311,
+      "height": 1200,
+      "format": "png",
+      "sizeMB": 1.03,
+      "sizeKB": 1059,
+      "hasAlpha": false
+    },
+    {
+      "path": "shop_by_moment_executive.png",
+      "width": 1800,
+      "height": 619,
+      "format": "png",
+      "sizeMB": 1.02,
+      "sizeKB": 1043,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-noir-layered-suit/3.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1.01,
+      "sizeKB": 1033,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/dusty-rose-trousers/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1,
+      "sizeKB": 1029,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-dusty-rose-embroidered-farchi-set/3.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 1,
+      "sizeKB": 1029,
+      "hasAlpha": false
+    },
+    {
+      "path": "shop_by_moment_boardroom.png",
+      "width": 1800,
+      "height": 619,
+      "format": "png",
+      "sizeMB": 0.98,
+      "sizeKB": 1001,
+      "hasAlpha": false
+    },
+    {
+      "path": "shop_by_moment_after_hours.png",
+      "width": 1800,
+      "height": 620,
+      "format": "png",
+      "sizeMB": 0.93,
+      "sizeKB": 952,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/plum-sculpted-trousers/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 0.93,
+      "sizeKB": 951,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-plum-sculpted-suit/3.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 0.93,
+      "sizeKB": 951,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-tailored-power-suit/3.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 0.9,
+      "sizeKB": 920,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/aubergine-tailored-wide-leg-trousers/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 0.9,
+      "sizeKB": 920,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-structured-vest/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 0.89,
+      "sizeKB": 907,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-noir-layered-suit/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 0.89,
+      "sizeKB": 907,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/noir-tailored-trousers/2.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 0.85,
+      "sizeKB": 873,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-noir-tailored-suit/3.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 0.85,
+      "sizeKB": 873,
+      "hasAlpha": false
+    },
+    {
+      "path": "products/the-noir-layered-suit/4.png",
+      "width": 1448,
+      "height": 1086,
+      "format": "png",
+      "sizeMB": 0.85,
+      "sizeKB": 868,
+      "hasAlpha": false
+    }
+  ],
+  "rootEditorialImages": [
+    {
+      "path": "about_noir_tailoring_detail.png",
+      "width": 1023,
+      "height": 1278,
+      "format": "png",
+      "sizeMB": 1.27,
+      "sizeKB": 1298,
+      "hasAlpha": false
+    },
+    {
+      "path": "after_hour_woman.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.85,
+      "sizeKB": 1899,
+      "hasAlpha": false
+    },
+    {
+      "path": "boardroom_women.png",
+      "width": 1122,
+      "height": 1402,
+      "format": "png",
+      "sizeMB": 1.67,
+      "sizeKB": 1705,
+      "hasAlpha": false
+    },
+    {
+      "path": "collection_hero.png",
+      "width": 1536,
+      "height": 1024,
+      "format": "png",
+      "sizeMB": 1.6,
+      "sizeKB": 1639,
+      "hasAlpha": false
+    },
+    {
+      "path": "editorial.JPG",
+      "width": 1600,
+      "height": 2400,
+      "format": "jpeg",
+      "sizeMB": 0.21,
+      "sizeKB": 218,
+      "hasAlpha": false
+    },
+    {
+      "path": "executive_woman.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.62,
+      "sizeKB": 1655,
+      "hasAlpha": false
+    },
+    {
+      "path": "founder_women.png",
+      "width": 1023,
+      "height": 1538,
+      "format": "png",
+      "sizeMB": 1.55,
+      "sizeKB": 1582,
+      "hasAlpha": false
+    },
+    {
+      "path": "home_signature.png",
+      "width": 1122,
+      "height": 1402,
+      "format": "png",
+      "sizeMB": 2.43,
+      "sizeKB": 2491,
+      "hasAlpha": false
+    },
+    {
+      "path": "personal_styling.png",
+      "width": 1536,
+      "height": 1024,
+      "format": "png",
+      "sizeMB": 1.64,
+      "sizeKB": 1683,
+      "hasAlpha": false
+    },
+    {
+      "path": "presentation_woman.png",
+      "width": 1024,
+      "height": 1536,
+      "format": "png",
+      "sizeMB": 1.66,
+      "sizeKB": 1699,
+      "hasAlpha": false
+    },
+    {
+      "path": "shop_by_moment_after_hours.png",
+      "width": 1800,
+      "height": 620,
+      "format": "png",
+      "sizeMB": 0.93,
+      "sizeKB": 952,
+      "hasAlpha": false
+    },
+    {
+      "path": "shop_by_moment_boardroom.png",
+      "width": 1800,
+      "height": 619,
+      "format": "png",
+      "sizeMB": 0.98,
+      "sizeKB": 1001,
+      "hasAlpha": false
+    },
+    {
+      "path": "shop_by_moment_executive.png",
+      "width": 1800,
+      "height": 619,
+      "format": "png",
+      "sizeMB": 1.02,
+      "sizeKB": 1043,
+      "hasAlpha": false
+    },
+    {
+      "path": "shop_by_moment_founder.png",
+      "width": 1800,
+      "height": 647,
+      "format": "png",
+      "sizeMB": 1.15,
+      "sizeKB": 1182,
+      "hasAlpha": false
+    },
+    {
+      "path": "shop_by_moment_presntation.png",
+      "width": 1800,
+      "height": 619,
+      "format": "png",
+      "sizeMB": 1.09,
+      "sizeKB": 1117,
+      "hasAlpha": false
+    },
+    {
+      "path": "signature.png",
+      "width": 1717,
+      "height": 916,
+      "format": "png",
+      "sizeMB": 1.29,
+      "sizeKB": 1316,
+      "hasAlpha": false
+    },
+    {
+      "path": "women_bg.png",
+      "width": 1672,
+      "height": 941,
+      "format": "png",
+      "sizeMB": 0.24,
+      "sizeKB": 241,
+      "hasAlpha": false
+    }
+  ],
+  "productsSummary": {
+    "aubergine-asymmetric-wrap-vest": {
+      "count": 5,
+      "sizeMB": 4.65,
+      "items": [
+        {
+          "path": "products/aubergine-asymmetric-wrap-vest/1.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.19,
+          "sizeKB": 190,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-asymmetric-wrap-vest/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.25,
+          "sizeKB": 1282,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-asymmetric-wrap-vest/3.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.43,
+          "sizeKB": 1461,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-asymmetric-wrap-vest/4.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.64,
+          "sizeKB": 1683,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-asymmetric-wrap-vest/5.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.14,
+          "sizeKB": 146,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "aubergine-draped-blazer": {
+      "count": 5,
+      "sizeMB": 4.61,
+      "items": [
+        {
+          "path": "products/aubergine-draped-blazer/1.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.18,
+          "sizeKB": 188,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-draped-blazer/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.13,
+          "sizeKB": 1157,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-draped-blazer/3.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.44,
+          "sizeKB": 1472,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-draped-blazer/4.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.7,
+          "sizeKB": 1744,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-draped-blazer/5.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.16,
+          "sizeKB": 163,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "aubergine-draped-vest-mini-set": {
+      "count": 7,
+      "sizeMB": 9.9,
+      "items": [
+        {
+          "path": "products/aubergine-draped-vest-mini-set/1.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.27,
+          "sizeKB": 1298,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-draped-vest-mini-set/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.25,
+          "sizeKB": 1282,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-draped-vest-mini-set/3.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.35,
+          "sizeKB": 1386,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-draped-vest-mini-set/4.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.3,
+          "sizeKB": 1328,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-draped-vest-mini-set/5.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.27,
+          "sizeKB": 1299,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-draped-vest-mini-set/6.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.41,
+          "sizeKB": 1446,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-draped-vest-mini-set/7.png",
+          "width": 1122,
+          "height": 1402,
+          "format": "png",
+          "sizeMB": 2.05,
+          "sizeKB": 2100,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "aubergine-tailored-mini-skirt": {
+      "count": 5,
+      "sizeMB": 15.73,
+      "items": [
+        {
+          "path": "products/aubergine-tailored-mini-skirt/1.JPG",
+          "width": 7008,
+          "height": 4672,
+          "format": "jpeg",
+          "sizeMB": 10.81,
+          "sizeKB": 11070,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-tailored-mini-skirt/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.35,
+          "sizeKB": 1386,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-tailored-mini-skirt/3.png",
+          "width": 1254,
+          "height": 1254,
+          "format": "png",
+          "sizeMB": 1.16,
+          "sizeKB": 1192,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-tailored-mini-skirt/4.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 2.26,
+          "sizeKB": 2311,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-tailored-mini-skirt/5.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.14,
+          "sizeKB": 146,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "aubergine-tailored-power-suit": {
+      "count": 7,
+      "sizeMB": 9.22,
+      "items": [
+        {
+          "path": "products/aubergine-tailored-power-suit/1.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.29,
+          "sizeKB": 1319,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-tailored-power-suit/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.13,
+          "sizeKB": 1157,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-tailored-power-suit/3.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 0.9,
+          "sizeKB": 920,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-tailored-power-suit/4.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.27,
+          "sizeKB": 1300,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-tailored-power-suit/5.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.26,
+          "sizeKB": 1287,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-tailored-power-suit/6.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.29,
+          "sizeKB": 1325,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-tailored-power-suit/7.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 2.08,
+          "sizeKB": 2132,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "aubergine-tailored-wide-leg-trousers": {
+      "count": 5,
+      "sizeMB": 6.25,
+      "items": [
+        {
+          "path": "products/aubergine-tailored-wide-leg-trousers/1.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.58,
+          "sizeKB": 1616,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-tailored-wide-leg-trousers/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 0.9,
+          "sizeKB": 920,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-tailored-wide-leg-trousers/3.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.28,
+          "sizeKB": 1311,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-tailored-wide-leg-trousers/4.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 2.34,
+          "sizeKB": 2395,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/aubergine-tailored-wide-leg-trousers/5.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.16,
+          "sizeKB": 163,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "dusty-rose-embroidered-farchi-tunic": {
+      "count": 5,
+      "sizeMB": 5.32,
+      "items": [
+        {
+          "path": "products/dusty-rose-embroidered-farchi-tunic/1.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.24,
+          "sizeKB": 243,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/dusty-rose-embroidered-farchi-tunic/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.35,
+          "sizeKB": 1382,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/dusty-rose-embroidered-farchi-tunic/3.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.52,
+          "sizeKB": 1557,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/dusty-rose-embroidered-farchi-tunic/4.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 2.03,
+          "sizeKB": 2079,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/dusty-rose-embroidered-farchi-tunic/5.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.18,
+          "sizeKB": 188,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "dusty-rose-trousers": {
+      "count": 5,
+      "sizeMB": 6.81,
+      "items": [
+        {
+          "path": "products/dusty-rose-trousers/1.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.62,
+          "sizeKB": 1655,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/dusty-rose-trousers/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1,
+          "sizeKB": 1029,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/dusty-rose-trousers/3.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.37,
+          "sizeKB": 1407,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/dusty-rose-trousers/4.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 2.63,
+          "sizeKB": 2696,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/dusty-rose-trousers/5.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.18,
+          "sizeKB": 188,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "lilac-flare-trousers": {
+      "count": 5,
+      "sizeMB": 7.1,
+      "items": [
+        {
+          "path": "products/lilac-flare-trousers/1.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.61,
+          "sizeKB": 1651,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/lilac-flare-trousers/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.28,
+          "sizeKB": 1310,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/lilac-flare-trousers/3.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.56,
+          "sizeKB": 1600,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/lilac-flare-trousers/4.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 2.5,
+          "sizeKB": 2561,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/lilac-flare-trousers/5.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.15,
+          "sizeKB": 151,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "lilac-sculpted-flare-blazer": {
+      "count": 5,
+      "sizeMB": 4.97,
+      "items": [
+        {
+          "path": "products/lilac-sculpted-flare-blazer/1.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.2,
+          "sizeKB": 203,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/lilac-sculpted-flare-blazer/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.1,
+          "sizeKB": 1129,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/lilac-sculpted-flare-blazer/3.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.4,
+          "sizeKB": 1437,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/lilac-sculpted-flare-blazer/4.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 2.11,
+          "sizeKB": 2164,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/lilac-sculpted-flare-blazer/5.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.15,
+          "sizeKB": 151,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "lilac-sculpted-flare-suit": {
+      "count": 7,
+      "sizeMB": 9.43,
+      "items": [
+        {
+          "path": "products/lilac-sculpted-flare-suit/1.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.34,
+          "sizeKB": 1368,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/lilac-sculpted-flare-suit/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.1,
+          "sizeKB": 1129,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/lilac-sculpted-flare-suit/3.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.28,
+          "sizeKB": 1310,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/lilac-sculpted-flare-suit/4.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.29,
+          "sizeKB": 1320,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/lilac-sculpted-flare-suit/5.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.29,
+          "sizeKB": 1316,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/lilac-sculpted-flare-suit/6.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.27,
+          "sizeKB": 1299,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/lilac-sculpted-flare-suit/7.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.87,
+          "sizeKB": 1916,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "midnight-column-skirt": {
+      "count": 5,
+      "sizeMB": 14.11,
+      "items": [
+        {
+          "path": "products/midnight-column-skirt/1.JPG",
+          "width": 7008,
+          "height": 4672,
+          "format": "jpeg",
+          "sizeMB": 10.48,
+          "sizeKB": 10729,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-column-skirt/2.png",
+          "width": 1470,
+          "height": 1070,
+          "format": "png",
+          "sizeMB": 0.07,
+          "sizeKB": 67,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-column-skirt/3.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.32,
+          "sizeKB": 1351,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-column-skirt/4.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 2.12,
+          "sizeKB": 2172,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-column-skirt/5.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.13,
+          "sizeKB": 133,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "midnight-contour-jacket": {
+      "count": 5,
+      "sizeMB": 4.94,
+      "items": [
+        {
+          "path": "products/midnight-contour-jacket/1.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.45,
+          "sizeKB": 1484,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-contour-jacket/2.png",
+          "width": 1473,
+          "height": 1068,
+          "format": "png",
+          "sizeMB": 0.23,
+          "sizeKB": 235,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-contour-jacket/3.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.26,
+          "sizeKB": 1291,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-contour-jacket/4.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.87,
+          "sizeKB": 1917,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-contour-jacket/5.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.13,
+          "sizeKB": 135,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "midnight-flare-skirt": {
+      "count": 5,
+      "sizeMB": 25.24,
+      "items": [
+        {
+          "path": "products/midnight-flare-skirt/1.JPG",
+          "width": 7008,
+          "height": 4672,
+          "format": "jpeg",
+          "sizeMB": 10.97,
+          "sizeKB": 11232,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-flare-skirt/2.png",
+          "width": 1510,
+          "height": 1041,
+          "format": "png",
+          "sizeMB": 0.16,
+          "sizeKB": 166,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-flare-skirt/3.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.25,
+          "sizeKB": 1281,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-flare-skirt/4.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 2.11,
+          "sizeKB": 2164,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-flare-skirt/5.JPG",
+          "width": 7008,
+          "height": 4672,
+          "format": "jpeg",
+          "sizeMB": 10.74,
+          "sizeKB": 11000,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "midnight-peplum-fishtail-set": {
+      "count": 7,
+      "sizeMB": 7.47,
+      "items": [
+        {
+          "path": "products/midnight-peplum-fishtail-set/1.png",
+          "width": 1122,
+          "height": 1402,
+          "format": "png",
+          "sizeMB": 1.29,
+          "sizeKB": 1317,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-peplum-fishtail-set/2.png",
+          "width": 1473,
+          "height": 1068,
+          "format": "png",
+          "sizeMB": 0.23,
+          "sizeKB": 235,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-peplum-fishtail-set/3.png",
+          "width": 1510,
+          "height": 1041,
+          "format": "png",
+          "sizeMB": 0.16,
+          "sizeKB": 166,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-peplum-fishtail-set/4.png",
+          "width": 1122,
+          "height": 1402,
+          "format": "png",
+          "sizeMB": 1.3,
+          "sizeKB": 1329,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-peplum-fishtail-set/5.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.33,
+          "sizeKB": 1361,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-peplum-fishtail-set/6.png",
+          "width": 1086,
+          "height": 1448,
+          "format": "png",
+          "sizeMB": 1.3,
+          "sizeKB": 1332,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-peplum-fishtail-set/7.png",
+          "width": 1122,
+          "height": 1402,
+          "format": "png",
+          "sizeMB": 1.86,
+          "sizeKB": 1907,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "midnight-sculpted-vest": {
+      "count": 5,
+      "sizeMB": 4.49,
+      "items": [
+        {
+          "path": "products/midnight-sculpted-vest/1.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.37,
+          "sizeKB": 1408,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-sculpted-vest/2.png",
+          "width": 1470,
+          "height": 1070,
+          "format": "png",
+          "sizeMB": 0.05,
+          "sizeKB": 49,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-sculpted-vest/3.png",
+          "width": 1311,
+          "height": 1200,
+          "format": "png",
+          "sizeMB": 1.03,
+          "sizeKB": 1059,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-sculpted-vest/4.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.91,
+          "sizeKB": 1953,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-sculpted-vest/5.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.13,
+          "sizeKB": 133,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "midnight-sculpted-vest-set": {
+      "count": 7,
+      "sizeMB": 7.06,
+      "items": [
+        {
+          "path": "products/midnight-sculpted-vest-set/1.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.35,
+          "sizeKB": 1381,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-sculpted-vest-set/2.png",
+          "width": 1470,
+          "height": 1070,
+          "format": "png",
+          "sizeMB": 0.05,
+          "sizeKB": 49,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-sculpted-vest-set/3.png",
+          "width": 1470,
+          "height": 1070,
+          "format": "png",
+          "sizeMB": 0.07,
+          "sizeKB": 67,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-sculpted-vest-set/4.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.29,
+          "sizeKB": 1322,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-sculpted-vest-set/5.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.32,
+          "sizeKB": 1355,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-sculpted-vest-set/6.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.36,
+          "sizeKB": 1391,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/midnight-sculpted-vest-set/7.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.63,
+          "sizeKB": 1669,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "noir-layered-longline-vest": {
+      "count": 5,
+      "sizeMB": 11.69,
+      "items": [
+        {
+          "path": "products/noir-layered-longline-vest/1.JPG",
+          "width": 4672,
+          "height": 7008,
+          "format": "jpeg",
+          "sizeMB": 3.75,
+          "sizeKB": 3841,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-layered-longline-vest/2.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.44,
+          "sizeKB": 1471,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-layered-longline-vest/3.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.36,
+          "sizeKB": 1389,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-layered-longline-vest/4.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.69,
+          "sizeKB": 1734,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-layered-longline-vest/5.JPG",
+          "width": 4672,
+          "height": 7008,
+          "format": "jpeg",
+          "sizeMB": 3.45,
+          "sizeKB": 3533,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "noir-structured-vest": {
+      "count": 5,
+      "sizeMB": 11.46,
+      "items": [
+        {
+          "path": "products/noir-structured-vest/1.JPG",
+          "width": 4672,
+          "height": 7008,
+          "format": "jpeg",
+          "sizeMB": 3.85,
+          "sizeKB": 3944,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-structured-vest/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 0.89,
+          "sizeKB": 907,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-structured-vest/3.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.4,
+          "sizeKB": 1438,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-structured-vest/4.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.64,
+          "sizeKB": 1676,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-structured-vest/5.JPG",
+          "width": 4672,
+          "height": 7008,
+          "format": "jpeg",
+          "sizeMB": 3.68,
+          "sizeKB": 3768,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "noir-tailored-blazer": {
+      "count": 5,
+      "sizeMB": 4.53,
+      "items": [
+        {
+          "path": "products/noir-tailored-blazer/1.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.18,
+          "sizeKB": 181,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-tailored-blazer/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.29,
+          "sizeKB": 1322,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-tailored-blazer/3.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.3,
+          "sizeKB": 1328,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-tailored-blazer/4.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.62,
+          "sizeKB": 1660,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-tailored-blazer/5.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.14,
+          "sizeKB": 144,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "noir-tailored-trousers": {
+      "count": 5,
+      "sizeMB": 16.33,
+      "items": [
+        {
+          "path": "products/noir-tailored-trousers/1.JPG",
+          "width": 7008,
+          "height": 4672,
+          "format": "jpeg",
+          "sizeMB": 11.84,
+          "sizeKB": 12120,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-tailored-trousers/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 0.85,
+          "sizeKB": 873,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-tailored-trousers/3.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.65,
+          "sizeKB": 1688,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-tailored-trousers/4.png",
+          "width": 1024,
+          "height": 1535,
+          "format": "png",
+          "sizeMB": 1.85,
+          "sizeKB": 1892,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/noir-tailored-trousers/5.JPG",
+          "width": 1200,
+          "height": 1800,
+          "format": "jpeg",
+          "sizeMB": 0.14,
+          "sizeKB": 144,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "plum-sculpted-double-breasted-blazer": {
+      "count": 5,
+      "sizeMB": 4.59,
+      "items": [
+        {
+          "path": "products/plum-sculpted-double-breasted-blazer/1.JPG",
+          "width": 1600,
+          "height": 2400,
+          "format": "jpeg",
+          "sizeMB": 0.25,
+          "sizeKB": 260,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/plum-sculpted-double-breasted-blazer/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.15,
+          "sizeKB": 1177,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/plum-sculpted-double-breasted-blazer/3.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.31,
+          "sizeKB": 1346,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/plum-sculpted-double-breasted-blazer/4.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.66,
+          "sizeKB": 1703,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/plum-sculpted-double-breasted-blazer/5.JPG",
+          "width": 1600,
+          "height": 2400,
+          "format": "jpeg",
+          "sizeMB": 0.21,
+          "sizeKB": 216,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "plum-sculpted-trousers": {
+      "count": 5,
+      "sizeMB": 30.49,
+      "items": [
+        {
+          "path": "products/plum-sculpted-trousers/1.JPG",
+          "width": 7008,
+          "height": 4672,
+          "format": "jpeg",
+          "sizeMB": 12.56,
+          "sizeKB": 12862,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/plum-sculpted-trousers/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 0.93,
+          "sizeKB": 951,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/plum-sculpted-trousers/3.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.65,
+          "sizeKB": 1686,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/plum-sculpted-trousers/4.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 2.11,
+          "sizeKB": 2164,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/plum-sculpted-trousers/5.JPG",
+          "width": 7008,
+          "height": 4672,
+          "format": "jpeg",
+          "sizeMB": 13.24,
+          "sizeKB": 13556,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "the-dusty-rose-embroidered-farchi-set": {
+      "count": 7,
+      "sizeMB": 9.53,
+      "items": [
+        {
+          "path": "products/the-dusty-rose-embroidered-farchi-set/1.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.38,
+          "sizeKB": 1409,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-dusty-rose-embroidered-farchi-set/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.35,
+          "sizeKB": 1382,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-dusty-rose-embroidered-farchi-set/3.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1,
+          "sizeKB": 1029,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-dusty-rose-embroidered-farchi-set/4.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.35,
+          "sizeKB": 1385,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-dusty-rose-embroidered-farchi-set/5.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.28,
+          "sizeKB": 1313,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-dusty-rose-embroidered-farchi-set/6.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.31,
+          "sizeKB": 1345,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-dusty-rose-embroidered-farchi-set/7.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.85,
+          "sizeKB": 1893,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "the-noir-layered-suit": {
+      "count": 7,
+      "sizeMB": 8.06,
+      "items": [
+        {
+          "path": "products/the-noir-layered-suit/1.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.3,
+          "sizeKB": 1329,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-noir-layered-suit/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 0.89,
+          "sizeKB": 907,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-noir-layered-suit/3.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.01,
+          "sizeKB": 1033,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-noir-layered-suit/4.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 0.85,
+          "sizeKB": 868,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-noir-layered-suit/5.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.27,
+          "sizeKB": 1300,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-noir-layered-suit/6.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.24,
+          "sizeKB": 1268,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-noir-layered-suit/7.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.51,
+          "sizeKB": 1548,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "the-noir-tailored-suit": {
+      "count": 7,
+      "sizeMB": 8.72,
+      "items": [
+        {
+          "path": "products/the-noir-tailored-suit/1.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.33,
+          "sizeKB": 1361,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-noir-tailored-suit/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.29,
+          "sizeKB": 1322,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-noir-tailored-suit/3.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 0.85,
+          "sizeKB": 873,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-noir-tailored-suit/4.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.25,
+          "sizeKB": 1284,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-noir-tailored-suit/5.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.18,
+          "sizeKB": 1211,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-noir-tailored-suit/6.png",
+          "width": 1024,
+          "height": 1536,
+          "format": "png",
+          "sizeMB": 1.27,
+          "sizeKB": 1298,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-noir-tailored-suit/7.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.54,
+          "sizeKB": 1580,
+          "hasAlpha": false
+        }
+      ]
+    },
+    "the-plum-sculpted-suit": {
+      "count": 7,
+      "sizeMB": 8.98,
+      "items": [
+        {
+          "path": "products/the-plum-sculpted-suit/1.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.39,
+          "sizeKB": 1419,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-plum-sculpted-suit/2.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 1.15,
+          "sizeKB": 1177,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-plum-sculpted-suit/3.png",
+          "width": 1448,
+          "height": 1086,
+          "format": "png",
+          "sizeMB": 0.93,
+          "sizeKB": 951,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-plum-sculpted-suit/4.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.3,
+          "sizeKB": 1334,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-plum-sculpted-suit/5.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.25,
+          "sizeKB": 1280,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-plum-sculpted-suit/6.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.32,
+          "sizeKB": 1349,
+          "hasAlpha": false
+        },
+        {
+          "path": "products/the-plum-sculpted-suit/7.png",
+          "width": 1023,
+          "height": 1537,
+          "format": "png",
+          "sizeMB": 1.64,
+          "sizeKB": 1684,
+          "hasAlpha": false
+        }
+      ]
+    }
+  }
+}

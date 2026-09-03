@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import ProductCard from "../ProductCard";
+import { getCardImage } from "../../utils/mediaUtils";
 
 export const WomenNewInGrid = ({ products }) => {
   if (!products || products.length === 0) return null;
@@ -132,6 +133,7 @@ export const WomenAtelierBanner = () => {
                 loop
                 playsInline
                 preload="metadata"
+                poster="/atlier_women_poster.webp"
                 className="w-full h-full object-cover object-center"
               >
                 <source src="/atlier_women.mp4" type="video/mp4" />
@@ -187,16 +189,16 @@ export const WomenSignatureEdit = () => {
       tag: "Signature 2-Piece Set",
       price: "₹78,000",
       desc: "Single-breasted structured blazer and wide-leg trousers for modern authority.",
-      image: "/products/the-noir-tailored-suit/1.JPG",
+      image: "/products/the-noir-tailored-suit/1.png",
       link: "/product/the-noir-tailored-suit"
     },
     {
-      title: "Dusty Rose Flare Suit",
+      title: "Lilac Flare Set",
       tag: "Sculptural Flared Set",
-      price: "₹76,000",
+      price: "₹8,999",
       desc: "Longline single-breasted blazer paired with high-rise flared trousers.",
-      image: "/products/dusty-rose-sculpted-flare-suit/1.png",
-      link: "/product/the-dusty-rose-flare-suit"
+      image: "/products/lilac-sculpted-flare-suit/1.png",
+      link: "/product/the-lilac-flare-suit"
     },
     {
       title: "Aubergine Draped Set",
@@ -241,10 +243,15 @@ export const WomenSignatureEdit = () => {
             >
               <div className="aspect-[3/4] overflow-hidden bg-[#EAE6DF]">
                 <img
-                  src={piece.image}
+                  src={getCardImage(piece.image)}
                   alt={piece.title}
                   loading="lazy"
                   decoding="async"
+                  onError={(e) => {
+                    if (e.currentTarget.src !== piece.image) {
+                      e.currentTarget.src = piece.image;
+                    }
+                  }}
                   className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.02]"
                 />
               </div>

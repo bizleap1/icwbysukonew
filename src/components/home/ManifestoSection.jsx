@@ -14,6 +14,7 @@ export const ManifestoSection = () => {
           loop
           playsInline
           preload="metadata"
+          poster="/manifesto_poster.webp"
           className="w-full h-full object-cover object-[50%_15%] scale-120 brightness-[0.92] contrast-[1.05]"
         >
           <source src="/manifesto.mp4" type="video/mp4" />

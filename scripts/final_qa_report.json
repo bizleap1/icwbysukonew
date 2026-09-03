@@ -1,0 +1,274 @@
+{
+  "totalOriginalBytes": 356576855,
+  "totalOptimizedBytes": 48434493,
+  "totalOriginalAssetsCount": 169,
+  "totalWebpGeneratedCount": 577,
+  "totalResponsiveDerivativesCount": 408,
+  "productionFallbacksDuringNormalLoad": 0,
+  "oversizedCameraHandledCount": 0,
+  "largestRemainingImages": [
+    {
+      "file": "products/dusty-rose-trousers/4.webp",
+      "bytes": 393850,
+      "size": "384.6 KB"
+    },
+    {
+      "file": "home_signature.webp",
+      "bytes": 381184,
+      "size": "372.3 KB"
+    },
+    {
+      "file": "products/lilac-sculpted-flare-blazer/4.webp",
+      "bytes": 355824,
+      "size": "347.5 KB"
+    },
+    {
+      "file": "products/lilac-flare-trousers/4.webp",
+      "bytes": 337782,
+      "size": "329.9 KB"
+    },
+    {
+      "file": "products/dusty-rose-embroidered-farchi-tunic/4.webp",
+      "bytes": 298784,
+      "size": "291.8 KB"
+    },
+    {
+      "file": "products/aubergine-tailored-wide-leg-trousers/4.webp",
+      "bytes": 294886,
+      "size": "288.0 KB"
+    },
+    {
+      "file": "products/aubergine-tailored-mini-skirt/4.webp",
+      "bytes": 274210,
+      "size": "267.8 KB"
+    },
+    {
+      "file": "products/aubergine-tailored-power-suit/7.webp",
+      "bytes": 271666,
+      "size": "265.3 KB"
+    }
+  ],
+  "largestRemainingVideos": [
+    {
+      "video": "hero_bg.mp4",
+      "bytes": 4018513,
+      "size": "3.83 MB"
+    },
+    {
+      "video": "about_suko.mp4",
+      "bytes": 3059735,
+      "size": "2.92 MB"
+    },
+    {
+      "video": "world_of_suko.mp4",
+      "bytes": 2674638,
+      "size": "2.55 MB"
+    },
+    {
+      "video": "Woman_walking_in_business_district_202608311458.mp4",
+      "bytes": 2532571,
+      "size": "2.42 MB"
+    },
+    {
+      "video": "atlier_women.mp4",
+      "bytes": 2529503,
+      "size": "2.41 MB"
+    },
+    {
+      "video": "Woman_presenting_in_office_1080p_202608311521.mp4",
+      "bytes": 2499552,
+      "size": "2.38 MB"
+    },
+    {
+      "video": "Woman_walking_in_luxury_interior_202608311530.mp4",
+      "bytes": 2365594,
+      "size": "2.26 MB"
+    },
+    {
+      "video": "Woman_walking_in_luxury_boardroom_202608311517.mp4",
+      "bytes": 2303737,
+      "size": "2.20 MB"
+    },
+    {
+      "video": "manifesto.mp4",
+      "bytes": 996556,
+      "size": "0.95 MB"
+    }
+  ],
+  "intentionallyLargeHighDetailAssets": [
+    {
+      "file": "after_hour_woman.webp",
+      "size": "227.2 KB",
+      "reason": "Macro fabric grain / crisp silhouette detail"
+    },
+    {
+      "file": "home_signature.webp",
+      "size": "372.3 KB",
+      "reason": "Macro fabric grain / crisp silhouette detail"
+    },
+    {
+      "file": "products/aubergine-draped-vest-mini-set/7.webp",
+      "size": "235.5 KB",
+      "reason": "Macro fabric grain / crisp silhouette detail"
+    },
+    {
+      "file": "products/aubergine-tailored-mini-skirt/4.webp",
+      "size": "267.8 KB",
+      "reason": "Macro fabric grain / crisp silhouette detail"
+    },
+    {
+      "file": "products/aubergine-tailored-power-suit/7.webp",
+      "size": "265.3 KB",
+      "reason": "Macro fabric grain / crisp silhouette detail"
+    },
+    {
+      "file": "products/aubergine-tailored-wide-leg-trousers/4.webp",
+      "size": "288.0 KB",
+      "reason": "Macro fabric grain / crisp silhouette detail"
+    },
+    {
+      "file": "products/dusty-rose-embroidered-farchi-tunic/4.webp",
+      "size": "291.8 KB",
+      "reason": "Fine thread embroidery / metallic luster preservation"
+    },
+    {
+      "file": "products/dusty-rose-trousers/4.webp",
+      "size": "384.6 KB",
+      "reason": "Macro fabric grain / crisp silhouette detail"
+    },
+    {
+      "file": "products/lilac-flare-trousers/4.webp",
+      "size": "329.9 KB",
+      "reason": "Macro fabric grain / crisp silhouette detail"
+    },
+    {
+      "file": "products/lilac-sculpted-flare-blazer/4.webp",
+      "size": "347.5 KB",
+      "reason": "Macro fabric grain / crisp silhouette detail"
+    },
+    {
+      "file": "products/midnight-column-skirt/4.webp",
+      "size": "217.0 KB",
+      "reason": "Macro fabric grain / crisp silhouette detail"
+    },
+    {
+      "file": "products/midnight-contour-jacket/4.webp",
+      "size": "225.3 KB",
+      "reason": "Macro fabric grain / crisp silhouette detail"
+    },
+    {
+      "file": "products/midnight-flare-skirt/4.webp",
+      "size": "210.3 KB",
+      "reason": "Macro fabric grain / crisp silhouette detail"
+    },
+    {
+      "file": "products/midnight-sculpted-vest/4.webp",
+      "size": "257.5 KB",
+      "reason": "Macro fabric grain / crisp silhouette detail"
+    },
+    {
+      "file": "products/noir-tailored-trousers/4.webp",
+      "size": "215.6 KB",
+      "reason": "Macro fabric grain / crisp silhouette detail"
+    },
+    {
+      "file": "products/plum-sculpted-trousers/4.webp",
+      "size": "213.6 KB",
+      "reason": "Macro fabric grain / crisp silhouette detail"
+    },
+    {
+      "file": "products/the-dusty-rose-embroidered-farchi-set/7.webp",
+      "size": "216.6 KB",
+      "reason": "Fine thread embroidery / metallic luster preservation"
+    }
+  ],
+  "skippedBrandAssets": [
+    {
+      "file": "logo.png",
+      "size": "152.4 KB",
+      "status": "Untouched & Excluded (Protected)"
+    },
+    {
+      "file": "logo-light.png",
+      "size": "97.2 KB",
+      "status": "Untouched & Excluded (Protected)"
+    },
+    {
+      "file": "favicon.ico",
+      "size": "97.2 KB",
+      "status": "Untouched & Excluded (Protected)"
+    },
+    {
+      "file": "about_suko_brand.png",
+      "size": "1161.6 KB",
+      "status": "Untouched & Excluded (Protected)"
+    }
+  ],
+  "videoPostersVerified": [
+    {
+      "video": "about_suko.mp4",
+      "size": "2.92 MB",
+      "poster": "about_suko_poster.webp",
+      "posterExists": true,
+      "originalBackupExists": true
+    },
+    {
+      "video": "atlier_women.mp4",
+      "size": "2.41 MB",
+      "poster": "atlier_women_poster.webp",
+      "posterExists": true,
+      "originalBackupExists": true
+    },
+    {
+      "video": "hero_bg.mp4",
+      "size": "3.83 MB",
+      "poster": "hero_bg_poster.webp",
+      "posterExists": true,
+      "originalBackupExists": true
+    },
+    {
+      "video": "manifesto.mp4",
+      "size": "0.95 MB",
+      "poster": "manifesto_poster.webp",
+      "posterExists": true,
+      "originalBackupExists": true
+    },
+    {
+      "video": "Woman_presenting_in_office_1080p_202608311521.mp4",
+      "size": "2.38 MB",
+      "poster": "Woman_presenting_in_office_1080p_202608311521_poster.webp",
+      "posterExists": true,
+      "originalBackupExists": true
+    },
+    {
+      "video": "Woman_walking_in_business_district_202608311458.mp4",
+      "size": "2.42 MB",
+      "poster": "Woman_walking_in_business_district_202608311458_poster.webp",
+      "posterExists": true,
+      "originalBackupExists": true
+    },
+    {
+      "video": "Woman_walking_in_luxury_boardroom_202608311517.mp4",
+      "size": "2.20 MB",
+      "poster": "Woman_walking_in_luxury_boardroom_202608311517_poster.webp",
+      "posterExists": true,
+      "originalBackupExists": true
+    },
+    {
+      "video": "Woman_walking_in_luxury_interior_202608311530.mp4",
+      "size": "2.26 MB",
+      "poster": "Woman_walking_in_luxury_interior_202608311530_poster.webp",
+      "posterExists": true,
+      "originalBackupExists": true
+    },
+    {
+      "video": "world_of_suko.mp4",
+      "size": "2.55 MB",
+      "poster": "world_of_suko_poster.webp",
+      "posterExists": true,
+      "originalBackupExists": true
+    }
+  ],
+  "verifiedProductsCount": 27,
+  "reductionPct": "86.4"
+}

@@ -1,27 +1,38 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Heart, Check } from "lucide-react";
+import { Heart, ShoppingBag, Check } from "lucide-react";
 import { formatINR, PRODUCTS } from "../data/products";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
+import { getCardImage } from "../utils/mediaUtils";
 
 const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = false, showAddToBag = false, className = "" }) => {
   const [hover, setHover] = useState(false);
+  const [hasHovered, setHasHovered] = useState(false);
   const [isSelectingSize, setIsSelectingSize] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { addItem } = useCart();
   
-  // For small cards: default is 2nd image (upper garment cutout), hover reveals 1st image (model)
-  // For large feature cards: model image remains steady on both default & hover (no image swap)
+  // For blazers, vests, jackets, and tunics (Tailored Separates):
+  // Default card display is explicitly 2.png (ghost mannequin product cutout)
+  // Hover reveals 1.JPG / 1.png (editorial model shot)
+  const isSeparateGarment = 
+    product.category === "separates" || 
+    product.categoryName?.toLowerCase().includes("separates") ||
+    ["blazers", "vests", "jackets", "tunics", "trousers", "skirts"].includes(product.subCategory?.toLowerCase());
+
+  const ghostImg = product.images?.find(img => img.includes("2.png")) || product.images?.[1] || product.images?.[0] || product.image_url || "/placeholder.png";
+  const modelImg = product.images?.find(img => img.includes("1.JPG") || img.includes("1.png") || img.includes("5.JPG")) || product.images?.[0] || ghostImg;
+
   const defaultImg = isFeatured
     ? (product.images?.[0] || product.image_url || "/placeholder.png")
-    : (product.images?.[1] || product.images?.[0] || product.image_url || "/placeholder.png");
+    : (isSeparateGarment ? ghostImg : (product.images?.[1] || product.images?.[0] || product.image_url || "/placeholder.png"));
 
   const hoverImg = isFeatured
     ? null
-    : (product.images?.[0] || defaultImg);
+    : (isSeparateGarment ? modelImg : (product.images?.[0] || defaultImg));
 
   const wishlisted = isInWishlist ? isInWishlist(product.id) : false;
 
@@ -81,36 +92,49 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
       <Link to={`/product/${product.slug}`} className="block h-full flex flex-col justify-between">
         {/* Crisp Luxury Rectangular Image Container (Solid Background Crossfade - No Ghosting) */}
         <div
-          className={`relative overflow-hidden ${
-            isFeatured ? "aspect-[3/4] lg:aspect-auto lg:flex-1" : "aspect-[3/4]"
+          className={`relative overflow-hidden aspect-[3/4] ${
+            isFeatured ? "lg:aspect-auto lg:min-h-[460px] lg:flex-1" : ""
           } bg-[#FAF8F5] dark:bg-[#18181D] rounded-none w-full`}
-          onMouseEnter={() => setHover(true)}
+          onMouseEnter={() => {
+            setHover(true);
+            setHasHovered(true);
+          }}
           onMouseLeave={() => setHover(false)}
         >
           {/* Base Layer (Garment on small cards / Model on feature cards) */}
           <div className="absolute inset-0 w-full h-full bg-[#FAF8F5] dark:bg-[#18181D]">
             <img
-              src={defaultImg}
+              src={getCardImage(defaultImg)}
               alt={product.name}
-              loading="lazy"
+              loading={index < 4 ? "eager" : "lazy"}
               decoding="async"
+              onError={(e) => {
+                if (e.currentTarget.src !== defaultImg) {
+                  e.currentTarget.src = defaultImg;
+                }
+              }}
               className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.02]"
             />
           </div>
 
           {/* Hover Reveal Layer (Model on small cards / Garment on feature cards) */}
-          {hoverImg && hoverImg !== defaultImg && (
+          {hoverImg && hoverImg !== defaultImg && hasHovered && (
             <div
               className={`absolute inset-0 w-full h-full bg-[#FAF8F5] dark:bg-[#18181D] z-[1] transition-opacity duration-500 ease-out flex items-center justify-center ${
                 hover ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}
             >
               <img
-                src={hoverImg}
+                src={getCardImage(hoverImg)}
                 alt=""
                 aria-hidden="true"
                 loading="lazy"
                 decoding="async"
+                onError={(e) => {
+                  if (e.currentTarget.src !== hoverImg) {
+                    e.currentTarget.src = hoverImg;
+                  }
+                }}
                 className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.02]"
               />
             </div>
@@ -124,49 +148,78 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
           </div>
         </div>
 
-        {/* Product Details (Max Mara Inspired Editorial Info Area with Wishlist Heart on Top-Right) */}
-        <div className="pt-2.5 sm:pt-3.5 pb-1 flex flex-col">
-          <div className="flex items-start justify-between gap-2">
+        {/* Product Details (Max Mara Inspired Editorial Info Area with Wishlist Heart & Bag) */}
+        <div className="pt-3 pb-1 flex flex-col font-body">
+          <div className="flex items-start justify-between gap-2.5">
             <div className="flex-1 min-w-0 pr-1">
-              <h3 className={`font-normal tracking-wide transition-opacity line-clamp-1 text-[#111113] dark:text-[#F5F5F7] group-hover:opacity-75 ${
-                isFeatured ? "text-[13.5px] sm:text-[15.5px] lg:text-[17px]" : "text-[12px] sm:text-[14px]"
+              {/* 1. Product Name */}
+              <h3 className={`font-quiche font-normal tracking-wide transition-colors line-clamp-1 text-[#111113] dark:text-[#F5F5F7] group-hover:text-[#C2922E] ${
+                isFeatured ? "text-[15px] sm:text-[17px] lg:text-[18px]" : "text-[13.5px] sm:text-[15px] lg:text-[16px]"
               }`}>
                 {product.name}
               </h3>
               
-              <p className={`uppercase tracking-[0.18em] mt-0.5 font-normal text-[#555560] dark:text-white/60 ${
-                isFeatured ? "text-[9.5px] sm:text-[10.5px] lg:text-[11px]" : "text-[8.5px] sm:text-[9.5px]"
+              {/* 2. Category Label */}
+              <p className={`uppercase tracking-[0.2em] mt-1 font-medium text-[#9E9A90] dark:text-[#A5A196] ${
+                isFeatured ? "text-[9.5px] sm:text-[10.5px]" : "text-[8.5px] sm:text-[9.5px]"
               }`}>
-                {product.categoryName || product.category || "Tailored Suiting"}
+                {product.categoryLabel || (product.categoryName ? product.categoryName.toUpperCase() : "POWER SUITS & SETS")}
               </p>
+
+              {/* 3. Short Silhouette / Type */}
+              <p className="text-[11.5px] sm:text-[12.5px] text-[#6B6B72] dark:text-white/60 font-light italic mt-0.5 leading-snug line-clamp-1">
+                {product.shortType || product.setType || "Tailored Silhouette"}
+              </p>
+
+              {/* 4. Price */}
+              {product.price != null && (
+                <p className={`font-medium mt-1.5 tracking-normal text-[#111113] dark:text-[#F6F6F0] ${
+                  isFeatured ? "text-[13.5px] sm:text-[15px] lg:text-[16px]" : "text-[12.5px] sm:text-[14px]"
+                }`}>
+                  {formatINR(product.price)}
+                </p>
+              )}
             </div>
 
-            {/* Editorial Outline Wishlist Heart Icon (Top-Right of Info Section) */}
-            <button
-              type="button"
-              onClick={handleWishlistClick}
-              aria-label="Save to Wishlist"
-              className="p-0.5 -mr-0.5 text-[#111113]/70 dark:text-white/70 hover:text-[#C2922E] dark:hover:text-[#C2922E] transition-colors shrink-0 cursor-pointer"
-            >
-              <Heart
-                size={16}
-                strokeWidth={1.2}
-                className={`transition-all ${
-                  wishlisted
-                    ? "fill-[#C2922E] text-[#C2922E] scale-110"
-                    : "hover:scale-110"
-                }`}
-              />
-            </button>
-          </div>
+            {/* Editorial Wishlist Heart & Bag Actions */}
+            <div className="flex items-center gap-1.5 pt-0.5 -mr-0.5 shrink-0">
+              {/* Wishlist Heart Icon */}
+              <button
+                type="button"
+                onClick={handleWishlistClick}
+                aria-label="Save to Wishlist"
+                className="p-1 text-[#111113]/70 dark:text-white/70 hover:text-[#C2922E] dark:hover:text-[#C2922E] transition-colors cursor-pointer"
+              >
+                <Heart
+                  size={16}
+                  strokeWidth={1.2}
+                  className={`transition-all ${
+                    wishlisted
+                      ? "fill-[#C2922E] text-[#C2922E] scale-110"
+                      : "hover:scale-110"
+                  }`}
+                />
+              </button>
 
-          {product.price != null && (
-            <span className={`font-light mt-1 tracking-wider text-[#111113] dark:text-[#F6F6F0] ${
-              isFeatured ? "text-[12.5px] sm:text-[14.5px] lg:text-[16px]" : "text-[11.5px] sm:text-[13.5px]"
-            }`}>
-              {formatINR(product.price)}
-            </span>
-          )}
+              {/* Shopping Bag Icon */}
+              <button
+                type="button"
+                onClick={handleAddToBagClick}
+                aria-label="Add to Bag"
+                className="p-1 text-[#111113]/70 dark:text-white/70 hover:text-[#C2922E] dark:hover:text-[#C2922E] transition-colors cursor-pointer"
+              >
+                {isAdded ? (
+                  <Check size={16} strokeWidth={2} className="text-[#C2922E]" />
+                ) : (
+                  <ShoppingBag
+                    size={16}
+                    strokeWidth={1.2}
+                    className="transition-transform hover:scale-110"
+                  />
+                )}
+              </button>
+            </div>
+          </div>
 
           {/* Subtle Minimalist Add to Bag Action (Wishlist & Dedicated Views) */}
           {showAddToBag && (

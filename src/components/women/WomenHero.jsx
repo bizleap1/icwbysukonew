@@ -13,9 +13,14 @@ export const WomenHero = ({ onExploreClick }) => {
       {/* Female-Led Campaign Image Background */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-[#0A0A0C]">
         <img
-          src="/women_bg.png"
+          src="/women_bg.webp"
           alt="ICW Women Bespoke Tailoring Campaign"
           fetchPriority="high"
+          onError={(e) => {
+            if (e.currentTarget.src !== "/women_bg.png") {
+              e.currentTarget.src = "/women_bg.png";
+            }
+          }}
           className="w-full h-full object-cover object-[75%_top] sm:object-[70%_top] opacity-100"
         />
         {/* Ultra-smooth Luxury Gradient */}
