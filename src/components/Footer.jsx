@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Instagram, Linkedin, MessageCircle, Plus, Minus, Sparkles } from "lucide-react";
-import { MOMENTS, WHATSAPP_LINK } from "../data/products";
+import { ArrowRight, Instagram, Facebook, Mail, Plus, Minus } from "lucide-react";
+import { MOMENTS } from "../data/products";
 
 export const Footer = () => {
   const [openMobileAccordion, setOpenMobileAccordion] = useState(null);
@@ -97,11 +97,7 @@ export const Footer = () => {
                 <li><Link to="/wardrobe-concierge" className="hover:text-white block py-0.5">Talk to a SUKO Stylist</Link></li>
                 <li><Link to="/wardrobe-concierge" className="hover:text-white block py-0.5">Wardrobe Concierge</Link></li>
                 <li><Link to="/size-guide" className="hover:text-white block py-0.5">Size Guide &amp; Fit</Link></li>
-                <li>
-                  <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" className="hover:text-white flex items-center gap-1.5 text-[#C2922E] py-0.5">
-                    <MessageCircle size={13} /> WhatsApp Styling Support
-                  </a>
-                </li>
+                <li><Link to="/wardrobe-concierge" className="hover:text-white block py-0.5 text-[#C2922E]">Private Styling Consultation</Link></li>
               </ul>
             )}
           </div>
@@ -139,14 +135,35 @@ export const Footer = () => {
               {openMobileAccordion === "connect" ? <Minus size={14} className="text-[#C2922E]" /> : <Plus size={14} className="text-white/60" />}
             </button>
             {openMobileAccordion === "connect" && (
-              <div className="mt-3 flex items-center gap-4 text-white/75 pl-1 py-1">
-                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#C2922E] p-1" aria-label="Instagram">
-                  <Instagram size={17} strokeWidth={1.5} />
+              <div className="mt-3 space-y-3 pl-1 py-1 text-white/75">
+                <a
+                  href="mailto:indiancoporatewearbysuko@gmail.com"
+                  className="flex items-center gap-2 text-[12px] text-[#A8A8B4] hover:text-[#C2922E] transition-colors"
+                >
+                  <Mail size={14} className="text-[#C2922E] shrink-0" />
+                  <span className="break-all font-light">indiancoporatewearbysuko@gmail.com</span>
                 </a>
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#C2922E] p-1" aria-label="LinkedIn">
-                  <Linkedin size={17} strokeWidth={1.5} />
-                </a>
-                <span className="text-[11px] uppercase tracking-[0.18em] text-white/60">@SUKOOFFICIAL</span>
+                <div className="flex items-center gap-3 pt-1">
+                  <a
+                    href="https://www.instagram.com/icwbysuko?igsi=MXR4a2hwdWJmOW9lZw%3D%3D&utm_source=qr"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-[#C2922E] p-1 -ml-1 text-white/80 transition-colors"
+                    aria-label="Instagram"
+                  >
+                    <Instagram size={17} strokeWidth={1.5} />
+                  </a>
+                  <a
+                    href="https://www.facebook.com/share/1DcRRzfgXm/?mibextid=wwXIfr"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-[#C2922E] p-1 text-white/80 transition-colors"
+                    aria-label="Facebook"
+                  >
+                    <Facebook size={17} strokeWidth={1.5} />
+                  </a>
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-white/60">@icwbysuko</span>
+                </div>
               </div>
             )}
           </div>
@@ -182,14 +199,12 @@ export const Footer = () => {
               <li><Link to="/wardrobe-concierge" className="hover:text-white transition-colors">Wardrobe Concierge</Link></li>
               <li><Link to="/size-guide" className="hover:text-white transition-colors">Size Guide &amp; Fit</Link></li>
               <li>
-                <a
-                  href={WHATSAPP_LINK}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  to="/wardrobe-concierge"
                   className="hover:text-white transition-colors flex items-center gap-1.5 text-[#C2922E] pt-0.5"
                 >
-                  <MessageCircle size={13} className="text-[#C2922E]" /> WhatsApp Styling Support
-                </a>
+                  Private Styling Consultation
+                </Link>
               </li>
             </ul>
           </div>
@@ -217,26 +232,37 @@ export const Footer = () => {
             <p className="text-xs text-white/60 font-light mb-3">
               Modern tailoring. Indian sensibility. Designed for women who lead.
             </p>
-            <div className="flex items-center gap-3.5 text-white/75 pt-0.5">
+            <div className="space-y-3 pt-0.5">
               <a
-                href="https://instagram.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-[#C2922E] transition-colors p-1 -ml-1"
-                aria-label="Instagram"
+                href="mailto:indiancoporatewearbysuko@gmail.com"
+                className="flex items-center gap-2 text-[12.5px] text-[#A8A8B4] hover:text-[#C2922E] transition-colors group"
               >
-                <Instagram size={17} strokeWidth={1.5} />
+                <Mail size={14} className="text-[#C2922E] shrink-0" />
+                <span className="break-all font-light group-hover:text-white transition-colors">
+                  indiancoporatewearbysuko@gmail.com
+                </span>
               </a>
-              <a
-                href="https://linkedin.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-[#C2922E] transition-colors p-1"
-                aria-label="LinkedIn"
-              >
-                <Linkedin size={17} strokeWidth={1.5} />
-              </a>
-              <span className="text-[10.5px] uppercase tracking-[0.18em] text-white/60">@SUKOOFFICIAL</span>
+              <div className="flex items-center gap-3 text-white/75 pt-1">
+                <a
+                  href="https://www.instagram.com/icwbysuko?igsi=MXR4a2hwdWJmOW9lZw%3D%3D&utm_source=qr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#C2922E] transition-colors p-1 -ml-1 text-white/80"
+                  aria-label="Instagram"
+                >
+                  <Instagram size={17} strokeWidth={1.5} />
+                </a>
+                <a
+                  href="https://www.facebook.com/share/1DcRRzfgXm/?mibextid=wwXIfr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#C2922E] transition-colors p-1 text-white/80"
+                  aria-label="Facebook"
+                >
+                  <Facebook size={17} strokeWidth={1.5} />
+                </a>
+                <span className="text-[10.5px] uppercase tracking-[0.18em] text-white/60">@icwbysuko</span>
+              </div>
             </div>
           </div>
 

@@ -1552,8 +1552,8 @@ export const PRODUCTS = [
     "category": "suits",
     "categoryName": "Power Suits & Sets",
     "categoryLabel": "POWER SUITS & SETS",
-    "shortType": "Longline Blazer & Flared Trousers",
-    "setType": "Longline Blazer & Flared Trousers",
+    "shortType": "3-Piece Set: Longline Blazer, Tube Top & Flared Trousers",
+    "setType": "3-Piece Set: Longline Blazer, Tube Top & Flared Trousers",
     "moment": "presentation",
     "moments": [
       "presentation",
@@ -1577,6 +1577,7 @@ export const PRODUCTS = [
     ],
     "includedPieces": [
       "Longline Single-Breasted Blazer",
+      "Coordinated Inner Tube Top (Included)",
       "Coordinated Flared Trousers"
     ],
     "coordinates": [
@@ -1615,11 +1616,11 @@ export const PRODUCTS = [
         "type": "detail"
       }
     ],
-    "pieces": "Includes Longline Single-Breasted Blazer + Coordinated Flared Trousers.",
-    "description": "A softly tinted tailoring ensemble featuring a structured longline single-breasted blazer and flared trousers. Cut in an understated lilac hue that balances contemporary sophistication with professional rigor.",
+    "pieces": "Complete 3-Piece Ensemble: Longline Single-Breasted Blazer + Coordinated Inner Tube Top + Flared Trousers (Tube Top included in price).",
+    "description": "A softly tinted 3-piece tailoring ensemble featuring a structured longline single-breasted blazer, coordinated inner tube top (included in price), and flared trousers. Cut in an understated lilac hue that balances contemporary sophistication with professional rigor.",
     "story": "Tailored to command the room with warmth and poise. The elongated silhouette makes a lasting impression from stage presentations to client conclaves.",
     "stylingNotes": "Style with neutral tones and metallic accents for maximum impact during conference appearances.",
-    "sizeFit": "Longline blazer with structured shoulders; high-rise flared trousers with graceful floor-skimming length.",
+    "sizeFit": "Longline blazer with structured shoulders; matching inner tube top; high-rise flared trousers with graceful floor-skimming length.",
     "fabricCare": {
       "fabric": "Refined suiting blend with soft drape.",
       "care": "Dry clean only. Store on wide wooden hanger."
