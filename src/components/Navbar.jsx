@@ -340,6 +340,21 @@ export const Navbar = () => {
               {/* Main Links */}
               <nav className="flex flex-col gap-4">
                 
+                {/* 00. HOME */}
+                <NavLink
+                  to="/"
+                  end
+                  onClick={() => setMobileOpen(false)}
+                  className={({ isActive }) =>
+                    `font-quiche text-2xl sm:text-3xl font-light tracking-wide flex items-center justify-between py-1 transition-colors ${
+                      isActive ? "text-[#C2922E]" : "text-[#111113] hover:text-[#C2922E]"
+                    }`
+                  }
+                >
+                  <span>HOME</span>
+                  <span className="text-[10px] font-mono text-[#C2922E] tracking-widest">00</span>
+                </NavLink>
+
                 {/* 01. NEW ARRIVALS */}
                 <NavLink
                   to="/new-in"
