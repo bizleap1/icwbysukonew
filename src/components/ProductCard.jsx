@@ -7,7 +7,7 @@ import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import { getCardImage } from "../utils/mediaUtils";
 
-const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = false, showAddToBag = false, className = "" }) => {
+const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = false, showAddToBag = false, disableHoverImage = false, className = "" }) => {
   const [hover, setHover] = useState(false);
   const [hasHovered, setHasHovered] = useState(false);
   const [isSelectingSize, setIsSelectingSize] = useState(false);
@@ -44,8 +44,9 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
     ? (product.images?.[0] || product.image_url || "/placeholder.png")
     : ghostImg;
 
-  const hoverImg = isFeatured
-    ? (product.images?.[1] || null)
+  // Large featured cards should NOT switch image on hover; the original image remains.
+  const hoverImg = (isFeatured || disableHoverImage)
+    ? null
     : (isSeparateGarment && !isTargetSetOrSuit ? modelImg : (product.images?.[1] || product.images?.[0] || defaultImg));
 
   const wishlisted = isInWishlist ? isInWishlist(product.id) : false;

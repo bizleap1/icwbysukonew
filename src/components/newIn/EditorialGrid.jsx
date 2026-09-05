@@ -75,6 +75,7 @@ export const EditorialGrid = ({
                       product={block.featureProduct}
                       index={block.startIndex}
                       isFeatured={true}
+                      disableHoverImage={true}
                       className="h-full"
                     />
                   )}
