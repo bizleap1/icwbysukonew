@@ -36,3 +36,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Uploaded payment proofs
+suko-backend/uploads/payment-proofs/*
+!suko-backend/uploads/payment-proofs/.gitkeep

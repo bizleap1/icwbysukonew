@@ -111,47 +111,9 @@ router.post("/create-order", requireAuth, async (req, res) => {
 
 // POST /api/payments/verify
 router.post("/verify", requireAuth, async (req, res) => {
-  try {
-    const { order_id, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-    if (!order_id) {
-      return res.status(400).json({ error: "Order ID is required." });
-    }
-
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
-    if (keySecret && razorpay_order_id && razorpay_payment_id && razorpay_signature) {
-      const generated = crypto
-        .createHmac("sha256", keySecret)
-        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-        .digest("hex");
-
-      if (generated !== razorpay_signature) {
-        return res.status(400).json({ error: "Payment verification signature mismatch." });
-      }
-    }
-
-    // Mark order paid in database
-    await pool.query(
-      "UPDATE orders SET status = 'paid', updated_at = now() WHERE id = $1",
-      [order_id]
-    );
-
-    const fullOrder = await getOrderDetails(order_id);
-
-    // Asynchronously dispatch updated paid luxury invoice
-    if (fullOrder) {
-      sendOrderInvoiceEmail(fullOrder).catch((mailErr) => {
-        console.warn("⚠️  [EmailService] Payment invoice email dispatch failed:", mailErr.message);
-      });
-    }
-
-    return res.json({
-      order: fullOrder,
-      alreadyVerified: true,
-    });
-  } catch (err) {
-    console.error("Payment verification error:", err);
-    res.status(500).json({ error: "Payment verification failed." });
-  }
+  return res.status(403).json({
+    error: "Automated payment verification is disabled. All orders require manual UPI verification by SUKO Atelier admin concierge.",
+  });
 });
 
 module.exports = router;

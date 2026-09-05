@@ -2,7 +2,26 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Lock, Loader2, CheckCircle2, ArrowRight, ArrowLeft, X, Download, Printer, FileText } from "lucide-react";
+import {
+  Lock,
+  Loader2,
+  CheckCircle2,
+  ArrowRight,
+  ArrowLeft,
+  X,
+  Download,
+  Printer,
+  FileText,
+  Copy,
+  Check,
+  ExternalLink,
+  QrCode,
+  UploadCloud,
+  AlertCircle,
+  ShieldCheck,
+  Clock,
+  Image as ImageIcon,
+} from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { useWishlist } from "../context/WishlistContext";
@@ -12,20 +31,11 @@ import { getThumbImage } from "../utils/mediaUtils";
 import SEO from "../components/SEO";
 
 const SESSION_KEY = "suko_active_checkout";
-
-const loadRazorpayScript = () => {
-  return new Promise((resolve) => {
-    if (window.Razorpay) return resolve(true);
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-};
+const MERCHANT_UPI_ID = process.env.REACT_APP_MERCHANT_UPI_ID || "9022418978-m97f@axl";
+const MERCHANT_NAME = "MILES ALONG SMILES";
 
 const Checkout = () => {
-  const { items, subtotal, updateQty, removeItem } = useCart();
+  const { items, subtotal, updateQty, removeItem, clearCart } = useCart();
   const { addToWishlist, isInWishlist } = useWishlist();
   const { user, token, loading } = useAuth();
   const navigate = useNavigate();
@@ -80,6 +90,16 @@ const Checkout = () => {
   const [reconcilingPayment, setReconcilingPayment] = useState(false);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const [showCouponInput, setShowCouponInput] = useState(false);
+
+  // Manual UPI QR Payment States
+  const [upiOrder, setUpiOrder] = useState(null);
+  const [transactionId, setTransactionId] = useState("");
+  const [screenshotFile, setScreenshotFile] = useState(null);
+  const [screenshotPreview, setScreenshotPreview] = useState("");
+  const [screenshotError, setScreenshotError] = useState("");
+  const [isSubmittingProof, setIsSubmittingProof] = useState(false);
+  const [verificationSubmittedOrder, setVerificationSubmittedOrder] = useState(null);
+  const [copiedUpi, setCopiedUpi] = useState(false);
 
   // Address & Contact Form State
   const [form, setForm] = useState(() => {
@@ -212,7 +232,42 @@ const Checkout = () => {
     return false;
   };
 
-  // Primary Submission
+  // Handle Screenshot Selection and Validation (JPG, JPEG, PNG, WebP & max 5 MB)
+  const handleScreenshotChange = (e) => {
+    setScreenshotError("");
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      setScreenshotError("Only JPG, JPEG, PNG, or WebP image formats are permitted.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setScreenshotError("Screenshot file size exceeds the 5 MB limit.");
+      e.target.value = "";
+      return;
+    }
+
+    setScreenshotFile(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setScreenshotPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Copy Merchant UPI ID to Clipboard
+  const handleCopyUpiId = () => {
+    navigator.clipboard.writeText(MERCHANT_UPI_ID);
+    setCopiedUpi(true);
+    toast.success("Merchant UPI ID copied to clipboard.");
+    setTimeout(() => setCopiedUpi(false), 2500);
+  };
+
+  // Primary Checkout Submission -> Creates pending_payment order session
   const placeOrder = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
@@ -271,117 +326,204 @@ const Checkout = () => {
         throw new Error("Unable to create order session.");
       }
 
-      if (orderData.status === "paid" || orderData.alreadyPaid) {
-        setConfirmedOrder(orderData);
-        setPlaced(true);
-        sessionStorage.removeItem(SESSION_KEY);
-        setIsInitializingPayment(false);
-        toast.success("Order confirmed.");
-        return;
-      }
-
       setActiveOrder(orderData);
+      setUpiOrder(orderData);
       sessionStorage.setItem(
         SESSION_KEY,
         JSON.stringify({
           checkout_id: checkoutId,
           order_id: orderData.id,
-          expires_at: orderData.expires_at,
         })
       );
 
-      const rzpData = await apiClient.post("/api/payments/create-order", {
-        order_id: orderData.id,
-      });
-
-      if (!rzpData || !rzpData.razorpay_order_id) {
-        throw new Error("Failed to initialize payment gateway.");
-      }
-
-      // Development / Demo mode fallback when live Razorpay keys are not configured
-      if (!rzpData.key_id || rzpData.key_id === "rzp_test_dev") {
-        const verifyData = await apiClient.post("/api/payments/verify", {
-          order_id: orderData.id,
-          razorpay_order_id: rzpData.razorpay_order_id,
-          razorpay_payment_id: "pay_dev_" + Date.now(),
-          razorpay_signature: "sig_dev_bypass",
-        });
-        setConfirmedOrder(verifyData.order || orderData);
-        setPlaced(true);
-        sessionStorage.removeItem(SESSION_KEY);
-        setIsInitializingPayment(false);
-        toast.success("Payment verified! Your order is confirmed.");
-        return;
-      }
-
-      const scriptLoaded = await loadRazorpayScript();
-      if (!scriptLoaded) {
-        setIsInitializingPayment(false);
-        throw new Error("Payment Gateway failed to load. Please check your network.");
-      }
-
-      const options = {
-        key: rzpData.key_id,
-        amount: rzpData.amount,
-        currency: rzpData.currency || "INR",
-        name: "SUKO",
-        description: "Order Checkout",
-        order_id: rzpData.razorpay_order_id,
-        modal: {
-          ondismiss: function () {
-            setIsInitializingPayment(false);
-            toast.info("Payment window closed.");
-          },
-        },
-        handler: async function (response) {
-          setIsInitializingPayment(false);
-          setIsVerifyingPayment(true);
-
-          try {
-            const verifyData = await apiClient.post("/api/payments/verify", {
-              order_id: orderData.id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-
-            if (verifyData && (verifyData.order?.status === "paid" || verifyData.alreadyVerified)) {
-              setConfirmedOrder(verifyData.order || orderData);
-              setPlaced(true);
-              sessionStorage.removeItem(SESSION_KEY);
-              setIsVerifyingPayment(false);
-              toast.success("Payment verified! Your order is confirmed.");
-            } else {
-              throw new Error(verifyData.error || "Payment verification incomplete.");
-            }
-          } catch (verifyErr) {
-            console.warn("Payment verification response interrupted:", verifyErr.message);
-            await reconcileOrderStatus(orderData.id);
-          }
-        },
-        prefill: {
-          name: `${form.firstName} ${form.lastName}`.trim(),
-          email: form.email,
-          contact: form.phone,
-        },
-        theme: {
-          color: "#111113",
-        },
-      };
-
-      const paymentObject = new window.Razorpay(options);
-      paymentObject.open();
-
-      setTimeout(() => {
-        setIsInitializingPayment(false);
-      }, 1000);
+      setIsInitializingPayment(false);
+      toast.success("Order initiated. Please scan the QR code to complete payment.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       setIsInitializingPayment(false);
-      toast.error(err.message || "Failed to process checkout.");
+      toast.error(err.message || "Failed to initiate payment.");
+    }
+  };
+
+  // Submit Payment Proof for Verification
+  const handleSubmitPaymentProof = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!upiOrder) return;
+
+    const trimmedTx = transactionId.trim();
+    if (!trimmedTx) {
+      toast.error("Transaction ID / UTR is required.");
+      return;
+    }
+
+    if (!screenshotPreview) {
+      toast.error("Payment screenshot is required.");
+      return;
+    }
+
+    setIsSubmittingProof(true);
+    try {
+      const response = await apiClient.post(`/api/orders/${upiOrder.id}/submit-payment-proof`, {
+        transaction_id: trimmedTx,
+        screenshot: screenshotPreview,
+      });
+
+      if (response && response.success) {
+        toast.success("Payment details received for verification.");
+        await clearCart();
+        setVerificationSubmittedOrder(
+          response.order || {
+            ...upiOrder,
+            transaction_id: trimmedTx,
+            status: "payment_verification_pending",
+          }
+        );
+        sessionStorage.removeItem(SESSION_KEY);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        throw new Error(response.error || "Failed to submit payment details.");
+      }
+    } catch (err) {
+      toast.error(err.message || "Failed to submit payment details.");
+    } finally {
+      setIsSubmittingProof(false);
     }
   };
 
   const total = Math.max(0, subtotal - discount);
+
+  const upiDeepLink = upiOrder
+    ? `upi://pay?pa=${MERCHANT_UPI_ID}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${upiOrder.total}&tr=SUKO-${1000 + upiOrder.id}&tn=${encodeURIComponent("Order SUKO-" + (1000 + upiOrder.id))}&cu=INR`
+    : "";
+
+  // -------------------------------------------------------------
+  // 0. PAYMENT VERIFICATION PENDING VIEW (Manual UPI Workflow)
+  // -------------------------------------------------------------
+  if (verificationSubmittedOrder) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F5] text-[#111113] font-body flex flex-col justify-between">
+        <SEO
+          title="Payment Verification Pending | SUKO"
+          description="Payment details received for verification."
+        />
+
+        {/* Minimal Header */}
+        <header className="w-full bg-[#FAF8F5] border-b border-[#EAE6DF]">
+          <div className="max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-12 h-16 sm:h-20 flex items-center justify-between">
+            <Link to="/" className="inline-block">
+              <img src="/logo.png" alt="SUKO" className="h-5 sm:h-6 w-auto" />
+            </Link>
+            <span className="text-[10.5px] uppercase tracking-[0.24em] font-medium text-[#C2922E] flex items-center gap-1.5">
+              <Clock size={12} />
+              <span>VERIFICATION PENDING</span>
+            </span>
+          </div>
+        </header>
+
+        {/* Verification Acknowledgment Content */}
+        <main className="max-w-[720px] mx-auto px-5 sm:px-8 py-16 sm:py-24 text-center">
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            <div className="w-12 h-12 border border-[#C2922E] flex items-center justify-center mx-auto mb-6 text-[#C2922E]">
+              <Clock size={24} strokeWidth={1.5} />
+            </div>
+
+            <span className="text-[10px] uppercase tracking-[0.32em] text-[#C2922E] font-medium block mb-2">
+              UPI PAYMENT ACKNOWLEDGMENT
+            </span>
+            <h1 className="font-quiche text-2xl sm:text-3xl md:text-4xl font-light text-[#111113] tracking-tight mb-2">
+              Payment details received for verification.
+            </h1>
+            <p className="text-[13px] text-[#6E6E75] font-light max-w-lg mx-auto mb-8 leading-relaxed">
+              Thank you, {verificationSubmittedOrder.shipping_name || form.firstName || "Client"}. Our atelier concierge is reviewing your transaction with our merchant account.
+            </p>
+
+            {/* Clean Details Box */}
+            <div className="bg-[#F7F5F0] border border-[#EAE6DF] p-6 sm:p-8 text-left mb-8 space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-b border-[#EAE6DF] pb-4">
+                <div>
+                  <span className="text-[10px] uppercase tracking-[0.22em] text-[#6E6E75] block mb-1">
+                    Order Reference
+                  </span>
+                  <p className="font-mono font-bold text-[#111113] text-[13.5px]">
+                    #SUKO-{1000 + verificationSubmittedOrder.id}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase tracking-[0.22em] text-[#6E6E75] block mb-1">
+                    Transaction ID / UTR
+                  </span>
+                  <p className="font-mono text-[#111113] text-[13px] tracking-wider">
+                    {verificationSubmittedOrder.transaction_id || transactionId}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase tracking-[0.22em] text-[#6E6E75] block mb-1">
+                    Payment Status
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-amber-800 bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-medium">
+                    <Clock size={11} className="text-[#C2922E]" /> Verification Pending
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase tracking-[0.22em] text-[#6E6E75] block mb-1">
+                    Payable Amount
+                  </span>
+                  <p className="font-quiche text-lg font-normal text-[#111113]">
+                    {formatINR(verificationSubmittedOrder.total)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Delivery destination */}
+              <div className="border-b border-[#EAE6DF] pb-4">
+                <span className="text-[10px] uppercase tracking-[0.22em] text-[#6E6E75] block mb-1">
+                  Delivery Destination
+                </span>
+                <p className="text-[13px] text-[#111113] font-light leading-relaxed">
+                  {verificationSubmittedOrder.shipping_line1 || form.address}, {verificationSubmittedOrder.shipping_city || form.city}, {verificationSubmittedOrder.shipping_state || form.state} - {verificationSubmittedOrder.shipping_pincode || form.pincode}
+                </p>
+                <p className="text-[11.5px] text-[#6E6E75] font-light mt-1">
+                  Contact: {verificationSubmittedOrder.shipping_phone || form.phone}
+                </p>
+              </div>
+
+              {/* Notice */}
+              <div className="bg-white border border-[#EAE6DF] p-3.5 text-xs text-[#6E6E75] leading-relaxed">
+                <p className="text-[#111113] font-medium text-[11px] uppercase tracking-wider mb-0.5">
+                  Your order will be confirmed after payment verification.
+                </p>
+                <p className="text-[11.5px]">
+                  Once our admin reconciles your payment with our merchant bank account, your order status will be updated to confirmed and an official tax invoice will be sent to your email.
+                </p>
+              </div>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4">
+              <Link
+                to="/orders"
+                className="w-full sm:w-auto bg-[#111113] hover:bg-[#C2922E] text-white px-7 py-3.5 text-[11px] uppercase tracking-[0.22em] font-medium transition-colors text-center"
+              >
+                View in My Orders
+              </Link>
+              <Link
+                to="/collection"
+                className="w-full sm:w-auto border border-[#DDD8CE] hover:border-[#111113] px-7 py-3.5 text-[11px] uppercase tracking-[0.22em] font-medium transition-colors text-[#6E6E75] hover:text-[#111113] text-center"
+              >
+                Continue Browsing
+              </Link>
+            </div>
+          </motion.div>
+        </main>
+
+        <footer className="w-full border-t border-[#EAE6DF] bg-[#FAF8F5] py-8 text-center text-xs text-[#6E6E75] font-light">
+          <p className="text-[11px] text-[#8C887B]">
+            &copy; {new Date().getFullYear()} SUKO. All rights reserved.
+          </p>
+        </footer>
+      </div>
+    );
+  }
 
   // -------------------------------------------------------------
   // 1. ORDER CONFIRMATION VIEW (Warm Ivory Luxury Layout)
@@ -866,306 +1008,521 @@ const Checkout = () => {
           {/* LEFT COLUMN: Checkout Details Form (58–62% on Desktop)         */}
           {/* ============================================================= */}
           <div className="lg:col-span-7 xl:col-span-7">
-            
-            {/* Header */}
-            <div className="mb-8 sm:mb-10">
-              <button
-                type="button"
-                onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/collection"))}
-                className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.22em] text-[#6E6E75] hover:text-[#111113] transition-colors group mb-3.5 cursor-pointer font-medium"
-              >
-                <ArrowLeft size={13} className="group-hover:-translate-x-1 transition-transform" />
-                <span>Return to Shopping Bag</span>
-              </button>
-              <h1 className="font-quiche text-2xl sm:text-3xl lg:text-[32px] font-light text-[#111113] tracking-tight">
-                CHECKOUT
-              </h1>
-              <p className="text-[13px] text-[#6E6E75] font-light mt-1">
-                Complete your SUKO order.
-              </p>
-            </div>
+            {upiOrder ? (
+              /* --- UPI PAYMENT STEP --- */
+              <div className="space-y-6">
+                <button
+                  type="button"
+                  onClick={() => setUpiOrder(null)}
+                  className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.20em] text-[#6E6E75] hover:text-[#111113] transition-colors cursor-pointer"
+                >
+                  <ArrowLeft size={13} />
+                  <span>Edit Delivery Details</span>
+                </button>
 
-            <form onSubmit={placeOrder} noValidate>
-              
-              {/* 1. CONTACT SECTION */}
-              <section className="mb-8 sm:mb-10">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-[11px] uppercase tracking-[0.22em] text-[#111113] font-medium">
-                    CONTACT
-                  </h2>
-                  {!user?.authenticated && (
-                    <Link
-                      to="/auth?redirect=/checkout&mode=register"
-                      className="text-[11px] text-[#6E6E75] hover:text-[#111113] transition-colors"
-                    >
-                      Already have an account? <span className="underline underline-offset-2">Sign in</span>
-                    </Link>
-                  )}
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={form.email}
-                      onChange={upd("email")}
-                      placeholder="name@example.com"
-                      className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
-                      Mobile Number (for delivery communication)
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      value={form.phone}
-                      onChange={upd("phone")}
-                      placeholder="+91 98765 43210"
-                      className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
-                    />
-                  </div>
-                </div>
-              </section>
-
-              <div className="border-b border-[#EAE6DF] mb-8 sm:mb-10" />
-
-              {/* 2. DELIVERY ADDRESS SECTION */}
-              <section className="mb-8 sm:mb-10">
-                <h2 className="text-[11px] uppercase tracking-[0.22em] text-[#111113] font-medium mb-4">
-                  DELIVERY ADDRESS
-                </h2>
-
-                {/* Saved addresses selector if authenticated user has existing addresses */}
-                {addresses.length > 0 && (
-                  <div className="mb-5 space-y-2">
-                    <span className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-2 font-sans">
-                      Saved Addresses
+                <div className="border border-[#EAE6DF] bg-[#FDFBF7] p-6 sm:p-8 space-y-6">
+                  {/* Header */}
+                  <div className="border-b border-[#EAE6DF] pb-4">
+                    <span className="text-[10px] uppercase tracking-[0.24em] text-[#C2922E] font-medium block mb-1">
+                      ORDER #SUKO-{1000 + upiOrder.id}
                     </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {addresses.map((addr) => (
-                        <button
-                          key={addr.id}
-                          type="button"
-                          onClick={() => selectSavedAddress(addr)}
-                          className={`text-left p-3.5 border transition-all text-xs cursor-pointer ${
-                            selectedAddrId === addr.id
-                              ? "border-[#111113] bg-[#F7F5F0]"
-                              : "border-[#EAE6DF] hover:border-[#C2922E]"
-                          }`}
-                        >
-                          <p className="font-medium text-[#111113]">{addr.line1}</p>
-                          <p className="text-[#6E6E75] mt-0.5 font-light">
-                            {addr.city}, {addr.state} - {addr.pincode}
-                          </p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
-                        First Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={form.firstName}
-                        onChange={upd("firstName")}
-                        placeholder="First name"
-                        className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
-                        Last Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={form.lastName}
-                        onChange={upd("lastName")}
-                        placeholder="Last name"
-                        className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
-                      />
-                    </div>
+                    <h2 className="font-quiche text-2xl sm:text-3xl font-light text-[#111113]">
+                      PAY VIA UPI QR
+                    </h2>
+                    <p className="text-[12.5px] text-[#6E6E75] font-light mt-1">
+                      Scan using PhonePe, Google Pay, Paytm or any supported UPI app.
+                    </p>
                   </div>
 
-                  <div>
-                    <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
-                      Address
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={form.address}
-                      onChange={upd("address")}
-                      placeholder="Street address, house or building"
-                      className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
-                      Apartment / Floor / Landmark <span className="text-[#8C887B] lowercase">(optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={form.apartment}
-                      onChange={upd("apartment")}
-                      placeholder="Apartment, suite, unit, floor"
-                      className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Server-calculated Payable Amount */}
+                  <div className="flex items-center justify-between bg-white border border-[#EAE6DF] p-4 sm:p-5">
                     <div>
-                      <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
-                        City
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={form.city}
-                        onChange={upd("city")}
-                        placeholder="City"
-                        className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
-                        State
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={form.state}
-                        onChange={upd("state")}
-                        placeholder="State"
-                        className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
-                        PIN Code
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        maxLength={6}
-                        value={form.pincode}
-                        onChange={upd("pincode")}
-                        placeholder="6-digit PIN code"
-                        className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
-                        Country / Region
-                      </label>
-                      <input
-                        type="text"
-                        disabled
-                        value="India"
-                        className="w-full bg-[#F5F2EB] border border-[#DDD8CE] px-4 py-3 text-[13.5px] text-[#6E6E75] rounded-none font-sans cursor-not-allowed"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <div className="border-b border-[#EAE6DF] mb-8 sm:mb-10" />
-
-              {/* 3. DELIVERY METHOD SECTION */}
-              <section className="mb-8 sm:mb-10">
-                <h2 className="text-[11px] uppercase tracking-[0.22em] text-[#111113] font-medium mb-3">
-                  DELIVERY
-                </h2>
-                <div className="border border-[#EAE6DF] p-4 sm:p-5 flex items-center justify-between bg-[#FDFBF7]">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-4 h-4 rounded-full border border-[#111113] flex items-center justify-center">
-                      <div className="w-2 h-2 rounded-full bg-[#111113]" />
-                    </div>
-                    <div>
-                      <p className="text-[13px] font-medium text-[#111113] tracking-wide font-body">
-                        Standard Delivery
-                      </p>
-                      <p className="text-[11.5px] text-[#6E6E75] font-light">
-                        Estimated delivery: 4–7 business days
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-[11px] uppercase tracking-[0.20em] text-[#6E6E75] font-light">
-                    Complimentary
-                  </span>
-                </div>
-              </section>
-
-              <div className="border-b border-[#EAE6DF] mb-8 sm:mb-10" />
-
-              {/* 4. PAYMENT SECTION */}
-              <section className="mb-8">
-                <div className="mb-3">
-                  <h2 className="text-[11px] uppercase tracking-[0.22em] text-[#111113] font-medium">
-                    PAYMENT
-                  </h2>
-                  <p className="text-[12px] text-[#6E6E75] font-light mt-0.5">
-                    All transactions are secure and encrypted.
-                  </p>
-                </div>
-
-                <div className="border border-[#EAE6DF] bg-[#FDFBF7] p-5">
-                  <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#EAE6DF]">
-                    <div className="flex items-center gap-3">
-                      <div className="w-4 h-4 rounded-full border border-[#111113] flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-[#111113]" />
-                      </div>
-                      <span className="text-[13px] font-medium text-[#111113]">
-                        Online Payment (Razorpay Secure Gateway)
+                      <span className="text-[10px] uppercase tracking-[0.20em] text-[#6E6E75] block font-medium">
+                        Amount
+                      </span>
+                      <span className="text-[11px] text-[#8C887B] font-light">
+                        Exact server-calculated payable total
                       </span>
                     </div>
-                    <Lock size={13} className="text-[#C2922E]" />
+                    <span className="font-quiche text-2xl sm:text-3xl font-normal text-[#111113]">
+                      {formatINR(upiOrder.total)}
+                    </span>
                   </div>
-                  <p className="text-[12px] text-[#6E6E75] font-light leading-relaxed">
-                    Supports UPI (Google Pay, PhonePe, Paytm), Credit / Debit Cards (Visa, Mastercard, RuPay, Amex), NetBanking, and EMI.
+
+                  {/* UPI QR Code Container */}
+                  <div className="text-center bg-white border border-[#EAE6DF] p-5 sm:p-6">
+                    <div className="inline-block bg-[#FAF8F5] p-2 border border-[#EAE6DF]">
+                      <img
+                        src="/upi-qr.jpg"
+                        alt="SUKO UPI QR Code"
+                        className="w-[240px] sm:w-[270px] md:w-[290px] h-auto mx-auto object-contain"
+                      />
+                    </div>
+                    <p className="text-[13px] font-medium text-[#111113] mt-4">
+                      Scan and complete payment using any UPI app.
+                    </p>
+                    <p className="text-[11.5px] text-[#6E6E75] font-light mt-0.5">
+                      PhonePe &bull; Google Pay &bull; Paytm &bull; BHIM &bull; CRED &bull; Mobile Banking
+                    </p>
+
+                    {/* Deep link & Copy UPI button */}
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-4 pt-4 border-t border-[#EAE6DF]/70">
+                      <a
+                        href={upiDeepLink}
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#111113] hover:bg-black text-white px-5 py-2.5 text-[10.5px] uppercase tracking-[0.20em] font-medium transition-colors cursor-pointer"
+                      >
+                        <span>OPEN UPI APP</span>
+                        <ExternalLink size={12} className="text-[#C2922E]" />
+                      </a>
+                      <button
+                        type="button"
+                        onClick={handleCopyUpiId}
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 border border-[#DDD8CE] hover:border-[#111113] bg-transparent text-[#111113] px-4 py-2.5 text-[10.5px] uppercase tracking-[0.18em] font-medium transition-colors cursor-pointer"
+                      >
+                        {copiedUpi ? (
+                          <>
+                            <Check size={12} className="text-emerald-600" />
+                            <span className="text-emerald-700 font-medium">UPI ID Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={12} className="text-[#8C887B]" />
+                            <span>Copy UPI ID</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-[10px] font-mono text-[#8C887B] mt-2 select-all">
+                      UPI ID: {MERCHANT_UPI_ID}
+                    </p>
+                  </div>
+
+                  {/* After Payment Form */}
+                  <div className="border-t border-[#EAE6DF] pt-5 space-y-5">
+                    <div>
+                      <h3 className="text-[11px] uppercase tracking-[0.22em] font-medium text-[#111113]">
+                        AFTER PAYMENT:
+                      </h3>
+                      <p className="text-[12px] text-[#6E6E75] font-light mt-0.5">
+                        Both Transaction ID / UTR and payment screenshot are mandatory.
+                      </p>
+                    </div>
+
+                    {/* Transaction ID / UTR */}
+                    <div>
+                      <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#111113] block mb-1.5 font-medium">
+                        TRANSACTION ID / UTR <span className="text-[#C2922E]">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={transactionId}
+                        onChange={(e) => setTransactionId(e.target.value.trim().toUpperCase())}
+                        placeholder="Enter 12-digit UTR or Reference Number"
+                        className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-mono tracking-wider"
+                      />
+                    </div>
+
+                    {/* Upload Payment Screenshot */}
+                    <div>
+                      <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#111113] block mb-1.5 font-medium">
+                        UPLOAD PAYMENT SCREENSHOT <span className="text-[#C2922E]">*</span>
+                      </label>
+
+                      {!screenshotPreview ? (
+                        <label className="border-2 border-dashed border-[#DDD8CE] hover:border-[#C2922E] bg-white p-6 flex flex-col items-center justify-center cursor-pointer transition-colors group">
+                          <UploadCloud size={24} className="text-[#8C887B] group-hover:text-[#C2922E] transition-colors mb-2" />
+                          <span className="text-[12px] font-medium text-[#111113]">Choose File / Upload Screenshot</span>
+                          <span className="text-[11px] text-[#8C887B] mt-1">Allowed: JPG, JPEG, PNG, WebP &bull; Max 5 MB</span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                            onChange={handleScreenshotChange}
+                            className="hidden"
+                          />
+                        </label>
+                      ) : (
+                        <div className="border border-[#EAE6DF] bg-white p-3 flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={screenshotPreview}
+                              alt="Payment screenshot preview"
+                              className="w-14 h-14 object-cover border border-[#EAE6DF]"
+                            />
+                            <div>
+                              <p className="text-[12px] font-medium text-[#111113] truncate max-w-[200px] sm:max-w-[280px]">
+                                {screenshotFile?.name || "Payment Screenshot Selected"}
+                              </p>
+                              <p className="text-[10.5px] text-emerald-700 flex items-center gap-1 mt-0.5">
+                                <Check size={11} /> Screenshot attached ({(screenshotFile ? (screenshotFile.size / 1024 / 1024).toFixed(2) : "1.2")} MB)
+                              </p>
+                            </div>
+                          </div>
+                          <label className="text-[10.5px] uppercase tracking-wider text-[#C2922E] hover:underline cursor-pointer">
+                            Change
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/jpg,image/png,image/webp"
+                              onChange={handleScreenshotChange}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      )}
+
+                      {screenshotError && (
+                        <p className="text-[11px] text-rose-600 mt-1.5 flex items-center gap-1">
+                          <AlertCircle size={12} /> {screenshotError}
+                        </p>
+                      )}
+
+                      {/* Supporting note */}
+                      <p className="text-[11.5px] text-[#6E6E75] font-light mt-2 italic leading-relaxed">
+                        &ldquo;Please upload a clear payment screenshot showing the successful payment status, paid amount, and Transaction ID / UTR.&rdquo;
+                      </p>
+                    </div>
+
+                    {/* Checklist */}
+                    <div className="bg-[#FAF8F5] border border-[#EAE6DF] p-3.5 text-xs text-[#6E6E75] space-y-1 font-light">
+                      <p className="font-medium text-[#111113] text-[10.5px] uppercase tracking-wider">
+                        Make sure the screenshot clearly shows:
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px]">
+                        <div className="flex items-center gap-1.5 text-[#111113]">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]" />
+                          <span>Successful payment status</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[#111113]">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]" />
+                          <span>Transaction ID / UTR</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[#111113]">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]" />
+                          <span>Paid amount ({formatINR(upiOrder.total)})</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                      type="button"
+                      onClick={handleSubmitPaymentProof}
+                      disabled={!transactionId.trim() || !screenshotPreview || isSubmittingProof}
+                      className="w-full bg-[#111113] hover:bg-black text-white py-4 px-8 text-[12px] uppercase tracking-[0.24em] font-medium flex items-center justify-center gap-3 transition-colors duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed rounded-none"
+                    >
+                      {isSubmittingProof ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin text-[#C2922E]" />
+                          <span>Submitting for Verification...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>SUBMIT PAYMENT FOR VERIFICATION</span>
+                          <span>&rarr;</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Form note below */}
+                    <p className="text-[11.5px] text-[#6E6E75] text-center font-medium mt-2">
+                      Your order will be confirmed after payment verification.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div>
+                {/* Header */}
+                <div className="mb-8 sm:mb-10">
+                  <button
+                    type="button"
+                    onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/collection"))}
+                    className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.22em] text-[#6E6E75] hover:text-[#111113] transition-colors group mb-3.5 cursor-pointer font-medium"
+                  >
+                    <ArrowLeft size={13} className="group-hover:-translate-x-1 transition-transform" />
+                    <span>Return to Shopping Bag</span>
+                  </button>
+                  <h1 className="font-quiche text-2xl sm:text-3xl lg:text-[32px] font-light text-[#111113] tracking-tight">
+                    CHECKOUT
+                  </h1>
+                  <p className="text-[13px] text-[#6E6E75] font-light mt-1">
+                    Complete your SUKO order.
                   </p>
                 </div>
 
-                {/* Primary CTA Button */}
-                <button
-                  type="submit"
-                  disabled={isInitializingPayment || isVerifyingPayment || reconcilingPayment}
-                  className="w-full mt-8 bg-[#111113] hover:bg-black text-white py-4 px-8 text-[12px] uppercase tracking-[0.24em] font-medium flex items-center justify-center gap-3 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
-                >
-                  {isInitializingPayment || isVerifyingPayment || reconcilingPayment ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin text-[#C2922E]" />
-                      <span>Securing Order...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>COMPLETE ORDER &middot; {formatINR(total)}</span>
-                      <span>&rarr;</span>
-                    </>
-                  )}
-                </button>
-              </section>
+                <form onSubmit={placeOrder} noValidate>
+                  
+                  {/* 1. CONTACT SECTION */}
+                  <section className="mb-8 sm:mb-10">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-[11px] uppercase tracking-[0.22em] text-[#111113] font-medium">
+                        CONTACT
+                      </h2>
+                      {!user?.authenticated && (
+                        <Link
+                          to="/auth?redirect=/checkout&mode=register"
+                          className="text-[11px] text-[#6E6E75] hover:text-[#111113] transition-colors"
+                        >
+                          Already have an account? <span className="underline underline-offset-2">Sign in</span>
+                        </Link>
+                      )}
+                    </div>
 
-            </form>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
+                          Email Address
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          value={form.email}
+                          onChange={upd("email")}
+                          placeholder="name@example.com"
+                          className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
+                          Mobile Phone (for delivery concierge)
+                        </label>
+                        <input
+                          type="tel"
+                          required
+                          value={form.phone}
+                          onChange={upd("phone")}
+                          placeholder="+91 98765 43210"
+                          className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
+                        />
+                      </div>
+                    </div>
+                  </section>
+
+                  <div className="border-b border-[#EAE6DF] mb-8 sm:mb-10" />
+
+                  {/* 2. DELIVERY ADDRESS SECTION */}
+                  <section className="mb-8 sm:mb-10">
+                    <h2 className="text-[11px] uppercase tracking-[0.22em] text-[#111113] font-medium mb-4">
+                      DELIVERY ADDRESS
+                    </h2>
+
+                    {/* Saved Addresses Selector (for returning authenticated clients) */}
+                    {addresses.length > 0 && (
+                      <div className="mb-6 space-y-2.5">
+                        <span className="text-[10.5px] uppercase tracking-[0.16em] text-[#6E6E75] block">
+                          Select from Saved Addresses:
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {addresses.map((addr) => (
+                            <button
+                              key={addr.id}
+                              type="button"
+                              onClick={() => selectSavedAddress(addr)}
+                              className={`p-3.5 text-left border transition-all cursor-pointer ${
+                                selectedAddrId === addr.id
+                                  ? "border-[#111113] bg-[#FDFBF7]"
+                                  : "border-[#EAE6DF] hover:border-[#DDD8CE] bg-white"
+                              }`}
+                            >
+                              <p className="text-[12px] font-medium text-[#111113]">{addr.line1}</p>
+                              <p className="text-[11px] text-[#6E6E75]">
+                                {addr.city}, {addr.state} - {addr.pincode}
+                              </p>
+                              {addr.is_default && (
+                                <span className="inline-block mt-1 text-[9.5px] uppercase tracking-wider text-[#C2922E] font-medium">
+                                  Default
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
+                            First Name
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={form.firstName}
+                            onChange={upd("firstName")}
+                            placeholder="Aarav"
+                            className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
+                            Last Name
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={form.lastName}
+                            onChange={upd("lastName")}
+                            placeholder="Mehta"
+                            className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
+                          Address (House / Flat / Street)
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={form.address}
+                          onChange={upd("address")}
+                          placeholder="Penthouse 4B, Pali Hill"
+                          className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
+                          Apartment, suite, landmark (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={form.apartment}
+                          onChange={upd("apartment")}
+                          placeholder="Near Nargis Dutt Road"
+                          className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
+                            City
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={form.city}
+                            onChange={upd("city")}
+                            placeholder="Mumbai"
+                            className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
+                            State
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={form.state}
+                            onChange={upd("state")}
+                            placeholder="Maharashtra"
+                            className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#6E6E75] block mb-1.5 font-sans">
+                            PIN Code
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={form.pincode}
+                            onChange={upd("pincode")}
+                            placeholder="400050"
+                            className="w-full bg-transparent border border-[#DDD8CE] focus:border-[#C2922E] focus:outline-none px-4 py-3 text-[13.5px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-sans"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <div className="border-b border-[#EAE6DF] mb-8 sm:mb-10" />
+
+                  {/* 3. DELIVERY METHOD SECTION */}
+                  <section className="mb-8 sm:mb-10">
+                    <h2 className="text-[11px] uppercase tracking-[0.22em] text-[#111113] font-medium mb-3">
+                      DELIVERY
+                    </h2>
+                    <div className="border border-[#EAE6DF] p-4 sm:p-5 flex items-center justify-between bg-[#FDFBF7]">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-4 h-4 rounded-full border border-[#111113] flex items-center justify-center">
+                          <div className="w-2 h-2 rounded-full bg-[#111113]" />
+                        </div>
+                        <div>
+                          <p className="text-[13px] font-medium text-[#111113] tracking-wide font-body">
+                            Standard Delivery
+                          </p>
+                          <p className="text-[11.5px] text-[#6E6E75] font-light">
+                            Estimated delivery: 4–7 business days
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[11px] uppercase tracking-[0.20em] text-[#6E6E75] font-light">
+                        Complimentary
+                      </span>
+                    </div>
+                  </section>
+
+                  <div className="border-b border-[#EAE6DF] mb-8 sm:mb-10" />
+
+                  {/* 4. PAYMENT SECTION */}
+                  <section className="mb-8">
+                    <div className="mb-3">
+                      <h2 className="text-[11px] uppercase tracking-[0.22em] text-[#111113] font-medium">
+                        PAYMENT
+                      </h2>
+                      <p className="text-[12px] text-[#6E6E75] font-light mt-0.5">
+                        All transactions are secure and encrypted.
+                      </p>
+                    </div>
+
+                    <div className="border border-[#EAE6DF] bg-[#FDFBF7] p-5">
+                      <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#EAE6DF]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-4 h-4 rounded-full border border-[#111113] flex items-center justify-center">
+                            <div className="w-2 h-2 rounded-full bg-[#111113]" />
+                          </div>
+                          <span className="text-[13px] font-medium text-[#111113]">
+                            Pay via UPI QR
+                          </span>
+                        </div>
+                        <Lock size={13} className="text-[#C2922E]" />
+                      </div>
+                      <p className="text-[12px] text-[#6E6E75] font-light leading-relaxed">
+                        Scan using PhonePe, Google Pay, Paytm or any supported UPI app.
+                      </p>
+                    </div>
+
+                    {/* Primary CTA Button */}
+                    <button
+                      type="submit"
+                      disabled={isInitializingPayment}
+                      className="w-full mt-8 bg-[#111113] hover:bg-black text-white py-4 px-8 text-[12px] uppercase tracking-[0.24em] font-medium flex items-center justify-center gap-3 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
+                    >
+                      {isInitializingPayment ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin text-[#C2922E]" />
+                          <span>Generating Payment Session...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>PROCEED TO PAYMENT &middot; {formatINR(total)}</span>
+                          <span>&rarr;</span>
+                        </>
+                      )}
+                    </button>
+                  </section>
+
+                </form>
+              </div>
+            )}
           </div>
-
+          
           {/* ============================================================= */}
           {/* RIGHT COLUMN: Order Summary (38–42% Desktop Sticky)            */}
           {/* ============================================================= */}

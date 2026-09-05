@@ -6,7 +6,7 @@ import {
   Package, Users, ShoppingCart, DollarSign, Trash2, Edit2,
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, 
   Search, Download, AlertTriangle, Clock, X, Crop, Image as ImageIcon, Star, Eye, Tag, Mail, Send, MessageSquare, ShoppingBag,
-  LayoutDashboard, Layers, ShieldCheck, CheckCircle, RefreshCw
+  LayoutDashboard, Layers, ShieldCheck, CheckCircle, RefreshCw, Copy, Check
 } from "lucide-react";
 import { formatINR } from "../data/products";
 import { useProducts } from "../context/ProductContext";
@@ -166,6 +166,9 @@ const Admin = () => {
   const [couponsList, setCouponsList] = useState([]);
   const [newCouponForm, setNewCouponForm] = useState({ code: "", discount_percent: "", discount_flat: "", min_order_value: "" });
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
+  const [zoomedScreenshot, setZoomedScreenshot] = useState(null);
+  const [verifyingOrderId, setVerifyingOrderId] = useState(null);
+  const [rejectingOrderId, setRejectingOrderId] = useState(null);
   const inspectModalRef = useRef(null);
 
   useEffect(() => {
@@ -660,6 +663,57 @@ const Admin = () => {
     }
   };
 
+  const handleVerifyPayment = async (orderId) => {
+    if (!window.confirm(`Verify and approve UPI Payment for Order #SUKO-${1000 + orderId}?\n\nThis will confirm the payment, mark the order as PAID, and dispatch the official tax invoice to the client.`)) return;
+    setVerifyingOrderId(orderId);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/verify-payment`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to verify payment");
+      toast.success(`Payment verified for Order #SUKO-${1000 + orderId}! Official tax invoice dispatched.`);
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "paid" } : o));
+      if (selectedOrderDetails && selectedOrderDetails.id === orderId) {
+        setSelectedOrderDetails(prev => ({ ...prev, status: "paid" }));
+      }
+      fetchDashboardData();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setVerifyingOrderId(null);
+    }
+  };
+
+  const handleRejectPayment = async (orderId) => {
+    const reason = window.prompt("Reason for rejecting payment proof (will be shown to the client):", "Payment not reflected in merchant bank account / UTR mismatch");
+    if (reason === null) return;
+    setRejectingOrderId(orderId);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/reject-payment`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` 
+        },
+        body: JSON.stringify({ reason: reason.trim() || "Payment verification failed" })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to reject payment");
+      toast.warning(`Order #SUKO-${1000 + orderId} payment marked as rejected. Customer can re-submit.`);
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "payment_verification_failed", cancel_reason: reason.trim() } : o));
+      if (selectedOrderDetails && selectedOrderDetails.id === orderId) {
+        setSelectedOrderDetails(prev => ({ ...prev, status: "payment_verification_failed", cancel_reason: reason.trim() }));
+      }
+      fetchDashboardData();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setRejectingOrderId(null);
+    }
+  };
+
   // Export CSV
   const exportOrdersCSV = () => {
     if (!orders || orders.length === 0) {
@@ -747,6 +801,7 @@ const Admin = () => {
 
   // Filtered Orders (by Status & Date Range)
   const cancellationRequests = orders.filter(o => o.status === "cancel_requested");
+  const verificationRequests = orders.filter(o => o.status === "payment_verification_pending");
   const paidOrdersList = orders.filter(o => o.status === "paid" || o.status === "completed");
 
   const filteredOrders = orders.filter(o => {
@@ -852,7 +907,11 @@ const Admin = () => {
               { 
                 id: 'orders', 
                 label: 'Orders',
-                badge: cancellationRequests.length > 0 ? `${cancellationRequests.length} Cancel Req` : null,
+                badge: verificationRequests.length > 0 
+                  ? `${verificationRequests.length} Verify Req` 
+                  : cancellationRequests.length > 0 
+                  ? `${cancellationRequests.length} Cancel Req` 
+                  : null,
                 icon: ShoppingCart 
               },
               { id: 'coupons', label: 'Coupons & Vouchers', icon: Tag },
@@ -1635,7 +1694,10 @@ const Admin = () => {
                   <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-[#E8E4DC] overflow-x-auto shadow-sm">
                     {[
                       { id: "all", label: "All" },
+                      { id: "payment_verification_pending", label: `Verify Pending${verificationRequests.length > 0 ? ` (${verificationRequests.length})` : ''}` },
+                      { id: "pending_payment", label: "Pending Payment" },
                       { id: "paid", label: "Paid" },
+                      { id: "payment_verification_failed", label: "Verification Failed" },
                       { id: "processing", label: "Processing" },
                       { id: "cancel_requested", label: "Cancel Req" },
                       { id: "completed", label: "Completed" },
@@ -1667,6 +1729,7 @@ const Admin = () => {
                         <th className="p-4 font-normal">Customer</th>
                         <th className="p-4 font-normal">Items</th>
                         <th className="p-4 font-normal">Total</th>
+                        <th className="p-4 font-normal">Payment & UTR</th>
                         <th className="p-4 font-normal">Status</th>
                         <th className="p-4 font-normal text-right">Actions</th>
                       </tr>
@@ -1691,26 +1754,84 @@ const Admin = () => {
                             {formatINR(o.total)}
                           </td>
                           <td className="p-4">
-                            <select
-                              value={o.status}
-                              onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
-                              className={`text-[10px] font-mono uppercase tracking-wider px-2.5 py-1 rounded-full border outline-none cursor-pointer ${
-                                o.status === "paid" || o.status === "completed"
-                                  ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 font-bold"
-                                  : o.status === "cancel_requested"
-                                  ? "bg-rose-500/10 text-rose-700 border-rose-500/30 font-bold animate-pulse"
-                                  : o.status === "cancelled"
-                                  ? "bg-stone-500/10 text-stone-600 border-stone-500/20"
-                                  : "bg-amber-500/10 text-amber-700 border-amber-500/30 font-medium"
-                              }`}
-                            >
-                              <option value="payment_pending">Payment Pending</option>
-                              <option value="paid">Paid</option>
-                              <option value="processing">Processing</option>
-                              <option value="cancel_requested">⚠️ Cancel Requested</option>
-                              <option value="completed">Completed</option>
-                              <option value="cancelled">Cancelled</option>
-                            </select>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#FAF8F5] border border-[#E8E4DC] text-[#121215]">
+                                  {o.payment_method === "upi_qr" ? "UPI QR" : (o.payment_method || "UPI QR")}
+                                </span>
+                                {o.payment_screenshot_url && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setZoomedScreenshot(`${API_BASE_URL}/api/orders/${o.id}/payment-proof?token=${encodeURIComponent(token)}`)}
+                                    className="text-[9px] font-mono uppercase text-[#C2922E] hover:underline flex items-center gap-1"
+                                    title="View Payment Proof Screenshot"
+                                  >
+                                    <ImageIcon size={11} /> Proof
+                                  </button>
+                                )}
+                              </div>
+                              {o.transaction_id ? (
+                                <p className="font-mono text-[11px] text-[#121215] font-semibold tracking-wide select-all" title="UTR / Transaction ID">
+                                  {o.transaction_id}
+                                </p>
+                              ) : (
+                                <span className="text-[10px] text-[#888890] italic">No UTR yet</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            {o.status === "payment_verification_pending" ? (
+                              <div className="space-y-1.5">
+                                <span className="inline-flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30 font-bold animate-pulse">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Verify Pending
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleVerifyPayment(o.id)}
+                                    disabled={verifyingOrderId === o.id}
+                                    className="text-[9px] font-mono uppercase font-bold bg-emerald-700 hover:bg-emerald-800 text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
+                                    title="Verify & Confirm Payment"
+                                  >
+                                    {verifyingOrderId === o.id ? "..." : "Approve"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRejectPayment(o.id)}
+                                    disabled={rejectingOrderId === o.id}
+                                    className="text-[9px] font-mono uppercase font-bold bg-rose-700 hover:bg-rose-800 text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
+                                    title="Reject Payment Proof"
+                                  >
+                                    {rejectingOrderId === o.id ? "..." : "Reject"}
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <select
+                                value={o.status}
+                                onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
+                                className={`text-[10px] font-mono uppercase tracking-wider px-2.5 py-1 rounded-full border outline-none cursor-pointer ${
+                                  o.status === "paid" || o.status === "completed"
+                                    ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 font-bold"
+                                    : o.status === "payment_verification_failed"
+                                    ? "bg-rose-500/10 text-rose-700 border-rose-500/30 font-bold"
+                                    : o.status === "cancel_requested"
+                                    ? "bg-rose-500/10 text-rose-700 border-rose-500/30 font-bold animate-pulse"
+                                    : o.status === "cancelled"
+                                    ? "bg-stone-500/10 text-stone-600 border-stone-500/20"
+                                    : "bg-amber-500/10 text-amber-700 border-amber-500/30 font-medium"
+                                }`}
+                              >
+                                <option value="pending_payment">Pending Payment</option>
+                                <option value="payment_verification_pending">Verification Pending</option>
+                                <option value="paid">Paid</option>
+                                <option value="payment_verification_failed">Verification Failed</option>
+                                <option value="processing">Processing</option>
+                                <option value="cancel_requested">⚠️ Cancel Requested</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                              </select>
+                            )}
                           </td>
                           <td className="p-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
@@ -1740,7 +1861,7 @@ const Admin = () => {
                         </tr>
                       ))}
                       {filteredOrders.length === 0 && (
-                        <tr><td colSpan="7" className="p-8 text-center text-[#888890]">No orders found for this filter.</td></tr>
+                        <tr><td colSpan="8" className="p-8 text-center text-[#888890]">No orders found for this filter.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -2114,7 +2235,7 @@ const Admin = () => {
         {/* INSPECT ORDER DETAILS MODAL */}
         {selectedOrderDetails && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-            <div ref={inspectModalRef} className="bg-white border border-[#E8E4DC] max-w-xl w-full p-6 sm:p-8 rounded-2xl relative shadow-2xl space-y-5 text-[#121215]">
+            <div ref={inspectModalRef} className="bg-white border border-[#E8E4DC] max-w-2xl w-full p-6 sm:p-8 rounded-2xl relative shadow-2xl space-y-5 text-[#121215]">
               <button
                 onClick={() => setSelectedOrderDetails(null)}
                 className="absolute top-5 right-5 text-[#888890] hover:text-[#121215] p-1.5 rounded-lg hover:bg-[#FAF8F5] transition-all"
@@ -2147,9 +2268,138 @@ const Admin = () => {
                 </div>
                 <div>
                   <p className="text-[10px] uppercase tracking-wider font-mono text-[#888890]">Order Status</p>
-                  <span className="inline-block mt-0.5 text-[9px] uppercase tracking-wider font-mono px-2 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 font-bold">
+                  <span className={`inline-block mt-0.5 text-[9px] uppercase tracking-wider font-mono px-2 py-0.5 rounded-full border ${
+                    selectedOrderDetails.status === "paid" || selectedOrderDetails.status === "completed"
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 font-bold"
+                      : selectedOrderDetails.status === "payment_verification_pending"
+                      ? "border-amber-500/30 bg-amber-500/15 text-amber-800 font-bold animate-pulse"
+                      : selectedOrderDetails.status === "payment_verification_failed"
+                      ? "border-rose-500/30 bg-rose-500/10 text-rose-700 font-bold"
+                      : "border-amber-500/30 bg-amber-500/10 text-amber-700 font-medium"
+                  }`}>
                     {selectedOrderDetails.status}
                   </span>
+                </div>
+              </div>
+
+              {/* Dedicated Payment Verification & Audit Card */}
+              <div className="bg-[#FAF8F5] border border-[#E8E4DC] p-5 rounded-2xl space-y-4">
+                <div className="flex items-center justify-between border-b border-[#E8E4DC] pb-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={18} className="text-[#C2922E]" />
+                    <span className="text-[11px] uppercase tracking-[0.2em] font-mono font-bold text-[#121215]">
+                      Payment Verification &amp; UTR Audit
+                    </span>
+                  </div>
+                  <span className={`text-[10px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                    selectedOrderDetails.status === "paid"
+                      ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30 font-bold"
+                      : selectedOrderDetails.status === "payment_verification_pending"
+                      ? "bg-amber-500/15 text-amber-800 border-amber-500/30 font-bold animate-pulse"
+                      : selectedOrderDetails.status === "payment_verification_failed"
+                      ? "bg-rose-500/15 text-rose-700 border-rose-500/30 font-bold"
+                      : "bg-stone-500/10 text-stone-600 border-stone-500/20"
+                  }`}>
+                    {selectedOrderDetails.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-body">
+                  {/* Left Column: Details & Checklist */}
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider font-mono text-[#888890]">Order Payable Amount</p>
+                      <p className="font-mono text-base font-bold text-[#121215]">{formatINR(selectedOrderDetails.total)}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider font-mono text-[#888890]">Customer Transaction ID / UTR</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <code className="font-mono font-bold text-xs bg-white px-2.5 py-1.5 rounded-lg border border-[#E8E4DC] text-[#121215] select-all tracking-wider">
+                          {selectedOrderDetails.transaction_id || "Not submitted yet"}
+                        </code>
+                        {selectedOrderDetails.transaction_id && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(selectedOrderDetails.transaction_id);
+                              toast.success("UTR copied to clipboard!");
+                            }}
+                            className="text-[10px] uppercase tracking-widest font-mono text-[#C2922E] hover:underline flex items-center gap-1"
+                          >
+                            <Copy size={12} /> Copy
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider font-mono text-[#888890]">Payment Method</p>
+                      <p className="font-mono text-xs text-[#121215] uppercase font-medium">{selectedOrderDetails.payment_method || "upi_qr"}</p>
+                    </div>
+
+                    {selectedOrderDetails.cancel_reason && (
+                      <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-[11px]">
+                        <p className="font-bold text-[10px] uppercase tracking-wider font-mono">Rejection Note / Status Detail:</p>
+                        <p className="mt-0.5">{selectedOrderDetails.cancel_reason}</p>
+                      </div>
+                    )}
+
+                    <div className="bg-white border border-[#E8E4DC] p-3 rounded-xl space-y-1 text-[11px] text-[#555560]">
+                      <p className="font-mono uppercase text-[9.5px] tracking-wider text-[#C2922E] font-bold">Admin Verification Checklist:</p>
+                      <p>1. Check order amount matches <b>{formatINR(selectedOrderDetails.total)}</b>.</p>
+                      <p>2. Verify UTR in screenshot matches <b>{selectedOrderDetails.transaction_id || "entered UTR"}</b>.</p>
+                      <p>3. Confirm credit in merchant PhonePe / bank account.</p>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Screenshot */}
+                  <div className="space-y-2 flex flex-col">
+                    <p className="text-[10px] uppercase tracking-wider font-mono text-[#888890]">Uploaded Payment Screenshot</p>
+                    {selectedOrderDetails.payment_screenshot_url ? (
+                      <div className="relative group border border-[#E8E4DC] rounded-xl overflow-hidden bg-black/5 flex-1 min-h-[220px] flex items-center justify-center">
+                        <img
+                          src={`${API_BASE_URL}/api/orders/${selectedOrderDetails.id}/payment-proof?token=${encodeURIComponent(token)}`}
+                          alt="Customer Payment Proof"
+                          className="w-full h-full max-h-[280px] object-contain cursor-pointer transition-transform group-hover:scale-105"
+                          onClick={() => setZoomedScreenshot(`${API_BASE_URL}/api/orders/${selectedOrderDetails.id}/payment-proof?token=${encodeURIComponent(token)}`)}
+                        />
+                        <div 
+                          onClick={() => setZoomedScreenshot(`${API_BASE_URL}/api/orders/${selectedOrderDetails.id}/payment-proof?token=${encodeURIComponent(token)}`)}
+                          className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer text-white text-xs font-mono gap-1.5"
+                        >
+                          <Eye size={15} /> Click to Enlarge Full Proof
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-[#E8E4DC] rounded-xl flex-1 min-h-[200px] flex flex-col items-center justify-center text-[#888890] text-xs p-6 text-center">
+                        <ImageIcon size={28} className="text-[#888890]/50 mb-2" />
+                        No payment screenshot uploaded yet
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Verification Actions */}
+                <div className="flex flex-wrap gap-3 pt-3 border-t border-[#E8E4DC]">
+                  <button
+                    type="button"
+                    onClick={() => handleVerifyPayment(selectedOrderDetails.id)}
+                    disabled={selectedOrderDetails.status === "paid" || verifyingOrderId === selectedOrderDetails.id}
+                    className="flex-1 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white font-bold text-[10.5px] uppercase tracking-[0.2em] font-body py-3 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle size={15} />
+                    {selectedOrderDetails.status === "paid" ? "PAYMENT ALREADY VERIFIED" : verifyingOrderId === selectedOrderDetails.id ? "VERIFYING..." : "VERIFY PAYMENT"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRejectPayment(selectedOrderDetails.id)}
+                    disabled={selectedOrderDetails.status === "paid" || rejectingOrderId === selectedOrderDetails.id}
+                    className="flex-1 bg-rose-700 hover:bg-rose-800 disabled:opacity-40 text-white font-bold text-[10.5px] uppercase tracking-[0.2em] font-body py-3 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
+                  >
+                    <AlertTriangle size={15} />
+                    {rejectingOrderId === selectedOrderDetails.id ? "REJECTING..." : "PAYMENT NOT FOUND / REJECT"}
+                  </button>
                 </div>
               </div>
 
@@ -2184,6 +2434,42 @@ const Admin = () => {
                 <span className="text-[#555560] uppercase tracking-widest text-xs">Total Amount Paid:</span>
                 <span className="text-emerald-700 font-bold text-xl">{formatINR(selectedOrderDetails.total)}</span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ENLARGED PAYMENT SCREENSHOT MODAL */}
+        {zoomedScreenshot && (
+          <div 
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+            onClick={() => setZoomedScreenshot(null)}
+          >
+            <div 
+              className="bg-[#121215] border border-white/20 max-w-3xl w-full p-4 rounded-2xl relative shadow-2xl space-y-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <span className="text-[11px] font-mono uppercase tracking-widest text-[#C2922E]">
+                  Customer Payment Proof Screenshot
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setZoomedScreenshot(null)}
+                  className="text-white/60 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="max-h-[80vh] overflow-auto flex items-center justify-center bg-black/40 rounded-xl p-2">
+                <img
+                  src={zoomedScreenshot}
+                  alt="Customer Payment Proof Large"
+                  className="max-h-[75vh] w-auto object-contain rounded-lg shadow-lg"
+                />
+              </div>
+              <p className="text-[10px] font-mono text-white/50 text-center">
+                Verify that Successful status, Transaction ID / UTR, and exact amount match the order details.
+              </p>
             </div>
           </div>
         )}

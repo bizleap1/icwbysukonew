@@ -25,9 +25,15 @@ CREATE TABLE IF NOT EXISTS orders (
   state VARCHAR(100),
   pincode VARCHAR(10),
   cancel_reason TEXT,
+  transaction_id VARCHAR(100),
+  payment_screenshot_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Idempotent column additions for existing installations
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS transaction_id VARCHAR(100);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_screenshot_url TEXT;
 
 CREATE TABLE IF NOT EXISTS order_items (
   id SERIAL PRIMARY KEY,

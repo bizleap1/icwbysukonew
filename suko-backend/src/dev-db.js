@@ -76,7 +76,7 @@ function saveStore() {
 async function executeQuery(text, params = []) {
   const s = loadStore();
   const sql = (text || "").trim();
-  const lower = sql.toLowerCase();
+  const lower = sql.toLowerCase().replace(/\s+/g, " ");
 
   // 1. Health check: SELECT 1
   if (lower === "select 1" || lower.startsWith("select 1")) {
@@ -148,9 +148,11 @@ async function executeQuery(text, params = []) {
     const newOrder = {
       id: nextId,
       user_id: params[0] || null,
-      status: "payment_pending",
+      status: "pending_payment",
       total: Number(params[1]) || 0,
       payment_method: "upi_qr",
+      transaction_id: null,
+      payment_screenshot_url: null,
       name: params[2] || "",
       phone: params[3] || "",
       email: params[4] || "",
@@ -236,20 +238,59 @@ async function executeQuery(text, params = []) {
     return { rows: list, rowCount: list.length };
   }
 
-  // 12. Update order status: UPDATE orders SET status = ...
+  // 12. Update order: UPDATE orders SET ...
   if (lower.includes("update orders set")) {
-    const status = params[0];
-    const cancelReason = params[1] || null;
-    const id = Number(params[2]);
-    const order = s.orders.find((o) => o.id === id);
-    if (order) {
-      order.status = status;
-      order.cancel_reason = cancelReason;
-      order.updated_at = new Date().toISOString();
-      saveStore();
-      return { rows: [{ ...order }], rowCount: 1 };
+    const whereMatch = lower.match(/where\s+id\s*=\s*\$(\d+)/);
+    let id = null;
+    if (whereMatch) {
+      const idx = parseInt(whereMatch[1], 10) - 1;
+      id = Number(params[idx]);
+    } else {
+      id = Number(params[params.length - 1]);
     }
-    return { rows: [], rowCount: 0 };
+
+    const order = s.orders.find((o) => o.id === id);
+    if (!order) return { rows: [], rowCount: 0 };
+
+    const setIndex = lower.indexOf(" set ");
+    const whereIndex = lower.indexOf(" where ");
+    const setClause = whereIndex > -1 ? lower.slice(setIndex + 5, whereIndex) : lower.slice(setIndex + 5);
+    const assignments = setClause.split(",").map((a) => a.trim());
+
+    assignments.forEach((assign) => {
+      const parts = assign.split("=");
+      if (parts.length < 2) return;
+      const col = parts[0].trim().toLowerCase();
+      const valExpr = parts[1].trim();
+      const pMatch = valExpr.match(/\$(\d+)/);
+      if (pMatch) {
+        const pIdx = parseInt(pMatch[1], 10) - 1;
+        const val = params[pIdx];
+        if (col === "status") order.status = val;
+        if (col === "transaction_id" || col === "utr") {
+          order.transaction_id = val;
+          order.utr = val;
+        }
+        if (col === "payment_screenshot_url" || col === "payment_screenshot") {
+          order.payment_screenshot_url = val;
+          order.payment_screenshot = val;
+        }
+        if (col === "cancel_reason") order.cancel_reason = val;
+        if (col === "total") order.total = Number(val);
+      } else {
+        const litMatch = valExpr.match(/'([^']+)'/);
+        if (litMatch) {
+          const litVal = litMatch[1];
+          if (col === "status") order.status = litVal;
+          if (col === "cancel_reason") order.cancel_reason = litVal;
+          if (col === "payment_method") order.payment_method = litVal;
+        }
+      }
+    });
+
+    order.updated_at = new Date().toISOString();
+    saveStore();
+    return { rows: [{ ...order }], rowCount: 1 };
   }
 
   // 13. Update user password: UPDATE users SET password_hash = $1 WHERE email = $2

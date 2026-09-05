@@ -1,4 +1,7 @@
 const express = require("express");
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
 const { pool } = require("../db");
 const { requireAuth, requireAdmin } = require("../auth");
 const { validateCreateOrder } = require("../middleware/validate");
@@ -6,13 +9,26 @@ const { sendOrderInvoiceEmail } = require("../services/emailService");
 
 const router = express.Router();
 
+const UPLOAD_PROOF_DIR = path.join(__dirname, "../../uploads/payment-proofs");
+if (!fs.existsSync(UPLOAD_PROOF_DIR)) {
+  try {
+    fs.mkdirSync(UPLOAD_PROOF_DIR, { recursive: true });
+  } catch (dirErr) {
+    console.warn("Failed to create UPLOAD_PROOF_DIR:", dirErr.message);
+  }
+}
+
 // Shape a raw order + item rows into the JSON shape the frontend expects
 function formatOrder(orderRow, itemRows, userRow) {
   return {
     id: orderRow.id,
     status: orderRow.status,
+    payment_status: orderRow.status,
     total: Number(orderRow.total),
-    payment_method: orderRow.payment_method,
+    payment_method: orderRow.payment_method || "upi_qr",
+    transaction_id: orderRow.transaction_id || null,
+    utr: orderRow.transaction_id || null,
+    payment_screenshot_url: orderRow.payment_screenshot_url || null,
     created_at: orderRow.created_at,
     updated_at: orderRow.updated_at,
     cancel_reason: orderRow.cancel_reason,
@@ -99,7 +115,7 @@ router.post("/", requireAuth, validateCreateOrder, async (req, res) => {
 
     const orderRes = await client.query(
       `INSERT INTO orders (user_id, status, total, payment_method, name, phone, email, line1, city, state, pincode)
-       VALUES ($1, 'payment_pending', $2, 'upi_qr', $3, $4, $5, $6, $7, $8, $9)
+       VALUES ($1, 'pending_payment', $2, 'upi_qr', $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         req.user.userId,
@@ -135,14 +151,6 @@ router.post("/", requireAuth, validateCreateOrder, async (req, res) => {
     await client.query("COMMIT");
 
     const fullOrder = await getOrderWithItems(order.id);
-
-    // Asynchronously dispatch luxury order invoice email
-    sendOrderInvoiceEmail(fullOrder, { 
-      email: req.user.email || order.email, 
-      name: name || req.user.name || order.name 
-    }).catch((mailErr) => {
-      console.warn("⚠️  [EmailService] Order invoice email dispatch failed:", mailErr.message);
-    });
 
     res.status(201).json(fullOrder);
   } catch (err) {
@@ -200,12 +208,204 @@ router.get("/:id", requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/orders/:id/submit-payment-proof -- customer submits transaction ID and screenshot
+router.post("/:id/submit-payment-proof", requireAuth, async (req, res) => {
+  try {
+    const orderId = parseInt(req.params.id, 10);
+    if (!orderId) return res.status(400).json({ error: "Invalid order ID." });
+
+    const raw = await pool.query("SELECT * FROM orders WHERE id = $1", [orderId]);
+    if (raw.rows.length === 0) return res.status(404).json({ error: "Order not found." });
+    const order = raw.rows[0];
+
+    // Verify ownership
+    if (order.user_id !== req.user.userId && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Not authorized to submit payment details for this order." });
+    }
+
+    if (order.status === "paid") {
+      return res.status(400).json({ error: "Order has already been verified and paid." });
+    }
+
+    const { transaction_id, utr, screenshot } = req.body;
+    const finalTxId = (transaction_id || utr || "").trim();
+
+    if (!finalTxId) {
+      return res.status(400).json({ error: "Transaction ID / UTR is required." });
+    }
+
+    if (!screenshot || typeof screenshot !== "string") {
+      return res.status(400).json({ error: "Payment screenshot is required." });
+    }
+
+    // Validate screenshot format: JPG, JPEG, PNG, WebP
+    const match = screenshot.match(/^data:(image\/(jpeg|jpg|png|webp));base64,(.+)$/i);
+    if (!match) {
+      return res.status(400).json({
+        error: "Invalid screenshot format. Allowed formats: JPG, JPEG, PNG, WebP.",
+      });
+    }
+
+    const mimeType = match[1].toLowerCase();
+    const rawFormat = match[2].toLowerCase();
+    const ext = rawFormat === "jpeg" ? "jpg" : rawFormat;
+    const base64Data = match[3];
+
+    // Validate maximum file size (5 MB)
+    const fileBuffer = Buffer.from(base64Data, "base64");
+    if (fileBuffer.length > 5 * 1024 * 1024) {
+      return res.status(400).json({ error: "Screenshot file size exceeds the 5 MB limit." });
+    }
+
+    // Save screenshot safely to protected proofs folder
+    const filename = `proof_order_${order.id}_${Date.now()}_${crypto.randomBytes(4).toString("hex")}.${ext}`;
+    const filePath = path.join(UPLOAD_PROOF_DIR, filename);
+    fs.writeFileSync(filePath, fileBuffer);
+
+    // Save reference in DB
+    await pool.query(
+      `UPDATE orders
+       SET status = 'payment_verification_pending',
+           transaction_id = $1,
+           payment_screenshot_url = $2,
+           updated_at = now()
+       WHERE id = $3`,
+      [finalTxId, filename, order.id]
+    );
+
+    const updatedOrder = await getOrderWithItems(order.id);
+
+    return res.json({
+      success: true,
+      message: "Payment details received for verification.",
+      order: updatedOrder,
+    });
+  } catch (err) {
+    console.error("Submit payment proof error:", err);
+    res.status(500).json({ error: "Failed to submit payment details. Please try again." });
+  }
+});
+
+// GET /api/orders/:id/payment-proof -- securely serve proof screenshot (protected view)
+router.get("/:id/payment-proof", requireAuth, async (req, res) => {
+  try {
+    const orderId = parseInt(req.params.id, 10);
+    const raw = await pool.query("SELECT * FROM orders WHERE id = $1", [orderId]);
+    if (raw.rows.length === 0) return res.status(404).json({ error: "Order not found." });
+    const order = raw.rows[0];
+
+    const isOwner = order.user_id === req.user.userId;
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "Access denied. You cannot view this payment proof." });
+    }
+
+    if (!order.payment_screenshot_url) {
+      return res.status(404).json({ error: "No payment screenshot found for this order." });
+    }
+
+    const safeFilename = path.basename(order.payment_screenshot_url);
+    const filePath = path.join(UPLOAD_PROOF_DIR, safeFilename);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "Payment screenshot file not found." });
+    }
+
+    const ext = path.extname(safeFilename).toLowerCase();
+    const mimeMap = {
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".webp": "image/webp",
+    };
+    const mimeType = mimeMap[ext] || "application/octet-stream";
+
+    res.setHeader("Content-Type", mimeType);
+    res.setHeader("Cache-Control", "private, max-age=86400");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    fs.createReadStream(filePath).pipe(res);
+  } catch (err) {
+    console.error("Serve payment proof error:", err);
+    res.status(500).json({ error: "Failed to retrieve payment screenshot." });
+  }
+});
+
+// POST /api/orders/:id/verify-payment -- admin verifies payment and transitions to paid
+router.post("/:id/verify-payment", requireAdmin, async (req, res) => {
+  try {
+    const orderId = parseInt(req.params.id, 10);
+    const raw = await pool.query("SELECT * FROM orders WHERE id = $1", [orderId]);
+    if (raw.rows.length === 0) return res.status(404).json({ error: "Order not found." });
+
+    await pool.query(
+      "UPDATE orders SET status = 'paid', cancel_reason = NULL, updated_at = now() WHERE id = $1",
+      [orderId]
+    );
+
+    const fullOrder = await getOrderWithItems(orderId);
+
+    // Asynchronously dispatch luxury paid tax invoice email
+    if (fullOrder) {
+      sendOrderInvoiceEmail(fullOrder).catch((mailErr) => {
+        console.warn("⚠️  [EmailService] Paid invoice email dispatch failed:", mailErr.message);
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Payment verified successfully. Order confirmed as paid.",
+      order: fullOrder,
+    });
+  } catch (err) {
+    console.error("Verify payment error:", err);
+    res.status(500).json({ error: "Failed to verify payment." });
+  }
+});
+
+// POST /api/orders/:id/reject-payment -- admin rejects payment proof
+router.post("/:id/reject-payment", requireAdmin, async (req, res) => {
+  try {
+    const orderId = parseInt(req.params.id, 10);
+    const { reason } = req.body;
+    const raw = await pool.query("SELECT * FROM orders WHERE id = $1", [orderId]);
+    if (raw.rows.length === 0) return res.status(404).json({ error: "Order not found." });
+
+    const rejectReason = reason || "Payment not found or transaction ID mismatch in merchant account.";
+
+    await pool.query(
+      "UPDATE orders SET status = 'payment_verification_failed', cancel_reason = $1, updated_at = now() WHERE id = $2",
+      [rejectReason, orderId]
+    );
+
+    const fullOrder = await getOrderWithItems(orderId);
+
+    res.json({
+      success: true,
+      message: "Payment verification marked as failed. Customer can re-submit.",
+      order: fullOrder,
+    });
+  } catch (err) {
+    console.error("Reject payment error:", err);
+    res.status(500).json({ error: "Failed to reject payment." });
+  }
+});
+
 // PATCH /api/orders/:id/status -- admin updates status
 router.patch("/:id/status", requireAdmin, async (req, res) => {
   try {
     const orderId = parseInt(req.params.id, 10);
     const { status } = req.body;
-    const allowed = ["payment_pending", "paid", "processing", "cancel_requested", "completed", "cancelled"];
+    const allowed = [
+      "pending_payment",
+      "payment_pending",
+      "payment_verification_pending",
+      "paid",
+      "payment_verification_failed",
+      "processing",
+      "cancel_requested",
+      "completed",
+      "cancelled",
+    ];
     if (!allowed.includes(status)) {
       return res.status(400).json({ error: "Invalid status value." });
     }
