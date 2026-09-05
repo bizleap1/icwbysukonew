@@ -8,7 +8,9 @@ All developers and AI assistants working on this codebase must strictly observe 
    - No generic blue or cold dark modes. Every customer-facing surface (Storefront, Account, Checkout, Invoices, Emails) must match this luxury theme.
 
 2. **Email & Invoice Communications**:
-   - Powered by Resend via verified domain sender: `SUKO Atelier <noreply@indiancorporatewear.com>` with `reply_to: 'support@indiancorporatewear.com'`.
+   - Powered by Resend via verified domain sender: `SUKO Atelier <noreply@indiancorporatewear.com>` with `reply_to: 'indiancorporatewearbysuko@gmail.com'`.
+   - Concierge Support Email: `indiancorporatewearbysuko@gmail.com`
+   - Designated Testing Email: `meshramshreya042@gmail.com` (DO NOT use `meshramshreya28@gmail.com`).
    - All email communications (OTP, invoices, order confirmations, billing) must provide dual multipart bodies (`text` + `html`) matching the SUKO luxury palette.
 
 3. **Mandatory Git Workflow**:
@@ -18,3 +20,4 @@ All developers and AI assistants working on this codebase must strictly observe 
      git commit -m "..."
      git push origin main
      ```
+

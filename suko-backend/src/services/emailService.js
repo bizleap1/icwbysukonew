@@ -37,7 +37,8 @@ async function sendVerificationOtpEmail({ to, otp, name }) {
   }
 
   const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "SUKO Atelier <noreply@indiancorporatewear.com>";
-  const replyTo = process.env.REPLY_TO_EMAIL || "support@indiancorporatewear.com";
+  const supportEmail = process.env.SUPPORT_EMAIL || "indiancorporatewearbysuko@gmail.com";
+  const replyTo = process.env.REPLY_TO_EMAIL || supportEmail;
   const subject = `Your SUKO Atelier verification code is ${otp}`;
 
   const textBody = `Hello${recipientName ? ` ${recipientName}` : ""},
@@ -52,7 +53,7 @@ Best regards,
 SUKO Atelier Team
 The Indian Corporate Wear
 https://www.indiancorporatewear.com
-support@indiancorporatewear.com`;
+${supportEmail}`;
 
   const html = `
     <!DOCTYPE html>
@@ -60,34 +61,45 @@ support@indiancorporatewear.com`;
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="x-apple-disable-message-reformatting">
       <title>SUKO Atelier Verification</title>
+      <style>
+        @media only screen and (max-width: 480px) {
+          .email-body { padding: 12px 6px !important; }
+          .email-card { padding: 26px 18px !important; border-radius: 4px !important; width: 100% !important; box-sizing: border-box !important; }
+          .logo-title { font-size: 21px !important; letter-spacing: 0.28em !important; }
+          .otp-box { width: 100% !important; max-width: 100% !important; padding: 15px 10px !important; box-sizing: border-box !important; }
+          .otp-code { font-size: 27px !important; letter-spacing: 5px !important; }
+        }
+      </style>
     </head>
-    <body style="margin: 0; padding: 24px; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
-      <div style="max-width: 480px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 36px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+    <body class="email-body" style="margin: 0; padding: 32px 16px; background-color: #FAF8F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111113; -webkit-font-smoothing: antialiased;">
+      <div class="email-card" style="max-width: 460px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #EAE6DF; border-radius: 6px; padding: 36px 30px; box-shadow: 0 4px 20px rgba(17,17,19,0.03);">
+        
         <div style="text-align: center; margin-bottom: 24px;">
-          <h1 style="margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 2.5px; color: #0f172a; text-transform: uppercase;">SUKO ATELIER</h1>
-          <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b; letter-spacing: 1.2px; text-transform: uppercase;">The Indian Corporate Wear</p>
+          <h1 class="logo-title" style="margin: 0; font-size: 23px; font-weight: 400; letter-spacing: 0.30em; color: #111113; text-transform: uppercase; padding-left: 0.30em;">S U K O</h1>
+          <p style="margin: 5px 0 0 0; font-size: 10px; font-weight: 600; color: #C2922E; letter-spacing: 0.20em; text-transform: uppercase;">The Indian Corporate Wear &bull; Atelier</p>
         </div>
         
-        <div style="border-top: 1px solid #f1f5f9; margin-bottom: 24px;"></div>
+        <div style="height: 1px; background-color: #EAE6DF; margin-bottom: 24px;"></div>
         
-        <p style="font-size: 15px; color: #334155; margin: 0 0 14px 0; font-weight: 500;">Hello${recipientName ? ` ${recipientName}` : ""},</p>
-        <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
-          Thank you for choosing SUKO. Please enter the verification code below to verify your email address and activate your atelier account:
+        <p style="font-size: 14.5px; color: #111113; margin: 0 0 12px 0; font-weight: 600;">Hello${recipientName ? ` ${recipientName}` : ""},</p>
+        <p style="font-size: 13.5px; line-height: 1.6; color: #5C5C64; margin: 0 0 24px 0;">
+          Welcome to SUKO. Please use the authorization code below to verify your email address and activate your atelier account:
         </p>
         
-        <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 18px 20px; text-align: center; margin: 0 auto 24px auto; max-width: 240px;">
-          <span style="font-family: 'Courier New', Courier, monospace; font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #0f172a; display: inline-block; padding-left: 6px;">${otp}</span>
+        <div class="otp-box" style="background-color: #FAF8F5; border: 1.5px dashed #C2922E; border-radius: 4px; padding: 18px 20px; text-align: center; margin: 0 auto 24px auto; max-width: 240px;">
+          <span class="otp-code" style="font-family: 'Courier New', Courier, monospace; font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #111113; display: inline-block; padding-left: 6px;">${otp}</span>
         </div>
         
-        <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin: 0 0 24px 0; text-align: center;">
-          This code is valid for <strong>10 minutes</strong>. If you did not request this, please disregard this email.
+        <p style="font-size: 12px; color: #7A7A85; line-height: 1.5; margin: 0 0 24px 0; text-align: center;">
+          This code is valid for <strong>10 minutes</strong>. If you did not request this verification, please disregard this message.
         </p>
         
-        <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; font-size: 11px; color: #94a3b8; text-align: center; line-height: 1.6;">
+        <div style="border-top: 1px solid #EAE6DF; padding-top: 20px; font-size: 11px; color: #8C887B; text-align: center; line-height: 1.6;">
           &copy; 2026 SUKO Atelier &bull; The Indian Corporate Wear<br/>
-          <a href="https://www.indiancorporatewear.com" style="color: #64748b; text-decoration: none;">www.indiancorporatewear.com</a> &bull; 
-          <a href="mailto:support@indiancorporatewear.com" style="color: #64748b; text-decoration: none;">support@indiancorporatewear.com</a>
+          <a href="https://www.indiancorporatewear.com" style="color: #6E6E75; text-decoration: none;">www.indiancorporatewear.com</a> &bull; 
+          <a href="mailto:${supportEmail}" style="color: #6E6E75; text-decoration: none;">${supportEmail}</a>
         </div>
       </div>
     </body>
@@ -203,7 +215,8 @@ async function sendOrderInvoiceEmail(order, recipientOverride = {}) {
   }
 
   const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "SUKO Atelier <noreply@indiancorporatewear.com>";
-  const replyTo = process.env.REPLY_TO_EMAIL || "support@indiancorporatewear.com";
+  const supportEmail = process.env.SUPPORT_EMAIL || "indiancorporatewearbysuko@gmail.com";
+  const replyTo = process.env.REPLY_TO_EMAIL || supportEmail;
   const subject = `Order Confirmed & Invoice - #${invoiceNumber} | SUKO Atelier`;
 
   // 1. Plain text multipart version (for deliverability & screen readers)
@@ -246,10 +259,10 @@ Grand Total: ${formatINR(grandTotal)}
 Thank you for choosing SUKO Atelier. Your handcrafted corporate attire is being prepared with exquisite care.
 
 For bespoke assistance or queries:
-support@indiancorporatewear.com
+${supportEmail}
 https://www.indiancorporatewear.com`;
 
-  // 2. Luxury HTML version matching SUKO bespoke luxury theme
+  // 2. Luxury HTML version matching SUKO bespoke luxury theme (Mobile Responsive)
   const itemsHtml = items.map((it) => {
     const name = it.product?.name || it.product_name || it.name || "Bespoke Atelier Garment";
     const size = it.size ? it.size : "Custom";
@@ -259,17 +272,14 @@ https://www.indiancorporatewear.com`;
 
     return `
       <tr style="border-bottom: 1px solid #F3EFE6;">
-        <td style="padding: 14px 12px 14px 0; text-align: left; vertical-align: top;">
-          <strong style="color: #111113; font-size: 13.5px; display: block; font-weight: 600;">${name}</strong>
-          <span style="display: inline-block; margin-top: 4px; padding: 2px 7px; background-color: #F6F3EB; border: 1px solid #E5E0D5; border-radius: 2px; font-size: 10px; font-weight: 600; color: #55555A; text-transform: uppercase; letter-spacing: 0.8px;">Size: ${size}</span>
+        <td class="item-desc-cell" style="padding: 13px 8px 13px 0; text-align: left; vertical-align: top; width: 68%;">
+          <strong class="item-title" style="color: #111113; font-size: 13.5px; display: block; font-weight: 600; line-height: 1.4;">${name}</strong>
+          <div style="margin-top: 5px;">
+            <span style="display: inline-block; padding: 1.5px 6px; background-color: #F6F3EB; border: 1px solid #E5E0D5; border-radius: 2px; font-size: 9.5px; font-weight: 600; color: #55555A; text-transform: uppercase; letter-spacing: 0.5px;">Size: ${size}</span>
+            <span style="font-size: 11.5px; color: #7A7A85; margin-left: 6px;">Qty: ${qty} &times; ${formatINR(unitPrice)}</span>
+          </div>
         </td>
-        <td style="padding: 14px 8px; text-align: center; vertical-align: top; color: #6E6E75; font-size: 13px;">
-          ${qty}
-        </td>
-        <td style="padding: 14px 8px; text-align: right; vertical-align: top; color: #6E6E75; font-size: 13px;">
-          ${formatINR(unitPrice)}
-        </td>
-        <td style="padding: 14px 0 14px 8px; text-align: right; vertical-align: top; color: #111113; font-size: 13.5px; font-weight: 600;">
+        <td class="item-total-cell" style="padding: 13px 0 13px 8px; text-align: right; vertical-align: top; width: 32%; color: #111113; font-size: 14px; font-weight: 700; white-space: nowrap;">
           ${formatINR(itemTotal)}
         </td>
       </tr>
@@ -282,62 +292,83 @@ https://www.indiancorporatewear.com`;
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="x-apple-disable-message-reformatting">
       <title>SUKO Atelier Invoice #${invoiceNumber}</title>
+      <style>
+        /* Mobile & Responsive Resets */
+        body, table, td, p, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
+
+        @media only screen and (max-width: 520px) {
+          .email-outer-pad { padding: 12px 6px !important; }
+          .email-card-box { padding: 22px 16px !important; border-radius: 4px !important; width: 100% !important; box-sizing: border-box !important; }
+          .header-logo { font-size: 22px !important; letter-spacing: 0.26em !important; }
+          .header-subtitle { font-size: 9.5px !important; }
+          .meta-col-left { display: block !important; width: 100% !important; text-align: left !important; }
+          .meta-col-right { display: block !important; width: 100% !important; text-align: left !important; margin-top: 14px !important; }
+          .shipping-box { padding: 13px 14px !important; }
+          .item-desc-cell { width: 62% !important; padding: 12px 6px 12px 0 !important; }
+          .item-total-cell { width: 38% !important; padding: 12px 0 12px 6px !important; font-size: 13px !important; }
+          .item-title { font-size: 12.5px !important; }
+          .total-box-container { padding: 12px 14px !important; }
+          .grand-total-val { font-size: 17px !important; }
+          .cta-full-btn { display: block !important; width: 100% !important; box-sizing: border-box !important; padding: 13px 18px !important; text-align: center !important; }
+        }
+      </style>
     </head>
-    <body style="margin: 0; padding: 32px 16px; background-color: #FAF8F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111113; -webkit-font-smoothing: antialiased;">
-      <div style="max-width: 580px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #EAE6DF; border-radius: 6px; padding: 40px 32px; box-shadow: 0 4px 24px rgba(17, 17, 19, 0.04);">
+    <body class="email-outer-pad" style="margin: 0; padding: 32px 16px; background-color: #FAF8F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111113; -webkit-font-smoothing: antialiased;">
+      <div class="email-card-box" style="max-width: 560px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #EAE6DF; border-radius: 6px; padding: 38px 30px; box-shadow: 0 4px 22px rgba(17, 17, 19, 0.04);">
         
         <!-- Header / Atelier Identity -->
-        <div style="text-align: center; margin-bottom: 28px;">
-          <h1 style="margin: 0; font-size: 25px; font-weight: 400; letter-spacing: 0.32em; text-transform: uppercase; color: #111113; padding-left: 0.32em;">S U K O</h1>
-          <p style="margin: 6px 0 0 0; font-size: 10.5px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: #C2922E;">The Indian Corporate Wear &bull; Atelier</p>
+        <div style="text-align: center; margin-bottom: 26px;">
+          <h1 class="header-logo" style="margin: 0; font-size: 24px; font-weight: 400; letter-spacing: 0.30em; text-transform: uppercase; color: #111113; padding-left: 0.30em;">S U K O</h1>
+          <p class="header-subtitle" style="margin: 5px 0 0 0; font-size: 10px; font-weight: 600; letter-spacing: 0.20em; text-transform: uppercase; color: #C2922E;">The Indian Corporate Wear &bull; Atelier</p>
         </div>
 
-        <div style="height: 1px; background: #EAE6DF; margin-bottom: 28px;"></div>
+        <div style="height: 1px; background: #EAE6DF; margin-bottom: 24px;"></div>
 
-        <!-- Order Header Badge & Invoice Info -->
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+        <!-- Order Header Badge & Invoice Info (Responsive Stack on Mobile) -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 22px;">
           <tr>
-            <td style="vertical-align: top;">
-              <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: #7A7A85; display: block; margin-bottom: 3px;">Invoice Number</span>
-              <strong style="font-size: 16px; color: #111113; font-family: 'Courier New', Courier, monospace; letter-spacing: 0.5px;">#${invoiceNumber}</strong>
-              <span style="font-size: 12px; color: #7A7A85; display: block; margin-top: 2px;">Date: ${orderDate}</span>
+            <td class="meta-col-left" style="vertical-align: top;">
+              <span style="font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: #7A7A85; display: block; margin-bottom: 3px;">Tax Invoice</span>
+              <strong style="font-size: 15px; color: #111113; font-family: 'Courier New', Courier, monospace; letter-spacing: 0.5px;">#${invoiceNumber}</strong>
+              <span style="font-size: 11.5px; color: #7A7A85; display: block; margin-top: 2px;">Date: ${orderDate}</span>
             </td>
-            <td style="vertical-align: top; text-align: right;">
-              <span style="display: inline-block; padding: 5px 12px; background-color: #F8F5EE; border: 1px solid #D8C39D; border-radius: 3px; color: #8A6518; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em;">
+            <td class="meta-col-right" style="vertical-align: top; text-align: right;">
+              <span style="display: inline-block; padding: 4px 10px; background-color: #F8F5EE; border: 1px solid #D8C39D; border-radius: 3px; color: #8A6518; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.10em;">
                 ${paymentStatusText}
               </span>
-              <span style="font-size: 11px; color: #7A7A85; display: block; margin-top: 5px;">Payment: ${paymentMethodDisplay}</span>
+              <span style="font-size: 11px; color: #7A7A85; display: block; margin-top: 4px;">Payment: ${paymentMethodDisplay}</span>
             </td>
           </tr>
         </table>
 
         <!-- Client & Shipping Destination -->
-        <div style="background-color: #FAF8F5; border: 1px solid #ECE7DE; border-radius: 4px; padding: 16px 18px; margin-bottom: 28px;">
-          <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em; color: #C2922E; display: block; margin-bottom: 6px;">Delivery Destination</span>
+        <div class="shipping-box" style="background-color: #FAF8F5; border: 1px solid #ECE7DE; border-radius: 4px; padding: 15px 16px; margin-bottom: 24px;">
+          <span style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em; color: #C2922E; display: block; margin-bottom: 5px;">Delivery Destination</span>
           <strong style="font-size: 13.5px; color: #111113; display: block; font-weight: 600;">${recipientName}</strong>
-          <p style="font-size: 12.5px; line-height: 1.5; color: #5C5C64; margin: 3px 0 0 0;">
+          <p style="font-size: 12px; line-height: 1.55; color: #5C5C64; margin: 3px 0 0 0;">
             ${order.shipping_line1 || order.line1 || "Atelier Delivery Address"}<br>
             ${order.shipping_city || order.city || ""}, ${order.shipping_state || order.state || ""} ${order.shipping_pincode ? `&bull; ${order.shipping_pincode}` : ""}<br>
             Contact: ${order.shipping_phone || order.phone || "Not specified"}
           </p>
         </div>
 
-        <!-- Itemized Order Table -->
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+        <!-- Itemized Order Table (Mobile Editorial Hybrid Format) -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 22px;">
           <thead>
             <tr style="border-bottom: 1.5px solid #EAE6DF;">
-              <th style="padding: 0 12px 10px 0; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em; color: #7A7A85; font-weight: 600;">Item &amp; Description</th>
-              <th style="padding: 0 8px 10px 8px; text-align: center; font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em; color: #7A7A85; font-weight: 600;">Qty</th>
-              <th style="padding: 0 8px 10px 8px; text-align: right; font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em; color: #7A7A85; font-weight: 600;">Rate</th>
-              <th style="padding: 0 0 10px 8px; text-align: right; font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em; color: #7A7A85; font-weight: 600;">Amount</th>
+              <th style="padding: 0 0 9px 0; text-align: left; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.16em; color: #7A7A85; font-weight: 600;">Garment &amp; Specifications</th>
+              <th style="padding: 0 0 9px 0; text-align: right; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.16em; color: #7A7A85; font-weight: 600;">Total</th>
             </tr>
           </thead>
           <tbody>
             ${itemsHtml || `
               <tr>
-                <td colspan="4" style="padding: 16px 0; text-align: center; color: #7A7A85; font-size: 13px;">
-                  Custom Tailored Apparel Order
+                <td colspan="2" style="padding: 16px 0; text-align: center; color: #7A7A85; font-size: 12.5px;">
+                  Custom Bespoke Garment Order
                 </td>
               </tr>
             `}
@@ -345,28 +376,28 @@ https://www.indiancorporatewear.com`;
         </table>
 
         <!-- Pricing Summary Calculation -->
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 26px;">
           <tr>
-            <td style="padding: 5px 0; font-size: 12.5px; color: #6E6E75;">Subtotal</td>
-            <td style="padding: 5px 0; font-size: 12.5px; color: #111113; text-align: right; font-weight: 500;">${formatINR(subtotal)}</td>
+            <td style="padding: 4px 0; font-size: 12.5px; color: #6E6E75;">Subtotal</td>
+            <td style="padding: 4px 0; font-size: 12.5px; color: #111113; text-align: right; font-weight: 500;">${formatINR(subtotal)}</td>
           </tr>
           <tr>
-            <td style="padding: 5px 0; font-size: 12.5px; color: #6E6E75;">White-Glove Atelier Shipping</td>
-            <td style="padding: 5px 0; font-size: 11.5px; color: #C2922E; text-align: right; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Complimentary</td>
+            <td style="padding: 4px 0; font-size: 12.5px; color: #6E6E75;">White-Glove Atelier Shipping</td>
+            <td style="padding: 4px 0; font-size: 11px; color: #C2922E; text-align: right; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Complimentary</td>
           </tr>
           <tr>
-            <td style="padding: 5px 0; font-size: 12.5px; color: #6E6E75;">Taxes &amp; Duties (GST)</td>
-            <td style="padding: 5px 0; font-size: 12px; color: #6E6E75; text-align: right;">Inclusive</td>
+            <td style="padding: 4px 0; font-size: 12.5px; color: #6E6E75;">Taxes &amp; Duties (GST)</td>
+            <td style="padding: 4px 0; font-size: 11.5px; color: #6E6E75; text-align: right;">Inclusive</td>
           </tr>
           <tr>
-            <td colspan="2" style="padding-top: 10px;">
-              <div style="background-color: #FAF6EE; border: 1.5px solid #C2922E; border-radius: 4px; padding: 14px 16px;">
+            <td colspan="2" style="padding-top: 8px;">
+              <div class="total-box-container" style="background-color: #FAF6EE; border: 1.5px solid #C2922E; border-radius: 4px; padding: 13px 15px;">
                 <table style="width: 100%; border-collapse: collapse;">
                   <tr>
-                    <td style="font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 700; color: #111113;">
+                    <td style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 700; color: #111113;">
                       Total Amount
                     </td>
-                    <td style="text-align: right; font-size: 19px; font-weight: 700; color: #111113; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                    <td class="grand-total-val" style="text-align: right; font-size: 18px; font-weight: 700; color: #111113; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                       ${formatINR(grandTotal)}
                     </td>
                   </tr>
@@ -377,20 +408,20 @@ https://www.indiancorporatewear.com`;
         </table>
 
         <!-- Concierge & Care Assurance -->
-        <div style="border-top: 1px solid #EAE6DF; padding-top: 24px; text-align: center;">
-          <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.20em; color: #C2922E; display: block; margin-bottom: 6px;">Atelier Craftsmanship</span>
+        <div style="border-top: 1px solid #EAE6DF; padding-top: 22px; text-align: center;">
+          <span style="font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.20em; color: #C2922E; display: block; margin-bottom: 5px;">Atelier Craftsmanship</span>
           <p style="font-size: 12px; line-height: 1.6; color: #6E6E75; margin: 0 0 16px 0;">
-            Every piece is curated to the highest standards of corporate luxury. You will receive a tracking link as soon as your garment departs our atelier.
+            Every garment is tailored to the highest standards of Indian corporate luxury. You will receive real-time tracking as your order departs our workshop.
           </p>
-          <a href="https://www.indiancorporatewear.com/orders" style="display: inline-block; background-color: #111113; color: #FFFFFF; padding: 12px 24px; border-radius: 2px; text-decoration: none; font-size: 11px; text-transform: uppercase; letter-spacing: 0.20em; font-weight: 600;">
+          <a class="cta-full-btn" href="https://www.indiancorporatewear.com/orders" style="display: inline-block; background-color: #111113; color: #FFFFFF; padding: 12px 24px; border-radius: 2px; text-decoration: none; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.20em; font-weight: 600;">
             View Order Status
           </a>
         </div>
 
         <!-- Footer -->
-        <div style="border-top: 1px solid #EAE6DF; margin-top: 28px; padding-top: 18px; font-size: 11px; line-height: 1.6; color: #8C887B; text-align: center;">
+        <div style="border-top: 1px solid #EAE6DF; margin-top: 26px; padding-top: 16px; font-size: 11px; line-height: 1.6; color: #8C887B; text-align: center;">
           &copy; 2026 SUKO Atelier &bull; Indian Corporate Wear<br>
-          For bespoke tailoring inquiries or support, contact our concierge at <a href="mailto:support@indiancorporatewear.com" style="color: #6E6E75; text-decoration: underline;">support@indiancorporatewear.com</a><br>
+          Concierge support: <a href="mailto:${supportEmail}" style="color: #6E6E75; text-decoration: underline;">${supportEmail}</a><br>
           <a href="https://www.indiancorporatewear.com" style="color: #C2922E; text-decoration: none; font-weight: 500;">www.indiancorporatewear.com</a>
         </div>
 

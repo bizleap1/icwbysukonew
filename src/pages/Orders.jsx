@@ -471,108 +471,134 @@ const Orders = () => {
           </div>
         )}
 
-        {/* Printable Tax Invoice Modal */}
+        {/* Printable Tax Invoice Modal (Mobile Responsive & SUKO Luxury Theme) */}
         {selectedInvoiceOrder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-            <div className="bg-white text-[#111113] max-w-2xl w-full p-8 sm:p-10 rounded-sm relative shadow-2xl font-body space-y-6 max-h-[90vh] overflow-y-auto border border-[#EAE6DF]">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs">
+            <div className="bg-white text-[#111113] max-w-2xl w-full p-4 sm:p-8 md:p-10 rounded-xs relative shadow-2xl font-body space-y-5 max-h-[92vh] overflow-y-auto border border-[#EAE6DF]">
               <button
+                type="button"
                 onClick={() => setSelectedInvoiceOrder(null)}
-                className="absolute top-4 right-4 text-[#8C887B] hover:text-[#111113] p-1 transition-colors cursor-pointer"
+                className="absolute top-3.5 right-3.5 text-[#8C887B] hover:text-[#111113] p-1.5 transition-colors cursor-pointer rounded-full hover:bg-[#FAF8F5]"
+                aria-label="Close invoice"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
 
               {/* Invoice Header */}
-              <div className="border-b-2 border-[#111113] pb-4 flex justify-between items-start">
+              <div className="border-b border-[#EAE6DF] pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
-                  <h2 className="font-quiche text-3xl tracking-wider text-[#111113]">SUKO ATELIER</h2>
-                  <p className="text-[9px] uppercase tracking-[0.24em] text-[#6E6E75] font-mono mt-0.5">
-                    High Fashion Luxury Apparel &middot; Tax Invoice / Receipt
+                  <h2 className="font-quiche text-2xl sm:text-3xl tracking-[0.24em] text-[#111113]">S U K O</h2>
+                  <p className="text-[9px] uppercase tracking-[0.22em] text-[#C2922E] font-medium mt-0.5">
+                    The Indian Corporate Wear &bull; Tax Invoice
                   </p>
                 </div>
-                <div className="text-right font-mono text-xs">
-                  <p className="font-bold text-sm text-[#111113]">INVOICE #SUKO-{1000 + selectedInvoiceOrder.id}</p>
-                  <p className="text-[#6E6E75]">{new Date(selectedInvoiceOrder.created_at || Date.now()).toLocaleDateString()}</p>
-                  <p className="text-emerald-700 font-bold uppercase mt-1">[PAID IN FULL]</p>
+                <div className="text-left sm:text-right text-xs">
+                  <p className="font-mono font-bold text-sm text-[#111113]">INVOICE #SUKO-{1000 + selectedInvoiceOrder.id}</p>
+                  <p className="text-[#6E6E75] text-[11px] mt-0.5">
+                    {new Date(selectedInvoiceOrder.created_at || Date.now()).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric"
+                    })}
+                  </p>
+                  <span className="inline-block mt-1 px-2.5 py-0.5 bg-[#FAF6EE] border border-[#D8C39D] text-[#8A6518] rounded-xs text-[9.5px] font-bold tracking-wider uppercase">
+                    {selectedInvoiceOrder.status === "paid" ? "PAID IN FULL" : selectedInvoiceOrder.status.toUpperCase()}
+                  </span>
                 </div>
               </div>
 
               {/* Billed To Specs */}
-              <div className="grid grid-cols-2 gap-4 text-xs font-mono border-b border-[#EAE6DF] pb-4">
-                <div>
-                  <p className="text-[9px] uppercase tracking-wider text-[#8C887B] font-bold mb-1">Billed &amp; Shipped To:</p>
-                  <p className="font-bold text-sm text-[#111113]">{user?.name || "Client"}</p>
-                  <p className="text-[#555560]">{user?.email}</p>
-                  <p className="text-[#555560]">{user?.phone || "+91 9876543210"}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs border-b border-[#EAE6DF] pb-4">
+                <div className="bg-[#FAF8F5] p-3.5 rounded-xs border border-[#EAE6DF]">
+                  <p className="text-[9px] uppercase tracking-wider text-[#C2922E] font-bold mb-1">Billed &amp; Shipped To:</p>
+                  <p className="font-bold text-sm text-[#111113]">{selectedInvoiceOrder.shipping_name || user?.name || "Valued Client"}</p>
+                  <p className="text-[#6E6E75] text-[11.5px] mt-0.5">{selectedInvoiceOrder.shipping_line1 || selectedInvoiceOrder.address?.line1 || "Atelier Delivery Address"}</p>
+                  <p className="text-[#6E6E75] text-[11.5px]">
+                    {selectedInvoiceOrder.shipping_city || selectedInvoiceOrder.address?.city || ""}, {selectedInvoiceOrder.shipping_state || selectedInvoiceOrder.address?.state || ""} {selectedInvoiceOrder.shipping_pincode || selectedInvoiceOrder.address?.pincode || ""}
+                  </p>
+                  <p className="text-[#6E6E75] text-[11px] font-mono mt-1">Contact: {selectedInvoiceOrder.shipping_phone || user?.phone || "Not specified"}</p>
                 </div>
-                <div className="text-right">
+                <div className="bg-[#FAF8F5] p-3.5 rounded-xs border border-[#EAE6DF] sm:text-right">
                   <p className="text-[9px] uppercase tracking-wider text-[#8C887B] font-bold mb-1">Atelier Details:</p>
-                  <p className="font-bold text-[#111113]">SUKO Atelier Studio</p>
-                  <p className="text-[#555560]">Bandra West, Mumbai, MH</p>
-                  <p className="text-[#555560]">GSTIN: 27AAAAA0000A1Z5</p>
+                  <p className="font-bold text-sm text-[#111113]">SUKO Atelier Studio</p>
+                  <p className="text-[#6E6E75] text-[11.5px] mt-0.5">Bandra West, Mumbai, MH</p>
+                  <p className="text-[#6E6E75] text-[11.5px]">GSTIN: 27AAAAA0000A1Z5</p>
+                  <p className="text-[#C2922E] text-[11.5px] mt-1">support@indiancorporatewear.com</p>
                 </div>
               </div>
 
               {/* Items Table */}
-              <table className="w-full text-left font-mono text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-[#111113] text-[9px] uppercase tracking-widest text-[#6E6E75]">
-                    <th className="py-2">Garment Item</th>
-                    <th className="py-2 text-center">Size</th>
-                    <th className="py-2 text-center">Qty</th>
-                    <th className="py-2 text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EAE6DF]">
-                  {selectedInvoiceOrder.items && selectedInvoiceOrder.items.length > 0 ? (
-                    selectedInvoiceOrder.items.map((item, i) => (
-                      <tr key={i}>
-                        <td className="py-2.5 font-semibold text-[#111113]">{item.product?.name || "Atelier Garment"}</td>
-                        <td className="py-2.5 text-center text-[#555560]">{item.size || "38"}</td>
-                        <td className="py-2.5 text-center text-[#555560]">{item.quantity}</td>
-                        <td className="py-2.5 text-right font-bold text-[#111113]">{formatINR(item.price_at_purchase || item.product?.price || 0)}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td className="py-2.5 font-semibold text-[#111113]">Custom Bespoke Atelier Garment</td>
-                      <td className="py-2.5 text-center text-[#555560]">38</td>
-                      <td className="py-2.5 text-center text-[#555560]">1</td>
-                      <td className="py-2.5 text-right font-bold text-[#111113]">{formatINR(selectedInvoiceOrder.total)}</td>
+              <div className="overflow-x-auto -mx-1 sm:mx-0">
+                <table className="w-full text-left text-xs border-collapse min-w-[290px]">
+                  <thead>
+                    <tr className="border-b border-[#EAE6DF] text-[9px] uppercase tracking-widest text-[#7A7A85]">
+                      <th className="py-2 pr-2 font-medium">Garment Item</th>
+                      <th className="py-2 px-2 text-center font-medium">Size</th>
+                      <th className="py-2 px-2 text-center font-medium">Qty</th>
+                      <th className="py-2 pl-2 text-right font-medium">Amount</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-[#F3EFE6]">
+                    {selectedInvoiceOrder.items && selectedInvoiceOrder.items.length > 0 ? (
+                      selectedInvoiceOrder.items.map((item, i) => (
+                        <tr key={i}>
+                          <td className="py-2.5 pr-2 font-medium text-[#111113]">
+                            {item.product?.name || item.product_name || "Atelier Garment"}
+                          </td>
+                          <td className="py-2.5 px-2 text-center text-[#555560]">
+                            <span className="px-1.5 py-0.5 bg-[#FAF8F5] border border-[#EAE6DF] rounded-xs text-[10px]">
+                              {item.size || "38"}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-2 text-center font-mono text-[#555560]">{item.quantity}</td>
+                          <td className="py-2.5 pl-2 text-right font-mono font-bold text-[#111113]">
+                            {formatINR(item.price_at_purchase || item.product?.price || 0)}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td className="py-2.5 font-medium text-[#111113]">Custom Bespoke Atelier Garment</td>
+                        <td className="py-2.5 text-center text-[#555560]">38</td>
+                        <td className="py-2.5 text-center font-mono text-[#555560]">1</td>
+                        <td className="py-2.5 text-right font-mono font-bold text-[#111113]">{formatINR(selectedInvoiceOrder.total)}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
               {/* Total Summary */}
-              <div className="border-t-2 border-[#111113]/20 pt-3 flex flex-col items-end gap-0.5 font-mono text-xs">
-                <div className="flex justify-between w-64 text-[#555560]">
-                  <span>Subtotal:</span>
-                  <span>{formatINR(selectedInvoiceOrder.total)}</span>
-                </div>
-                <div className="flex justify-between w-64 text-[#555560]">
-                  <span>GST Tax (Included):</span>
-                  <span>₹0.00</span>
-                </div>
-                <div className="flex justify-between w-64 text-[#555560]">
-                  <span>Atelier Delivery:</span>
-                  <span className="text-emerald-700 font-bold">COMPLIMENTARY</span>
-                </div>
-                <div className="flex justify-between w-64 text-[#111113] font-bold text-sm border-t border-[#111113]/20 pt-1.5 mt-1">
-                  <span>Total Paid:</span>
-                  <span>{formatINR(selectedInvoiceOrder.total)}</span>
+              <div className="border-t border-[#EAE6DF] pt-3 flex flex-col items-end gap-1 text-xs">
+                <div className="w-full sm:w-72 bg-[#FAF6EE] border border-[#C2922E]/40 p-3.5 rounded-xs space-y-1.5">
+                  <div className="flex justify-between text-[#6E6E75]">
+                    <span>Subtotal:</span>
+                    <span className="font-mono text-[#111113]">{formatINR(selectedInvoiceOrder.total)}</span>
+                  </div>
+                  <div className="flex justify-between text-[#6E6E75]">
+                    <span>GST Taxes:</span>
+                    <span className="text-[#111113]">Inclusive</span>
+                  </div>
+                  <div className="flex justify-between text-[#6E6E75]">
+                    <span>Atelier Delivery:</span>
+                    <span className="text-[#C2922E] font-bold text-[10.5px] uppercase tracking-wider">Complimentary</span>
+                  </div>
+                  <div className="flex justify-between text-[#111113] font-bold text-sm border-t border-[#C2922E]/30 pt-2 mt-1">
+                    <span>Total Amount:</span>
+                    <span className="font-mono text-base">{formatINR(selectedInvoiceOrder.total)}</span>
+                  </div>
                 </div>
               </div>
 
               {/* Footer Stamp & Print */}
-              <div className="border-t border-[#EAE6DF] pt-4 flex items-center justify-between">
-                <span className="text-[8px] uppercase tracking-widest text-[#8C887B] font-mono">
-                  Authentic Garment Guarantee &middot; Hand-crafted Atelier
+              <div className="border-t border-[#EAE6DF] pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <span className="text-[8.5px] uppercase tracking-widest text-[#8C887B] text-center sm:text-left">
+                  Authentic Garment Guarantee &bull; Hand-crafted Atelier
                 </span>
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="bg-[#111113] hover:bg-[#C2922E] text-white px-5 py-2 text-xs font-mono font-bold uppercase tracking-widest flex items-center gap-2 transition-all cursor-pointer shadow-xs rounded-xs"
+                  className="w-full sm:w-auto bg-[#111113] hover:bg-[#C2922E] text-white px-5 py-2.5 text-xs font-medium uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs rounded-xs"
                 >
                   <Printer size={13} /> Print Receipt
                 </button>

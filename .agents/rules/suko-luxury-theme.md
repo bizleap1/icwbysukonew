@@ -16,7 +16,8 @@ This rule enforces the bespoke luxury aesthetic of SUKO Atelier (The Indian Corp
 
 ## Transactional Emails & Invoices
 - **Sender:** Always `SUKO Atelier <noreply@indiancorporatewear.com>`.
-- **Reply-To:** Always `support@indiancorporatewear.com`.
+- **Reply-To & Concierge:** Always `indiancorporatewearbysuko@gmail.com`.
+- **Designated Testing Email:** `meshramshreya042@gmail.com` (Never send tests to `meshramshreya28@gmail.com`).
 - **Format:** Always provide dual multipart (`text` plain-text fallback + responsive luxury `html`).
 - **Invoice Structure:**
   - Distinctive `S U K O` atelier masthead.
