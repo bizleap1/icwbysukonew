@@ -213,3 +213,29 @@ input {
     color: #111113;
 }
 
+/* Print Optimization for SUKO Official Tax Invoices */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #111113 !important;
+  }
+  header, footer, nav, .no-print, button:not(.allow-print) {
+    display: none !important;
+  }
+  .print-invoice-modal-backdrop {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    inset: auto !important;
+  }
+  .print-invoice-modal-card {
+    box-shadow: none !important;
+    border: 1px solid #EAE6DF !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 24px !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+
