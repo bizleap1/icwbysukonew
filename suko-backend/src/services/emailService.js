@@ -36,7 +36,7 @@ async function sendVerificationOtpEmail({ to, otp, name }) {
     };
   }
 
-  const fromEmail = process.env.EMAIL_FROM || "SUKO Atelier <onboarding@resend.dev>";
+  const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "SUKO Atelier <onboarding@resend.dev>";
   const subject = `[SUKO Atelier] ${otp} is your verification code`;
 
   const html = `
