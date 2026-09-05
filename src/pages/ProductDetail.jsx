@@ -398,7 +398,7 @@ export const ProductDetail = () => {
 
         {/* Full-width secondary outline button below ADD TO BAG */}
         <a
-          href={`https://wa.me/917666168147?text=${encodeURIComponent(productWhatsappMsg)}`}
+          href={`https://wa.me/919370350885?text=${encodeURIComponent(productWhatsappMsg)}`}
           target="_blank"
           rel="noopener noreferrer"
           className="w-full py-3.5 px-4 border border-[#111113] hover:border-[#C2922E] bg-transparent text-[#111113] hover:text-[#C2922E] text-[10.5px] sm:text-[11px] uppercase tracking-[0.22em] font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"

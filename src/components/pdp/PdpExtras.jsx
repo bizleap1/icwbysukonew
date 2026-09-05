@@ -87,7 +87,7 @@ export const SizeGuideModal = ({ isOpen, onClose }) => {
                 </span>
               </div>
               <a
-                href="https://wa.me/917666168147?text=Hello%20SUKO%20Stylist%2C%20I%20would%20like%20assistance%20with%20sizing%20and%20fit%20guidance."
+                href="https://wa.me/919370350885?text=Hello%20SUKO%20Stylist%2C%20I%20would%20like%20assistance%20with%20sizing%20and%20fit%20guidance."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center px-4 py-2 bg-[#111113] text-white text-[10.5px] uppercase tracking-[0.18em] font-medium hover:bg-[#C2922E] transition-colors shrink-0 cursor-pointer"

@@ -141,13 +141,13 @@ const Contact = () => {
               </p>
 
               <a
-                href="https://wa.me/917666168147"
+                href="https://wa.me/919370350885"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group inline-flex items-center gap-2.5 px-6 py-3 bg-[#111113] text-white text-[11px] uppercase tracking-[0.2em] font-medium hover:bg-[#C2922E] transition-colors"
               >
                 <MessageCircle size={14} className="text-[#C2922E] group-hover:text-white transition-colors" />
-                <span>Message Concierge (+91 76661 68147)</span>
+                <span>Message Concierge (+91 93703 50885)</span>
               </a>
             </div>
 

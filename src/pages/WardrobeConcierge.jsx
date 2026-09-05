@@ -9,7 +9,7 @@ export const WardrobeConcierge = () => {
 
   // Pre-filled WhatsApp message helper
   const getWhatsAppLink = (customText = "Hi SUKO, I’d like help curating my professional wardrobe.") => {
-    return `https://wa.me/917666168147?text=${encodeURIComponent(customText)}`;
+    return `https://wa.me/919370350885?text=${encodeURIComponent(customText)}`;
   };
 
   const DEFAULT_WHATSAPP_LINK = getWhatsAppLink("Hi SUKO, I’d like help curating my professional wardrobe.");

@@ -333,7 +333,7 @@ const Orders = () => {
                   </div>
 
                   <a
-                    href={`https://wa.me/917666168147?text=Hi%20SUKO%20Atelier,%20I%20need%20assistance%20regarding%20my%20Order%20%23SUKO-${1000 + order.id}`}
+                    href={`https://wa.me/919370350885?text=Hi%20SUKO%20Atelier,%20I%20need%20assistance%20regarding%20my%20Order%20%23SUKO-${1000 + order.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[9px] uppercase tracking-[0.2em] text-foreground/50 hover:text-white font-body flex items-center gap-1 transition-colors"

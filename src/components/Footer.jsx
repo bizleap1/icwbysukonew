@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Instagram, Facebook, Mail, Plus, Minus } from "lucide-react";
+import { ArrowRight, Instagram, Facebook, Mail, Plus, Minus, MessageCircle } from "lucide-react";
 import { MOMENTS } from "../data/products";
 
 export const Footer = () => {
@@ -137,6 +137,15 @@ export const Footer = () => {
             {openMobileAccordion === "connect" && (
               <div className="mt-3 space-y-3 pl-1 py-1 text-white/75">
                 <a
+                  href="https://wa.me/919370350885?text=Hello%20SUKO%20Stylist%2C%20I%20would%20like%20assistance%20with%20styling%20and%20orders."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-[12px] text-[#A8A8B4] hover:text-[#C2922E] transition-colors"
+                >
+                  <MessageCircle size={14} className="text-[#C2922E] shrink-0" />
+                  <span className="font-light">+91 93703 50885 (WhatsApp)</span>
+                </a>
+                <a
                   href="mailto:indiancoporatewearbysuko@gmail.com"
                   className="flex items-center gap-2 text-[12px] text-[#A8A8B4] hover:text-[#C2922E] transition-colors"
                 >
@@ -233,6 +242,17 @@ export const Footer = () => {
               Modern tailoring. Indian sensibility. Designed for women who lead.
             </p>
             <div className="space-y-3 pt-0.5">
+              <a
+                href="https://wa.me/919370350885?text=Hello%20SUKO%20Stylist%2C%20I%20would%20like%20assistance%20with%20styling%20and%20orders."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-[12.5px] text-[#A8A8B4] hover:text-[#C2922E] transition-colors group"
+              >
+                <MessageCircle size={14} className="text-[#C2922E] shrink-0" />
+                <span className="font-light group-hover:text-white transition-colors">
+                  +91 93703 50885 (WhatsApp)
+                </span>
+              </a>
               <a
                 href="mailto:indiancoporatewearbysuko@gmail.com"
                 className="flex items-center gap-2 text-[12.5px] text-[#A8A8B4] hover:text-[#C2922E] transition-colors group"
