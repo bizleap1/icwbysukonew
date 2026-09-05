@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Lock, Loader2, CheckCircle2, ArrowRight, X } from "lucide-react";
+import { Lock, Loader2, CheckCircle2, ArrowRight, ArrowLeft, X } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { useWishlist } from "../context/WishlistContext";
@@ -495,9 +495,21 @@ const Checkout = () => {
         {/* Minimal Header */}
         <header className="w-full bg-[#FAF8F5] border-b border-[#EAE6DF]">
           <div className="max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-12 h-16 sm:h-20 flex items-center justify-between">
-            <Link to="/" className="inline-block">
-              <img src="/logo.png" alt="SUKO" className="h-5 sm:h-6 w-auto" />
-            </Link>
+            <div className="flex items-center gap-3 sm:gap-5">
+              <button
+                type="button"
+                onClick={() => navigate("/collection")}
+                className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.20em] font-medium text-[#6E6E75] hover:text-[#111113] transition-colors group cursor-pointer"
+                title="Return to Collection"
+              >
+                <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                <span className="hidden sm:inline">Back</span>
+              </button>
+              <span className="w-px h-4 bg-[#EAE6DF]" />
+              <Link to="/" className="inline-block" aria-label="SUKO Home">
+                <img src="/logo.png" alt="SUKO" className="h-5 sm:h-6 w-auto" />
+              </Link>
+            </div>
             <div className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.24em] font-medium text-[#6E6E75]">
               <Lock size={12} className="text-[#C2922E]" strokeWidth={1.8} />
               <span>SECURE CHECKOUT</span>
@@ -538,15 +550,37 @@ const Checkout = () => {
     <div className="min-h-screen bg-[#FAF8F5] text-[#111113] font-body selection:bg-[#C2922E] selection:text-white flex flex-col justify-between">
       <SEO title="Checkout | SUKO" description="Secure and encrypted luxury checkout for SUKO orders." />
 
-      {/* Simplified Header: Logo + SECURE CHECKOUT only */}
+      {/* Header: Back Navigation + Logo + Continue Shopping + SECURE CHECKOUT */}
       <header className="w-full bg-[#FAF8F5] border-b border-[#EAE6DF] sticky top-0 z-30 backdrop-blur-md bg-[#FAF8F5]/95">
         <div className="max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-12 h-16 sm:h-20 flex items-center justify-between">
-          <Link to="/" className="inline-block" aria-label="SUKO Home">
-            <img src="/logo.png" alt="SUKO" className="h-5 sm:h-6 w-auto" />
-          </Link>
-          <div className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.24em] font-medium text-[#6E6E75]">
-            <Lock size={12} className="text-[#C2922E]" strokeWidth={1.8} />
-            <span>SECURE CHECKOUT</span>
+          <div className="flex items-center gap-3 sm:gap-5">
+            <button
+              type="button"
+              onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/collection"))}
+              className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.20em] font-medium text-[#6E6E75] hover:text-[#111113] transition-colors group cursor-pointer"
+              title="Return to previous page"
+              aria-label="Return to previous page"
+            >
+              <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+              <span className="hidden sm:inline">Back</span>
+            </button>
+            <span className="w-px h-4 bg-[#EAE6DF]" />
+            <Link to="/" className="inline-block" aria-label="SUKO Home">
+              <img src="/logo.png" alt="SUKO" className="h-5 sm:h-6 w-auto" />
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-4 sm:gap-6">
+            <Link
+              to="/collection"
+              className="hidden md:inline-flex items-center text-[10.5px] uppercase tracking-[0.22em] font-medium text-[#6E6E75] hover:text-[#111113] transition-colors"
+            >
+              Continue Shopping
+            </Link>
+            <div className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.24em] font-medium text-[#6E6E75]">
+              <Lock size={12} className="text-[#C2922E]" strokeWidth={1.8} />
+              <span>SECURE CHECKOUT</span>
+            </div>
           </div>
         </div>
       </header>
@@ -664,6 +698,14 @@ const Checkout = () => {
             
             {/* Header */}
             <div className="mb-8 sm:mb-10">
+              <button
+                type="button"
+                onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/collection"))}
+                className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.22em] text-[#6E6E75] hover:text-[#111113] transition-colors group mb-3.5 cursor-pointer font-medium"
+              >
+                <ArrowLeft size={13} className="group-hover:-translate-x-1 transition-transform" />
+                <span>Return to Shopping Bag</span>
+              </button>
               <h1 className="font-quiche text-2xl sm:text-3xl lg:text-[32px] font-light text-[#111113] tracking-tight">
                 CHECKOUT
               </h1>
