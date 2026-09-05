@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Heart, ShoppingBag, Check } from "lucide-react";
 import { formatINR, PRODUCTS } from "../data/products";
@@ -8,6 +8,7 @@ import { useCart } from "../context/CartContext";
 import { getCardImage } from "../utils/mediaUtils";
 
 const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = false, showAddToBag = false, disableHoverImage = false, className = "" }) => {
+  const navigate = useNavigate();
   const [hover, setHover] = useState(false);
   const [hasHovered, setHasHovered] = useState(false);
   const [isSelectingSize, setIsSelectingSize] = useState(false);
@@ -65,6 +66,14 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
   const handleAddToBagClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Everywhere except Wishlist (where showAddToBag is true),
+    // clicking the bag icon navigates to the product page so users can select their size and details.
+    if (!showAddToBag) {
+      navigate(`/product/${product.slug || product.id}`);
+      return;
+    }
+
     if (availableSizes && availableSizes.length > 1) {
       setIsSelectingSize((prev) => !prev);
     } else {
@@ -220,10 +229,10 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
               <button
                 type="button"
                 onClick={handleAddToBagClick}
-                aria-label="Add to Bag"
+                aria-label={showAddToBag ? "Add to Bag" : "Select size on product page"}
                 className="p-1 text-[#111113]/70 dark:text-white/70 hover:text-[#C2922E] dark:hover:text-[#C2922E] transition-colors cursor-pointer"
               >
-                {isAdded ? (
+                {showAddToBag && isAdded ? (
                   <Check size={16} strokeWidth={2} className="text-[#C2922E]" />
                 ) : (
                   <ShoppingBag

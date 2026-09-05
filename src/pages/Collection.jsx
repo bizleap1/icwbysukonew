@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { X, Check, SlidersHorizontal, ArrowUpDown, Heart, ShoppingBag } from "lucide-react";
 import { useLenis } from "lenis/react";
 import SEO from "../components/SEO";
@@ -1107,6 +1107,7 @@ export const Collection = () => {
 // REUSABLE PRODUCT CARD (Consistent 4:5 Portrait Ratio, Smooth Model Flip Hover, Wishlist & Bag)
 // =============================================================================
 const ProductCard = ({ product }) => {
+  const navigate = useNavigate();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { addItem } = useCart();
   const [hasHovered, setHasHovered] = useState(false);
@@ -1243,15 +1244,15 @@ const ProductCard = ({ product }) => {
               />
             </button>
 
-            {/* Shopping Bag Icon */}
+            {/* Shopping Bag Icon: Navigates to PDP so users can choose their size */}
             <button
               type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                addItem(product, product.sizes?.[0] || "Standard", 1);
+                navigate(productUrl);
               }}
-              aria-label="Add to Bag"
+              aria-label="Select size on product page"
               className="p-1.5 text-[#121215]/70 hover:text-[#C2922E] transition-colors cursor-pointer"
             >
               <ShoppingBag
