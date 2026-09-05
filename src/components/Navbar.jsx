@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { ShoppingBag, Search, User, Heart, ChevronRight } from "lucide-react";
+import { ShoppingBag, Search, User, Heart, ChevronRight, ChevronDown, Shield, LogOut, Package } from "lucide-react";
 import { useLenis } from "lenis/react";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
@@ -19,12 +19,26 @@ export const Navbar = () => {
   const { count: wishlistCount } = useWishlist();
   const { user, logout } = useAuth();
 
+  const userInitial = (user?.name?.trim()?.[0] || user?.email?.trim()?.[0] || "U").toUpperCase();
+  const userFirstName = user?.name?.trim()?.split(" ")[0] || (user?.role === "admin" ? "Admin" : "Member");
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
+  const accountMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target)) {
+        setAccountMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -219,44 +233,119 @@ export const Navbar = () => {
                 <Search size={19} strokeWidth={1.05} />
               </button>
 
-              {/* Account (Thin Stroke 1.05, Size 19px) */}
-              <div className="hidden lg:block">
+              {/* Account / User Identity */}
+              <div className="hidden lg:block" ref={accountMenuRef}>
                 {user?.authenticated ? (
                   <div className="relative">
                     <button
                       onClick={() => setAccountMenuOpen(!accountMenuOpen)}
-                      className={`p-1 bg-transparent border-0 flex items-center justify-center transition-opacity duration-300 ${
-                        isDarkTheme ? "text-white hover:opacity-75" : "text-[#121215] hover:opacity-50"
+                      className={`group flex items-center gap-2 pl-1 pr-2.5 py-0.5 rounded-full border transition-all duration-300 ${
+                        accountMenuOpen
+                          ? "border-[#C2922E] bg-[#C2922E]/10"
+                          : isDarkTheme
+                          ? "border-white/20 bg-white/5 hover:border-[#C2922E] text-white"
+                          : "border-[#121215]/15 bg-white/60 hover:border-[#C2922E] text-[#121215] shadow-xs"
                       }`}
-                      aria-label="Account Menu"
+                      aria-label={`Logged in as ${user.name || "Member"}`}
+                      title={`Logged in as ${user.name || user.email || "Member"}`}
                     >
-                      <User size={19} strokeWidth={1.05} />
+                      {/* Avatar Circle with Initial & Active Indicator */}
+                      <div className="relative w-6 h-6 rounded-full bg-[#111113] text-[#FAF8F5] border border-[#C2922E] flex items-center justify-center text-[10px] font-medium font-mono shrink-0 shadow-xs">
+                        {userInitial}
+                        <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+                      </div>
+
+                      {/* Logged in User Name */}
+                      <span className="text-[11px] font-medium tracking-wider uppercase max-w-[85px] truncate font-body">
+                        {userFirstName}
+                      </span>
+
+                      <ChevronDown
+                        size={12}
+                        className={`transition-transform duration-200 text-[#C2922E] ${accountMenuOpen ? "rotate-180" : ""}`}
+                      />
                     </button>
+
+                    {/* Luxury Atelier Dropdown */}
                     {accountMenuOpen && (
-                      <div className="absolute right-0 top-full mt-3 w-48 bg-[#FAF8F5] border border-[#121215]/10 shadow-xl py-2 z-50 text-[#121215] text-xs">
-                        <Link
-                          to="/account"
-                          onClick={() => setAccountMenuOpen(false)}
-                          className="block px-4 py-2 hover:bg-[#121215]/5 uppercase tracking-widest text-[10px]"
-                        >
-                          My Profile
-                        </Link>
-                        <Link
-                          to="/orders"
-                          onClick={() => setAccountMenuOpen(false)}
-                          className="block px-4 py-2 hover:bg-[#121215]/5 uppercase tracking-widest text-[10px]"
-                        >
-                          My Orders
-                        </Link>
-                        <button
-                          onClick={() => {
-                            logout();
-                            setAccountMenuOpen(false);
-                          }}
-                          className="w-full text-left px-4 py-2 hover:bg-[#121215]/5 uppercase tracking-widest text-[10px] text-red-600 border-t border-[#121215]/10 mt-1"
-                        >
-                          Sign Out
-                        </button>
+                      <div className="absolute right-0 top-full mt-2.5 w-64 bg-[#FAF8F5] border border-[#EAE6DF] shadow-[0_10px_35px_rgba(0,0,0,0.12)] rounded-sm py-3 px-3.5 z-50 text-[#111113] animate-in fade-in duration-150">
+                        {/* User Identity Header */}
+                        <div className="pb-3 border-b border-[#EAE6DF]">
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className="text-[9px] font-mono uppercase tracking-[0.22em] text-[#C2922E] bg-[#C2922E]/10 px-2 py-0.5 rounded font-medium">
+                              {user.role === "admin" ? "ATELIER ADMIN" : "ATELIER MEMBER"}
+                            </span>
+                            <span className="flex items-center gap-1 text-[9px] text-emerald-600 font-medium">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              Active
+                            </span>
+                          </div>
+                          <div className="font-quiche text-[15px] font-semibold text-[#111113] truncate">
+                            {user.name || "Client Member"}
+                          </div>
+                          <div className="text-[11px] text-[#706E6B] truncate font-light mt-0.5">
+                            {user.email || "Active Session"}
+                          </div>
+                        </div>
+
+                        {/* Navigation Links */}
+                        <div className="py-2 flex flex-col gap-0.5">
+                          <Link
+                            to="/account"
+                            onClick={() => setAccountMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-2 py-2 rounded text-[10.5px] uppercase tracking-wider text-[#111113] hover:text-[#C2922E] hover:bg-[#111113]/[0.04] transition-colors"
+                          >
+                            <User size={13} className="text-[#C2922E]" />
+                            <span>Account Settings</span>
+                          </Link>
+                          <Link
+                            to="/orders"
+                            onClick={() => setAccountMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-2 py-2 rounded text-[10.5px] uppercase tracking-wider text-[#111113] hover:text-[#C2922E] hover:bg-[#111113]/[0.04] transition-colors"
+                          >
+                            <Package size={13} className="text-[#C2922E]" />
+                            <span>Orders &amp; Receipts</span>
+                          </Link>
+                          <Link
+                            to="/wishlist"
+                            onClick={() => setAccountMenuOpen(false)}
+                            className="flex items-center justify-between px-2 py-2 rounded text-[10.5px] uppercase tracking-wider text-[#111113] hover:text-[#C2922E] hover:bg-[#111113]/[0.04] transition-colors"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <Heart size={13} className="text-[#C2922E]" />
+                              <span>Saved Wishlist</span>
+                            </div>
+                            {wishlistCount > 0 && (
+                              <span className="text-[9px] bg-[#C2922E] text-white px-1.5 py-0.2 rounded-full font-medium">
+                                {wishlistCount}
+                              </span>
+                            )}
+                          </Link>
+                          {user.role === "admin" && (
+                            <Link
+                              to="/admin/dashboard"
+                              onClick={() => setAccountMenuOpen(false)}
+                              className="flex items-center gap-2.5 px-2 py-2 rounded text-[10.5px] uppercase tracking-wider text-[#C2922E] bg-[#C2922E]/5 hover:bg-[#C2922E]/15 transition-colors font-medium mt-1"
+                            >
+                              <Shield size={13} className="text-[#C2922E]" />
+                              <span>Admin Dashboard</span>
+                            </Link>
+                          )}
+                        </div>
+
+                        {/* Sign Out Action */}
+                        <div className="pt-2 border-t border-[#EAE6DF]">
+                          <button
+                            onClick={() => {
+                              logout();
+                              setAccountMenuOpen(false);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-2 py-2 rounded text-[10.5px] uppercase tracking-wider text-rose-600 hover:bg-rose-50 transition-colors font-medium text-left"
+                          >
+                            <LogOut size={13} className="text-rose-500" />
+                            <span>Sign Out</span>
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -267,6 +356,7 @@ export const Navbar = () => {
                       isDarkTheme ? "text-white hover:opacity-75" : "text-[#121215] hover:opacity-50"
                     }`}
                     aria-label="Sign In"
+                    title="Sign In / Register"
                   >
                     <User size={19} strokeWidth={1.05} />
                   </Link>
@@ -412,14 +502,49 @@ export const Navbar = () => {
               {/* Secondary Utility Links */}
               <div className="flex flex-col gap-3 text-[11px] uppercase tracking-[0.22em]">
                 {user?.authenticated ? (
-                  <Link
-                    to="/account"
-                    onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-3 font-medium text-[#222228] hover:text-black py-1"
-                  >
-                    <User size={14} className="text-[#C2922E]" />
-                    <span>MY ACCOUNT ({user.name || "MEMBER"})</span>
-                  </Link>
+                  <div className="bg-[#FAF8F5] p-3.5 rounded border border-[#EAE6DF] mb-2 shadow-xs">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="relative w-8 h-8 rounded-full bg-[#111113] text-[#FAF8F5] border border-[#C2922E] flex items-center justify-center text-xs font-semibold font-mono shrink-0">
+                          {userInitial}
+                          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-quiche text-sm font-semibold text-[#111113] tracking-normal leading-tight truncate">
+                            {user.name || "Client Member"}
+                          </p>
+                          <span className="text-[9px] font-mono text-[#C2922E] tracking-widest uppercase">
+                            {user.role === "admin" ? "ATELIER ADMIN" : "ATELIER MEMBER"}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          logout();
+                          setMobileOpen(false);
+                        }}
+                        className="text-[10px] text-rose-600 hover:text-rose-700 tracking-wider font-mono uppercase shrink-0"
+                      >
+                        LOGOUT
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 pt-2.5 border-t border-[#EAE6DF]">
+                      <Link
+                        to="/account"
+                        onClick={() => setMobileOpen(false)}
+                        className="text-center py-2 bg-white border border-[#EAE6DF] text-[10px] text-[#111113] font-medium tracking-wider hover:border-[#C2922E]"
+                      >
+                        SETTINGS
+                      </Link>
+                      <Link
+                        to="/orders"
+                        onClick={() => setMobileOpen(false)}
+                        className="text-center py-2 bg-white border border-[#EAE6DF] text-[10px] text-[#111113] font-medium tracking-wider hover:border-[#C2922E]"
+                      >
+                        ORDERS
+                      </Link>
+                    </div>
+                  </div>
                 ) : (
                   <Link
                     to="/auth"

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   User, Phone, Mail, Lock, MapPin, Plus, Trash2, Edit2, 
-  Package, Heart, Shield, ArrowRight, CheckCircle2, Clock, Key
+  Package, Heart, Shield, ArrowRight, CheckCircle2, Clock, Key,
+  Sparkles, ExternalLink
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { API_BASE_URL, apiClient } from "../config/api";
+import { apiClient } from "../config/api";
+import SEO from "../components/SEO";
 
 const Account = () => {
   const { user, token, loginWithToken } = useAuth();
@@ -41,8 +43,8 @@ const Account = () => {
     setLoading(true);
     try {
       const [profData, addrData] = await Promise.all([
-        apiClient.get('/api/auth/profile'),
-        apiClient.get('/api/addresses')
+        apiClient.get("/api/auth/profile").catch(() => null),
+        apiClient.get("/api/addresses").catch(() => [])
       ]);
 
       if (profData) {
@@ -66,13 +68,13 @@ const Account = () => {
     if (newPassword) {
       const len = new TextEncoder().encode(newPassword).length;
       if (len < 8 || len > 72) {
-        return toast.error("New password must be between 8 and 72 bytes.");
+        return toast.error("New password must be between 8 and 72 characters.");
       }
     }
     setUpdatingProfile(true);
 
     try {
-      const data = await apiClient.put('/api/auth/profile', {
+      const data = await apiClient.put("/api/auth/profile", {
         name: name.trim(),
         phone: phone.trim(),
         currentPassword: currentPassword || undefined,
@@ -98,20 +100,16 @@ const Account = () => {
     setSavingAddr(true);
 
     try {
-      const endpoint = editingAddressId
-        ? `/api/addresses/${editingAddressId}`
-        : '/api/addresses';
-      
       if (editingAddressId) {
-        await apiClient.put(endpoint, addrForm);
+        await apiClient.put(`/api/addresses/${editingAddressId}`, addrForm);
+        toast.success("Delivery address updated successfully.");
       } else {
-        await apiClient.post(endpoint, addrForm);
+        await apiClient.post("/api/addresses", addrForm);
+        toast.success("New delivery address saved.");
       }
-
-      toast.success(editingAddressId ? "Address updated!" : "New address added!");
-      setAddrForm({ line1: "", city: "", state: "", pincode: "", phone: "" });
       setShowAddAddress(false);
       setEditingAddressId(null);
+      setAddrForm({ line1: "", city: "", state: "", pincode: "", phone: "" });
       fetchProfileAndAddresses();
     } catch (err) {
       toast.error(err.message || "Failed to save address.");
@@ -121,10 +119,10 @@ const Account = () => {
   };
 
   const handleDeleteAddress = async (id) => {
-    if (!window.confirm("Delete this delivery address?")) return;
+    if (!window.confirm("Are you sure you want to remove this delivery address?")) return;
     try {
       await apiClient.delete(`/api/addresses/${id}`);
-      toast.success("Address removed");
+      toast.success("Delivery address removed.");
       fetchProfileAndAddresses();
     } catch (err) {
       toast.error(err.message || "Failed to delete address.");
@@ -138,155 +136,225 @@ const Account = () => {
       city: addr.city,
       state: addr.state,
       pincode: addr.pincode,
-      phone: addr.phone
+      phone: addr.phone || ""
     });
     setShowAddAddress(true);
   };
 
   if (!user?.authenticated) return <Navigate to="/auth" />;
 
+  const displayName = name || user?.name || profileData?.name || "Client";
+  const displayEmail = user?.email || profileData?.email || "";
+  const clientInitial = (displayName || "U").trim().charAt(0).toUpperCase();
+
   return (
-    <div className="grain pt-36 pb-32 px-6 lg:px-16 min-h-screen">
+    <div className="min-h-screen bg-[#FAF8F5] text-[#111113] font-body pt-28 sm:pt-36 pb-24 px-4 sm:px-8 lg:px-16 selection:bg-[#C2922E] selection:text-white">
+      <SEO title="Account Settings | SUKO" description="Manage your SUKO personal profile, addresses, and order history." />
+
       <div className="max-w-5xl mx-auto space-y-10">
         
-        {/* Header */}
-        <div className="border-b border-white/10 pb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+        {/* Header Banner */}
+        <div className="border-b border-[#EAE6DF] pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <span className="text-[11px] uppercase tracking-[0.3em] text-amber-400 font-mono block mb-1">
-              Hi, {user?.name || profileData?.name || "Client"} 👋
-            </span>
-            <h1 className="font-display text-4xl lg:text-5xl">Account Settings</h1>
+            <div className="inline-flex items-center gap-2 mb-2">
+              <span className="w-4 h-[1px] bg-[#C2922E]" />
+              <span className="text-[10.5px] uppercase tracking-[0.28em] text-[#C2922E] font-medium font-mono">
+                CLIENT ATELIER PROFILE
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-3.5 mt-1">
+              <span className="w-10 h-10 rounded-full bg-[#111113] text-white flex items-center justify-center font-mono font-medium text-sm ring-2 ring-[#C2922E]/60 shadow-xs">
+                {clientInitial}
+              </span>
+              <div>
+                <h1 className="font-quiche text-3xl sm:text-4xl lg:text-[40px] font-light text-[#111113] tracking-tight leading-tight">
+                  Account Settings
+                </h1>
+                <p className="text-xs text-[#6E6E75] font-light">
+                  Signed in as <span className="font-medium text-[#111113]">{displayEmail}</span>
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Sub Navigation Tabs */}
-          <div className="flex gap-3 font-body text-[11px] uppercase tracking-[0.2em]">
+          <div className="flex gap-2.5 font-body text-[11px] uppercase tracking-[0.20em]">
             <button
+              type="button"
               onClick={() => setActiveSubTab("profile")}
-              className={`py-2 px-5 border transition-all ${activeSubTab === "profile" ? "border-foreground bg-foreground text-background font-bold" : "border-white/15 text-foreground/60 hover:border-foreground"}`}
+              className={`py-2.5 px-6 border transition-all duration-200 cursor-pointer ${
+                activeSubTab === "profile" 
+                  ? "bg-[#111113] text-white border-[#111113] font-medium shadow-xs" 
+                  : "bg-transparent border-[#DDD8CE] text-[#6E6E75] hover:text-[#111113] hover:border-[#111113]"
+              }`}
             >
               Personal Profile
             </button>
             <button
+              type="button"
               onClick={() => setActiveSubTab("addresses")}
-              className={`py-2 px-5 border transition-all ${activeSubTab === "addresses" ? "border-foreground bg-foreground text-background font-bold" : "border-white/15 text-foreground/60 hover:border-foreground"}`}
+              className={`py-2.5 px-6 border transition-all duration-200 cursor-pointer ${
+                activeSubTab === "addresses" 
+                  ? "bg-[#111113] text-white border-[#111113] font-medium shadow-xs" 
+                  : "bg-transparent border-[#DDD8CE] text-[#6E6E75] hover:text-[#111113] hover:border-[#111113]"
+              }`}
             >
               Address Book ({addresses.length})
             </button>
           </div>
         </div>
 
+        {/* ========================================================================= */}
+        {/* SUBTAB 1: PERSONAL PROFILE & SECURITY                                     */}
+        {/* ========================================================================= */}
         {activeSubTab === "profile" && (
-          <div className="grid lg:grid-cols-12 gap-10">
-            {/* Left Column: Edit Profile & Password */}
-            <div className="lg:col-span-7 space-y-8">
-              <div className="border border-white/10 p-8 bg-background/50 backdrop-blur-sm space-y-6">
-                <h2 className="text-xl font-display flex items-center gap-2">
-                  <User className="w-5 h-5 text-emerald-400" /> Edit Personal Information
-                </h2>
+          <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+            
+            {/* Left Column: Edit Profile & Password Form */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="border border-[#EAE6DF] bg-white p-6 sm:p-8 shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-6">
+                <div className="flex items-center justify-between border-b border-[#EAE6DF] pb-4">
+                  <h2 className="text-lg font-quiche font-light text-[#111113] flex items-center gap-2">
+                    <User className="w-4 h-4 text-[#C2922E]" />
+                    <span>Personal Information</span>
+                  </h2>
+                  <span className="text-[10px] uppercase tracking-[0.2em] font-mono text-[#8C887B]">
+                    ATELIER ID: #{user?.userId || user?.id || "CLIENT"}
+                  </span>
+                </div>
 
                 <form onSubmit={handleUpdateProfile} className="space-y-6 font-body">
+                  {/* Full Name */}
                   <div>
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-2">Full Name *</label>
+                    <label className="text-[10px] uppercase tracking-[0.22em] text-[#6E6E75] font-medium block mb-1.5">
+                      Full Name *
+                    </label>
                     <div className="relative">
                       <input
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Your full name"
-                        className="w-full bg-transparent border-b border-white/15 focus:border-foreground py-3 pl-8 text-sm text-white outline-none"
+                        className="w-full bg-transparent border-b border-[#DDD8CE] focus:border-[#C2922E] py-2.5 pl-7 text-sm text-[#111113] placeholder-[#A3A096] outline-none transition-colors"
                         required
                       />
-                      <User className="w-4 h-4 text-foreground/40 absolute left-0 top-3.5" />
+                      <User className="w-4 h-4 text-[#8C887B] absolute left-0 top-3" />
                     </div>
                   </div>
 
+                  {/* Phone Number */}
                   <div>
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-2">Phone Number *</label>
+                    <label className="text-[10px] uppercase tracking-[0.22em] text-[#6E6E75] font-medium block mb-1.5">
+                      Phone Number (For Order Updates) *
+                    </label>
                     <div className="relative">
                       <input
                         type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="+91 98765 43210"
-                        className="w-full bg-transparent border-b border-white/15 focus:border-foreground py-3 pl-8 text-sm text-white outline-none"
+                        className="w-full bg-transparent border-b border-[#DDD8CE] focus:border-[#C2922E] py-2.5 pl-7 text-sm text-[#111113] placeholder-[#A3A096] outline-none transition-colors"
                         required
                       />
-                      <Phone className="w-4 h-4 text-foreground/40 absolute left-0 top-3.5" />
+                      <Phone className="w-4 h-4 text-[#8C887B] absolute left-0 top-3" />
                     </div>
                   </div>
 
+                  {/* Primary Email (Read-only) */}
                   <div>
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-2">Email Address (Primary)</label>
-                    <div className="relative opacity-60">
+                    <label className="text-[10px] uppercase tracking-[0.22em] text-[#6E6E75] font-medium block mb-1.5">
+                      Email Address (Primary Account Identity)
+                    </label>
+                    <div className="relative opacity-70">
                       <input
                         type="email"
-                        value={user?.email || profileData?.email || ""}
+                        value={displayEmail}
                         readOnly
-                        className="w-full bg-transparent border-b border-white/10 py-3 pl-8 text-sm text-white outline-none cursor-not-allowed"
+                        className="w-full bg-transparent border-b border-[#EAE6DF] py-2.5 pl-7 text-sm text-[#555560] outline-none cursor-not-allowed font-mono"
                       />
-                      <Mail className="w-4 h-4 text-foreground/40 absolute left-0 top-3.5" />
+                      <Mail className="w-4 h-4 text-[#8C887B] absolute left-0 top-3" />
                     </div>
-                    <span className="text-[10px] text-foreground/40 block mt-1">Contact email linked to your orders & invoices.</span>
+                    <span className="text-[10.5px] text-[#8C887B] block mt-1 font-light">
+                      Linked to all order confirmations, receipts, and digital concierge notes.
+                    </span>
                   </div>
 
-                  <hr className="border-white/10 my-6" />
+                  {/* Divider */}
+                  <div className="border-t border-[#EAE6DF] pt-6">
+                    <h3 className="text-xs font-quiche tracking-[0.16em] uppercase text-[#111113] flex items-center gap-2 mb-4">
+                      <Key size={13} className="text-[#C2922E]" />
+                      <span>Security &amp; Change Password (Optional)</span>
+                    </h3>
 
-                  <h3 className="text-sm font-display uppercase tracking-[0.15em] text-amber-400 flex items-center gap-2">
-                    <Key size={14} /> Security & Change Password (Optional)
-                  </h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-[10px] uppercase tracking-[0.22em] text-[#6E6E75] font-medium block mb-1.5">
+                          Current Password
+                        </label>
+                        <input
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="Leave blank if keeping current password"
+                          className="w-full bg-transparent border-b border-[#DDD8CE] focus:border-[#C2922E] py-2 text-sm text-[#111113] placeholder-[#A3A096] outline-none transition-colors"
+                        />
+                      </div>
 
-                  <div>
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-2">Current Password</label>
-                    <input
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="Leave blank if not changing"
-                      className="w-full bg-transparent border-b border-white/15 focus:border-foreground py-2 text-sm text-white outline-none"
-                    />
+                      <div>
+                        <label className="text-[10px] uppercase tracking-[0.22em] text-[#6E6E75] font-medium block mb-1.5">
+                          New Password
+                        </label>
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Enter new strong password (min 8 characters)"
+                          className="w-full bg-transparent border-b border-[#DDD8CE] focus:border-[#C2922E] py-2 text-sm text-[#111113] placeholder-[#A3A096] outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-2">New Password</label>
-                    <input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Enter new strong password"
-                      className="w-full bg-transparent border-b border-white/15 focus:border-foreground py-2 text-sm text-white outline-none"
-                    />
-                  </div>
-
+                  {/* Save Button */}
                   <button
                     type="submit"
                     disabled={updatingProfile}
-                    className="w-full bg-foreground text-background py-4 text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-foreground/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full bg-[#111113] hover:bg-black text-white py-4 text-[11px] uppercase tracking-[0.24em] font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                   >
-                    {updatingProfile ? "Updating Account..." : "Save Profile Changes"}
+                    {updatingProfile ? "Saving Profile..." : "Save Profile Changes"}
                   </button>
                 </form>
               </div>
             </div>
 
-            {/* Right Column: Account Specs & Quick Shortcuts */}
+            {/* Right Column: Atelier Membership Specs & Quick Shortcuts */}
             <div className="lg:col-span-5 space-y-6 font-body">
-              {/* Account Specs Card */}
-              <div className="border border-white/10 p-6 bg-background/50 backdrop-blur-sm space-y-4">
-                <span className="text-[10px] uppercase tracking-[0.25em] text-amber-400 block font-mono">— ATELIER MEMBERSHIP</span>
+              
+              {/* Atelier Membership Card */}
+              <div className="border border-[#E8E4DC] p-6 sm:p-7 bg-[#F5F2EB] space-y-4 shadow-xs">
+                <div className="flex items-center justify-between pb-3 border-b border-[#E0D9CB]">
+                  <span className="text-[10px] uppercase tracking-[0.26em] text-[#C2922E] font-medium font-mono">
+                    — ATELIER MEMBERSHIP
+                  </span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                </div>
                 
                 <div className="space-y-3 font-mono text-xs">
-                  <div className="flex justify-between border-b border-white/5 pb-2">
-                    <span className="text-foreground/50">Client Role:</span>
-                    <span className="text-white uppercase font-bold">{user?.role || "Customer"}</span>
+                  <div className="flex justify-between border-b border-[#E0D9CB]/60 pb-2.5">
+                    <span className="text-[#6E6E75]">Client Role:</span>
+                    <span className="text-[#111113] uppercase font-semibold">
+                      {user?.role === "admin" ? "Administrator" : "Atelier Client"}
+                    </span>
                   </div>
-                  <div className="flex justify-between border-b border-white/5 pb-2">
-                    <span className="text-foreground/50">Total Orders:</span>
-                    <span className="text-white">{profileData?.orders?.length || 0} Orders</span>
+                  <div className="flex justify-between border-b border-[#E0D9CB]/60 pb-2.5">
+                    <span className="text-[#6E6E75]">Total Orders:</span>
+                    <span className="text-[#111113] font-medium">{profileData?.orders?.length || 0} Orders</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-foreground/50">Member Since:</span>
-                    <span className="text-white">
-                      {profileData?.created_at ? new Date(profileData.created_at).toLocaleDateString() : "2026"}
+                    <span className="text-[#6E6E75]">Member Since:</span>
+                    <span className="text-[#111113] font-medium">
+                      {profileData?.created_at ? new Date(profileData.created_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "2026"}
                     </span>
                   </div>
                 </div>
@@ -296,173 +364,241 @@ const Account = () => {
               <div className="space-y-3">
                 <Link
                   to="/orders"
-                  className="p-5 border border-white/10 hover:border-foreground bg-background/40 hover:bg-white/5 transition-all flex items-center justify-between text-xs tracking-[0.15em] uppercase font-bold group"
+                  className="p-4 sm:p-5 border border-[#EAE6DF] hover:border-[#C2922E] bg-white transition-all duration-300 flex items-center justify-between text-xs tracking-[0.16em] uppercase font-medium group shadow-xs"
                 >
-                  <span className="flex items-center gap-3">
-                    <Package className="w-4 h-4 text-emerald-400" /> Order History & Receipts
+                  <span className="flex items-center gap-3 text-[#111113]">
+                    <Package className="w-4 h-4 text-[#C2922E]" />
+                    <span>Order History &amp; Receipts</span>
                   </span>
-                  <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight size={14} className="text-[#8C887B] group-hover:text-[#111113] group-hover:translate-x-1 transition-all" />
                 </Link>
 
                 <Link
                   to="/wishlist"
-                  className="p-5 border border-white/10 hover:border-foreground bg-background/40 hover:bg-white/5 transition-all flex items-center justify-between text-xs tracking-[0.15em] uppercase font-bold group"
+                  className="p-4 sm:p-5 border border-[#EAE6DF] hover:border-[#C2922E] bg-white transition-all duration-300 flex items-center justify-between text-xs tracking-[0.16em] uppercase font-medium group shadow-xs"
                 >
-                  <span className="flex items-center gap-3">
-                    <Heart className="w-4 h-4 text-rose-400" /> Saved Wishlist Garments
+                  <span className="flex items-center gap-3 text-[#111113]">
+                    <Heart className="w-4 h-4 text-rose-500" />
+                    <span>Saved Wishlist Pieces</span>
                   </span>
-                  <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight size={14} className="text-[#8C887B] group-hover:text-[#111113] group-hover:translate-x-1 transition-all" />
                 </Link>
+
+                {user?.role === "admin" && (
+                  <Link
+                    to="/admin"
+                    className="p-4 sm:p-5 border border-[#C2922E]/40 hover:border-[#C2922E] bg-[#FAF8F5] transition-all duration-300 flex items-center justify-between text-xs tracking-[0.16em] uppercase font-medium group shadow-xs"
+                  >
+                    <span className="flex items-center gap-3 text-[#C2922E]">
+                      <Shield className="w-4 h-4 text-[#C2922E]" />
+                      <span>Admin Management Dashboard</span>
+                    </span>
+                    <ArrowRight size={14} className="text-[#C2922E] group-hover:translate-x-1 transition-all" />
+                  </Link>
+                )}
               </div>
+
             </div>
           </div>
         )}
 
+        {/* ========================================================================= */}
+        {/* SUBTAB 2: ADDRESS BOOK                                                    */}
+        {/* ========================================================================= */}
         {activeSubTab === "addresses" && (
           <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-display flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-emerald-400" /> Saved Delivery Addresses ({addresses.length})
-              </h2>
+            <div className="flex items-center justify-between border-b border-[#EAE6DF] pb-4">
+              <div>
+                <h2 className="text-xl font-quiche font-light text-[#111113] flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[#C2922E]" />
+                  <span>Saved Delivery Destinations</span>
+                </h2>
+                <p className="text-xs text-[#6E6E75] font-light mt-0.5">
+                  Saved destinations used for rapid one-click checkout.
+                </p>
+              </div>
 
               <button
+                type="button"
                 onClick={() => {
                   setEditingAddressId(null);
                   setAddrForm({ line1: "", city: "", state: "", pincode: "", phone: "" });
                   setShowAddAddress(!showAddAddress);
                 }}
-                className="bg-foreground text-background py-2.5 px-5 text-[10px] uppercase tracking-[0.2em] font-body font-bold hover:bg-foreground/90 transition-all flex items-center gap-2"
+                className="bg-[#111113] hover:bg-black text-white py-2.5 px-5 text-[10.5px] uppercase tracking-[0.20em] font-medium transition-colors flex items-center gap-2 cursor-pointer"
               >
-                <Plus size={14} /> {showAddAddress ? "Cancel" : "Add New Address"}
+                <Plus size={13} />
+                <span>{showAddAddress ? "Cancel" : "Add Destination"}</span>
               </button>
             </div>
 
-            {/* Add / Edit Address Form */}
-            {showAddAddress && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="border border-white/15 p-6 bg-background/70 backdrop-blur-md max-w-2xl"
-              >
-                <h3 className="text-sm font-display uppercase tracking-[0.15em] mb-4">
-                  {editingAddressId ? "Edit Delivery Address" : "Add New Delivery Address"}
-                </h3>
+            {/* Add / Edit Address Form Modal / Box */}
+            <AnimatePresence>
+              {showAddAddress && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="border border-[#EAE6DF] p-6 sm:p-8 bg-white max-w-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)]"
+                >
+                  <h3 className="text-sm font-quiche uppercase tracking-[0.16em] text-[#111113] mb-5">
+                    {editingAddressId ? "Edit Delivery Address" : "Add New Delivery Destination"}
+                  </h3>
 
-                <form onSubmit={handleAddressSubmit} className="space-y-4 font-body text-xs">
-                  <div>
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-1">Street Address / House Line *</label>
-                    <input
-                      type="text"
-                      value={addrForm.line1}
-                      onChange={(e) => setAddrForm({ ...addrForm, line1: e.target.value })}
-                      placeholder="e.g. Flat 402, Royal Residency, Bandra West"
-                      className="w-full bg-transparent border-b border-white/20 focus:border-foreground py-2 text-white outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+                  <form onSubmit={handleAddressSubmit} className="space-y-4 font-body text-xs">
                     <div>
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-1">City *</label>
+                      <label className="text-[10px] uppercase tracking-[0.22em] text-[#6E6E75] font-medium block mb-1">
+                        Street Address / Apartment / Suite *
+                      </label>
                       <input
                         type="text"
-                        value={addrForm.city}
-                        onChange={(e) => setAddrForm({ ...addrForm, city: e.target.value })}
-                        placeholder="e.g. Mumbai"
-                        className="w-full bg-transparent border-b border-white/20 focus:border-foreground py-2 text-white outline-none"
+                        value={addrForm.line1}
+                        onChange={(e) => setAddrForm({ ...addrForm, line1: e.target.value })}
+                        placeholder="e.g. Penthouse 402, Signature Tower, Worli"
+                        className="w-full bg-transparent border-b border-[#DDD8CE] focus:border-[#C2922E] py-2 text-sm text-[#111113] outline-none placeholder-[#A3A096]"
                         required
                       />
                     </div>
-                    <div>
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-1">State *</label>
-                      <input
-                        type="text"
-                        value={addrForm.state}
-                        onChange={(e) => setAddrForm({ ...addrForm, state: e.target.value })}
-                        placeholder="e.g. Maharashtra"
-                        className="w-full bg-transparent border-b border-white/20 focus:border-foreground py-2 text-white outline-none"
-                        required
-                      />
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-1">PIN Code *</label>
-                      <input
-                        type="text"
-                        value={addrForm.pincode}
-                        onChange={(e) => setAddrForm({ ...addrForm, pincode: e.target.value })}
-                        placeholder="e.g. 400050"
-                        className="w-full bg-transparent border-b border-white/20 focus:border-foreground py-2 text-white outline-none font-mono"
-                        required
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] uppercase tracking-[0.22em] text-[#6E6E75] font-medium block mb-1">
+                          City *
+                        </label>
+                        <input
+                          type="text"
+                          value={addrForm.city}
+                          onChange={(e) => setAddrForm({ ...addrForm, city: e.target.value })}
+                          placeholder="e.g. Mumbai"
+                          className="w-full bg-transparent border-b border-[#DDD8CE] focus:border-[#C2922E] py-2 text-sm text-[#111113] outline-none placeholder-[#A3A096]"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase tracking-[0.22em] text-[#6E6E75] font-medium block mb-1">
+                          State *
+                        </label>
+                        <input
+                          type="text"
+                          value={addrForm.state}
+                          onChange={(e) => setAddrForm({ ...addrForm, state: e.target.value })}
+                          placeholder="e.g. Maharashtra"
+                          className="w-full bg-transparent border-b border-[#DDD8CE] focus:border-[#C2922E] py-2 text-sm text-[#111113] outline-none placeholder-[#A3A096]"
+                          required
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-foreground/60 block mb-1">Contact Phone *</label>
-                      <input
-                        type="tel"
-                        value={addrForm.phone}
-                        onChange={(e) => setAddrForm({ ...addrForm, phone: e.target.value })}
-                        placeholder="e.g. +91 9876543210"
-                        className="w-full bg-transparent border-b border-white/20 focus:border-foreground py-2 text-white outline-none"
-                        required
-                      />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] uppercase tracking-[0.22em] text-[#6E6E75] font-medium block mb-1">
+                          PIN Code *
+                        </label>
+                        <input
+                          type="text"
+                          value={addrForm.pincode}
+                          onChange={(e) => setAddrForm({ ...addrForm, pincode: e.target.value })}
+                          placeholder="e.g. 400018"
+                          className="w-full bg-transparent border-b border-[#DDD8CE] focus:border-[#C2922E] py-2 text-sm text-[#111113] outline-none font-mono placeholder-[#A3A096]"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase tracking-[0.22em] text-[#6E6E75] font-medium block mb-1">
+                          Contact Phone *
+                        </label>
+                        <input
+                          type="tel"
+                          value={addrForm.phone}
+                          onChange={(e) => setAddrForm({ ...addrForm, phone: e.target.value })}
+                          placeholder="e.g. +91 9876543210"
+                          className="w-full bg-transparent border-b border-[#DDD8CE] focus:border-[#C2922E] py-2 text-sm text-[#111113] outline-none placeholder-[#A3A096]"
+                          required
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="pt-2 flex gap-4">
-                    <button
-                      type="submit"
-                      disabled={savingAddr}
-                      className="bg-foreground text-background py-3 px-6 text-[10px] uppercase tracking-[0.25em] font-bold hover:bg-foreground/90 transition-all"
-                    >
-                      {savingAddr ? "Saving..." : "Save Address"}
-                    </button>
-                  </div>
-                </form>
-              </motion.div>
-            )}
+                    <div className="pt-3 flex gap-3">
+                      <button
+                        type="submit"
+                        disabled={savingAddr}
+                        className="bg-[#111113] hover:bg-black text-white py-3 px-6 text-[10.5px] uppercase tracking-[0.22em] font-medium transition-colors cursor-pointer"
+                      >
+                        {savingAddr ? "Saving..." : "Save Destination"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddAddress(false)}
+                        className="border border-[#DDD8CE] hover:border-[#111113] text-[#6E6E75] hover:text-[#111113] py-3 px-5 text-[10.5px] uppercase tracking-[0.22em] transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {/* Address Cards List */}
+            {/* Address Cards Grid */}
             <div className="grid sm:grid-cols-2 gap-6">
               {addresses.map((addr) => (
-                <div key={addr.id} className="border border-white/10 p-6 bg-background/50 backdrop-blur-sm space-y-3 font-body relative group">
+                <div key={addr.id} className="border border-[#EAE6DF] hover:border-[#C2922E] p-6 bg-white space-y-3 font-body relative group transition-all duration-300 shadow-xs">
                   <div className="flex items-start justify-between">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-emerald-400 font-mono flex items-center gap-1">
-                      <MapPin size={12} /> Delivery Destination
+                    <span className="text-[10px] uppercase tracking-[0.24em] text-[#C2922E] font-mono flex items-center gap-1.5 font-medium">
+                      <MapPin size={11} />
+                      <span>Delivery Destination</span>
                     </span>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <button
+                        type="button"
                         onClick={() => handleEditAddrClick(addr)}
-                        className="text-foreground/50 hover:text-white p-1"
+                        className="text-[#8C887B] hover:text-[#111113] p-1.5 transition-colors cursor-pointer"
                         title="Edit Address"
                       >
-                        <Edit2 size={14} />
+                        <Edit2 size={13} />
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleDeleteAddress(addr.id)}
-                        className="text-red-400/70 hover:text-red-400 p-1"
+                        className="text-[#8C887B] hover:text-rose-600 p-1.5 transition-colors cursor-pointer"
                         title="Delete Address"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   </div>
 
-                  <p className="text-sm font-medium text-white">{addr.line1}</p>
-                  <p className="text-xs text-foreground/70">{addr.city}, {addr.state} — <span className="font-mono">{addr.pincode}</span></p>
-                  <p className="text-xs text-foreground/50">Phone: {addr.phone}</p>
+                  <p className="text-sm font-medium text-[#111113]">{addr.line1}</p>
+                  <p className="text-xs text-[#6E6E75]">
+                    {addr.city}, {addr.state} &mdash; <span className="font-mono text-[#111113] font-medium">{addr.pincode}</span>
+                  </p>
+                  {addr.phone && (
+                    <p className="text-xs text-[#8C887B] font-mono">
+                      Contact: {addr.phone}
+                    </p>
+                  )}
                 </div>
               ))}
 
               {addresses.length === 0 && !showAddAddress && (
-                <div className="col-span-2 border border-white/5 p-8 text-center text-foreground/50 font-body text-sm">
-                  No saved delivery addresses found. Click "Add New Address" to save one for 1-click checkout!
+                <div className="col-span-2 border border-dashed border-[#DDD8CE] bg-white p-10 text-center text-[#6E6E75] font-body text-xs leading-relaxed">
+                  <MapPin size={24} className="mx-auto text-[#C2922E] mb-2 stroke-1" />
+                  <p className="text-sm font-medium text-[#111113] mb-1 font-quiche">No Saved Delivery Destinations</p>
+                  <p className="max-w-md mx-auto mb-4 font-light text-[12px]">
+                    Add your delivery addresses to enjoy seamless one-click checkout across the atelier.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddAddress(true)}
+                    className="inline-flex items-center gap-2 bg-[#111113] hover:bg-black text-white px-5 py-2.5 text-[10px] uppercase tracking-[0.22em] font-medium cursor-pointer"
+                  >
+                    <Plus size={12} /> Add Your First Destination
+                  </button>
                 </div>
               )}
             </div>
+
           </div>
         )}
 
