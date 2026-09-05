@@ -2,10 +2,11 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Lock, Loader2, CheckCircle2, ArrowRight } from "lucide-react";
+import { Lock, Loader2, CheckCircle2, ArrowRight, X } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
-import { formatINR, WHATSAPP_LINK } from "../data/products";
+import { useWishlist } from "../context/WishlistContext";
+import { formatINR, WHATSAPP_LINK, getProductBySlug } from "../data/products";
 import { apiClient } from "../config/api";
 import { getThumbImage } from "../utils/mediaUtils";
 import SEO from "../components/SEO";
@@ -25,8 +26,27 @@ const loadRazorpayScript = () => {
 
 const Checkout = () => {
   const { items, subtotal, updateQty, removeItem } = useCart();
+  const { addToWishlist, isInWishlist } = useWishlist();
   const { user, token, loading } = useAuth();
   const navigate = useNavigate();
+
+  const handleRemoveFromOrder = (item) => {
+    removeItem(item.key);
+    const fullProduct = getProductBySlug(item.slug) || {
+      id: item.id,
+      name: item.name,
+      slug: item.slug,
+      price: item.price,
+      image: item.image,
+      color: item.color,
+    };
+    if (!isInWishlist(item.id)) {
+      addToWishlist(fullProduct);
+      toast.success(`${item.name} removed from order and saved to your Wishlist.`);
+    } else {
+      toast.info(`${item.name} removed from order (already in your Wishlist).`);
+    }
+  };
 
   // Enforce account creation / authentication to checkout & pay
   useEffect(() => {
@@ -549,9 +569,20 @@ const Checkout = () => {
                     </div>
                     <div className="flex-1 flex flex-col justify-between">
                       <div>
-                        <h3 className="font-quiche text-[14px] font-light text-[#111113] leading-snug">
-                          {item.name}
-                        </h3>
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-quiche text-[14px] font-light text-[#111113] leading-snug">
+                            {item.name}
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFromOrder(item)}
+                            className="text-[#888894] hover:text-[#111113] hover:bg-black/5 p-1 -mr-1 -mt-1 rounded transition-colors cursor-pointer"
+                            title="Remove item & save to Wishlist"
+                            aria-label={`Remove ${item.name} from order`}
+                          >
+                            <X size={14} strokeWidth={1.4} />
+                          </button>
+                        </div>
                         <p className="text-[10px] uppercase tracking-[0.18em] text-[#6E6E75] mt-0.5">
                           {item.category === "separates" || item.subCategory ? "Tailored Separate" : "Complete Set"}
                         </p>
@@ -927,9 +958,20 @@ const Checkout = () => {
                       </div>
                       <div className="flex-1 flex flex-col justify-between">
                         <div>
-                          <h3 className="font-quiche text-[15px] font-light text-[#111113] leading-snug">
-                            {item.name}
-                          </h3>
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="font-quiche text-[15px] font-light text-[#111113] leading-snug">
+                              {item.name}
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFromOrder(item)}
+                              className="text-[#888894] hover:text-[#111113] hover:bg-black/5 p-1 -mr-1 -mt-0.5 rounded transition-colors cursor-pointer"
+                              title="Remove item & save to Wishlist"
+                              aria-label={`Remove ${item.name} from order`}
+                            >
+                              <X size={14} strokeWidth={1.4} />
+                            </button>
+                          </div>
                           <p className="text-[10px] uppercase tracking-[0.20em] text-[#6E6E75] font-light mt-0.5">
                             {garmentType}
                           </p>

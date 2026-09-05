@@ -1928,15 +1928,15 @@ export const PRODUCTS = [
     ],
     "coordinates": [
       {
-        "slug": "the-noir-tailored-trousers",
-        "label": "Coordinating Noir Tailored Trousers"
+        "slug": "noir-sculpted-vest-set",
+        "label": "Full Set: Noir Sculpted Vest Set"
       },
       {
-        "slug": "the-noir-layered-longline-vest",
-        "label": "Matching Noir Layered Longline Vest"
+        "slug": "the-noir-tailored-trousers",
+        "label": "Coordinating Noir Tailored Trousers"
       }
     ],
-    "coordinateText": "Pair with coordinating Noir Tailored Trousers or matching Noir Layered Longline Vest.",
+    "coordinateText": "Complete the full outfit with the Noir Sculpted Vest Set, or pair with coordinating Noir Tailored Trousers.",
     "gallery": [
       {
         "url": "/products/noir-structured-vest/1.JPG",
@@ -2429,15 +2429,15 @@ export const PRODUCTS = [
     ],
     "coordinates": [
       {
-        "slug": "the-noir-tailored-trousers",
-        "label": "Coordinating Noir Tailored Trousers"
+        "slug": "noir-layered-vest-set",
+        "label": "Full Set: Noir Layered Vest Set"
       },
       {
-        "slug": "the-noir-structured-vest",
-        "label": "Matching Noir Structured Vest"
+        "slug": "the-noir-tailored-trousers",
+        "label": "Coordinating Noir Tailored Trousers"
       }
     ],
-    "coordinateText": "Pair with coordinating Noir Tailored Trousers or matching Noir Structured Vest.",
+    "coordinateText": "Complete the full outfit with the Noir Layered Vest Set, or pair with coordinating Noir Tailored Trousers.",
     "gallery": [
       {
         "url": "/products/noir-layered-longline-vest/1.JPG",
