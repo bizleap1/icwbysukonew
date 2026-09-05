@@ -10,22 +10,36 @@ const statsRoutes = require("./routes/stats");
 const app = express();
 app.set("trust proxy", process.env.TRUST_PROXY === "1" ? 1 : 0);
 
-// CORS: allow the storefront domain(s). Configure via ALLOWED_ORIGINS env var
-// e.g. "https://www.indiancorporatewear.com,https://indiancorporatewear.com"
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+// CORS: allow local development and storefront domain(s)
+const configuredOrigins = (process.env.ALLOWED_ORIGINS || "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
 
+const defaultAllowed = [
+  "https://www.indiancorporatewear.com",
+  "https://indiancorporatewear.com",
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:5173"
+];
+
+const allowedOrigins = Array.from(new Set([...defaultAllowed, ...configuredOrigins]));
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (curl, server-to-server, health checks)
+      // Allow requests with no origin (curl, server-to-server, mobile, health checks)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      
+      // Allow any localhost / 127.0.0.1 port in development/testing
+      const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+      if (isLocalhost || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(new Error("Not allowed by CORS"));
+      
+      return callback(null, false);
     },
     credentials: true,
   })
@@ -36,7 +50,7 @@ app.use(express.json({ limit: "2mb" }));
 app.get("/health", async (req, res) => {
   try {
     await pool.query("SELECT 1");
-    res.json({ status: "ok", db: "connected" });
+    res.json({ status: "ok", db: pool.isMock ? "connected (local-dev)" : "connected" });
   } catch (err) {
     res.status(500).json({ status: "error", db: "disconnected" });
   }

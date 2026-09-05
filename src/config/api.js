@@ -2,6 +2,17 @@
 import { toast } from "sonner";
 
 export const getApiBaseUrl = () => {
+  // If running in browser on localhost / 127.0.0.1, prioritize local backend unless REACT_APP_API_URL explicitly set otherwise
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      if (process.env.REACT_APP_API_URL && !process.env.REACT_APP_API_URL.includes('onrender.com')) {
+        return process.env.REACT_APP_API_URL.replace(/\/$/, '');
+      }
+      return 'http://localhost:5000';
+    }
+  }
+
   if (process.env.REACT_APP_API_URL) {
     return process.env.REACT_APP_API_URL.replace(/\/$/, '');
   }
