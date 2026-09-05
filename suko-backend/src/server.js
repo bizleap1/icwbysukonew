@@ -6,6 +6,7 @@ const { pool } = require("./db");
 const authRoutes = require("./routes/auth");
 const ordersRoutes = require("./routes/orders");
 const statsRoutes = require("./routes/stats");
+const paymentsRoutes = require("./routes/payments");
 
 const { securityHeaders, requestLogger } = require("./middleware/security");
 const { apiLimiter } = require("./middleware/rateLimiter");
@@ -70,6 +71,7 @@ app.use("/api", apiLimiter);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/orders", ordersRoutes);
+app.use("/api/payments", paymentsRoutes);
 app.use("/api/stats", statsRoutes);
 
 // 404 fallback

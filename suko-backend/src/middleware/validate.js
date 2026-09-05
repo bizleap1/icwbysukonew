@@ -78,9 +78,13 @@ function validateCreateOrder(req, res, next) {
       return res.status(400).json({ error: `Item "${item.name || i + 1}" must have a quantity between 1 and 100.` });
     }
 
-    const price = Number(item.price);
+    const price = typeof item.price !== "undefined" ? Number(item.price) : 0;
     if (isNaN(price) || price < 0) {
       return res.status(400).json({ error: `Invalid price for item "${item.name || i + 1}".` });
+    }
+    item.price = price;
+    if (!item.name || typeof item.name !== "string") {
+      item.name = `Atelier Garment ${i + 1}`;
     }
   }
 
