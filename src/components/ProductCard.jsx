@@ -26,13 +26,27 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
   const ghostImg = product.images?.find(img => img.includes("2.png")) || product.images?.[1] || product.images?.[0] || product.image_url || "/placeholder.png";
   const modelImg = product.images?.find(img => img.includes("1.JPG") || img.includes("1.png") || img.includes("5.JPG")) || product.images?.[0] || ghostImg;
 
-  const defaultImg = isFeatured
+  // Flagship suits and co-ord sets explicitly showcase 1.png (1st image / full editorial look)
+  // across all product cards on the entire website, with 2.png revealed on hover.
+  const isTargetSetOrSuit = [
+    "the-aubergine-draped-set",
+    "the-aubergine-tailored-suit",
+    "the-lilac-flare-suit",
+    "the-midnight-peplum-set",
+    "the-midnight-sculpted-vest-set",
+    "the-dusty-rose-embroidered-farchi-set",
+    "the-noir-layered-suit",
+    "the-noir-tailored-suit",
+    "the-plum-sculpted-suit"
+  ].includes(product.slug);
+
+  const defaultImg = (isFeatured || isTargetSetOrSuit || !isSeparateGarment)
     ? (product.images?.[0] || product.image_url || "/placeholder.png")
-    : (isSeparateGarment ? ghostImg : (product.images?.[1] || product.images?.[0] || product.image_url || "/placeholder.png"));
+    : ghostImg;
 
   const hoverImg = isFeatured
-    ? null
-    : (isSeparateGarment ? modelImg : (product.images?.[0] || defaultImg));
+    ? (product.images?.[1] || null)
+    : (isSeparateGarment && !isTargetSetOrSuit ? modelImg : (product.images?.[1] || product.images?.[0] || defaultImg));
 
   const wishlisted = isInWishlist ? isInWishlist(product.id) : false;
 

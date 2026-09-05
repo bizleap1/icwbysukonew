@@ -15,28 +15,49 @@ import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import PageWrapper from "./components/PageWrapper";
 import Aurora from "./components/Aurora";
 
+// Helper to automatically retry or reload on ChunkLoadError
+const lazyWithRetry = (componentImport) =>
+  lazy(async () => {
+    const pageHasBeenForceRefreshed = JSON.parse(
+      window.sessionStorage.getItem("page_chunk_refreshed") || "false"
+    );
+
+    try {
+      const component = await componentImport();
+      window.sessionStorage.setItem("page_chunk_refreshed", "false");
+      return component;
+    } catch (error) {
+      if (!pageHasBeenForceRefreshed) {
+        window.sessionStorage.setItem("page_chunk_refreshed", "true");
+        window.location.reload();
+        return { default: () => null };
+      }
+      throw error;
+    }
+  });
+
 // Lazy-loaded routes
-const Home = lazy(() => import("./pages/Home"));
-const Women = lazy(() => import("./pages/Women"));
-const Collection = lazy(() => import("./pages/Collection"));
-const NewIn = lazy(() => import("./pages/NewIn"));
-const ShopByMoment = lazy(() => import("./pages/ShopByMoment"));
-const WardrobeConcierge = lazy(() => import("./pages/WardrobeConcierge"));
-const ProductDetail = lazy(() => import("./pages/ProductDetail"));
-const About = lazy(() => import("./pages/About"));
-const Contact = lazy(() => import("./pages/Contact"));
-const Shipping = lazy(() => import("./pages/Shipping"));
-const Returns = lazy(() => import("./pages/Returns"));
-const SizeGuide = lazy(() => import("./pages/SizeGuide"));
-const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
-const Terms = lazy(() => import("./pages/Terms"));
-const Checkout = lazy(() => import("./pages/Checkout"));
-const Auth = lazy(() => import("./pages/Auth"));
-const Admin = lazy(() => import("./pages/Admin"));
-const Orders = lazy(() => import("./pages/Orders"));
-const Account = lazy(() => import("./pages/Account"));
-const Wishlist = lazy(() => import("./pages/Wishlist"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+const Home = lazyWithRetry(() => import("./pages/Home"));
+const Women = lazyWithRetry(() => import("./pages/Women"));
+const Collection = lazyWithRetry(() => import("./pages/Collection"));
+const NewIn = lazyWithRetry(() => import("./pages/NewIn"));
+const ShopByMoment = lazyWithRetry(() => import("./pages/ShopByMoment"));
+const WardrobeConcierge = lazyWithRetry(() => import("./pages/WardrobeConcierge"));
+const ProductDetail = lazyWithRetry(() => import("./pages/ProductDetail"));
+const About = lazyWithRetry(() => import("./pages/About"));
+const Contact = lazyWithRetry(() => import("./pages/Contact"));
+const Shipping = lazyWithRetry(() => import("./pages/Shipping"));
+const Returns = lazyWithRetry(() => import("./pages/Returns"));
+const SizeGuide = lazyWithRetry(() => import("./pages/SizeGuide"));
+const PrivacyPolicy = lazyWithRetry(() => import("./pages/PrivacyPolicy"));
+const Terms = lazyWithRetry(() => import("./pages/Terms"));
+const Checkout = lazyWithRetry(() => import("./pages/Checkout"));
+const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const Admin = lazyWithRetry(() => import("./pages/Admin"));
+const Orders = lazyWithRetry(() => import("./pages/Orders"));
+const Account = lazyWithRetry(() => import("./pages/Account"));
+const Wishlist = lazyWithRetry(() => import("./pages/Wishlist"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 
 const PageLoader = () => (
   <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center font-body">

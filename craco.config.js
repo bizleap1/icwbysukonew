@@ -18,14 +18,6 @@ module.exports = {
           },
         };
 
-        // Enable Webpack 5 Lazy Compilation (Like Vite: compiles only viewed routes on-demand)
-        webpackConfig.experiments = {
-          ...webpackConfig.experiments,
-          lazyCompilation: {
-            imports: true,
-            entries: false,
-          },
-        };
 
         // Use fast source maps for instantaneous rebuilds
         webpackConfig.devtool = "eval-cheap-module-source-map";

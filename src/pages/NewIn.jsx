@@ -296,7 +296,7 @@ const NewIn = () => {
       small: [
         "the-lilac-sculpted-flare-blazer",
         "the-lilac-flare-trousers",
-        "the-dusty-rose-embroidered-farchi-tunic",
+        "the-dusty-rose-embroidered-farchi-set",
         "the-dusty-rose-trousers"
       ]
     }

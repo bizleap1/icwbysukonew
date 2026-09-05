@@ -1818,92 +1818,7 @@ export const PRODUCTS = [
     "badge": "New Arrival",
     "isNew": true
   },
-  {
-    "id": "w-17",
-    "name": "Dusty Rose Embroidered Farchi Tunic",
-    "slug": "the-dusty-rose-embroidered-farchi-tunic",
-    "categoryType": "tunic",
-    "gender": "female",
-    "category": "separates",
-    "categoryName": "Tailored Separates",
-    "categoryLabel": "TAILORED SEPARATES",
-    "subCategory": "Tunics",
-    "shortType": "Embroidered Tailored Tunic",
-    "setType": "Embroidered Farchi Tunic",
-    "moment": "after-hours",
-    "moments": [
-      "after-hours",
-      "founder",
-      "presentation"
-    ],
-    "momentName": "After-Hours Executive",
-    "price": 4100,
-    "color": "Muted Pink",
-    "availableColors": [
-      "Muted Pink",
-      "Lilac",
-      "Wine",
-      "Navy Blue"
-    ],
-    "sizes": [
-      "XS",
-      "S",
-      "M",
-      "L",
-      "XL"
-    ],
-    "coordinates": [
-      {
-        "slug": "the-dusty-rose-trousers",
-        "label": "Coordinating Dusty Rose Tailored Trousers"
-      },
-      {
-        "slug": "the-dusty-rose-embroidered-farchi-set",
-        "label": "Complete Embroidered Farchi Set"
-      }
-    ],
-    "coordinateText": "Pair with coordinating dusty rose flared trousers.",
-    "gallery": [
-      {
-        "url": "/products/dusty-rose-embroidered-farchi-tunic/1.JPG",
-        "type": "model_front"
-      },
-      {
-        "url": "/products/dusty-rose-embroidered-farchi-tunic/2.png",
-        "type": "garment_front"
-      },
-      {
-        "url": "/products/dusty-rose-embroidered-farchi-tunic/3.png",
-        "type": "detail"
-      },
-      {
-        "url": "/products/dusty-rose-embroidered-farchi-tunic/4.png",
-        "type": "garment_back"
-      },
-      {
-        "url": "/products/dusty-rose-embroidered-farchi-tunic/5.JPG",
-        "type": "model_editorial"
-      }
-    ],
-    "pieces": "Includes Standalone Embroidered Farchi Tailored Tunic with Tonal Yoke.",
-    "description": "An artisanal tailored tunic in soft dusty rose, distinguished by handcrafted tone-on-tone embroidery across the collarbone and shoulders, structured straight hemline, and refined neckline detailing.",
-    "story": "Engineered to bridge artisanal Indian embroidery with contemporary corporate tailoring. Designed to be worn as an elevated standalone power separate across key summits, formal networking, and executive dinners.",
-    "stylingNotes": "Pair with tailored flared trousers or sharp cigarette pants for corporate galas, or layer over a minimal silk slip for refined after-hours presence.",
-    "sizeFit": "Tailored contour with gentle ease through the waist and hips. True to size. Model wears size S. Refer to Size Guide for measurements.",
-    "fabricCare": {
-      "fabric": "Premium embroidered suiting crepe blend with breathable tonal lining.",
-      "care": "Specialized dry clean only. Store on structured garment hanger."
-    },
-    "images": [
-      "/products/dusty-rose-embroidered-farchi-tunic/1.JPG",
-      "/products/dusty-rose-embroidered-farchi-tunic/2.png",
-      "/products/dusty-rose-embroidered-farchi-tunic/3.png",
-      "/products/dusty-rose-embroidered-farchi-tunic/4.png",
-      "/products/dusty-rose-embroidered-farchi-tunic/5.JPG"
-    ],
-    "badge": "New Arrival",
-    "isNew": true
-  },
+
   {
     "id": "w-24",
     "name": "Dusty Rose Tailored Trousers",
@@ -1939,15 +1854,11 @@ export const PRODUCTS = [
     ],
     "coordinates": [
       {
-        "slug": "the-dusty-rose-embroidered-farchi-tunic",
-        "label": "Matching Embroidered Farchi Tunic"
-      },
-      {
         "slug": "the-dusty-rose-embroidered-farchi-set",
         "label": "Complete Embroidered Farchi Set"
       }
     ],
-    "coordinateText": "Pair with the coordinating embroidered farchi tunic for an elevated Indian corporate look.",
+    "coordinateText": "Pair with the coordinating embroidered farchi set for an elevated Indian corporate look.",
     "gallery": [
       {
         "url": "/products/dusty-rose-trousers/1.png",
@@ -1973,7 +1884,7 @@ export const PRODUCTS = [
     "pieces": "Includes Tailored Straight-Leg Suiting Trousers.",
     "description": "Refined straight-leg tailoring trousers in dusty rose, cut with an ankle-grazing hem and structured waistband designed to complement corporate tunics and statement jackets.",
     "story": "A bridge between heritage Indian corporate wear and Western executive tailoring, offering comfortable movement across festive corporate gatherings and dinner meetings.",
-    "stylingNotes": "Complements the Dusty Rose Embroidered Farchi Tunic or minimalist ivory silk tops.",
+    "stylingNotes": "Complements the Dusty Rose Embroidered Farchi Set or minimalist ivory silk tops.",
     "sizeFit": "Mid-to-high rise with tailored straight-leg drape. True to size.",
     "fabricCare": {
       "fabric": "Fine suiting blend with soft breathable texture.",
@@ -2541,8 +2452,8 @@ export const PRODUCTS = [
     ],
     "coordinates": [
       {
-        "slug": "the-dusty-rose-embroidered-farchi-tunic",
-        "label": "Matching Embroidered Farchi Tunic"
+        "slug": "the-dusty-rose-trousers",
+        "label": "Matching Dusty Rose Tailored Trousers"
       },
       {
         "slug": "the-lilac-sculpted-flare-blazer",
@@ -2600,10 +2511,6 @@ export const PRODUCTS = [
     "badge": null,
     "isNew": true,
     "separates": [
-      {
-        "slug": "the-dusty-rose-embroidered-farchi-tunic",
-        "label": "Dusty Rose Embroidered Farchi Tunic"
-      },
       {
         "slug": "the-dusty-rose-trousers",
         "label": "Dusty Rose Tailored Trousers"

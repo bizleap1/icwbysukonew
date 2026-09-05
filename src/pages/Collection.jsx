@@ -1120,8 +1120,20 @@ const ProductCard = ({ product }) => {
   const ghostImg = product.images?.find(img => img.includes("2.png")) || product.images?.[1] || product.images?.[0] || product.image || "/products/the-noir-tailored-suit/1.png";
   const modelImg = product.images?.find(img => img.includes("1.JPG") || img.includes("1.png") || img.includes("5.JPG")) || product.images?.[0] || ghostImg;
 
-  const primaryImage = isSeparate ? ghostImg : (product.images?.[0] || product.image || "/products/the-noir-tailored-suit/1.png");
-  const hoverImage = isSeparate ? modelImg : (product.images?.[1] || product.hoverImage || product.images?.[0] || primaryImage);
+  const isTargetSetOrSuit = [
+    "the-aubergine-draped-set",
+    "the-aubergine-tailored-suit",
+    "the-lilac-flare-suit",
+    "the-midnight-peplum-set",
+    "the-midnight-sculpted-vest-set",
+    "the-dusty-rose-embroidered-farchi-set",
+    "the-noir-layered-suit",
+    "the-noir-tailored-suit",
+    "the-plum-sculpted-suit"
+  ].includes(product.slug);
+
+  const primaryImage = (isTargetSetOrSuit || !isSeparate) ? (product.images?.[0] || product.image || "/products/the-noir-tailored-suit/1.png") : ghostImg;
+  const hoverImage = (isTargetSetOrSuit || !isSeparate) ? (product.images?.[1] || product.hoverImage || product.images?.[0] || primaryImage) : modelImg;
 
   const formattedPrice = typeof product.price === "number"
     ? `₹${product.price.toLocaleString("en-IN")}`

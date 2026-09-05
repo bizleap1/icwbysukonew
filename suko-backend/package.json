@@ -4,6 +4,7 @@
   "private": true,
   "main": "src/server.js",
   "scripts": {
+    "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "build": "echo \"no build step\"",
     "migrate": "node src/migrate.js"
