@@ -214,12 +214,14 @@ export const ProductDetail = () => {
   }[categoryType] || (product.subCategory ? product.subCategory.replace(/s$/i, "") : "Silhouetted Piece");
 
   // Coordinates resolution (supporting both { slug, label } objects and string slugs)
+  const cleanSlug = (s) => String(s || "").toLowerCase().replace(/^the-/, "");
   const coordinateItems = (product.coordinates && product.coordinates.length > 0)
     ? product.coordinates
         .map((coord) => {
           const cSlug = typeof coord === "string" ? coord : coord?.slug;
           const customLabel = typeof coord === "object" ? coord?.label : null;
-          const foundProduct = (products || PRODUCTS).find((p) => p.slug === cSlug || p.id === cSlug);
+          const target = cleanSlug(cSlug);
+          const foundProduct = (products || PRODUCTS).find((p) => p.slug === cSlug || cleanSlug(p.slug) === target || p.id === cSlug);
           if (!foundProduct) return null;
           return { product: foundProduct, customLabel };
         })
@@ -232,7 +234,8 @@ export const ProductDetail = () => {
         .map((sep) => {
           const sSlug = typeof sep === "string" ? sep : sep?.slug;
           const customLabel = typeof sep === "object" ? sep?.label : null;
-          const foundProduct = (products || PRODUCTS).find((p) => p.slug === sSlug || p.id === sSlug);
+          const target = cleanSlug(sSlug);
+          const foundProduct = (products || PRODUCTS).find((p) => p.slug === sSlug || cleanSlug(p.slug) === target || p.id === sSlug);
           if (!foundProduct) return null;
           return { product: foundProduct, customLabel };
         })

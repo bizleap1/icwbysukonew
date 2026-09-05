@@ -2480,7 +2480,7 @@ export const PRODUCTS = [
     "isNew": true
   },
   {
-    "id": "w-26",
+    "id": "w-29",
     "name": "Noir Sculpted Vest Set",
     "slug": "noir-sculpted-vest-set",
     "categoryType": "set",
@@ -2515,12 +2515,12 @@ export const PRODUCTS = [
     ],
     "coordinates": [
       {
-        "slug": "the-noir-tailored-trousers",
-        "label": "Matching Tailored Trousers"
+        "slug": "the-noir-structured-vest",
+        "label": "Noir Structured Vest (Separate)"
       },
       {
-        "slug": "the-noir-tailored-blazer",
-        "label": "Matching Noir Tailored Blazer"
+        "slug": "the-noir-tailored-trousers",
+        "label": "Matching Tailored Trousers"
       }
     ],
     "gallery": [
@@ -2585,7 +2585,7 @@ export const PRODUCTS = [
     ]
   },
   {
-    "id": "w-27",
+    "id": "w-30",
     "name": "Noir Layered Vest Set",
     "slug": "noir-layered-vest-set",
     "categoryType": "set",
@@ -2619,12 +2619,12 @@ export const PRODUCTS = [
     ],
     "coordinates": [
       {
-        "slug": "the-noir-tailored-trousers",
-        "label": "Matching Tailored Trousers"
+        "slug": "the-noir-layered-longline-vest",
+        "label": "Noir Layered Longline Vest (Separate)"
       },
       {
-        "slug": "the-noir-structured-vest",
-        "label": "Matching Noir Structured Vest"
+        "slug": "the-noir-tailored-trousers",
+        "label": "Matching Tailored Trousers"
       }
     ],
     "gallery": [
