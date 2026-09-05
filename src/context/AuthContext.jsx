@@ -113,13 +113,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, phone, email, password) => {
+  const sendRegisterOtp = async (name, phone, email) => {
+    const data = await apiClient.post('/api/auth/send-register-otp', {
+      name: (name || "").trim(),
+      phone: (phone || "").trim(),
+      email: (email || "").trim().toLowerCase()
+    });
+    return data;
+  };
+
+  const verifyRegisterOtp = async (email, otp) => {
+    const data = await apiClient.post('/api/auth/verify-register-otp', {
+      email: (email || "").trim().toLowerCase(),
+      otp: (otp || "").trim()
+    });
+    return data;
+  };
+
+  const register = async (name, phone, email, password, verificationToken) => {
     try {
       const data = await apiClient.post('/api/auth/register', {
         name: name.trim(),
         phone: phone.trim(),
         email: email.trim().toLowerCase(),
-        password
+        password,
+        verificationToken
       });
 
       if (data.token) {
@@ -141,7 +159,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, loginWithToken }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token, 
+      loading, 
+      login, 
+      register, 
+      sendRegisterOtp, 
+      verifyRegisterOtp, 
+      logout, 
+      loginWithToken 
+    }}>
       {children}
     </AuthContext.Provider>
   );
