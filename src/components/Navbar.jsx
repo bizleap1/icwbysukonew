@@ -318,7 +318,7 @@ export const Navbar = () => {
                           </Link>
                           {user.role === "admin" && (
                             <Link
-                              to="/admin/dashboard"
+                              to="/admin"
                               onClick={() => setAccountMenuOpen(false)}
                               className="flex items-center gap-2.5 px-2 py-2 rounded text-[10.5px] uppercase tracking-wider text-[#C2922E] bg-[#C2922E]/5 hover:bg-[#C2922E]/15 transition-colors font-medium mt-1"
                             >
@@ -538,6 +538,15 @@ export const Navbar = () => {
                         ORDERS
                       </Link>
                     </div>
+                    {user.role === "admin" && (
+                      <Link
+                        to="/admin"
+                        onClick={() => setMobileOpen(false)}
+                        className="mt-2 text-center py-2 bg-[#C2922E]/10 border border-[#C2922E]/30 text-[10px] text-[#C2922E] font-medium tracking-wider block hover:bg-[#C2922E]/20 transition-colors"
+                      >
+                        ADMIN DASHBOARD
+                      </Link>
+                    )}
                   </div>
                 ) : (
                   <Link

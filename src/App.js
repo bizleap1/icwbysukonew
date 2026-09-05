@@ -201,6 +201,7 @@ const AnimatedRoutes = () => {
           <Route path="/checkout" element={<PageWrapper><Checkout /></PageWrapper>} />
           <Route path="/auth" element={<PageWrapper><Auth /></PageWrapper>} />
           <Route path="/admin" element={<PageWrapper><Admin /></PageWrapper>} />
+          <Route path="/admin/dashboard" element={<PageWrapper><Admin /></PageWrapper>} />
           <Route path="/orders" element={<PageWrapper><Orders /></PageWrapper>} />
           <Route path="/account" element={<PageWrapper><Account /></PageWrapper>} />
           <Route path="*" element={<PageWrapper><NotFound /></PageWrapper>} />
