@@ -25,8 +25,16 @@ const loadRazorpayScript = () => {
 
 const Checkout = () => {
   const { items, subtotal, updateQty, removeItem } = useCart();
-  const { user, token } = useAuth();
+  const { user, token, loading } = useAuth();
   const navigate = useNavigate();
+
+  // Enforce account creation / authentication to checkout & pay
+  useEffect(() => {
+    if (!loading && !user?.authenticated) {
+      toast.info("Please create an account or sign in to complete your order.");
+      navigate("/auth?redirect=/checkout&mode=register");
+    }
+  }, [user, loading, navigate]);
 
   // Active Order & Confirmation States
   const [placed, setPlaced] = useState(false);
@@ -191,8 +199,8 @@ const Checkout = () => {
       try {
         sessionStorage.setItem("suko_checkout_form", JSON.stringify(form));
       } catch (err) {}
-      toast.error("Please sign in to proceed with secure checkout.");
-      navigate("/auth?redirect=/checkout");
+      toast.info("Please create an account or sign in to proceed with payment.");
+      navigate("/auth?redirect=/checkout&mode=register");
       return;
     }
 
@@ -618,7 +626,7 @@ const Checkout = () => {
                   </h2>
                   {!user?.authenticated && (
                     <Link
-                      to="/auth?redirect=/checkout"
+                      to="/auth?redirect=/checkout&mode=register"
                       className="text-[11px] text-[#6E6E75] hover:text-[#111113] transition-colors"
                     >
                       Already have an account? <span className="underline underline-offset-2">Sign in</span>

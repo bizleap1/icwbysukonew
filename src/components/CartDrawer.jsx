@@ -3,15 +3,23 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X, Minus, Plus, ShoppingBag, ArrowRight } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
+import { toast } from "sonner";
 import { formatINR } from "../data/products";
 import { getThumbImage } from "../utils/mediaUtils";
 
 const CartDrawer = () => {
   const { isOpen, closeCart, items, removeItem, updateQty, subtotal } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const goCheckout = () => {
     closeCart();
+    if (!user?.authenticated) {
+      toast.info("Please create an account or sign in to complete your order.");
+      navigate("/auth?redirect=/checkout&mode=register");
+      return;
+    }
     navigate("/checkout");
   };
 

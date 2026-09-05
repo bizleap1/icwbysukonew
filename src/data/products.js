@@ -2602,6 +2602,7 @@ export const PRODUCTS = [
   }
 ];
 
+export const WHATSAPP_NUMBER = "919370350885";
 export const DEFAULT_WHATSAPP_LINK = "https://wa.me/919370350885?text=" + encodeURIComponent("Hello SUKO Stylist, I would like to explore the Indian Corporate Wear collection and book a styling consultation.");
 export const WHATSAPP_LINK = DEFAULT_WHATSAPP_LINK;
 
