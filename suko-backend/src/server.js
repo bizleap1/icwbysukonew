@@ -35,7 +35,9 @@ app.use(
       
       // Allow any localhost / 127.0.0.1 port in development/testing
       const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-      if (isLocalhost || allowedOrigins.includes(origin)) {
+      // Allow Vercel deployments and custom domain
+      const isVercelOrCustom = origin.endsWith(".vercel.app") || origin.includes("indiancorporatewear.com");
+      if (isLocalhost || isVercelOrCustom || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
       

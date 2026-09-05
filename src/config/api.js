@@ -2,35 +2,38 @@
 import { toast } from "sonner";
 
 export const getApiBaseUrl = () => {
-  // If running in browser on localhost / 127.0.0.1, prioritize local backend unless REACT_APP_API_URL explicitly set otherwise
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      if (process.env.REACT_APP_API_URL && !process.env.REACT_APP_API_URL.includes('onrender.com')) {
+
+    // 1. If running on a live deployed domain (e.g. indiancorporatewear.com, Vercel, etc.)
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      // If a valid remote API URL is explicitly configured, use it
+      if (
+        process.env.REACT_APP_API_URL &&
+        !process.env.REACT_APP_API_URL.includes('localhost') &&
+        !process.env.REACT_APP_API_URL.includes('127.0.0.1')
+      ) {
         return process.env.REACT_APP_API_URL.replace(/\/$/, '');
       }
-      return 'http://localhost:5000';
+      // Production live backend default
+      return 'https://icwbysukonew.onrender.com';
     }
+
+    // 2. If running locally in browser (localhost / 127.0.0.1)
+    if (process.env.REACT_APP_API_URL && !process.env.REACT_APP_API_URL.includes('onrender.com')) {
+      return process.env.REACT_APP_API_URL.replace(/\/$/, '');
+    }
+    return 'http://localhost:5000';
   }
 
+  // Fallback for SSR or build time
   if (process.env.REACT_APP_API_URL) {
     return process.env.REACT_APP_API_URL.replace(/\/$/, '');
   }
 
-  // If running in browser on a deployed domain (e.g. Vercel)
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return 'https://icwbysukonew.onrender.com';
-    }
-  }
-
-  // Production build default fallback
-  if (process.env.NODE_ENV === 'production') {
-    return 'https://icwbysukonew.onrender.com';
-  }
-
-  return 'http://localhost:5000';
+  return process.env.NODE_ENV === 'production'
+    ? 'https://icwbysukonew.onrender.com'
+    : 'http://localhost:5000';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
