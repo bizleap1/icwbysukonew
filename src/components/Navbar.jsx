@@ -249,10 +249,9 @@ export const Navbar = () => {
                       aria-label={`Logged in as ${user.name || "Member"}`}
                       title={`Logged in as ${user.name || user.email || "Member"}`}
                     >
-                      {/* Avatar Circle with Initial & Active Indicator */}
-                      <div className="relative w-6 h-6 rounded-full bg-[#111113] text-[#FAF8F5] border border-[#C2922E] flex items-center justify-center text-[10px] font-medium font-mono shrink-0 shadow-xs">
+                      {/* Avatar Circle with Initial */}
+                      <div className="w-6 h-6 rounded-full bg-[#111113] text-[#FAF8F5] border border-[#C2922E] flex items-center justify-center text-[10px] font-medium font-mono shrink-0 shadow-xs">
                         {userInitial}
-                        <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" />
                       </div>
 
                       {/* Logged in User Name */}
@@ -274,10 +273,6 @@ export const Navbar = () => {
                           <div className="flex items-center justify-between gap-2 mb-1.5">
                             <span className="text-[9px] font-mono uppercase tracking-[0.22em] text-[#C2922E] bg-[#C2922E]/10 px-2 py-0.5 rounded font-medium">
                               {user.role === "admin" ? "ATELIER ADMIN" : "ATELIER MEMBER"}
-                            </span>
-                            <span className="flex items-center gap-1 text-[9px] text-emerald-600 font-medium">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                              Active
                             </span>
                           </div>
                           <div className="font-quiche text-[15px] font-semibold text-[#111113] truncate">
@@ -505,9 +500,8 @@ export const Navbar = () => {
                   <div className="bg-[#FAF8F5] p-3.5 rounded border border-[#EAE6DF] mb-2 shadow-xs">
                     <div className="flex items-center justify-between mb-2.5">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="relative w-8 h-8 rounded-full bg-[#111113] text-[#FAF8F5] border border-[#C2922E] flex items-center justify-center text-xs font-semibold font-mono shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-[#111113] text-[#FAF8F5] border border-[#C2922E] flex items-center justify-center text-xs font-semibold font-mono shrink-0">
                           {userInitial}
-                          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" />
                         </div>
                         <div className="min-w-0">
                           <p className="font-quiche text-sm font-semibold text-[#111113] tracking-normal leading-tight truncate">
