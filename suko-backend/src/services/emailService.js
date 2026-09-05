@@ -37,44 +37,57 @@ async function sendVerificationOtpEmail({ to, otp, name }) {
   }
 
   const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "SUKO Atelier <noreply@indiancorporatewear.com>";
-  const subject = `[SUKO Atelier] ${otp} is your verification code`;
+  const replyTo = process.env.REPLY_TO_EMAIL || "support@indiancorporatewear.com";
+  const subject = `Your SUKO Atelier verification code is ${otp}`;
+
+  const textBody = `Hello${recipientName ? ` ${recipientName}` : ""},
+
+Your SUKO Atelier account verification code is: ${otp}
+
+This code is valid for 10 minutes.
+
+If you did not request this verification code, you can safely disregard this email.
+
+Best regards,
+SUKO Atelier Team
+The Indian Corporate Wear
+https://www.indiancorporatewear.com
+support@indiancorporatewear.com`;
 
   const html = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>SUKO Atelier Verification</title>
-      <style>
-        body { margin: 0; padding: 32px 16px; background-color: #FAF8F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111113; }
-        .card { max-width: 480px; margin: 0 auto; background: #FFFFFF; border: 1px solid #EAE6DF; border-radius: 4px; padding: 40px 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.03); }
-        .logo { text-align: center; font-size: 24px; font-weight: 300; letter-spacing: 0.3em; text-transform: uppercase; color: #111113; margin-bottom: 24px; }
-        .divider { height: 1px; background-color: #EAE6DF; margin-bottom: 28px; }
-        .eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.24em; color: #C2922E; text-align: center; font-weight: 600; margin-bottom: 8px; }
-        .heading { font-size: 20px; font-weight: 400; text-align: center; color: #111113; margin: 0 0 16px 0; letter-spacing: 0.02em; }
-        .text { font-size: 13px; line-height: 1.6; color: #6E6E75; text-align: center; margin-bottom: 28px; }
-        .code-container { background-color: #FAF8F5; border: 1px dashed #C2922E; border-radius: 4px; padding: 18px 24px; text-align: center; margin: 0 auto 24px auto; max-width: 240px; }
-        .code { font-family: 'Courier New', Courier, monospace; font-size: 32px; font-weight: 700; letter-spacing: 0.32em; color: #111113; margin: 0; padding-left: 0.32em; }
-        .notice { font-size: 11px; color: #8C887B; text-align: center; margin-bottom: 28px; letter-spacing: 0.04em; }
-        .footer { border-top: 1px solid #EAE6DF; padding-top: 20px; font-size: 11px; line-height: 1.5; color: #8C887B; text-align: center; }
-      </style>
     </head>
-    <body>
-      <div class="card">
-        <div class="logo">S U K O</div>
-        <div class="divider"></div>
-        <div class="eyebrow">Client Verification</div>
-        <h1 class="heading">Confirm Your Atelier Email</h1>
-        <p class="text">
-          Hello${recipientName ? ` ${recipientName}` : ""}, welcome to SUKO. Please use the authorization code below to verify your email address and activate your account.
-        </p>
-        <div class="code-container">
-          <p class="code">${otp}</p>
+    <body style="margin: 0; padding: 24px; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+      <div style="max-width: 480px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 36px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 2.5px; color: #0f172a; text-transform: uppercase;">SUKO ATELIER</h1>
+          <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b; letter-spacing: 1.2px; text-transform: uppercase;">The Indian Corporate Wear</p>
         </div>
-        <p class="notice">This single-use code will expire in 10 minutes.</p>
-        <div class="footer">
-          If you did not request this verification, please disregard this email.<br>
-          SUKO Atelier &middot; The Indian Corporate Wear
+        
+        <div style="border-top: 1px solid #f1f5f9; margin-bottom: 24px;"></div>
+        
+        <p style="font-size: 15px; color: #334155; margin: 0 0 14px 0; font-weight: 500;">Hello${recipientName ? ` ${recipientName}` : ""},</p>
+        <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
+          Thank you for choosing SUKO. Please enter the verification code below to verify your email address and activate your atelier account:
+        </p>
+        
+        <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 18px 20px; text-align: center; margin: 0 auto 24px auto; max-width: 240px;">
+          <span style="font-family: 'Courier New', Courier, monospace; font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #0f172a; display: inline-block; padding-left: 6px;">${otp}</span>
+        </div>
+        
+        <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin: 0 0 24px 0; text-align: center;">
+          This code is valid for <strong>10 minutes</strong>. If you did not request this, please disregard this email.
+        </p>
+        
+        <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; font-size: 11px; color: #94a3b8; text-align: center; line-height: 1.6;">
+          &copy; 2026 SUKO Atelier &bull; The Indian Corporate Wear<br/>
+          <a href="https://www.indiancorporatewear.com" style="color: #64748b; text-decoration: none;">www.indiancorporatewear.com</a> &bull; 
+          <a href="mailto:support@indiancorporatewear.com" style="color: #64748b; text-decoration: none;">support@indiancorporatewear.com</a>
         </div>
       </div>
     </body>
@@ -85,8 +98,13 @@ async function sendVerificationOtpEmail({ to, otp, name }) {
     const result = await resendClient.emails.send({
       from: fromEmail,
       to: recipientEmail,
+      reply_to: replyTo,
       subject,
-      html
+      text: textBody,
+      html,
+      headers: {
+        "X-Entity-Ref-ID": `suko-otp-${Date.now()}`
+      }
     });
 
     if (result.error) {
