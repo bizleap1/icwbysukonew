@@ -35,6 +35,7 @@ const Auth = () => {
   const [otp, setOtp] = useState("");
   const [verificationToken, setVerificationToken] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [devOtp, setDevOtp] = useState(null);
 
   // Concierge Password Assistance Modal State
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -75,6 +76,7 @@ const Auth = () => {
     setAuthMode(newMode);
     setRegisterStep(1);
     setOtp("");
+    setDevOtp(null);
     setVerificationToken("");
     setPassword("");
     setConfirmPassword("");
@@ -84,8 +86,8 @@ const Auth = () => {
 
   // Redirect upon authentication
   useEffect(() => {
-    if (user?.authenticated) {
-      if (user.role === "admin") {
+    if (user) {
+      if (user.role === "admin" || user.role === "superadmin") {
         navigate("/admin");
       } else {
         navigate(redirectParam);
@@ -115,8 +117,11 @@ const Auth = () => {
       const res = await sendRegisterOtp(name, phone, email);
       if (res?.success) {
         setResendCooldown(res.resendCooldown || 30);
+        if (res.devOtp) {
+          setDevOtp(res.devOtp);
+        }
         if (isResend) {
-          toast.success("New verification code dispatched to your email.");
+          toast.success("New verification code dispatched.");
         } else {
           toast.success(`Verification code sent to ${email.trim()}.`);
           setRegisterStep(2);
@@ -449,6 +454,20 @@ const Auth = () => {
                 Please check your inbox or spam folder for the 6-digit authorization code.
               </p>
             </div>
+
+            {/* Local Dev / Testing Quick OTP Banner */}
+            {devOtp && (
+              <div 
+                onClick={() => setOtp(devOtp)}
+                className="p-3 bg-[#FBF9F4] border border-[#C2922E]/40 rounded-xs text-xs flex items-center justify-between cursor-pointer hover:bg-[#F5F0E4] transition-colors"
+                title="Click to auto-fill code"
+              >
+                <span className="text-[#7A5B18]">
+                  Dev Testing Code: <strong className="font-mono tracking-widest text-[#111113] text-sm ml-1">{devOtp}</strong>
+                </span>
+                <span className="text-[#C2922E] font-medium underline text-[11px]">Click to auto-fill</span>
+              </div>
+            )}
 
             {/* 6-Digit OTP Input */}
             <div>

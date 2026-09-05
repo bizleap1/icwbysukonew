@@ -36,7 +36,7 @@ async function sendVerificationOtpEmail({ to, otp, name }) {
     };
   }
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "SUKO Atelier <onboarding@resend.dev>";
+  const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "SUKO Atelier <noreply@indiancorporatewear.com>";
   const subject = `[SUKO Atelier] ${otp} is your verification code`;
 
   const html = `
@@ -89,14 +89,22 @@ async function sendVerificationOtpEmail({ to, otp, name }) {
       html
     });
 
+    if (result.error) {
+      console.warn("⚠️  [Resend API Warning]:", result.error.message || result.error);
+      return {
+        success: true,
+        delivered: false,
+        error: result.error.message || "Resend delivery failed"
+      };
+    }
+
     return {
       success: true,
       delivered: true,
-      data: result
+      data: result.data
     };
   } catch (err) {
     console.error("❌ [Resend] Failed to send verification email:", err.message);
-    // Even if sending failed via Resend (e.g. unverified domain), return success in dev so user isn't stuck
     return {
       success: true,
       delivered: false,
