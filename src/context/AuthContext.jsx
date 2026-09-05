@@ -153,6 +153,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const sendResetOtp = async (email) => {
+    const data = await apiClient.post('/api/auth/send-reset-otp', {
+      email: (email || "").trim().toLowerCase()
+    });
+    return data;
+  };
+
+  const verifyResetOtp = async (email, otp) => {
+    const data = await apiClient.post('/api/auth/verify-reset-otp', {
+      email: (email || "").trim().toLowerCase(),
+      otp: (otp || "").trim()
+    });
+    return data;
+  };
+
+  const resetPassword = async (email, password, resetToken) => {
+    const data = await apiClient.post('/api/auth/reset-password', {
+      email: (email || "").trim().toLowerCase(),
+      password,
+      resetToken
+    });
+    return data;
+  };
+
   const loginWithToken = (newToken) => {
     setToken(newToken);
     return true;
@@ -167,6 +191,9 @@ export const AuthProvider = ({ children }) => {
       register, 
       sendRegisterOtp, 
       verifyRegisterOtp, 
+      sendResetOtp,
+      verifyResetOtp,
+      resetPassword,
       logout, 
       loginWithToken 
     }}>

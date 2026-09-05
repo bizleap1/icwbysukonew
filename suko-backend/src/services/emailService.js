@@ -468,8 +468,151 @@ https://www.indiancorporatewear.com`;
   }
 }
 
+/**
+ * Send 6-digit password reset OTP email using Resend
+ * @param {Object} params
+ * @param {string} params.to - Recipient email
+ * @param {string} params.otp - 6-digit reset code
+ * @param {string} [params.name] - Recipient name
+ */
+async function sendPasswordResetOtpEmail({ to, otp, name }) {
+  const recipientEmail = (to || "").trim().toLowerCase();
+  const recipientName = (name || "").trim();
+
+  // Log in terminal for development & debugging
+  console.log(`\n======================================================`);
+  console.log(`🔑  [SUKO ATELIER EMAIL] Password Reset Request`);
+  console.log(`👤  Client: ${recipientName || "Valued Client"} <${recipientEmail}>`);
+  console.log(`🔢  RESET CODE: ${otp}`);
+  console.log(`⏰  Expires in: 10 minutes`);
+  console.log(`======================================================\n`);
+
+  if (!resendClient) {
+    return {
+      success: true,
+      delivered: false,
+      devMode: true,
+      message: "Resend API key not set. Reset code logged to terminal."
+    };
+  }
+
+  const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || "SUKO Atelier <noreply@indiancorporatewear.com>";
+  const supportEmail = process.env.SUPPORT_EMAIL || "indiancorporatewearbysuko@gmail.com";
+  const replyTo = process.env.REPLY_TO_EMAIL || supportEmail;
+  const subject = `Your SUKO Atelier password reset code is ${otp}`;
+
+  const textBody = `Hello${recipientName ? ` ${recipientName}` : ""},
+
+We received a request to reset the password for your SUKO Atelier account.
+
+Your password reset authorization code is: ${otp}
+
+This code is valid for 10 minutes.
+
+If you did not request a password reset, your credentials remain secure and you can safely disregard this email.
+
+For assistance, reach out to our concierge at ${supportEmail}.
+
+Best regards,
+SUKO Atelier Team
+The Indian Corporate Wear
+https://www.indiancorporatewear.com`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="x-apple-disable-message-reformatting">
+      <title>SUKO Atelier Password Reset</title>
+      <style>
+        @media only screen and (max-width: 480px) {
+          .email-body { padding: 12px 6px !important; }
+          .email-card { padding: 26px 18px !important; border-radius: 4px !important; width: 100% !important; box-sizing: border-box !important; }
+          .logo-title { font-size: 21px !important; letter-spacing: 0.28em !important; }
+          .otp-box { width: 100% !important; max-width: 100% !important; padding: 15px 10px !important; box-sizing: border-box !important; }
+          .otp-code { font-size: 27px !important; letter-spacing: 5px !important; }
+        }
+      </style>
+    </head>
+    <body class="email-body" style="margin: 0; padding: 32px 16px; background-color: #FAF8F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111113; -webkit-font-smoothing: antialiased;">
+      <div class="email-card" style="max-width: 460px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #EAE6DF; border-radius: 6px; padding: 36px 30px; box-shadow: 0 4px 20px rgba(17,17,19,0.03);">
+        
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 class="logo-title" style="margin: 0; font-size: 23px; font-weight: 400; letter-spacing: 0.30em; color: #111113; text-transform: uppercase; padding-left: 0.30em;">S U K O</h1>
+          <p style="margin: 5px 0 0 0; font-size: 10px; font-weight: 600; color: #C2922E; letter-spacing: 0.20em; text-transform: uppercase;">The Indian Corporate Wear &bull; Atelier</p>
+        </div>
+        
+        <div style="height: 1px; background-color: #EAE6DF; margin-bottom: 24px;"></div>
+        
+        <div style="display: inline-block; background-color: #F8F5EE; border: 1px solid #E5DECF; border-radius: 3px; padding: 3px 8px; font-size: 9.5px; font-weight: 700; color: #8A6518; letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 12px;">
+          Security Verification
+        </div>
+
+        <p style="font-size: 14.5px; color: #111113; margin: 0 0 12px 0; font-weight: 600;">Hello${recipientName ? ` ${recipientName}` : ""},</p>
+        <p style="font-size: 13.5px; line-height: 1.6; color: #5C5C64; margin: 0 0 24px 0;">
+          We received a request to reset your SUKO Atelier account password. Please use the authorization code below to verify your identity and set a new password:
+        </p>
+        
+        <div class="otp-box" style="background-color: #FAF8F5; border: 1.5px dashed #C2922E; border-radius: 4px; padding: 18px 20px; text-align: center; margin: 0 auto 24px auto; max-width: 240px;">
+          <span class="otp-code" style="font-family: 'Courier New', Courier, monospace; font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #111113; display: inline-block; padding-left: 6px;">${otp}</span>
+        </div>
+        
+        <p style="font-size: 12px; color: #7A7A85; line-height: 1.5; margin: 0 0 24px 0; text-align: center;">
+          This code is valid for <strong>10 minutes</strong>. If you did not make this request, your account remains secure and you can safely disregard this email.
+        </p>
+        
+        <div style="border-top: 1px solid #EAE6DF; padding-top: 20px; font-size: 11px; color: #8C887B; text-align: center; line-height: 1.6;">
+          &copy; 2026 SUKO Atelier &bull; The Indian Corporate Wear<br/>
+          <a href="https://www.indiancorporatewear.com" style="color: #6E6E75; text-decoration: none;">www.indiancorporatewear.com</a> &bull; 
+          <a href="mailto:${supportEmail}" style="color: #6E6E75; text-decoration: none;">${supportEmail}</a>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  try {
+    const result = await resendClient.emails.send({
+      from: fromEmail,
+      to: recipientEmail,
+      reply_to: replyTo,
+      subject,
+      text: textBody,
+      html,
+      headers: {
+        "X-Entity-Ref-ID": `suko-pwd-reset-${Date.now()}`
+      }
+    });
+
+    if (result.error) {
+      console.warn("⚠️  [Resend API Warning]:", result.error.message || result.error);
+      return {
+        success: true,
+        delivered: false,
+        error: result.error.message || "Resend delivery failed"
+      };
+    }
+
+    return {
+      success: true,
+      delivered: true,
+      data: result.data
+    };
+  } catch (err) {
+    console.error("❌ [Resend] Failed to send password reset email:", err.message);
+    return {
+      success: true,
+      delivered: false,
+      error: err.message
+    };
+  }
+}
+
 module.exports = {
   sendVerificationOtpEmail,
-  sendOrderInvoiceEmail
+  sendOrderInvoiceEmail,
+  sendPasswordResetOtpEmail
 };
 

@@ -88,15 +88,19 @@ async function executeQuery(text, params = []) {
     return { rows: [], rowCount: 0 };
   }
 
-  // 3. User check: SELECT id FROM users WHERE email = $1
-  if (lower.includes("from users") && lower.includes("where email = $1")) {
+  // 3. User check: SELECT ... FROM users WHERE email ...
+  if (lower.includes("from users") && lower.includes("where email")) {
     const email = (params[0] || "").trim().toLowerCase();
     const user = s.users.find((u) => u.email.toLowerCase() === email);
+    if (!user) return { rows: [], rowCount: 0 };
     if (lower.includes("select id from")) {
-      return { rows: user ? [{ id: user.id }] : [], rowCount: user ? 1 : 0 };
+      return { rows: [{ id: user.id }], rowCount: 1 };
     }
-    // SELECT * FROM users WHERE email = $1
-    return { rows: user ? [{ ...user }] : [], rowCount: user ? 1 : 0 };
+    if (lower.includes("select id, name from")) {
+      return { rows: [{ id: user.id, name: user.name }], rowCount: 1 };
+    }
+    // SELECT * FROM users WHERE email ...
+    return { rows: [{ ...user }], rowCount: 1 };
   }
 
   // 4. User profile: SELECT id, name, email, phone, role FROM users WHERE id = $1
@@ -244,6 +248,19 @@ async function executeQuery(text, params = []) {
       order.updated_at = new Date().toISOString();
       saveStore();
       return { rows: [{ ...order }], rowCount: 1 };
+    }
+    return { rows: [], rowCount: 0 };
+  }
+
+  // 13. Update user password: UPDATE users SET password_hash = $1 WHERE email = $2
+  if (lower.includes("update users set") && lower.includes("password_hash")) {
+    const newHash = params[0];
+    const email = (params[1] || "").trim().toLowerCase();
+    const user = s.users.find((u) => u.email.toLowerCase() === email);
+    if (user) {
+      user.password_hash = newHash;
+      saveStore();
+      return { rows: [{ id: user.id, email: user.email }], rowCount: 1 };
     }
     return { rows: [], rowCount: 0 };
   }

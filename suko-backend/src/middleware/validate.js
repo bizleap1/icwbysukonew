@@ -122,4 +122,36 @@ function validateCreateOrder(req, res, next) {
   next();
 }
 
-module.exports = { validateLogin, validateRegister, validateCreateOrder };
+function validateResetPassword(req, res, next) {
+  let { email, password, resetToken } = req.body || {};
+
+  if (!email || typeof email !== "string" || !email.trim()) {
+    return res.status(400).json({ error: "Email address is required." });
+  }
+
+  email = email.trim().toLowerCase();
+  if (!EMAIL_REGEX.test(email) || email.length > 255) {
+    return res.status(400).json({ error: "Please provide a valid email address." });
+  }
+
+  if (!resetToken || typeof resetToken !== "string") {
+    return res.status(403).json({ error: "Password reset authorization token is required." });
+  }
+
+  if (!password || typeof password !== "string") {
+    return res.status(400).json({ error: "New password is required." });
+  }
+
+  const pwdLength = Buffer.byteLength(password, "utf8");
+  if (pwdLength < 8) {
+    return res.status(400).json({ error: "Password must be at least 8 characters long." });
+  }
+  if (pwdLength > 72) {
+    return res.status(400).json({ error: "Password cannot exceed 72 bytes." });
+  }
+
+  req.body.email = email;
+  next();
+}
+
+module.exports = { validateLogin, validateRegister, validateCreateOrder, validateResetPassword };
