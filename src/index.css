@@ -33,25 +33,25 @@ body {
 
 @layer base {
     :root {
-        --background: 240 5% 6%;
-        --foreground: 60 30% 96%;
-        --card: 240 4% 9%;
-        --card-foreground: 60 30% 96%;
-        --popover: 240 4% 9%;
-        --popover-foreground: 60 30% 96%;
-        --primary: 60 30% 96%;
-        --primary-foreground: 240 5% 6%;
-        --secondary: 240 5% 12%;
-        --secondary-foreground: 60 30% 96%;
-        --muted: 240 5% 15%;
-        --muted-foreground: 240 5% 65%;
-        --accent: 43 30% 45%;
-        --accent-foreground: 60 30% 96%;
-        --destructive: 0 62% 30%;
-        --destructive-foreground: 60 30% 96%;
-        --border: 240 5% 18%;
-        --input: 240 5% 18%;
-        --ring: 60 30% 96%;
+        --background: 40 25% 97%; /* #FAF8F5 */
+        --foreground: 240 5% 7%;  /* #111113 */
+        --card: 0 0% 100%;        /* #FFFFFF */
+        --card-foreground: 240 5% 7%;
+        --popover: 40 25% 97%;
+        --popover-foreground: 240 5% 7%;
+        --primary: 240 5% 7%;
+        --primary-foreground: 40 25% 97%;
+        --secondary: 40 18% 94%;   /* #F5F2EB */
+        --secondary-foreground: 240 5% 7%;
+        --muted: 40 18% 94%;
+        --muted-foreground: 240 4% 45%; /* #6E6E75 */
+        --accent: 40 61% 47%;      /* #C2922E SUKO Gold */
+        --accent-foreground: 0 0% 100%;
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 37 18% 89%;     /* #EAE6DF */
+        --input: 37 18% 89%;
+        --ring: 40 61% 47%;
         --radius: 0rem;
     }
 }
@@ -61,8 +61,8 @@ body {
         border-color: hsl(var(--border));
     }
     body {
-        background-color: hsl(var(--background));
-        color: hsl(var(--foreground));
+        background-color: #FAF8F5;
+        color: #111113;
         overflow-x: hidden;
         overscroll-behavior-y: none;
     }
@@ -80,8 +80,8 @@ body {
     }
 
     ::selection {
-        background: #C8A663;
-        color: #0F0F11;
+        background: #C2922E;
+        color: #FFFFFF;
     }
 }
 
@@ -91,14 +91,14 @@ body {
     height: 8px;
 }
 ::-webkit-scrollbar-track {
-    background: #0F0F11;
+    background: #FAF8F5;
 }
 ::-webkit-scrollbar-thumb {
-    background: #2a2a2e;
+    background: #D1CBC0;
     border-radius: 0;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #3a3a3e;
+    background: #B8B0A2;
 }
 
 /* Cinematic grain overlay */

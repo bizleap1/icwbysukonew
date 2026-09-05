@@ -225,17 +225,17 @@ function LayoutContent() {
         position="top-center"
         duration={1800}
         visibleToasts={1}
-        theme="dark"
+        theme="light"
         toastOptions={{
           style: {
-            background: "#15151a",
-            color: "#F6F6F0",
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 0,
-            fontFamily: "Outfit, Inter, sans-serif",
-            fontSize: "13px",
+            background: "#FAF8F5",
+            color: "#111113",
+            border: "1px solid #EAE6DF",
+            borderRadius: "2px",
+            fontFamily: "Inter, sans-serif",
+            fontSize: "12.5px",
             letterSpacing: "0.02em",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
             padding: "12px 20px",
           },
         }}

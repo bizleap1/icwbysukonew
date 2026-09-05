@@ -185,8 +185,8 @@ const Account = () => {
               onClick={() => setActiveSubTab("profile")}
               className={`py-2.5 px-6 border transition-all duration-200 cursor-pointer ${
                 activeSubTab === "profile" 
-                  ? "bg-[#111113] text-white border-[#111113] font-medium shadow-xs" 
-                  : "bg-transparent border-[#DDD8CE] text-[#6E6E75] hover:text-[#111113] hover:border-[#111113]"
+                  ? "bg-white text-[#111113] border-[#C2922E] font-medium shadow-xs ring-1 ring-[#C2922E]/20" 
+                  : "bg-[#F5F2EB]/60 border-[#DDD8CE] text-[#6E6E75] hover:text-[#111113] hover:border-[#111113]"
               }`}
             >
               Personal Profile
@@ -196,8 +196,8 @@ const Account = () => {
               onClick={() => setActiveSubTab("addresses")}
               className={`py-2.5 px-6 border transition-all duration-200 cursor-pointer ${
                 activeSubTab === "addresses" 
-                  ? "bg-[#111113] text-white border-[#111113] font-medium shadow-xs" 
-                  : "bg-transparent border-[#DDD8CE] text-[#6E6E75] hover:text-[#111113] hover:border-[#111113]"
+                  ? "bg-white text-[#111113] border-[#C2922E] font-medium shadow-xs ring-1 ring-[#C2922E]/20" 
+                  : "bg-[#F5F2EB]/60 border-[#DDD8CE] text-[#6E6E75] hover:text-[#111113] hover:border-[#111113]"
               }`}
             >
               Address Book ({addresses.length})

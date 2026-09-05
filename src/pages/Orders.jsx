@@ -3,12 +3,14 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { 
   Package, Clock, CheckCircle2, Truck, AlertCircle, 
-  Printer, ArrowRight, ShoppingBag, Search, ExternalLink, RefreshCw, MessageSquare, ShieldCheck, ChevronRight, XCircle, AlertTriangle
+  Printer, ArrowRight, ShoppingBag, Search, RefreshCw, 
+  MessageSquare, ChevronRight, XCircle, X
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { formatINR } from "../data/products";
-import { API_BASE_URL, apiClient } from "../config/api";
+import { apiClient } from "../config/api";
+import SEO from "../components/SEO";
 
 const formatDateTime = (dateStr) => {
   if (!dateStr) return "N/A";
@@ -65,25 +67,57 @@ const Orders = () => {
     switch (status?.toLowerCase()) {
       case "completed":
       case "delivered":
-        return <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><CheckCircle2 size={12} /> Delivered</span>;
+        return (
+          <span className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
+            <CheckCircle2 size={11} className="text-emerald-600" /> Delivered
+          </span>
+        );
       case "processing":
-        return <span className="bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5 shadow-[0_0_12px_rgba(245,158,11,0.15)]"><RefreshCw size={12} className="animate-spin text-amber-400" /> Processing</span>;
+        return (
+          <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
+            <RefreshCw size={11} className="animate-spin text-[#C2922E]" /> Processing
+          </span>
+        );
       case "paid":
-        return <span className="bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><CheckCircle2 size={12} /> Order Confirmed</span>;
+        return (
+          <span className="bg-blue-50 border border-blue-200 text-blue-700 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
+            <CheckCircle2 size={11} className="text-blue-600" /> Order Confirmed
+          </span>
+        );
       case "shipped":
       case "in_transit":
-        return <span className="bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><Truck size={12} /> Shipped</span>;
+        return (
+          <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
+            <Truck size={11} className="text-[#C2922E]" /> Shipped
+          </span>
+        );
       case "cancel_requested":
-        return <span className="bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><AlertCircle size={12} /> Cancellation Requested</span>;
+        return (
+          <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
+            <AlertCircle size={11} className="text-[#C2922E]" /> Cancellation Requested
+          </span>
+        );
       case "cancelled":
-        return <span className="bg-red-500/10 border border-red-500/30 text-red-400 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><XCircle size={12} /> Cancelled</span>;
+        return (
+          <span className="bg-rose-50 border border-rose-200 text-rose-700 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
+            <XCircle size={11} className="text-rose-600" /> Cancelled
+          </span>
+        );
       case "expired":
       case "payment_failed":
-        return <span className="bg-zinc-500/15 border border-zinc-500/30 text-zinc-400 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><Clock size={12} /> Payment Session Expired</span>;
+        return (
+          <span className="bg-stone-100 border border-stone-200 text-stone-600 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
+            <Clock size={11} /> Session Expired
+          </span>
+        );
       case "payment_pending":
       case "pending":
       default:
-        return <span className="bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full font-mono flex items-center gap-1.5"><Clock size={12} /> Awaiting Payment</span>;
+        return (
+          <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
+            <Clock size={11} className="text-[#C2922E]" /> Awaiting Payment
+          </span>
+        );
     }
   };
 
@@ -139,52 +173,64 @@ const Orders = () => {
   });
 
   return (
-    <div className="grain pt-36 pb-32 px-6 lg:px-16 min-h-screen">
+    <div className="bg-[#FAF8F5] text-[#111113] font-body selection:bg-[#C2922E] selection:text-white pt-28 sm:pt-36 pb-24 sm:pb-32 px-4 sm:px-6 lg:px-16 min-h-screen">
+      <SEO title="Order History & Receipts | SUKO" description="Track your SUKO tailored garments and view official tax invoices." />
+
       <div className="max-w-5xl mx-auto space-y-8">
         
         {/* Header */}
-        <div className="border-b border-white/10 pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="border-b border-[#EAE6DF] pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <span className="text-[10px] uppercase tracking-[0.3em] text-foreground/45 font-body block mb-2">— Atelier Concierge</span>
-            <h1 className="font-display text-4xl lg:text-5xl">Order History & Receipts</h1>
+            <div className="inline-flex items-center gap-2 mb-2">
+              <span className="w-4 h-[1px] bg-[#C2922E]" />
+              <span className="text-[10px] uppercase tracking-[0.28em] text-[#C2922E] font-medium font-mono">
+                CLIENT ATELIER CONCIERGE
+              </span>
+            </div>
+            <h1 className="font-quiche text-3xl sm:text-4xl lg:text-[40px] font-light text-[#111113] tracking-tight leading-tight">
+              Order History &amp; Receipts
+            </h1>
+            <p className="text-xs text-[#6E6E75] font-light mt-1">
+              Review and manage your bespoke orders, track fulfillment stages, and access official tax invoices.
+            </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={fetchOrders}
-              className="p-3 border border-white/15 hover:border-foreground transition-colors text-foreground/70 hover:text-white"
+              className="p-2.5 bg-white border border-[#DDD8CE] hover:border-[#C2922E] text-[#111113] transition-colors rounded-sm shadow-xs cursor-pointer"
               title="Refresh Orders"
             >
-              <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+              <RefreshCw size={15} className={loading ? "animate-spin text-[#C2922E]" : ""} />
             </button>
             <Link
               to="/collection"
-              className="bg-foreground text-background py-3 px-6 text-[10px] uppercase tracking-[0.2em] font-body font-bold hover:bg-foreground/90 transition-all flex items-center gap-2"
+              className="bg-[#111113] text-white py-2.5 px-5 text-[10px] uppercase tracking-[0.2em] font-medium hover:bg-[#C2922E] transition-all flex items-center gap-2 rounded-sm shadow-xs"
             >
-              <ShoppingBag size={14} /> Explore Atelier Collection
+              <ShoppingBag size={13} /> Explore Collection
             </Link>
           </div>
         </div>
 
         {/* Search & Filter Toolbar */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center bg-white/5 p-4 border border-white/10 backdrop-blur-sm">
+        <div className="flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center bg-white p-4 border border-[#EAE6DF] shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
           <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-foreground/40 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[#8C887B] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by Order ID or Garment Name..."
-              className="w-full bg-black/40 border border-white/10 py-2 pl-9 pr-4 text-xs font-body text-white placeholder:text-foreground/40 outline-none focus:border-foreground"
+              placeholder="Search by Order # or Garment Name..."
+              className="w-full bg-[#FAF8F5] border border-[#DDD8CE] py-2 pl-9 pr-4 text-xs font-body text-[#111113] placeholder-[#8C887B] outline-none focus:border-[#C2922E] transition-colors"
             />
           </div>
 
-          <div className="flex items-center gap-2 font-body text-xs">
-            <span className="text-foreground/50 text-[10px] uppercase tracking-wider">Status Filter:</span>
+          <div className="flex items-center gap-2.5 font-body text-xs">
+            <span className="text-[#6E6E75] text-[10px] uppercase tracking-wider font-medium">Status Filter:</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-black/60 border border-white/15 text-white py-2 px-3 text-xs outline-none focus:border-foreground"
+              className="bg-[#FAF8F5] border border-[#DDD8CE] text-[#111113] py-2 px-3 text-xs outline-none focus:border-[#C2922E] transition-colors cursor-pointer"
             >
               <option value="all">All Orders ({orders.length})</option>
               <option value="processing">⚙️ Processing</option>
@@ -200,26 +246,28 @@ const Orders = () => {
         {/* Loading State */}
         {loading && (
           <div className="py-20 text-center space-y-4">
-            <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto" />
-            <p className="text-xs uppercase tracking-[0.2em] font-body text-foreground/50">Fetching your Atelier invoices...</p>
+            <div className="w-8 h-8 border-2 border-[#111113] border-t-[#C2922E] rounded-full animate-spin mx-auto" />
+            <p className="text-xs uppercase tracking-[0.2em] font-body text-[#6E6E75]">Fetching your Atelier orders &amp; invoices...</p>
           </div>
         )}
 
         {/* Empty State */}
         {!loading && filteredOrders.length === 0 && (
-          <div className="border border-white/10 p-12 text-center bg-background/40 backdrop-blur-sm space-y-4">
-            <Package className="w-12 h-12 text-foreground/30 mx-auto" strokeWidth={1} />
-            <h3 className="font-display text-xl">No Orders Found</h3>
-            <p className="text-xs font-body text-foreground/50 max-w-sm mx-auto">
+          <div className="border border-[#EAE6DF] p-12 text-center bg-white shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-4">
+            <div className="w-14 h-14 rounded-full bg-[#F5F2EB] border border-[#EAE6DF] flex items-center justify-center mx-auto text-[#C2922E]">
+              <Package size={24} strokeWidth={1.3} />
+            </div>
+            <h3 className="font-quiche text-2xl font-light text-[#111113]">No Orders Found</h3>
+            <p className="text-xs font-body text-[#6E6E75] max-w-sm mx-auto leading-relaxed">
               {searchQuery || statusFilter !== "all" 
-                ? "No orders match your filter criteria. Try clearing search filters."
-                : "You haven't placed any orders with Suko yet. Explore our handcrafted collection."}
+                ? "No orders match your filter criteria. Try clearing or changing your search filters."
+                : "You haven't placed any orders with SUKO yet. Discover our handcrafted architectural silhouettes."}
             </p>
             <Link
               to="/collection"
-              className="inline-flex items-center gap-2 border border-white/20 px-6 py-3 text-[10px] uppercase tracking-[0.2em] font-body hover:bg-white hover:text-black transition-all"
+              className="inline-flex items-center gap-2 bg-[#111113] hover:bg-[#C2922E] text-white px-6 py-3 text-[10px] uppercase tracking-[0.2em] font-medium transition-all shadow-xs rounded-sm"
             >
-              Browse Garments <ArrowRight size={12} />
+              Browse Collection <ArrowRight size={12} />
             </Link>
           </div>
         )}
@@ -228,62 +276,64 @@ const Orders = () => {
         {!loading && filteredOrders.length > 0 && (
           <div className="space-y-6">
             {filteredOrders.map((order) => (
-              <div key={order.id} className="border border-white/10 bg-background/50 backdrop-blur-md overflow-hidden transition-all duration-300 hover:border-white/20">
+              <div key={order.id} className="border border-[#EAE6DF] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.02)] overflow-hidden transition-all duration-300 hover:border-[#C2922E]/50">
                 {/* Order Header */}
-                <div className="bg-white/5 p-6 border-b border-white/10 flex flex-wrap items-center justify-between gap-4 font-body">
+                <div className="bg-[#FAF8F5] p-5 sm:p-6 border-b border-[#EAE6DF] flex flex-wrap items-center justify-between gap-4 font-body">
                   <div className="space-y-1">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-sm font-bold tracking-wider text-foreground">
+                      <span className="font-mono text-sm font-bold tracking-wider text-[#111113]">
                         #SUKO-{1000 + order.id}
                       </span>
                       {getStatusBadge(order.status)}
                     </div>
-                    <p className="text-[11px] text-foreground/50 font-mono">
-                      Placed on <span className="text-foreground/80 font-medium">{formatDateTime(order.created_at)}</span>
+                    <p className="text-[11px] text-[#6E6E75] font-mono">
+                      Placed on <span className="text-[#111113] font-medium">{formatDateTime(order.created_at)}</span>
                     </p>
                   </div>
 
                   <div className="text-right flex flex-col items-end gap-2">
                     <div>
-                      <span className="text-[10px] uppercase tracking-[0.2em] text-foreground/45 block">Total Order Amount</span>
-                      <span className="font-mono text-lg font-bold text-foreground">{formatINR(order.total)}</span>
+                      <span className="text-[9.5px] uppercase tracking-[0.2em] text-[#8C887B] block">Total Amount</span>
+                      <span className="font-mono text-lg font-bold text-[#111113]">{formatINR(order.total)}</span>
                     </div>
                     {order.status !== "cancelled" && order.status !== "cancel_requested" && order.status !== "completed" && (
                       <button
                         type="button"
                         onClick={() => handleOpenCancelModal(order)}
-                        className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/25 border border-red-500/30 text-red-400 text-[9px] uppercase tracking-[0.2em] font-body transition-all flex items-center gap-1.5"
+                        className="px-3 py-1 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[9px] uppercase tracking-[0.18em] font-body transition-all flex items-center gap-1.5 cursor-pointer rounded-xs"
                       >
-                        <XCircle size={12} /> Request Cancellation
+                        <XCircle size={11} /> Request Cancellation
                       </button>
                     )}
                   </div>
                 </div>
 
                 {/* Garment Items List */}
-                <div className="p-6 space-y-4">
-                  <div className="divide-y divide-white/5">
+                <div className="p-5 sm:p-6 space-y-4">
+                  <div className="divide-y divide-[#EAE6DF]">
                     {order.items && order.items.length > 0 ? (
                       order.items.map((item, idx) => (
                         <div key={item.id || idx} className="py-3 flex items-center justify-between gap-4 font-body">
-                          <div className="flex items-center gap-4">
-                            <div className="w-14 h-16 bg-black border border-white/15 overflow-hidden flex-shrink-0 rounded-sm">
+                          <div className="flex items-center gap-4 min-w-0">
+                            <div className="w-14 h-16 sm:w-16 sm:h-20 bg-[#F5F2EB] border border-[#EAE6DF] overflow-hidden flex-shrink-0 rounded-xs">
                               {item.product?.image_url ? (
                                 <img src={item.product.image_url} alt={item.product.name} className="w-full h-full object-cover" />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center text-foreground/30"><Package size={16} /></div>
+                                <div className="w-full h-full flex items-center justify-center text-[#8C887B]"><Package size={16} /></div>
                               )}
                             </div>
-                            <div>
-                              <h4 className="font-display text-sm text-foreground">{item.product?.name || "Bespoke Garment"}</h4>
-                              <p className="text-[10px] font-mono text-foreground/50 mt-0.5">
-                                Qty: {item.quantity} • Size: {item.size || item.product?.sizes?.[0] || "38"}
+                            <div className="min-w-0">
+                              <h4 className="font-quiche text-sm sm:text-base text-[#111113] font-medium truncate">
+                                {item.product?.name || "Bespoke Garment"}
+                              </h4>
+                              <p className="text-[10.5px] font-mono text-[#6E6E75] mt-0.5">
+                                Qty: {item.quantity} &middot; Size: {item.size || item.product?.sizes?.[0] || "38"}
                               </p>
                             </div>
                           </div>
 
-                          <div className="text-right">
-                            <span className="text-xs font-mono font-semibold text-foreground">
+                          <div className="text-right shrink-0">
+                            <span className="text-xs sm:text-sm font-mono font-semibold text-[#111113]">
                               {formatINR(item.price_at_purchase || item.product?.price || 0)}
                             </span>
                           </div>
@@ -292,16 +342,16 @@ const Orders = () => {
                     ) : (
                       <div className="py-3 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
-                          <div className="w-14 h-16 bg-black border border-white/15 overflow-hidden flex-shrink-0 rounded-sm flex items-center justify-center text-foreground/40">
+                          <div className="w-14 h-16 sm:w-16 sm:h-20 bg-[#F5F2EB] border border-[#EAE6DF] overflow-hidden flex-shrink-0 rounded-xs flex items-center justify-center text-[#8C887B]">
                             <Package size={20} />
                           </div>
                           <div>
-                            <h4 className="font-display text-sm text-foreground">Bespoke Atelier Garment Order</h4>
-                            <p className="text-[10px] font-mono text-foreground/50 mt-0.5">Qty: 1 • Standard Atelier Fit</p>
+                            <h4 className="font-quiche text-sm text-[#111113]">Bespoke Atelier Garment Order</h4>
+                            <p className="text-[10px] font-mono text-[#6E6E75] mt-0.5">Qty: 1 &middot; Standard Atelier Fit</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className="text-xs font-mono font-semibold text-foreground">{formatINR(order.total)}</span>
+                          <span className="text-xs sm:text-sm font-mono font-semibold text-[#111113]">{formatINR(order.total)}</span>
                         </div>
                       </div>
                     )}
@@ -309,7 +359,7 @@ const Orders = () => {
                 </div>
 
                 {/* Order Card Footer Actions */}
-                <div className="bg-white/5 px-6 py-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-4">
+                <div className="bg-[#FAF8F5]/80 px-5 sm:px-6 py-4 border-t border-[#EAE6DF] flex flex-wrap items-center justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-3">
                     <button
                       type="button"
@@ -317,28 +367,27 @@ const Orders = () => {
                         window.scrollTo({ top: 0, behavior: 'instant' });
                         setSelectedInvoiceOrder(order);
                       }}
-                      className="px-4 py-2 border border-white/20 text-[9px] uppercase tracking-[0.2em] font-body hover:bg-white hover:text-black transition-all flex items-center gap-1.5"
+                      className="px-4 py-2 bg-white border border-[#DDD8CE] hover:border-[#C2922E] text-[#111113] hover:text-[#C2922E] text-[9.5px] uppercase tracking-[0.2em] font-medium transition-all flex items-center gap-1.5 shadow-xs cursor-pointer rounded-xs"
                     >
-                      <Printer size={12} /> Official Receipt & Tax Invoice
+                      <Printer size={12} className="text-[#C2922E]" /> Official Receipt &amp; Tax Invoice
                     </button>
 
                     <button
                       type="button"
                       onClick={() => handleReorder(order)}
-                      className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-[9px] uppercase tracking-[0.2em] font-body transition-all flex items-center gap-1.5"
+                      className="px-4 py-2 bg-[#111113] hover:bg-[#C2922E] text-white text-[9.5px] uppercase tracking-[0.2em] font-medium transition-all flex items-center gap-1.5 shadow-xs cursor-pointer rounded-xs"
                     >
                       <ShoppingBag size={12} /> Re-Order Garments
                     </button>
-
                   </div>
 
                   <a
                     href={`https://wa.me/919370350885?text=Hi%20SUKO%20Atelier,%20I%20need%20assistance%20regarding%20my%20Order%20%23SUKO-${1000 + order.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[9px] uppercase tracking-[0.2em] text-foreground/50 hover:text-white font-body flex items-center gap-1 transition-colors"
+                    className="text-[10px] uppercase tracking-[0.18em] text-[#6E6E75] hover:text-[#C2922E] font-medium flex items-center gap-1.5 transition-colors"
                   >
-                    <MessageSquare size={12} /> Order Concierge Help <ChevronRight size={10} />
+                    <MessageSquare size={12} className="text-[#C2922E]" /> Order Concierge Help <ChevronRight size={11} />
                   </a>
                 </div>
               </div>
@@ -348,24 +397,24 @@ const Orders = () => {
 
         {/* Cancellation Reason Modal */}
         {cancellingOrder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-            <div className="bg-[#121218] border border-white/15 max-w-md w-full p-8 rounded-sm relative shadow-2xl font-body">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div className="bg-[#FAF8F5] border border-[#EAE6DF] max-w-md w-full p-6 sm:p-8 rounded-sm relative shadow-2xl font-body text-[#111113]">
               <button
                 onClick={() => setCancellingOrder(null)}
-                className="absolute top-4 right-4 text-foreground/50 hover:text-white"
+                className="absolute top-4 right-4 text-[#6E6E75] hover:text-[#111113] p-1 transition-colors cursor-pointer"
               >
-                <XCircle size={18} />
+                <X size={18} />
               </button>
 
               <div className="mb-6">
-                <span className="text-[10px] uppercase tracking-[0.3em] text-red-400 font-mono block mb-1">
+                <span className="text-[9.5px] uppercase tracking-[0.26em] text-rose-600 font-mono block mb-1 font-medium">
                   — ORDER CANCELLATION REQUEST
                 </span>
-                <h2 className="text-2xl font-display text-white">
+                <h2 className="text-2xl font-quiche text-[#111113]">
                   Cancel Order #SUKO-{1000 + cancellingOrder.id}
                 </h2>
-                <p className="text-xs text-foreground/60 mt-1">
-                  Please specify your reason for cancelling this order:
+                <p className="text-xs text-[#6E6E75] mt-1 font-light leading-relaxed">
+                  Please specify your reason for cancelling this bespoke garment order:
                 </p>
               </div>
 
@@ -380,10 +429,10 @@ const Orders = () => {
                   ].map((reason) => (
                     <label
                       key={reason}
-                      className={`flex items-center gap-3 p-3 border cursor-pointer transition-all ${
+                      className={`flex items-center gap-3 p-3 border cursor-pointer transition-all rounded-xs ${
                         cancelReasonPreset === reason
-                          ? "border-amber-400 bg-amber-400/10 text-white font-bold"
-                          : "border-white/10 text-foreground/70 hover:border-white/20"
+                          ? "border-[#C2922E] bg-white text-[#111113] font-medium shadow-xs"
+                          : "border-[#DDD8CE] bg-white/60 text-[#555560] hover:border-[#8C887B]"
                       }`}
                     >
                       <input
@@ -391,7 +440,7 @@ const Orders = () => {
                         name="cancel_reason"
                         checked={cancelReasonPreset === reason}
                         onChange={() => setCancelReasonPreset(reason)}
-                        className="accent-amber-400"
+                        className="accent-[#C2922E]"
                       />
                       <span>{reason}</span>
                     </label>
@@ -403,18 +452,18 @@ const Orders = () => {
                     value={customCancelReason}
                     onChange={(e) => setCustomCancelReason(e.target.value)}
                     placeholder="Please type your cancellation reason here..."
-                    className="w-full bg-transparent border border-white/15 focus:border-amber-400 text-white p-3 text-xs outline-none h-20 resize-none"
+                    className="w-full bg-white border border-[#DDD8CE] focus:border-[#C2922E] text-[#111113] placeholder-[#8C887B] p-3 text-xs outline-none h-20 resize-none transition-colors"
                     required
                   />
                 )}
 
-                <div className="pt-2 flex gap-3">
+                <div className="pt-2">
                   <button
                     type="submit"
                     disabled={submittingCancel}
-                    className="w-full bg-red-500 text-white py-3.5 text-[10px] uppercase tracking-[0.25em] font-bold hover:bg-red-600 transition-all flex items-center justify-center gap-2"
+                    className="w-full bg-rose-600 text-white py-3.5 text-[10px] uppercase tracking-[0.24em] font-medium hover:bg-rose-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
                   >
-                    {submittingCancel ? "Submitting Request..." : "Confirm & Send Cancellation Reason"}
+                    {submittingCancel ? "Submitting Request..." : "Confirm & Send Cancellation Request"}
                   </button>
                 </div>
               </form>
@@ -424,106 +473,106 @@ const Orders = () => {
 
         {/* Printable Tax Invoice Modal */}
         {selectedInvoiceOrder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-            <div className="bg-white text-black max-w-2xl w-full p-8 rounded-sm relative shadow-2xl font-body space-y-6 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div className="bg-white text-[#111113] max-w-2xl w-full p-8 sm:p-10 rounded-sm relative shadow-2xl font-body space-y-6 max-h-[90vh] overflow-y-auto border border-[#EAE6DF]">
               <button
                 onClick={() => setSelectedInvoiceOrder(null)}
-                className="absolute top-4 right-4 text-black/50 hover:text-black font-bold text-xl"
+                className="absolute top-4 right-4 text-[#8C887B] hover:text-[#111113] p-1 transition-colors cursor-pointer"
               >
-                ✕
+                <X size={20} />
               </button>
 
               {/* Invoice Header */}
-              <div className="border-b-2 border-black pb-4 flex justify-between items-start">
+              <div className="border-b-2 border-[#111113] pb-4 flex justify-between items-start">
                 <div>
-                  <h2 className="font-display text-3xl tracking-wider">SUKO ATELIER</h2>
-                  <p className="text-[9px] uppercase tracking-[0.2em] text-black/60 font-mono">
-                    High Fashion Luxury Apparel • Tax Invoice / Receipt
+                  <h2 className="font-quiche text-3xl tracking-wider text-[#111113]">SUKO ATELIER</h2>
+                  <p className="text-[9px] uppercase tracking-[0.24em] text-[#6E6E75] font-mono mt-0.5">
+                    High Fashion Luxury Apparel &middot; Tax Invoice / Receipt
                   </p>
                 </div>
                 <div className="text-right font-mono text-xs">
-                  <p className="font-bold text-sm">INVOICE #SUKO-{1000 + selectedInvoiceOrder.id}</p>
-                  <p className="text-black/60">{new Date(selectedInvoiceOrder.created_at || Date.now()).toLocaleDateString()}</p>
+                  <p className="font-bold text-sm text-[#111113]">INVOICE #SUKO-{1000 + selectedInvoiceOrder.id}</p>
+                  <p className="text-[#6E6E75]">{new Date(selectedInvoiceOrder.created_at || Date.now()).toLocaleDateString()}</p>
                   <p className="text-emerald-700 font-bold uppercase mt-1">[PAID IN FULL]</p>
                 </div>
               </div>
 
               {/* Billed To Specs */}
-              <div className="grid grid-cols-2 gap-4 text-xs font-mono border-b border-black/10 pb-4">
+              <div className="grid grid-cols-2 gap-4 text-xs font-mono border-b border-[#EAE6DF] pb-4">
                 <div>
-                  <p className="text-[9px] uppercase tracking-wider text-black/50 font-bold mb-1">Billed & Shipped To:</p>
-                  <p className="font-bold text-sm">{user?.name || "Client"}</p>
-                  <p className="text-black/70">{user?.email}</p>
-                  <p className="text-black/70">{user?.phone || "+91 9876543210"}</p>
+                  <p className="text-[9px] uppercase tracking-wider text-[#8C887B] font-bold mb-1">Billed &amp; Shipped To:</p>
+                  <p className="font-bold text-sm text-[#111113]">{user?.name || "Client"}</p>
+                  <p className="text-[#555560]">{user?.email}</p>
+                  <p className="text-[#555560]">{user?.phone || "+91 9876543210"}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[9px] uppercase tracking-wider text-black/50 font-bold mb-1">Atelier Details:</p>
-                  <p className="font-bold">SUKO Atelier Studio</p>
-                  <p className="text-black/70">Bandra West, Mumbai, MH</p>
-                  <p className="text-black/70">GSTIN: 27AAAAA0000A1Z5</p>
+                  <p className="text-[9px] uppercase tracking-wider text-[#8C887B] font-bold mb-1">Atelier Details:</p>
+                  <p className="font-bold text-[#111113]">SUKO Atelier Studio</p>
+                  <p className="text-[#555560]">Bandra West, Mumbai, MH</p>
+                  <p className="text-[#555560]">GSTIN: 27AAAAA0000A1Z5</p>
                 </div>
               </div>
 
               {/* Items Table */}
               <table className="w-full text-left font-mono text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-black text-[9px] uppercase tracking-widest text-black/60">
+                  <tr className="border-b border-[#111113] text-[9px] uppercase tracking-widest text-[#6E6E75]">
                     <th className="py-2">Garment Item</th>
                     <th className="py-2 text-center">Size</th>
                     <th className="py-2 text-center">Qty</th>
                     <th className="py-2 text-right">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black/10">
+                <tbody className="divide-y divide-[#EAE6DF]">
                   {selectedInvoiceOrder.items && selectedInvoiceOrder.items.length > 0 ? (
                     selectedInvoiceOrder.items.map((item, i) => (
                       <tr key={i}>
-                        <td className="py-2.5 font-semibold">{item.product?.name || "Atelier Garment"}</td>
-                        <td className="py-2.5 text-center">{item.size || "38"}</td>
-                        <td className="py-2.5 text-center">{item.quantity}</td>
-                        <td className="py-2.5 text-right font-bold">{formatINR(item.price_at_purchase || item.product?.price || 0)}</td>
+                        <td className="py-2.5 font-semibold text-[#111113]">{item.product?.name || "Atelier Garment"}</td>
+                        <td className="py-2.5 text-center text-[#555560]">{item.size || "38"}</td>
+                        <td className="py-2.5 text-center text-[#555560]">{item.quantity}</td>
+                        <td className="py-2.5 text-right font-bold text-[#111113]">{formatINR(item.price_at_purchase || item.product?.price || 0)}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td className="py-2.5 font-semibold">Custom Bespoke Atelier Garment</td>
-                      <td className="py-2.5 text-center">38</td>
-                      <td className="py-2.5 text-center">1</td>
-                      <td className="py-2.5 text-right font-bold">{formatINR(selectedInvoiceOrder.total)}</td>
+                      <td className="py-2.5 font-semibold text-[#111113]">Custom Bespoke Atelier Garment</td>
+                      <td className="py-2.5 text-center text-[#555560]">38</td>
+                      <td className="py-2.5 text-center text-[#555560]">1</td>
+                      <td className="py-2.5 text-right font-bold text-[#111113]">{formatINR(selectedInvoiceOrder.total)}</td>
                     </tr>
                   )}
                 </tbody>
               </table>
 
               {/* Total Summary */}
-              <div className="border-t-2 border-black/40 pt-3 flex flex-col items-end gap-0.5 font-mono text-xs">
-                <div className="flex justify-between w-64 text-black/70">
+              <div className="border-t-2 border-[#111113]/20 pt-3 flex flex-col items-end gap-0.5 font-mono text-xs">
+                <div className="flex justify-between w-64 text-[#555560]">
                   <span>Subtotal:</span>
                   <span>{formatINR(selectedInvoiceOrder.total)}</span>
                 </div>
-                <div className="flex justify-between w-64 text-black/70">
+                <div className="flex justify-between w-64 text-[#555560]">
                   <span>GST Tax (Included):</span>
                   <span>₹0.00</span>
                 </div>
-                <div className="flex justify-between w-64 text-black/70">
+                <div className="flex justify-between w-64 text-[#555560]">
                   <span>Atelier Delivery:</span>
                   <span className="text-emerald-700 font-bold">COMPLIMENTARY</span>
                 </div>
-                <div className="flex justify-between w-64 text-black font-bold text-sm border-t border-black/20 pt-1.5 mt-1">
+                <div className="flex justify-between w-64 text-[#111113] font-bold text-sm border-t border-[#111113]/20 pt-1.5 mt-1">
                   <span>Total Paid:</span>
                   <span>{formatINR(selectedInvoiceOrder.total)}</span>
                 </div>
               </div>
 
               {/* Footer Stamp & Print */}
-              <div className="border-t border-black/20 pt-3 flex items-center justify-between">
-                <span className="text-[8px] uppercase tracking-widest text-black/50 font-mono">
-                  Authentic Garment Guarantee • Hand-crafted Atelier
+              <div className="border-t border-[#EAE6DF] pt-4 flex items-center justify-between">
+                <span className="text-[8px] uppercase tracking-widest text-[#8C887B] font-mono">
+                  Authentic Garment Guarantee &middot; Hand-crafted Atelier
                 </span>
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="bg-black text-white px-5 py-2 text-xs font-mono font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-black/80 transition-all"
+                  className="bg-[#111113] hover:bg-[#C2922E] text-white px-5 py-2 text-xs font-mono font-bold uppercase tracking-widest flex items-center gap-2 transition-all cursor-pointer shadow-xs rounded-xs"
                 >
                   <Printer size={13} /> Print Receipt
                 </button>
