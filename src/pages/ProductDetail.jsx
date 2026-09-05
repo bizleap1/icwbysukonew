@@ -194,7 +194,6 @@ export const ProductDetail = () => {
       return;
     }
     addItem({ ...product, color: selectedColor, garmentLabel: garmentTypeLabel }, size, qty);
-    toast.success(`Added ${product.name} (${selectedColor} · Size ${size}) to your bag!`);
   };
 
   const isOutOfStock = product.stock === 0;

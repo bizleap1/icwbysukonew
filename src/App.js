@@ -222,15 +222,21 @@ function LayoutContent() {
       {!isAdminPage && !isCheckoutPage && <Navbar />}
       {!isCheckoutPage && <CartDrawer />}
       <Toaster
-        position="bottom-right"
+        position="top-center"
+        duration={1800}
+        visibleToasts={1}
         theme="dark"
         toastOptions={{
           style: {
             background: "#15151a",
             color: "#F6F6F0",
-            border: "1px solid rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.12)",
             borderRadius: 0,
             fontFamily: "Outfit, Inter, sans-serif",
+            fontSize: "13px",
+            letterSpacing: "0.02em",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+            padding: "12px 20px",
           },
         }}
       />
