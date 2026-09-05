@@ -2478,6 +2478,215 @@ export const PRODUCTS = [
     ],
     "badge": "New Arrival",
     "isNew": true
+  },
+  {
+    "id": "w-26",
+    "name": "Noir Sculpted Vest Set",
+    "slug": "noir-sculpted-vest-set",
+    "categoryType": "set",
+    "gender": "female",
+    "category": "suits",
+    "categoryName": "Power Suits & Sets",
+    "categoryLabel": "POWER SUITS & SETS",
+    "shortType": "Sculpted Vest & Tailored Trouser Set",
+    "setType": "Noir Sculpted Vest Set",
+    "moment": "essentials",
+    "moments": [
+      "essentials",
+      "presentation",
+      "founder"
+    ],
+    "momentName": "Executive Essentials",
+    "price": 5945,
+    "color": "Obsidian Black",
+    "availableColors": [
+      "Obsidian Black"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "includedPieces": [
+      "Noir Sculpted Vest",
+      "Noir Tailored Trousers"
+    ],
+    "coordinates": [
+      {
+        "slug": "the-noir-tailored-trousers",
+        "label": "Matching Tailored Trousers"
+      },
+      {
+        "slug": "the-noir-tailored-blazer",
+        "label": "Matching Noir Tailored Blazer"
+      }
+    ],
+    "gallery": [
+      {
+        "url": "/products/noir-sculpted-vest-set/1.png",
+        "type": "model_front"
+      },
+      {
+        "url": "/products/noir-sculpted-vest-set/2.png",
+        "type": "model_three_quarter"
+      },
+      {
+        "url": "/products/noir-sculpted-vest-set/3.png",
+        "type": "model_side"
+      },
+      {
+        "url": "/products/noir-sculpted-vest-set/4.png",
+        "type": "detail"
+      },
+      {
+        "url": "/products/noir-sculpted-vest-set/5.png",
+        "type": "model_back"
+      },
+      {
+        "url": "/products/noir-sculpted-vest-set/6.png",
+        "type": "garment_front"
+      },
+      {
+        "url": "/products/noir-sculpted-vest-set/7.png",
+        "type": "detail"
+      }
+    ],
+    "pieces": "Includes Sculpted Waistline Vest + Coordinated Tailored Wide-Leg Trousers.",
+    "description": "An architectural two-piece ensemble combining a precision-sculpted tailored vest with coordinated high-waist trousers in deep obsidian black. Designed with sculpted waistlines and structural seam detailing for commanding boardroom authority.",
+    "story": "Engineered for the modern executive wardrobe, seamlessly bridging boardroom demands with sleek minimalist tailoring.",
+    "stylingNotes": "Wear as a complete monochrome ensemble with pointed heels, or style the sculpted vest separately with tailored separates for evening engagements.",
+    "sizeFit": "Tailored structural fit through the torso with a relaxed, elegant drape through the leg. True to size. Model wears size S.",
+    "fabricCare": {
+      "fabric": "Premium structured suiting crepe blend with smooth tonal interior lining.",
+      "care": "Dry clean only."
+    },
+    "images": [
+      "/products/noir-sculpted-vest-set/1.png",
+      "/products/noir-sculpted-vest-set/2.png",
+      "/products/noir-sculpted-vest-set/3.png",
+      "/products/noir-sculpted-vest-set/4.png",
+      "/products/noir-sculpted-vest-set/5.png",
+      "/products/noir-sculpted-vest-set/6.png",
+      "/products/noir-sculpted-vest-set/7.png"
+    ],
+    "badge": "New Arrival",
+    "isNew": true,
+    "separates": [
+      {
+        "slug": "the-noir-structured-vest",
+        "label": "Noir Structured Vest"
+      },
+      {
+        "slug": "the-noir-tailored-trousers",
+        "label": "Noir Tailored Trousers"
+      }
+    ]
+  },
+  {
+    "id": "w-27",
+    "name": "Noir Layered Vest Set",
+    "slug": "noir-layered-vest-set",
+    "categoryType": "set",
+    "gender": "female",
+    "category": "suits",
+    "categoryName": "Power Suits & Sets",
+    "categoryLabel": "POWER SUITS & SETS",
+    "shortType": "Layered Tailored Vest & Trouser Set",
+    "setType": "Noir Layered Vest Set",
+    "moment": "essentials",
+    "moments": [
+      "essentials",
+      "presentation"
+    ],
+    "momentName": "Executive Essentials",
+    "price": 5400,
+    "color": "Obsidian Black",
+    "availableColors": [
+      "Obsidian Black"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "includedPieces": [
+      "Noir Layered Longline Vest",
+      "Noir Tailored Trousers"
+    ],
+    "coordinates": [
+      {
+        "slug": "the-noir-tailored-trousers",
+        "label": "Matching Tailored Trousers"
+      },
+      {
+        "slug": "the-noir-structured-vest",
+        "label": "Matching Noir Structured Vest"
+      }
+    ],
+    "gallery": [
+      {
+        "url": "/products/noir-layered-vest-set/1.png",
+        "type": "model_front"
+      },
+      {
+        "url": "/products/noir-layered-vest-set/2.png",
+        "type": "model_three_quarter"
+      },
+      {
+        "url": "/products/noir-layered-vest-set/3.png",
+        "type": "model_side"
+      },
+      {
+        "url": "/products/noir-layered-vest-set/4.png",
+        "type": "detail"
+      },
+      {
+        "url": "/products/noir-layered-vest-set/5.png",
+        "type": "model_back"
+      },
+      {
+        "url": "/products/noir-layered-vest-set/6.png",
+        "type": "garment_front"
+      },
+      {
+        "url": "/products/noir-layered-vest-set/7.png",
+        "type": "detail"
+      }
+    ],
+    "pieces": "Includes Layered Longline Vest + Coordinated Tailored Wide-Leg Trousers.",
+    "description": "A refined layered vest and trouser tailoring set crafted in obsidian black. Featuring structural layered vest styling over fluid wide-leg trousers for a balance of architectural precision and fluid movement.",
+    "story": "Designed for versatile multi-schedule executive days, offering effortless polish between boardrooms and transit.",
+    "stylingNotes": "Pair with minimalist jewelry and pointed loafers for an effortless commanding look.",
+    "sizeFit": "Upper silhouette is structured with a clean, elongated trouser cut. True to size. Model wears size S.",
+    "fabricCare": {
+      "fabric": "Structured suiting twill blend with smooth tonal interior lining.",
+      "care": "Dry clean only."
+    },
+    "images": [
+      "/products/noir-layered-vest-set/1.png",
+      "/products/noir-layered-vest-set/2.png",
+      "/products/noir-layered-vest-set/3.png",
+      "/products/noir-layered-vest-set/4.png",
+      "/products/noir-layered-vest-set/5.png",
+      "/products/noir-layered-vest-set/6.png",
+      "/products/noir-layered-vest-set/7.png"
+    ],
+    "badge": "New Arrival",
+    "isNew": true,
+    "separates": [
+      {
+        "slug": "the-noir-layered-longline-vest",
+        "label": "Noir Layered Longline Vest"
+      },
+      {
+        "slug": "the-noir-tailored-trousers",
+        "label": "Noir Tailored Trousers"
+      }
+    ]
   }
 ];
 
@@ -2488,6 +2697,9 @@ export const WHATSAPP_LINK = DEFAULT_WHATSAPP_LINK;
 export const formatINR = (n) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 
-export const getProductBySlug = (slug) => PRODUCTS.find((p) => p.slug === slug);
+export const getProductBySlug = (slug) => {
+  if (!slug) return undefined;
+  return PRODUCTS.find((p) => p.slug === slug || p.slug === slug.replace(/^the-/, "") || `the-${p.slug}` === slug);
+};
 export const getProductsByCategory = (cat) => PRODUCTS.filter((p) => p.category === cat);
 export const getProductsByGender = (gender) => PRODUCTS.filter((p) => p.gender === gender);

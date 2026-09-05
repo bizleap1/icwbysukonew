@@ -37,7 +37,9 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
     "the-midnight-sculpted-vest-set",
     "the-dusty-rose-embroidered-farchi-set",
     "the-noir-tailored-suit",
-    "the-plum-sculpted-suit"
+    "the-plum-sculpted-suit",
+    "noir-sculpted-vest-set",
+    "noir-layered-vest-set"
   ].includes(product.slug);
 
   const defaultImg = (isFeatured || isTargetSetOrSuit || !isSeparateGarment)

@@ -1129,7 +1129,9 @@ const ProductCard = ({ product }) => {
     "the-midnight-sculpted-vest-set",
     "the-dusty-rose-embroidered-farchi-set",
     "the-noir-tailored-suit",
-    "the-plum-sculpted-suit"
+    "the-plum-sculpted-suit",
+    "noir-sculpted-vest-set",
+    "noir-layered-vest-set"
   ].includes(product.slug);
 
   const primaryImage = (isTargetSetOrSuit || !isSeparate) ? (product.images?.[0] || product.image || "/products/the-noir-tailored-suit/1.png") : ghostImg;
