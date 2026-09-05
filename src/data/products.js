@@ -121,11 +121,10 @@ export const MOMENTS = [
     "image": "/shop_by_moment_executive.webp",
     "imagePosition": "object-[95%_center] sm:object-[90%_center] lg:object-[86%_center] xl:object-[82%_center]",
     "mobileImagePosition": "object-[78%_6%]",
-    "secondaryImage": "/products/the-noir-layered-suit/1.png",
+    "secondaryImage": "/products/the-noir-tailored-suit/1.png",
     "accent": "#E8E4DC",
     "recommendedLooks": [
       "the-noir-tailored-suit",
-      "the-noir-layered-suit",
       "the-midnight-sculpted-vest-set"
     ]
   }
@@ -1306,10 +1305,6 @@ export const PRODUCTS = [
         "label": "Full Outfit: Noir Tailored Set"
       },
       {
-        "slug": "the-noir-layered-suit",
-        "label": "Full Outfit: Noir Layered Ensemble"
-      },
-      {
         "slug": "the-noir-tailored-blazer",
         "label": "Matching Noir Tailored Blazer"
       },
@@ -1322,7 +1317,7 @@ export const PRODUCTS = [
         "label": "Matching Noir Layered Longline Vest"
       }
     ],
-    "coordinateText": "Complete the full outfit with the Noir Tailored Set or Noir Layered Ensemble, or pair with its matching blazers and vests.",
+    "coordinateText": "Complete the full outfit with the Noir Tailored Set, or pair with its matching blazers and vests.",
     "gallery": [
       {
         "url": "/products/noir-tailored-trousers/1.JPG",
@@ -1901,118 +1896,6 @@ export const PRODUCTS = [
     "isNew": true
   },
   {
-    "id": "w-09",
-    "name": "Noir Layered Ensemble",
-    "slug": "the-noir-layered-suit",
-    "categoryType": "set",
-    "gender": "female",
-    "category": "suits",
-    "categoryName": "Power Suits & Sets",
-    "categoryLabel": "POWER SUITS & SETS",
-    "shortType": "3-Piece Layered Vest & Trouser Set",
-    "setType": "3-Piece Layered Vest & Trouser Set",
-    "moment": "essentials",
-    "moments": [
-      "essentials"
-    ],
-    "momentName": "Executive Essentials",
-    "price": 5945,
-    "color": "Obsidian Black",
-    "availableColors": [
-      "Obsidian Black"
-    ],
-    "sizes": [
-      "XS",
-      "S",
-      "M",
-      "L",
-      "XL"
-    ],
-    "includedPieces": [
-      "Noir Structured Vest",
-      "Noir Layered Longline Vest",
-      "Noir Tailored Trousers"
-    ],
-    "coordinates": [
-      {
-        "slug": "the-noir-structured-vest",
-        "label": "Matching Structured Power Vest"
-      },
-      {
-        "slug": "the-noir-layered-longline-vest",
-        "label": "Matching Layered Longline Vest"
-      },
-      {
-        "slug": "the-noir-tailored-trousers",
-        "label": "Matching Tailored Trousers"
-      }
-    ],
-    "gallery": [
-      {
-        "url": "/products/the-noir-layered-suit/1.png",
-        "type": "model_front"
-      },
-      {
-        "url": "/products/the-noir-layered-suit/2.png",
-        "type": "model_three_quarter"
-      },
-      {
-        "url": "/products/the-noir-layered-suit/3.png",
-        "type": "model_side"
-      },
-      {
-        "url": "/products/the-noir-layered-suit/4.png",
-        "type": "detail"
-      },
-      {
-        "url": "/products/the-noir-layered-suit/5.png",
-        "type": "model_back"
-      },
-      {
-        "url": "/products/the-noir-layered-suit/6.png",
-        "type": "garment_front"
-      },
-      {
-        "url": "/products/the-noir-layered-suit/7.png",
-        "type": "detail"
-      }
-    ],
-    "pieces": "Includes Inner Tailored Vest + Layered Outer Vest + Coordinated Wide-Leg Trousers.",
-    "description": "A modern three-piece interpretation of black tailoring, designed around layered sleeveless structure and fluid proportions. Two sharply tailored vest layers create depth through the neckline, while coordinated wide-leg trousers complete the elongated silhouette.",
-    "story": "A versatile power piece built for multi-schedule days. Layered vests offer adaptable comfort between air-conditioned boardrooms and outdoor transits.",
-    "stylingNotes": "Wear all three pieces together for full formal weight, or wear the inner vest as a standalone top for warm afternoon sessions.",
-    "sizeFit": "Upper layers are tailored through the shoulders and waist. Trousers fall from the waist into a relaxed wide-leg shape.",
-    "fabricCare": {
-      "fabric": "Structured suiting blend with smooth tonal lining.",
-      "care": "Dry clean only."
-    },
-    "images": [
-      "/products/the-noir-layered-suit/1.png",
-      "/products/the-noir-layered-suit/2.png",
-      "/products/the-noir-layered-suit/3.png",
-      "/products/the-noir-layered-suit/4.png",
-      "/products/the-noir-layered-suit/5.png",
-      "/products/the-noir-layered-suit/6.png",
-      "/products/the-noir-layered-suit/7.png"
-    ],
-    "badge": null,
-    "isNew": true,
-    "separates": [
-      {
-        "slug": "the-noir-structured-vest",
-        "label": "Noir Structured Vest"
-      },
-      {
-        "slug": "the-noir-layered-longline-vest",
-        "label": "Noir Layered Longline Vest"
-      },
-      {
-        "slug": "the-noir-tailored-trousers",
-        "label": "Noir Tailored Trousers"
-      }
-    ]
-  },
-  {
     "id": "w-19",
     "name": "Noir Structured Vest",
     "slug": "the-noir-structured-vest",
@@ -2045,10 +1928,6 @@ export const PRODUCTS = [
     ],
     "coordinates": [
       {
-        "slug": "the-noir-layered-suit",
-        "label": "Full Outfit: Noir Layered Ensemble"
-      },
-      {
         "slug": "the-noir-tailored-trousers",
         "label": "Coordinating Noir Tailored Trousers"
       },
@@ -2057,7 +1936,7 @@ export const PRODUCTS = [
         "label": "Matching Noir Layered Longline Vest"
       }
     ],
-    "coordinateText": "Complete the full outfit with the Noir Layered Ensemble or pair with coordinating Noir Tailored Trousers.",
+    "coordinateText": "Pair with coordinating Noir Tailored Trousers or matching Noir Layered Longline Vest.",
     "gallery": [
       {
         "url": "/products/noir-structured-vest/1.JPG",
@@ -2550,15 +2429,15 @@ export const PRODUCTS = [
     ],
     "coordinates": [
       {
-        "slug": "the-noir-layered-suit",
-        "label": "Full Outfit: Noir Layered Ensemble"
-      },
-      {
         "slug": "the-noir-tailored-trousers",
         "label": "Coordinating Noir Tailored Trousers"
+      },
+      {
+        "slug": "the-noir-structured-vest",
+        "label": "Matching Noir Structured Vest"
       }
     ],
-    "coordinateText": "Complete the full outfit with the Noir Layered Ensemble or pair with coordinating Noir Tailored Trousers.",
+    "coordinateText": "Pair with coordinating Noir Tailored Trousers or matching Noir Structured Vest.",
     "gallery": [
       {
         "url": "/products/noir-layered-longline-vest/1.JPG",

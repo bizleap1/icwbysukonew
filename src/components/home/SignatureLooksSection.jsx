@@ -12,8 +12,8 @@ const SIGNATURE_LOOKS = [
   {
     id: "everyday-executive",
     title: "The Everyday Executive",
-    productSlug: "the-noir-layered-suit",
-    image: "/products/the-noir-layered-suit/1.webp",
+    productSlug: "the-midnight-sculpted-vest-set",
+    image: "/products/midnight-sculpted-vest-set/1.webp",
   },
   {
     id: "travel-edit",

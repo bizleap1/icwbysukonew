@@ -1128,7 +1128,6 @@ const ProductCard = ({ product }) => {
     "the-midnight-peplum-set",
     "the-midnight-sculpted-vest-set",
     "the-dusty-rose-embroidered-farchi-set",
-    "the-noir-layered-suit",
     "the-noir-tailored-suit",
     "the-plum-sculpted-suit"
   ].includes(product.slug);

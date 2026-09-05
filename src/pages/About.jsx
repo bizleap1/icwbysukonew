@@ -102,13 +102,13 @@ export const About = () => {
             <div className="lg:col-span-5 mt-6 sm:mt-8 lg:mt-0 flex justify-center lg:justify-end w-full">
               <div className="w-full max-w-[490px] lg:max-w-none aspect-[4/5] lg:aspect-auto lg:h-[340px] xl:h-[360px] overflow-hidden bg-[#FAF8F5] border border-[#E8E4DC] shadow-sm relative">
                 <img
-                  src="/products/the-noir-layered-suit/7.webp"
-                  alt="SUKO Noir Layered Tailoring Craftsmanship"
+                  src="/products/the-noir-tailored-suit/7.webp"
+                  alt="SUKO Noir Tailoring Craftsmanship"
                   loading="lazy"
                   decoding="async"
                   onError={(e) => {
-                    if (e.currentTarget.src !== "/products/the-noir-layered-suit/7.png") {
-                      e.currentTarget.src = "/products/the-noir-layered-suit/7.png";
+                    if (e.currentTarget.src !== "/products/the-noir-tailored-suit/7.png") {
+                      e.currentTarget.src = "/products/the-noir-tailored-suit/7.png";
                     }
                   }}
                   className="w-full h-full object-cover object-[center_50%] scale-[1.32] lg:scale-[1.35] transition-transform duration-700 hover:scale-[1.38]"
