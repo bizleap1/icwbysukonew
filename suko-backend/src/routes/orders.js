@@ -1,6 +1,7 @@
 const express = require("express");
 const { pool } = require("../db");
 const { requireAuth, requireAdmin } = require("../auth");
+const { validateCreateOrder } = require("../middleware/validate");
 
 const router = express.Router();
 
@@ -83,14 +84,10 @@ async function getOrderWithItems(orderId) {
 }
 
 // POST /api/orders  -- create a new order (checkout)
-router.post("/", requireAuth, async (req, res) => {
+router.post("/", requireAuth, validateCreateOrder, async (req, res) => {
   const client = await pool.connect();
   try {
     const { items, name, phone, line1, city, state, pincode } = req.body;
-
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: "Order must include at least one item." });
-    }
 
     const total = items.reduce(
       (sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 1),

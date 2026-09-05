@@ -2,17 +2,16 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const { pool } = require("../db");
 const { signToken, requireAuth } = require("../auth");
+const { authLimiter } = require("../middleware/rateLimiter");
+const { validateLogin, validateRegister } = require("../middleware/validate");
 
 const router = express.Router();
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "10", 10);
 
 // POST /api/auth/register  (customer self-registration)
-router.post("/register", async (req, res) => {
+router.post("/register", authLimiter, validateRegister, async (req, res) => {
   try {
     const { name, phone, email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required." });
-    }
 
     const existing = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
     if (existing.rows.length > 0) {
@@ -37,12 +36,9 @@ router.post("/register", async (req, res) => {
 });
 
 // POST /api/auth/login  (customer + admin)
-router.post("/login", async (req, res) => {
+router.post("/login", authLimiter, validateLogin, async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required." });
-    }
 
     const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     const user = result.rows[0];

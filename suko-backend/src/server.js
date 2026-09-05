@@ -7,8 +7,15 @@ const authRoutes = require("./routes/auth");
 const ordersRoutes = require("./routes/orders");
 const statsRoutes = require("./routes/stats");
 
+const { securityHeaders, requestLogger } = require("./middleware/security");
+const { apiLimiter } = require("./middleware/rateLimiter");
+
 const app = express();
 app.set("trust proxy", process.env.TRUST_PROXY === "1" ? 1 : 0);
+
+// Global Security Headers & Request Logger
+app.use(securityHeaders);
+app.use(requestLogger);
 
 // CORS: allow local development and storefront domain(s)
 const configuredOrigins = (process.env.ALLOWED_ORIGINS || "")
@@ -57,6 +64,9 @@ app.get("/health", async (req, res) => {
     res.status(500).json({ status: "error", db: "disconnected" });
   }
 });
+
+// Rate limiting on all /api routes
+app.use("/api", apiLimiter);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/orders", ordersRoutes);
