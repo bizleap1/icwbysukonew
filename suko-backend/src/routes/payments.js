@@ -2,6 +2,7 @@ const express = require("express");
 const crypto = require("crypto");
 const { pool } = require("../db");
 const { requireAuth } = require("../auth");
+const { sendOrderInvoiceEmail } = require("../services/emailService");
 
 const router = express.Router();
 
@@ -135,6 +136,14 @@ router.post("/verify", requireAuth, async (req, res) => {
     );
 
     const fullOrder = await getOrderDetails(order_id);
+
+    // Asynchronously dispatch updated paid luxury invoice
+    if (fullOrder) {
+      sendOrderInvoiceEmail(fullOrder).catch((mailErr) => {
+        console.warn("⚠️  [EmailService] Payment invoice email dispatch failed:", mailErr.message);
+      });
+    }
+
     return res.json({
       order: fullOrder,
       alreadyVerified: true,

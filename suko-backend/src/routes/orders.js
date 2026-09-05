@@ -2,6 +2,7 @@ const express = require("express");
 const { pool } = require("../db");
 const { requireAuth, requireAdmin } = require("../auth");
 const { validateCreateOrder } = require("../middleware/validate");
+const { sendOrderInvoiceEmail } = require("../services/emailService");
 
 const router = express.Router();
 
@@ -134,6 +135,15 @@ router.post("/", requireAuth, validateCreateOrder, async (req, res) => {
     await client.query("COMMIT");
 
     const fullOrder = await getOrderWithItems(order.id);
+
+    // Asynchronously dispatch luxury order invoice email
+    sendOrderInvoiceEmail(fullOrder, { 
+      email: req.user.email || order.email, 
+      name: name || req.user.name || order.name 
+    }).catch((mailErr) => {
+      console.warn("⚠️  [EmailService] Order invoice email dispatch failed:", mailErr.message);
+    });
+
     res.status(201).json(fullOrder);
   } catch (err) {
     await client.query("ROLLBACK");
