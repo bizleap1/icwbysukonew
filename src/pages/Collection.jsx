@@ -1105,12 +1105,46 @@ const ProductCard = ({ product }) => {
   const [hasHovered, setHasHovered] = useState(false);
   const isWishlisted = isInWishlist ? isInWishlist(product.id || product._id) : false;
 
-  // On Collection page: Always 1st image as primary display, 2nd image on hover
-  const firstImg = product.images?.find(img => img.includes("1.png") || img.includes("1.webp") || img.includes("1.JPG")) || product.images?.[0] || product.image || "/placeholder.png";
-  const secondImg = product.images?.find(img => img.includes("2.png") || img.includes("2.webp") || img.includes("2.JPG")) || product.images?.[1] || firstImg;
+  // Helper to determine if a product is a standalone trouser or skirt (separate bottom)
+  const isTrouserOrSkirt = (() => {
+    if (!product) return false;
+    const cat = (product.category || "").toLowerCase();
+    const catName = (product.categoryName || "").toLowerCase();
+    const catType = (product.categoryType || "").toLowerCase();
+    const sub = (product.subCategory || "").toLowerCase();
+    const slug = (product.slug || "").toLowerCase();
+    const name = (product.name || "").toLowerCase();
 
-  const primaryImage = firstImg;
-  const hoverImage = secondImg;
+    // Full suits, sets, or coordinated ensembles are not standalone trousers or skirts
+    if (slug.includes("suit") || slug.includes("set") || name.includes("suit") || name.includes("set")) {
+      return false;
+    }
+
+    if (catType === "trouser" || catType === "skirt") {
+      return true;
+    }
+
+    return (
+      cat === "separates" ||
+      catName.includes("separates") ||
+      sub.includes("trouser") ||
+      sub.includes("pant") ||
+      sub.includes("skirt") ||
+      slug.includes("trouser") ||
+      slug.includes("pant") ||
+      slug.includes("skirt") ||
+      name.includes("trouser") ||
+      name.includes("skirt")
+    );
+  })();
+
+  // 1st and 2nd images
+  const firstImg = product.images?.find(img => typeof img === "string" && (img.includes("1.png") || img.includes("1.webp") || img.includes("1.JPG") || img.includes("1.jpg"))) || (typeof product.images?.[0] === "string" ? product.images[0] : product.images?.[0]?.url) || product.image || "/placeholder.png";
+  const secondImg = product.images?.find(img => typeof img === "string" && (img.includes("2.png") || img.includes("2.webp") || img.includes("2.JPG") || img.includes("2.jpg"))) || (typeof product.images?.[1] === "string" ? product.images[1] : product.images?.[1]?.url) || firstImg;
+
+  // On Collection page: Trousers & Skirts show 2nd image as default (hover reveals 1st image). Suits & sets show 1st image as default (hover reveals 2nd image).
+  const primaryImage = isTrouserOrSkirt ? secondImg : firstImg;
+  const hoverImage = isTrouserOrSkirt ? firstImg : secondImg;
 
   const formattedPrice = typeof product.price === "number"
     ? `₹${product.price.toLocaleString("en-IN")}`

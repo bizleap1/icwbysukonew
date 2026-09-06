@@ -332,26 +332,54 @@ export const SearchModal = ({ isOpen, onClose }) => {
                       Products ({productResults.length})
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-8">
-                      {productResults.map((product) => (
-                        <div
-                          key={product.id}
-                          onClick={() => handleSelect(`/product/${product.slug}`)}
-                          className="cursor-pointer group flex flex-col"
-                        >
-                          <div className="aspect-[3/4] overflow-hidden bg-[#F3EFE6] relative mb-3">
-                            <img
-                              src={getCardImage(product.images[0])}
-                              alt={product.name}
-                              loading="lazy"
-                              decoding="async"
-                              onError={(e) => {
-                                if (e.currentTarget.src !== product.images[0]) {
-                                  e.currentTarget.src = product.images[0];
-                                }
-                              }}
-                              className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-700 ease-out"
-                            />
-                          </div>
+                      {productResults.map((product) => {
+                        const isBottom = (() => {
+                          const cat = (product.category || "").toLowerCase();
+                          const catName = (product.categoryName || "").toLowerCase();
+                          const catType = (product.categoryType || "").toLowerCase();
+                          const sub = (product.subCategory || "").toLowerCase();
+                          const slug = (product.slug || "").toLowerCase();
+                          const name = (product.name || "").toLowerCase();
+
+                          if (slug.includes("suit") || slug.includes("set") || name.includes("suit") || name.includes("set")) return false;
+                          if (catType === "trouser" || catType === "skirt") return true;
+
+                          return (
+                            cat === "separates" ||
+                            catName.includes("separates") ||
+                            sub.includes("trouser") ||
+                            sub.includes("pant") ||
+                            sub.includes("skirt") ||
+                            slug.includes("trouser") ||
+                            slug.includes("pant") ||
+                            slug.includes("skirt") ||
+                            name.includes("trouser") ||
+                            name.includes("skirt")
+                          );
+                        })();
+
+                        const displayImg = (isBottom && (product.images?.[1] || product.images?.find((img) => typeof img === "string" && img.includes("2.")))) || product.images?.[0] || product.image_url || "/placeholder.png";
+
+                        return (
+                          <div
+                            key={product.id}
+                            onClick={() => handleSelect(`/product/${product.slug}`)}
+                            className="cursor-pointer group flex flex-col"
+                          >
+                            <div className="aspect-[3/4] overflow-hidden bg-[#F3EFE6] relative mb-3">
+                              <img
+                                src={getCardImage(displayImg)}
+                                alt={product.name}
+                                loading="lazy"
+                                decoding="async"
+                                onError={(e) => {
+                                  if (e.currentTarget.src !== displayImg) {
+                                    e.currentTarget.src = displayImg;
+                                  }
+                                }}
+                                className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-700 ease-out"
+                              />
+                            </div>
                           <span className="text-[9.5px] uppercase tracking-[0.20em] font-light text-[#8C827A] mb-1">
                             {product.category}
                           </span>
@@ -362,7 +390,8 @@ export const SearchModal = ({ isOpen, onClose }) => {
                             {formatINR(product.price)}
                           </span>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
