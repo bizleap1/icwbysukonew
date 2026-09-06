@@ -1034,113 +1034,80 @@ const Admin = () => {
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
-        {/* Top Header with Logo */}
+        {/* Top Header with Brand Atelier Identity */}
         <div>
-          <div className="pb-5 border-b border-[#E5DDD1] flex items-start justify-between">
-            <Link to="/" className="inline-block group" onClick={() => setIsMobileSidebarOpen(false)}>
-              <div className="leading-tight">
-                <span className="font-quiche text-2xl sm:text-[26px] font-medium tracking-[0.16em] text-[#171717] block group-hover:text-[#C2922E] transition-colors leading-none">
-                  ICW
-                </span>
-                <span className="text-[10.5px] uppercase tracking-[0.18em] text-[#746F68] font-light block mt-1">
-                  BY SUKO
-                </span>
-              </div>
-            </Link>
-            <button
-              type="button"
-              onClick={() => setIsMobileSidebarOpen(false)}
-              className="md:hidden p-1 text-[#746F68] hover:text-[#171717]"
-              aria-label="Close sidebar"
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          <div className="w-10 h-px bg-[#C2922E]/60 my-3" />
-          <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#C2922E] font-medium font-mono block mb-5">
-            ATELIER CONTROL
-          </span>
-
-          {/* Navigation Groups */}
-          <nav className="space-y-6">
-            
-            {/* Overview Item */}
-            <div>
+          <div className="pb-5 border-b border-[#E5DDD1]">
+            <div className="flex items-start justify-between">
+              <Link to="/" className="inline-block group" onClick={() => setIsMobileSidebarOpen(false)}>
+                <div className="flex items-center gap-3">
+                  <img
+                    src="/logo.png"
+                    alt="SUKO Atelier"
+                    className="h-[36px] sm:h-[40px] w-auto object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                  />
+                  <div className="space-y-0.5">
+                    <span className="font-serif text-[11px] tracking-[0.16em] uppercase text-[#171717] font-medium block leading-tight">
+                      ICW BY SUKO
+                    </span>
+                    <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#C2922E] font-medium font-mono block leading-tight">
+                      ATELIER CONTROL
+                    </span>
+                  </div>
+                </div>
+              </Link>
               <button
                 type="button"
-                onClick={() => { setActiveTab("overview"); setIsMobileSidebarOpen(false); }}
-                className={`w-full text-[11.5px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
-                  activeTab === "overview"
-                    ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
-                    : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
-                }`}
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="md:hidden p-1 text-[#746F68] hover:text-[#171717] cursor-pointer"
+                aria-label="Close sidebar"
               >
-                <LayoutDashboard size={15} className={activeTab === "overview" ? "text-[#C2922E]" : "text-[#746F68]"} />
-                <span>Overview</span>
+                <X size={18} />
               </button>
             </div>
+            <p className="text-[10px] text-[#746F68] font-light mt-3 tracking-wide pl-0.5">
+              Private Studio Operations
+            </p>
+          </div>
 
-            {/* CATALOG GROUP */}
+          {/* Navigation Chapters */}
+          <nav className="space-y-5 mt-5">
+            
+            {/* REGISTRY CHAPTER */}
             <div>
-              <span className="text-[9px] uppercase tracking-[0.12em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
-                CATALOG
+              <span className="text-[9px] uppercase tracking-[0.14em] text-[#A8A29A] font-mono font-medium px-3 block mb-1">
+                REGISTRY
               </span>
-              <div className="space-y-1">
+              <div>
                 <button
                   type="button"
-                  onClick={() => { setActiveTab("products"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center justify-between transition-colors relative font-medium ${
-                    activeTab === "products"
-                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                  onClick={() => { setActiveTab("overview"); setIsMobileSidebarOpen(false); }}
+                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
+                    activeTab === "overview"
+                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <Package size={15} className={activeTab === "products" ? "text-[#C2922E]" : "text-[#746F68]"} />
-                    <span>Products</span>
-                  </div>
-                  {lowStockProducts.length > 0 && (
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30">
-                      {lowStockProducts.length}
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab("categories"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
-                    activeTab === "categories"
-                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
-                  }`}
-                >
-                  <Layers size={15} className={activeTab === "categories" ? "text-[#C2922E]" : "text-[#746F68]"} />
-                  <span>Categories</span>
+                  <span>Overview</span>
                 </button>
               </div>
             </div>
 
-            {/* COMMERCE GROUP */}
+            {/* OPERATIONS CHAPTER */}
             <div>
-              <span className="text-[9px] uppercase tracking-[0.12em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
-                COMMERCE
+              <span className="text-[9px] uppercase tracking-[0.14em] text-[#A8A29A] font-mono font-medium px-3 block mb-1">
+                OPERATIONS
               </span>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <button
                   type="button"
                   onClick={() => { setActiveTab("orders"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center justify-between transition-colors relative font-medium ${
+                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
                     activeTab === "orders"
-                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <ShoppingBag size={15} className={activeTab === "orders" ? "text-[#C2922E]" : "text-[#746F68]"} />
-                    <span>Orders</span>
-                  </div>
+                  <span>Orders</span>
                   {cancellationRequests.length > 0 && (
                     <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-rose-500/15 text-rose-800 border border-rose-500/30">
                       {cancellationRequests.length} Cancel
@@ -1151,101 +1118,130 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("payments"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center justify-between transition-colors relative font-medium ${
+                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
                     activeTab === "payments"
-                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <ShieldCheck size={15} className={activeTab === "payments" ? "text-[#C2922E]" : "text-[#746F68]"} />
-                    <span>Payments &amp; UTR</span>
-                  </div>
+                  <span>Payments &amp; UTR</span>
                   {verificationRequests.length > 0 && (
                     <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-800 border border-amber-500/40 font-bold animate-pulse">
                       {verificationRequests.length}
                     </span>
                   )}
                 </button>
+              </div>
+            </div>
+
+            {/* CATALOGUE CHAPTER */}
+            <div>
+              <span className="text-[9px] uppercase tracking-[0.14em] text-[#A8A29A] font-mono font-medium px-3 block mb-1">
+                CATALOGUE
+              </span>
+              <div className="space-y-0.5">
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("products"); setIsMobileSidebarOpen(false); }}
+                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
+                    activeTab === "products"
+                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
+                  }`}
+                >
+                  <span>Products</span>
+                  {lowStockProducts.length > 0 && (
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30">
+                      {lowStockProducts.length}
+                    </span>
+                  )}
+                </button>
 
                 <button
                   type="button"
-                  onClick={() => { setActiveTab("coupons"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
-                    activeTab === "coupons"
-                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                  onClick={() => { setActiveTab("categories"); setIsMobileSidebarOpen(false); }}
+                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
+                    activeTab === "categories"
+                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
                   }`}
                 >
-                  <Tag size={15} className={activeTab === "coupons" ? "text-[#C2922E]" : "text-[#746F68]"} />
-                  <span>Coupons</span>
+                  <span>Categories</span>
                 </button>
               </div>
             </div>
 
-            {/* CLIENTS GROUP */}
+            {/* CLIENTS CHAPTER */}
             <div>
-              <span className="text-[9px] uppercase tracking-[0.12em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
+              <span className="text-[9px] uppercase tracking-[0.14em] text-[#A8A29A] font-mono font-medium px-3 block mb-1">
                 CLIENTS
               </span>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <button
                   type="button"
                   onClick={() => { setActiveTab("customers"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
                     activeTab === "customers"
-                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
                   }`}
                 >
-                  <Users size={15} className={activeTab === "customers" ? "text-[#C2922E]" : "text-[#746F68]"} />
                   <span>Customers</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => { setActiveTab("reviews"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
                     activeTab === "reviews"
-                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
                   }`}
                 >
-                  <Star size={15} className={activeTab === "reviews" ? "text-[#C2922E]" : "text-[#746F68]"} />
                   <span>Reviews</span>
                 </button>
               </div>
             </div>
 
-            {/* COMMUNICATION GROUP */}
+            {/* DISPATCH CHAPTER */}
             <div>
-              <span className="text-[9px] uppercase tracking-[0.12em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
-                COMMUNICATION
+              <span className="text-[9px] uppercase tracking-[0.14em] text-[#A8A29A] font-mono font-medium px-3 block mb-1">
+                DISPATCH
               </span>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("coupons"); setIsMobileSidebarOpen(false); }}
+                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
+                    activeTab === "coupons"
+                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
+                  }`}
+                >
+                  <span>Coupons</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => { setActiveTab("broadcast"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
                     activeTab === "broadcast"
-                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
                   }`}
                 >
-                  <Mail size={15} className={activeTab === "broadcast" ? "text-[#C2922E]" : "text-[#746F68]"} />
                   <span>Broadcast Email</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => { setActiveTab("calendar"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
                     activeTab === "calendar"
-                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
                   }`}
                 >
-                  <CalendarIcon size={15} className={activeTab === "calendar" ? "text-[#C2922E]" : "text-[#746F68]"} />
                   <span>Schedule</span>
                 </button>
               </div>
@@ -1266,14 +1262,14 @@ const Admin = () => {
             <button
               type="button"
               onClick={exportOrdersCSV}
-              className="text-[10px] uppercase tracking-[0.18em] text-[#746F68] hover:text-[#171717] transition-colors flex items-center gap-1.5"
+              className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] hover:text-[#171717] transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Download size={13} className="text-[#C2922E]" />
               <span>Export CSV</span>
             </button>
             <Link
               to="/"
-              className="text-[10px] uppercase tracking-[0.18em] text-[#C2922E] hover:underline font-medium"
+              className="text-[10px] uppercase tracking-[0.14em] text-[#C2922E] hover:underline font-medium"
             >
               Storefront &rarr;
             </Link>
@@ -1391,33 +1387,40 @@ const Admin = () => {
               {activeTab === "overview" && (
                 <div className="space-y-8">
                   
-                  {/* 1. ANALYTICS CONTROL BAR */}
-                  <div className="bg-[#FCFAF7] border border-[#E5DDD1] p-4 sm:p-5 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                      <span className="text-[10px] uppercase tracking-[0.12em] text-[#171717] font-semibold block font-sans">
-                        DATE-WISE ANALYTICS
-                      </span>
-                      <p className="text-[11px] text-[#746F68] font-light mt-0.5">
-                        Insights for a more refined tomorrow
+                  {/* 1. EDITORIAL OPENING MOMENT */}
+                  <div className="pb-6 border-b border-[#E5DDD1] flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]" />
+                        <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#746F68] font-mono">
+                          SUKO ATELIER · PRIVATE STUDIO CONSOLE
+                        </span>
+                      </div>
+                      <h2 className="font-serif text-3xl sm:text-4xl font-normal text-[#171717] tracking-tight leading-tight">
+                        Atelier Control &amp; Operations
+                      </h2>
+                      <p className="text-xs text-[#746F68] font-light">
+                        Fiscal Period {new Date().getFullYear()} · Reconciled Currency: INR (₹) · Real-time Studio Data
                       </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    {/* Operational Date Filters */}
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       {[
                         { id: "all", label: "All Time" },
                         { id: "today", label: "Today" },
-                        { id: "7days", label: "Last 7 Days" },
+                        { id: "7days", label: "7 Days" },
                         { id: "month", label: "This Month" },
-                        { id: "custom", label: "Custom Range" },
+                        { id: "custom", label: "Custom" },
                       ].map((preset) => (
                         <button
                           key={preset.id}
                           type="button"
                           onClick={() => setDatePreset(preset.id)}
-                          className={`text-[10.5px] uppercase tracking-[0.14em] px-4 py-1.5 rounded-full transition-all cursor-pointer font-medium ${
+                          className={`text-[10px] uppercase tracking-[0.12em] px-3.5 py-1.5 rounded-md transition-all cursor-pointer font-medium ${
                             datePreset === preset.id
                               ? "bg-[#171717] text-white shadow-xs"
-                              : "bg-[#FAF8F5] border border-[#E5DDD1] text-[#746F68] hover:text-[#171717] hover:border-[#171717]"
+                              : "bg-white border border-[#E5DDD1] text-[#746F68] hover:text-[#171717] hover:border-[#171717]"
                           }`}
                         >
                           {preset.label}
@@ -1425,51 +1428,98 @@ const Admin = () => {
                       ))}
 
                       {datePreset === "custom" && (
-                        <div className="flex items-center gap-2 font-mono text-xs">
+                        <div className="flex items-center gap-2 font-mono text-xs ml-1">
                           <input
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            className="bg-white border border-[#E5DDD1] rounded-lg px-2.5 py-1 text-[#171717] outline-none focus:border-[#C2922E]"
+                            className="bg-white border border-[#E5DDD1] rounded px-2 py-1 text-[#171717] outline-none focus:border-[#C2922E] text-xs"
                           />
-                          <span className="text-[#746F68]">to</span>
+                          <span className="text-[#746F68] text-xs">to</span>
                           <input
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
-                            className="bg-white border border-[#E5DDD1] rounded-lg px-2.5 py-1 text-[#171717] outline-none focus:border-[#C2922E]"
+                            className="bg-white border border-[#E5DDD1] rounded px-2 py-1 text-[#171717] outline-none focus:border-[#C2922E] text-xs"
                           />
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* 2. KPI SUMMARY CARDS (4 Cards, restrained 16-18px geometry) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
-                    <StatCard
-                      icon={<DollarSign size={18} />}
-                      label="PERIOD REVENUE"
-                      value={formatINR(filteredRevenue)}
-                      subText={datePreset === "all" ? "Lifetime Paid Earnings" : `Paid in ${datePreset}`}
-                    />
-                    <StatCard
-                      icon={<ShoppingBag size={18} />}
-                      label="PAID ORDERS"
-                      value={filteredPaidOrders.length}
-                      subText={`${filteredPaidOrders.length} Paid in Full · ${verificationRequests.length} Pending Verification`}
-                    />
-                    <StatCard
-                      icon={<Package size={18} />}
-                      label="TOTAL PRODUCTS"
-                      value={stats.totalProducts}
-                      subText={`${lowStockProducts.length} Require Restock`}
-                    />
-                    <StatCard
-                      icon={<Users size={18} />}
-                      label="REGISTERED CLIENTS"
-                      value={stats.totalUsers}
-                      subText="Client Accounts on Record"
-                    />
+                  {/* 2. ATELIER LEDGER FOLIO (Horizontal Ledger Strip with Hairline Dividers) */}
+                  <div className="bg-[#FCFAF7] border border-[#E5DDD1] shadow-[0_2px_12px_rgba(0,0,0,0.02)] rounded-lg grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#E5DDD1]">
+                    {/* Folio 1: Period Revenue */}
+                    <div className="p-5 sm:p-6 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono">
+                          Period Revenue
+                        </span>
+                        <span className="text-[9px] font-mono text-[#C2922E] font-medium">₹ INR</span>
+                      </div>
+                      <div className="font-serif text-3xl sm:text-[34px] font-normal text-[#171717] tracking-tight truncate leading-tight">
+                        {formatINR(filteredRevenue)}
+                      </div>
+                      <p className="text-[11px] text-[#746F68] font-light truncate">
+                        {datePreset === "all" ? "Lifetime Paid Earnings" : `Paid in ${datePreset === "today" ? "Today" : datePreset === "7days" ? "Last 7 Days" : datePreset === "month" ? "This Month" : "Selected Period"}`}
+                      </p>
+                    </div>
+
+                    {/* Folio 2: Paid Orders */}
+                    <div className="p-5 sm:p-6 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono">
+                          Paid Orders
+                        </span>
+                        {verificationRequests.length > 0 && (
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30">
+                            {verificationRequests.length} Pending
+                          </span>
+                        )}
+                      </div>
+                      <div className="font-serif text-3xl sm:text-[34px] font-normal text-[#171717] tracking-tight truncate leading-tight">
+                        {filteredPaidOrders.length}
+                      </div>
+                      <p className="text-[11px] text-[#746F68] font-light truncate">
+                        {filteredPaidOrders.length} Reconciled · {verificationRequests.length} Pending Verification
+                      </p>
+                    </div>
+
+                    {/* Folio 3: Active Garments */}
+                    <div className="p-5 sm:p-6 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono">
+                          Total Garments
+                        </span>
+                        {lowStockProducts.length > 0 && (
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30">
+                            {lowStockProducts.length} Restock
+                          </span>
+                        )}
+                      </div>
+                      <div className="font-serif text-3xl sm:text-[34px] font-normal text-[#171717] tracking-tight truncate leading-tight">
+                        {stats.totalProducts}
+                      </div>
+                      <p className="text-[11px] text-[#746F68] font-light truncate">
+                        {lowStockProducts.length > 0 ? `${lowStockProducts.length} Pieces Require Restock` : "Garment Inventory Healthy"}
+                      </p>
+                    </div>
+
+                    {/* Folio 4: Registered Clients */}
+                    <div className="p-5 sm:p-6 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono">
+                          Registered Clients
+                        </span>
+                        <span className="text-[9px] font-mono text-[#746F68]">Roster</span>
+                      </div>
+                      <div className="font-serif text-3xl sm:text-[34px] font-normal text-[#171717] tracking-tight truncate leading-tight">
+                        {stats.totalUsers}
+                      </div>
+                      <p className="text-[11px] text-[#746F68] font-light truncate">
+                        Client Accounts on Record
+                      </p>
+                    </div>
                   </div>
 
                   {/* 3. MAIN ANALYTICS SECTION (Two-Column Layout) */}
@@ -3687,18 +3737,5 @@ const Admin = () => {
     </div>
   );
 };
-
-const StatCard = ({ icon, label, value, subText }) => (
-  <div className="p-4 sm:p-4.5 lg:p-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.015)] hover:border-[#C2922E]/40 transition-all flex items-start gap-3.5 group">
-    <div className="w-9.5 h-9.5 rounded-lg bg-[#FAF8F5] border border-[#E5DDD1] text-[#C2922E] flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
-      {icon}
-    </div>
-    <div className="min-w-0 flex-1">
-      <p className="text-[10px] uppercase tracking-[0.12em] text-[#746F68] font-mono mb-0.5">{label}</p>
-      <p className="font-quiche text-2xl sm:text-[26px] font-light text-[#171717] tracking-tight truncate leading-tight">{value}</p>
-      {subText && <p className="text-[10.5px] text-[#746F68] font-light mt-1 truncate">{subText}</p>}
-    </div>
-  </div>
-);
 
 export default Admin;
