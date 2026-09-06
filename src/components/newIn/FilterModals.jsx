@@ -118,7 +118,7 @@ export const FilterDrawer = ({
                       Filter Separates By:
                     </span>
                     <div className="flex flex-wrap gap-1.5">
-                      {["All Separates", "Blazers", "Jackets", "Vests", "Tunics", "Trousers", "Skirts"].map((sub) => {
+                      {["All Separates", "Trousers", "Skirts"].map((sub) => {
                         const subKey = sub === "All Separates" ? "all" : sub.toLowerCase();
                         const isSubActive = (selectedSubCategory || "all") === subKey;
                         return (

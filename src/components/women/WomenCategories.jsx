@@ -28,8 +28,8 @@ export const WomenCategories = () => {
     {
       num: "02",
       title: "Tailored Separates",
-      tagline: "Blazers · Jackets · Vests · Tunics · Pants · Skirts",
-      image: "/products/midnight-sculpted-vest/1.png",
+      tagline: "Tailored Trousers & Fluted Skirts",
+      image: "/products/the-noir-tailored-trousers/2.png",
       link: "/collection?category=separates&gender=women"
     },
     {

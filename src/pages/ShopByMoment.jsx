@@ -180,20 +180,66 @@ export const ShopByMoment = () => {
 
           {/* Product Grid: 1 Column Stacked on Mobile, Balanced Columns on Desktop */}
           <div className={`grid grid-cols-1 ${momentProducts.length === 2 ? "sm:grid-cols-2 max-w-[940px]" : "sm:grid-cols-2 lg:grid-cols-3"} gap-7 sm:gap-9 lg:gap-11`}>
-            {momentProducts.map((product) => (
-              <div
-                key={product.id}
-                className="group flex flex-col justify-between"
-              >
-                {/* 1. Large Editorial Image (4:5 Ratio, 0px border-radius) */}
-                <Link to={`/product/${product.slug}`} className="block relative aspect-[4/5] overflow-hidden bg-[#F2EFEB] rounded-none">
-                  <img
-                    src={product.images[0]}
-                    alt={product.name}
-                    loading="lazy"
-                    className="w-full h-full object-cover object-[50%_15%] transition-transform duration-700 ease-out group-hover:scale-104"
-                  />
-                </Link>
+            {momentProducts.map((product) => {
+              const isBottom = (() => {
+                const cat = (product.category || "").toLowerCase();
+                const catName = (product.categoryName || "").toLowerCase();
+                const sub = (product.subCategory || "").toLowerCase();
+                const slug = (product.slug || "").toLowerCase();
+                const name = (product.name || "").toLowerCase();
+                if (slug.includes("suit") || slug.includes("set") || name.includes("suit") || name.includes("set")) {
+                  return false;
+                }
+                return (
+                  cat === "separates" ||
+                  catName.includes("separates") ||
+                  sub.includes("trouser") ||
+                  sub.includes("pant") ||
+                  sub.includes("skirt") ||
+                  slug.includes("trouser") ||
+                  slug.includes("pant") ||
+                  slug.includes("skirt") ||
+                  name.includes("trouser") ||
+                  name.includes("skirt")
+                );
+              })();
+
+              const firstImg =
+                product.images?.find((img) => typeof img === "string" && (img.includes("1.png") || img.includes("1.webp") || img.includes("1.JPG") || img.includes("1.jpg"))) ||
+                (typeof product.images?.[0] === "string" ? product.images[0] : product.images?.[0]?.url) ||
+                product.image_url;
+
+              const secondImg =
+                product.images?.find((img) => typeof img === "string" && (img.includes("2.png") || img.includes("2.webp") || img.includes("2.JPG") || img.includes("2.jpg"))) ||
+                (typeof product.images?.[1] === "string" ? product.images[1] : product.images?.[1]?.url) ||
+                firstImg;
+
+              const displayImg = isBottom ? secondImg : firstImg;
+              const hoverImg = isBottom ? firstImg : secondImg;
+
+              return (
+                <div
+                  key={product.id}
+                  className="group flex flex-col justify-between"
+                >
+                  {/* 1. Large Editorial Image (4:5 Ratio, 0px border-radius, smooth luxury crossfade) */}
+                  <Link to={`/product/${product.slug}`} className="block relative aspect-[4/5] overflow-hidden bg-[#F2EFEB] rounded-none">
+                    <img
+                      src={displayImg}
+                      alt={product.name}
+                      loading="lazy"
+                      className="w-full h-full object-cover object-[50%_15%] transition-transform duration-700 ease-out group-hover:scale-104"
+                    />
+                    {hoverImg && hoverImg !== displayImg && (
+                      <img
+                        src={hoverImg}
+                        alt=""
+                        aria-hidden="true"
+                        loading="lazy"
+                        className="absolute inset-0 w-full h-full object-cover object-[50%_15%] opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-out pointer-events-none"
+                      />
+                    )}
+                  </Link>
 
                 {/* 2. Whitespace & Clean Product Details (Name -> Category -> Short Type -> Price) */}
                 <div className="pt-4 pb-1 flex-1 flex flex-col justify-between">
@@ -235,7 +281,8 @@ export const ShopByMoment = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
         </div>
 

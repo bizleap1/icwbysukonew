@@ -192,20 +192,12 @@ export const Collection = () => {
           const isSeparate = cat === "separates" || catName === "tailored separates";
           if (!isSeparate) return false;
 
-          // Subcategory check (Blazers, Jackets, Vests, Trousers, Skirts)
+          // Subcategory check (Trousers, Skirts)
           if (selectedSubCategory && selectedSubCategory !== "all") {
             const sub = selectedSubCategory.toLowerCase();
             const pSub = (p.subCategory || "").toLowerCase();
 
-            if (sub === "vests" || sub === "vest") {
-              if (!pSub.includes("vest")) return false;
-            } else if (sub === "jackets" || sub === "jacket") {
-              if (!pSub.includes("jacket")) return false;
-            } else if (sub === "blazers" || sub === "blazer") {
-              if (!pSub.includes("blazer")) return false;
-            } else if (sub === "tunics" || sub === "tunic" || sub.includes("tunic")) {
-              if (!pSub.includes("tunic")) return false;
-            } else if (sub === "pants" || sub === "pant" || sub === "trousers" || sub === "trouser") {
+            if (sub === "pants" || sub === "pant" || sub === "trousers" || sub === "trouser") {
               if (!pSub.includes("trouser") && !pSub.includes("pant")) return false;
             } else if (sub === "skirts" || sub === "skirt") {
               if (!pSub.includes("skirt")) return false;
@@ -606,7 +598,7 @@ export const Collection = () => {
         {selectedCategory === "separates" && (
           <div className="w-full bg-[#F5F1E8]/95 border-t border-[#E8E4DC] py-2 sm:py-2.5 px-4 sm:px-8 lg:px-14 flex items-center justify-start sm:justify-center gap-4 sm:gap-6 overflow-x-auto hide-scrollbar text-[10px] sm:text-[10.5px] uppercase tracking-[0.2em]">
             <span className="text-[#8C887B] font-medium shrink-0">SEPARATES:</span>
-            {["All Separates", "Blazers", "Jackets", "Vests", "Tunics", "Trousers", "Skirts"].map((sub) => {
+            {["All Separates", "Trousers", "Skirts"].map((sub) => {
               const subKey = sub === "All Separates" ? "all" : sub.toLowerCase();
               const isSubActive = selectedSubCategory === subKey;
               return (
@@ -927,7 +919,7 @@ export const Collection = () => {
                       Filter Separates By:
                     </span>
                     <div className="flex flex-wrap gap-1.5">
-                      {["All Separates", "Blazers", "Jackets", "Vests", "Tunics", "Trousers", "Skirts"].map((sub) => {
+                      {["All Separates", "Trousers", "Skirts"].map((sub) => {
                         const subKey = sub === "All Separates" ? "all" : sub.toLowerCase();
                         const isSubActive = selectedSubCategory === subKey;
                         return (
@@ -1113,29 +1105,12 @@ const ProductCard = ({ product }) => {
   const [hasHovered, setHasHovered] = useState(false);
   const isWishlisted = isInWishlist ? isInWishlist(product.id || product._id) : false;
 
-  const isSeparate = 
-    product.category === "separates" || 
-    product.categoryName?.toLowerCase().includes("separates") ||
-    ["blazers", "vests", "jackets", "tunics"].includes(product.subCategory?.toLowerCase());
+  // On Collection page: Always 1st image as primary display, 2nd image on hover
+  const firstImg = product.images?.find(img => img.includes("1.png") || img.includes("1.webp") || img.includes("1.JPG")) || product.images?.[0] || product.image || "/placeholder.png";
+  const secondImg = product.images?.find(img => img.includes("2.png") || img.includes("2.webp") || img.includes("2.JPG")) || product.images?.[1] || firstImg;
 
-  const ghostImg = product.images?.find(img => img.includes("2.png")) || product.images?.[1] || product.images?.[0] || product.image || "/products/the-noir-tailored-suit/1.png";
-  const modelImg = product.images?.find(img => img.includes("1.JPG") || img.includes("1.png") || img.includes("5.JPG")) || product.images?.[0] || ghostImg;
-
-  const isTargetSetOrSuit = [
-    "the-aubergine-draped-set",
-    "the-aubergine-tailored-suit",
-    "the-lilac-flare-suit",
-    "the-midnight-peplum-set",
-    "the-midnight-sculpted-vest-set",
-    "the-dusty-rose-embroidered-farchi-set",
-    "the-noir-tailored-suit",
-    "the-plum-sculpted-suit",
-    "noir-sculpted-vest-set",
-    "noir-layered-vest-set"
-  ].includes(product.slug);
-
-  const primaryImage = (isTargetSetOrSuit || !isSeparate) ? (product.images?.[0] || product.image || "/products/the-noir-tailored-suit/1.png") : ghostImg;
-  const hoverImage = (isTargetSetOrSuit || !isSeparate) ? (product.images?.[1] || product.hoverImage || product.images?.[0] || primaryImage) : modelImg;
+  const primaryImage = firstImg;
+  const hoverImage = secondImg;
 
   const formattedPrice = typeof product.price === "number"
     ? `₹${product.price.toLocaleString("en-IN")}`

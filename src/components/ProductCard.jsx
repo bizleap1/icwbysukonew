@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Heart, ShoppingBag, Check } from "lucide-react";
 import { formatINR, PRODUCTS } from "../data/products";
@@ -7,8 +7,9 @@ import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import { getCardImage } from "../utils/mediaUtils";
 
-const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = false, showAddToBag = false, disableHoverImage = false, className = "" }) => {
+const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = false, showAddToBag = false, disableHoverImage = false, useSecondImage, className = "" }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [hover, setHover] = useState(false);
   const [hasHovered, setHasHovered] = useState(false);
   const [isSelectingSize, setIsSelectingSize] = useState(false);
@@ -16,40 +17,81 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { addItem } = useCart();
   
-  // For blazers, vests, jackets, and tunics (Tailored Separates):
-  // Default card display is explicitly 2.png (ghost mannequin product cutout)
-  // Hover reveals 1.JPG / 1.png (editorial model shot)
-  const isSeparateGarment = 
-    product.category === "separates" || 
-    product.categoryName?.toLowerCase().includes("separates") ||
-    ["blazers", "vests", "jackets", "tunics", "trousers", "skirts"].includes(product.subCategory?.toLowerCase());
+  // Helper to determine if a product is a standalone trouser or skirt (separate bottom)
+  const isTrouserOrSkirt = (() => {
+    if (!product) return false;
+    const cat = (product.category || "").toLowerCase();
+    const catName = (product.categoryName || "").toLowerCase();
+    const sub = (product.subCategory || "").toLowerCase();
+    const slug = (product.slug || "").toLowerCase();
+    const name = (product.name || "").toLowerCase();
 
-  const ghostImg = product.images?.find(img => img.includes("2.png")) || product.images?.[1] || product.images?.[0] || product.image_url || "/placeholder.png";
-  const modelImg = product.images?.find(img => img.includes("1.JPG") || img.includes("1.png") || img.includes("5.JPG")) || product.images?.[0] || ghostImg;
+    // Full suits, sets, or coordinated ensembles are not standalone trousers or skirts
+    if (slug.includes("suit") || slug.includes("set") || name.includes("suit") || name.includes("set")) {
+      return false;
+    }
 
-  // Flagship suits and co-ord sets explicitly showcase 1.png (1st image / full editorial look)
-  // across all product cards on the entire website, with 2.png revealed on hover.
-  const isTargetSetOrSuit = [
-    "the-aubergine-draped-set",
-    "the-aubergine-tailored-suit",
-    "the-lilac-flare-suit",
-    "the-midnight-peplum-set",
-    "the-midnight-sculpted-vest-set",
-    "the-dusty-rose-embroidered-farchi-set",
-    "the-noir-tailored-suit",
-    "the-plum-sculpted-suit",
-    "noir-sculpted-vest-set",
-    "noir-layered-vest-set"
-  ].includes(product.slug);
+    return (
+      cat === "separates" ||
+      catName.includes("separates") ||
+      sub.includes("trouser") ||
+      sub.includes("pant") ||
+      sub.includes("skirt") ||
+      slug.includes("trouser") ||
+      slug.includes("pant") ||
+      slug.includes("skirt") ||
+      name.includes("trouser") ||
+      name.includes("skirt")
+    );
+  })();
 
-  const defaultImg = (isFeatured || isTargetSetOrSuit || !isSeparateGarment)
-    ? (product.images?.[0] || product.image_url || "/placeholder.png")
-    : ghostImg;
+  const isHomePage = location.pathname === "/";
+  const isNewInPage = location.pathname === "/new-in" || location.pathname.startsWith("/new-in");
 
-  // Large featured cards should NOT switch image on hover; the original image remains.
-  const hoverImg = (isFeatured || disableHoverImage)
+  // 1st image (primary model / editorial look)
+  const firstImg = 
+    product.images?.find((img) => typeof img === "string" && (img.includes("1.png") || img.includes("1.webp") || img.includes("1.JPG") || img.includes("1.jpg"))) || 
+    (typeof product.images?.[0] === "string" ? product.images[0] : product.images?.[0]?.url) || 
+    product.image_url || 
+    "/placeholder.png";
+
+  // 2nd image (secondary visual / garment view)
+  const secondImg = 
+    product.images?.find((img) => typeof img === "string" && (img.includes("2.png") || img.includes("2.webp") || img.includes("2.JPG") || img.includes("2.jpg"))) || 
+    (typeof product.images?.[1] === "string" ? product.images[1] : product.images?.[1]?.url) || 
+    firstImg;
+
+  // Image display rules:
+  // 1. If useSecondImage is explicitly passed, respect it.
+  // 2. On New In page ("/new-in"):
+  //    - Large cards & all cards show 1st image as default, and on hover reveal 2nd image.
+  // 3. On Homepage ("/"):
+  //    - New Arrivals show 2nd image as default, hover reveals 1st image.
+  // 4. On Collection page, PDP ("You May Also Like"), Shop By Moment, etc.:
+  //    - Trousers & skirts show 2nd image as default, hover reveals 1st image.
+  //    - Suits & sets show 1st image as default, hover reveals 2nd image.
+  let preferSecondImage = false;
+  if (useSecondImage !== undefined) {
+    preferSecondImage = useSecondImage;
+  } else if (isNewInPage) {
+    preferSecondImage = false; // Always 1st image by default on New In
+  } else if (isHomePage) {
+    preferSecondImage = true; // 2nd image by default on Homepage
+  } else if (isTrouserOrSkirt) {
+    preferSecondImage = true; // 2nd image by default on Collection / PDP / others for trousers & skirts
+  } else {
+    preferSecondImage = false; // 1st image for suits & sets
+  }
+
+  const defaultImg = preferSecondImage ? secondImg : firstImg;
+
+  // Hover image logic:
+  // Hover is enabled unless explicitly disabled with disableHoverImage.
+  // On New In page, large featured cards (isFeatured={true}) explicitly have hover enabled to reveal the 2nd image!
+  const isHoverDisabled = disableHoverImage || (isFeatured && !isNewInPage);
+  const hoverImg = isHoverDisabled
     ? null
-    : (isSeparateGarment && !isTargetSetOrSuit ? modelImg : (product.images?.[1] || product.images?.[0] || defaultImg));
+    : (preferSecondImage ? firstImg : secondImg);
 
   const wishlisted = isInWishlist ? isInWishlist(product.id) : false;
 

@@ -16,17 +16,17 @@ const SIGNATURE_HERO = {
 
 const supportingSlugs = [
   {
-    slug: "the-plum-sculpted-double-breasted-blazer",
+    slug: "the-plum-sculpted-suit",
     number: "02",
     position: "object-[50%_25%]"
   },
   {
-    slug: "the-lilac-sculpted-flare-blazer",
+    slug: "the-aubergine-tailored-suit",
     number: "03",
     position: "object-[50%_25%]"
   },
   {
-    slug: "the-noir-structured-vest",
+    slug: "the-lilac-flare-suit",
     number: "04",
     position: "object-[50%_25%]"
   }

@@ -740,8 +740,8 @@ export const ProductDetail = () => {
             <div className="flex flex-wrap justify-center gap-6 sm:gap-8 max-w-4xl mx-auto">
               {separateItems.map(({ product: item, customLabel }) => {
                 const isItemSep = item.category === "separates" || item.categoryName?.toLowerCase().includes("separates");
-                const ghostImg = item.images?.find((img) => typeof img === "string" && img.includes("2.png"))
-                  || item.gallery?.find((g) => g.type === "garment_front" || g.url?.includes("2.png"))?.url;
+                const ghostImg = item.images?.find((img) => typeof img === "string" && (img.includes("2.png") || img.includes("2.webp") || img.includes("2.JPG") || img.includes("2.jpg")))
+                  || item.gallery?.find((g) => g.type === "garment_front" || (typeof g.url === "string" && (g.url.includes("2.png") || g.url.includes("2.webp") || g.url.includes("2.JPG"))))?.url;
                 const displayImg = (isItemSep && ghostImg)
                   ? ghostImg
                   : (typeof item.images[0] === "string" ? item.images[0] : item.images[0]?.url);
@@ -828,8 +828,8 @@ export const ProductDetail = () => {
             <div className="flex flex-wrap justify-center gap-6 sm:gap-8 max-w-4xl mx-auto">
               {coordinateItems.map(({ product: item, customLabel }) => {
                 const isItemSep = item.category === "separates" || item.categoryName?.toLowerCase().includes("separates");
-                const ghostImg = item.images?.find((img) => typeof img === "string" && img.includes("2.png"))
-                  || item.gallery?.find((g) => g.type === "garment_front" || g.url?.includes("2.png"))?.url;
+                const ghostImg = item.images?.find((img) => typeof img === "string" && (img.includes("2.png") || img.includes("2.webp") || img.includes("2.JPG") || img.includes("2.jpg")))
+                  || item.gallery?.find((g) => g.type === "garment_front" || (typeof g.url === "string" && (g.url.includes("2.png") || g.url.includes("2.webp") || g.url.includes("2.JPG"))))?.url;
                 const displayImg = (isItemSep && ghostImg)
                   ? ghostImg
                   : (typeof item.images[0] === "string" ? item.images[0] : item.images[0]?.url);

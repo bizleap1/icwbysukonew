@@ -4,12 +4,12 @@ import ProductCard from "../ProductCard";
 import { PRODUCTS } from "../../data/products";
 
 export const NewArrivalsSection = () => {
-  // 4 Core Latest Individual Upper Silhouettes
+  // 4 Core Flagship Full Sets
   const displayedSlugs = [
-    "the-noir-tailored-blazer",
-    "the-plum-sculpted-double-breasted-blazer",
-    "the-lilac-sculpted-flare-blazer",
-    "the-noir-structured-vest"
+    "the-noir-tailored-suit",
+    "the-plum-sculpted-suit",
+    "the-aubergine-tailored-suit",
+    "the-lilac-flare-suit"
   ];
 
   const displayedProducts = displayedSlugs

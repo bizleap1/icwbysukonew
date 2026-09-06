@@ -153,20 +153,12 @@ const NewIn = () => {
           const isSeparate = cat === "separates" || catName === "tailored separates";
           if (!isSeparate) return false;
 
-          // Subcategory check (Blazers, Jackets, Vests, Trousers, Skirts)
+          // Subcategory check (Trousers, Skirts)
           if (selectedSubCategory && selectedSubCategory !== "all") {
             const sub = selectedSubCategory.toLowerCase();
             const pSub = (p.subCategory || "").toLowerCase();
 
-            if (sub === "vests" || sub === "vest") {
-              if (!pSub.includes("vest")) return false;
-            } else if (sub === "jackets" || sub === "jacket") {
-              if (!pSub.includes("jacket")) return false;
-            } else if (sub === "blazers" || sub === "blazer") {
-              if (!pSub.includes("blazer")) return false;
-            } else if (sub === "tunics" || sub === "tunic" || sub.includes("tunic")) {
-              if (!pSub.includes("tunic")) return false;
-            } else if (sub === "trousers" || sub === "trouser" || sub === "pants") {
+            if (sub === "trousers" || sub === "trouser" || sub === "pants") {
               if (!pSub.includes("trouser") && !pSub.includes("pant")) return false;
             } else if (sub === "skirts" || sub === "skirt") {
               if (!pSub.includes("skirt")) return false;
@@ -267,37 +259,37 @@ const NewIn = () => {
     {
       feature: "the-plum-sculpted-suit",
       small: [
-        "the-plum-sculpted-double-breasted-blazer",
         "the-plum-sculpted-trousers",
-        "the-aubergine-asymmetric-wrap-vest",
+        "the-lilac-flare-trousers",
+        "the-aubergine-draped-set",
         "the-aubergine-tailored-mini-skirt"
       ]
     },
     {
       feature: "the-midnight-peplum-set",
       small: [
-        "the-midnight-contour-jacket",
+        "the-midnight-sculpted-vest-set",
         "the-midnight-flare-skirt",
-        "the-midnight-sculpted-vest",
+        "the-dusty-rose-embroidered-farchi-set",
         "the-midnight-column-skirt"
       ]
     },
     {
       feature: "the-noir-tailored-suit",
       small: [
-        "the-noir-tailored-blazer",
+        "noir-sculpted-vest-set",
         "the-noir-tailored-trousers",
-        "the-aubergine-draped-blazer",
+        "the-aubergine-tailored-suit",
         "the-aubergine-tailored-wide-leg-trousers"
       ]
     },
     {
       feature: "the-lilac-flare-suit",
       small: [
-        "the-lilac-sculpted-flare-blazer",
+        "noir-layered-vest-set",
         "the-lilac-flare-trousers",
-        "the-dusty-rose-embroidered-farchi-set",
-        "the-dusty-rose-trousers"
+        "the-dusty-rose-trousers",
+        "the-plum-sculpted-trousers"
       ]
     }
   ];

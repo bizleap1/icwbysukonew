@@ -13,20 +13,16 @@ export const CATEGORIES = [
     "slug": "separates",
     "name": "Tailored Separates",
     "label": "TAILORED SEPARATES",
-    "tagline": "Blazers, Jackets, Vests, Tunics, Trousers & Skirts",
+    "tagline": "Tailored Trousers & Skirts",
     "subcategories": [
-      "Blazers",
-      "Jackets",
-      "Vests",
-      "Tunics",
       "Trousers",
       "Skirts"
     ]
   },
   {
     "slug": "coords",
-    "name": "Vests & Co-ords",
-    "label": "VESTS & CO-ORDS",
+    "name": "Executive Co-ords",
+    "label": "EXECUTIVE CO-ORDS",
     "tagline": "Sculptural modern layering & sets"
   },
   {
@@ -172,7 +168,7 @@ export const COLOURS = [
   }
 ];
 
-export const PRODUCTS = [
+export const ALL_RAW_PRODUCTS = [
   {
     "id": "w-10",
     "name": "Plum Sculpted Set",
@@ -2689,6 +2685,44 @@ export const PRODUCTS = [
     ]
   }
 ];
+
+export const REMOVED_PRODUCT_SLUGS = new Set([
+  "the-aubergine-asymmetric-wrap-vest",
+  "aubergine-asymmetric-wrap-vest",
+  "the-aubergine-draped-blazer",
+  "aubergine-draped-blazer",
+  "the-lilac-sculpted-flare-blazer",
+  "lilac-sculpted-flare-blazer",
+  "the-midnight-contour-jacket",
+  "midnight-contour-jacket",
+  "the-midnight-sculpted-vest",
+  "midnight-sculpted-vest",
+  "the-noir-layered-longline-vest",
+  "noir-layered-longline-vest",
+  "the-noir-tailored-blazer",
+  "noir-tailored-blazer",
+  "the-plum-sculpted-double-breasted-blazer",
+  "plum-sculpted-double-breasted-blazer",
+  "the-noir-structured-vest",
+  "noir-structured-vest",
+  "w-11",
+  "w-12",
+  "w-13",
+  "w-14",
+  "w-15",
+  "w-16",
+  "w-18",
+  "w-19",
+  "w-20"
+]);
+
+export const PRODUCTS = ALL_RAW_PRODUCTS
+  .filter((p) => !REMOVED_PRODUCT_SLUGS.has(p.slug) && !REMOVED_PRODUCT_SLUGS.has(p.id))
+  .map((p) => ({
+    ...p,
+    coordinates: (p.coordinates || []).filter((c) => !REMOVED_PRODUCT_SLUGS.has(c.slug)),
+    separates: (p.separates || []).filter((s) => !REMOVED_PRODUCT_SLUGS.has(s.slug))
+  }));
 
 export const WHATSAPP_NUMBER = "919370350885";
 export const DEFAULT_WHATSAPP_LINK = "https://wa.me/919370350885?text=" + encodeURIComponent("Hello SUKO Stylist, I would like to explore the Indian Corporate Wear collection and book a styling consultation.");

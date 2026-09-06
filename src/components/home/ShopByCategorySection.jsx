@@ -7,8 +7,8 @@ export const ShopByCategorySection = () => {
     {
       num: "02",
       title: "Tailored Separates",
-      tagline: "Blazers · Jackets · Vests · Tunics · Pants · Skirts",
-      image: "/products/midnight-sculpted-vest/1.webp",
+      tagline: "Tailored Trousers & Fluted Skirts",
+      image: "/products/the-noir-tailored-trousers/1.png",
       link: "/collection?category=separates&gender=women"
     },
     {
