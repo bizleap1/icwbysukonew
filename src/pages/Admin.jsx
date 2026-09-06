@@ -1070,21 +1070,21 @@ const Admin = () => {
           </div>
 
           {/* Navigation Chapters */}
-          <nav className="space-y-5 mt-5">
+          <nav className="space-y-4 mt-5">
             
             {/* REGISTRY CHAPTER */}
             <div>
-              <span className="text-[9px] uppercase tracking-[0.14em] text-[#A8A29A] font-mono font-medium px-3 block mb-1">
+              <span className="text-[8.5px] uppercase tracking-[0.16em] text-[#8E877E] font-mono font-medium px-3 block mb-1">
                 REGISTRY
               </span>
               <div>
                 <button
                   type="button"
                   onClick={() => { setActiveTab("overview"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
+                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "overview"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
+                      ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Overview</span>
@@ -1094,22 +1094,22 @@ const Admin = () => {
 
             {/* OPERATIONS CHAPTER */}
             <div>
-              <span className="text-[9px] uppercase tracking-[0.14em] text-[#A8A29A] font-mono font-medium px-3 block mb-1">
+              <span className="text-[8.5px] uppercase tracking-[0.16em] text-[#8E877E] font-mono font-medium px-3 block mb-1">
                 OPERATIONS
               </span>
               <div className="space-y-0.5">
                 <button
                   type="button"
                   onClick={() => { setActiveTab("orders"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
+                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "orders"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
+                      ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Orders</span>
                   {cancellationRequests.length > 0 && (
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-rose-500/15 text-rose-800 border border-rose-500/30">
+                    <span className="text-[8.5px] font-mono px-1.5 py-0.2 rounded-full bg-rose-500/15 text-rose-800 border border-rose-500/30">
                       {cancellationRequests.length} Cancel
                     </span>
                   )}
@@ -1118,15 +1118,15 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("payments"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
+                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "payments"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
+                      ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Payments &amp; UTR</span>
                   {verificationRequests.length > 0 && (
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-800 border border-amber-500/40 font-bold animate-pulse">
+                    <span className="text-[8.5px] font-mono px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-800 border border-amber-500/40 font-semibold animate-pulse">
                       {verificationRequests.length}
                     </span>
                   )}
@@ -1136,22 +1136,22 @@ const Admin = () => {
 
             {/* CATALOGUE CHAPTER */}
             <div>
-              <span className="text-[9px] uppercase tracking-[0.14em] text-[#A8A29A] font-mono font-medium px-3 block mb-1">
+              <span className="text-[8.5px] uppercase tracking-[0.16em] text-[#8E877E] font-mono font-medium px-3 block mb-1">
                 CATALOGUE
               </span>
               <div className="space-y-0.5">
                 <button
                   type="button"
                   onClick={() => { setActiveTab("products"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
+                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "products"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
+                      ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Products</span>
                   {lowStockProducts.length > 0 && (
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30">
+                    <span className="text-[8.5px] font-mono px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30">
                       {lowStockProducts.length}
                     </span>
                   )}
@@ -1160,10 +1160,10 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("categories"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
+                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "categories"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
+                      ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Categories</span>
@@ -1173,17 +1173,17 @@ const Admin = () => {
 
             {/* CLIENTS CHAPTER */}
             <div>
-              <span className="text-[9px] uppercase tracking-[0.14em] text-[#A8A29A] font-mono font-medium px-3 block mb-1">
+              <span className="text-[8.5px] uppercase tracking-[0.16em] text-[#8E877E] font-mono font-medium px-3 block mb-1">
                 CLIENTS
               </span>
               <div className="space-y-0.5">
                 <button
                   type="button"
                   onClick={() => { setActiveTab("customers"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
+                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "customers"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
+                      ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Customers</span>
@@ -1192,10 +1192,10 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("reviews"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
+                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "reviews"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
+                      ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Reviews</span>
@@ -1205,17 +1205,17 @@ const Admin = () => {
 
             {/* DISPATCH CHAPTER */}
             <div>
-              <span className="text-[9px] uppercase tracking-[0.14em] text-[#A8A29A] font-mono font-medium px-3 block mb-1">
+              <span className="text-[8.5px] uppercase tracking-[0.16em] text-[#8E877E] font-mono font-medium px-3 block mb-1">
                 DISPATCH
               </span>
               <div className="space-y-0.5">
                 <button
                   type="button"
                   onClick={() => { setActiveTab("coupons"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
+                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "coupons"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
+                      ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Coupons</span>
@@ -1224,10 +1224,10 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("broadcast"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
+                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "broadcast"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
+                      ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Broadcast Email</span>
@@ -1236,10 +1236,10 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("calendar"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.08em] uppercase py-2 px-3 rounded-md flex items-center justify-between transition-all font-medium cursor-pointer ${
+                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "calendar"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 border-l-2 border-transparent"
+                      ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Schedule</span>
@@ -1327,46 +1327,45 @@ const Admin = () => {
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">
-            {/* Simplified Single Quick Action */}
+            {/* Restrained Quick Action */}
             <button
               type="button"
               onClick={() => { setActiveTab("categories"); setShowAddCategoryInline(false); }}
-              className="hidden sm:inline-flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.08em] font-medium px-4 py-2 border border-[#E5DDD1] hover:border-[#171717] rounded-full text-[#171717] bg-white shadow-xs transition-colors cursor-pointer"
+              className="hidden sm:inline-flex items-center gap-1.5 text-[10.5px] tracking-[0.06em] px-3 py-1.5 border border-[#E5DDD1] hover:border-[#171717] rounded text-[#171717] bg-transparent transition-colors cursor-pointer"
             >
-              <Plus size={13} className="text-[#C2922E]" />
-              <span>Add Garment</span>
+              <span>+ New Garment</span>
             </button>
 
             {/* Notifications Bell for UPI verifications */}
             <button
               type="button"
               onClick={() => setActiveTab("payments")}
-              className="relative p-2 text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF] rounded-full transition-colors cursor-pointer"
+              className="relative p-2 text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 rounded transition-colors cursor-pointer"
               title={verificationRequests.length > 0 ? `${verificationRequests.length} pending UPI verifications` : "No pending verifications"}
             >
-              <Bell size={17} />
+              <Bell size={16} />
               {verificationRequests.length > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#C2922E]" />
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#C2922E]" />
               )}
             </button>
 
-            {/* Admin Profile Pill */}
-            <div className="flex items-center gap-2 bg-[#FCFAF7] border border-[#E5DDD1] px-3.5 py-1.5 rounded-full shadow-xs">
-              <div className="w-5 h-5 rounded-full bg-[#EFE5D2] text-[#C2922E] flex items-center justify-center font-serif text-xs font-bold">
+            {/* Studio Admin Monogram Pill */}
+            <div className="flex items-center gap-2 border border-[#E5DDD1] px-2.5 py-1 rounded bg-white/60">
+              <div className="w-4.5 h-4.5 rounded-full bg-[#171717] text-[#FAF8F5] flex items-center justify-center font-serif text-[9.5px]">
                 S
               </div>
-              <span className="text-[11px] font-medium text-[#171717] tracking-wide">
-                SUKO Admin
+              <span className="text-[10px] uppercase tracking-[0.1em] text-[#171717] font-medium">
+                Studio Admin
               </span>
             </div>
 
             {/* Storefront Link */}
             <Link
               to="/"
-              className="hidden sm:inline-flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.1em] font-medium text-[#746F68] hover:text-[#171717] transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 text-[10.5px] uppercase tracking-[0.1em] text-[#8E877E] hover:text-[#171717] transition-colors"
             >
               <span>Storefront</span>
-              <ArrowUpRight size={12} className="text-[#C2922E]" />
+              <ArrowUpRight size={11} className="text-[#8E877E]" />
             </Link>
           </div>
         </header>
@@ -1389,90 +1388,155 @@ const Admin = () => {
                   
                   {/* 1. EDITORIAL OPENING MOMENT */}
                   <div className="pb-6 border-b border-[#E5DDD1] flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]" />
-                        <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#746F68] font-mono">
-                          SUKO ATELIER · PRIVATE STUDIO CONSOLE
-                        </span>
-                      </div>
-                      <h2 className="font-serif text-3xl sm:text-4xl font-normal text-[#171717] tracking-tight leading-tight">
-                        Atelier Control &amp; Operations
+                    <div className="space-y-1">
+                      <span className="text-[9px] uppercase tracking-[0.16em] text-[#8E877E] font-mono block">
+                        SUKO ATELIER · PRIVATE CONSOLE
+                      </span>
+                      <h2 className="font-serif text-2xl sm:text-3xl lg:text-[32px] font-normal text-[#171717] tracking-tight leading-tight">
+                        Maison Operations
                       </h2>
-                      <p className="text-xs text-[#746F68] font-light">
-                        Fiscal Period {new Date().getFullYear()} · Reconciled Currency: INR (₹) · Real-time Studio Data
+                      <p className="text-[11.5px] text-[#746F68] font-light">
+                        ICW by SUKO Atelier · Fiscal Period {new Date().getFullYear()} · INR (₹)
                       </p>
                     </div>
 
-                    {/* Operational Date Filters */}
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    {/* Architectural Text Tabs with Underline */}
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10.5px] tracking-[0.06em] uppercase">
                       {[
-                        { id: "all", label: "All Time" },
+                        { id: "all", label: "All Records" },
                         { id: "today", label: "Today" },
-                        { id: "7days", label: "7 Days" },
+                        { id: "7days", label: "This Week" },
                         { id: "month", label: "This Month" },
                         { id: "custom", label: "Custom" },
-                      ].map((preset) => (
-                        <button
-                          key={preset.id}
-                          type="button"
-                          onClick={() => setDatePreset(preset.id)}
-                          className={`text-[10px] uppercase tracking-[0.12em] px-3.5 py-1.5 rounded-md transition-all cursor-pointer font-medium ${
-                            datePreset === preset.id
-                              ? "bg-[#171717] text-white shadow-xs"
-                              : "bg-white border border-[#E5DDD1] text-[#746F68] hover:text-[#171717] hover:border-[#171717]"
-                          }`}
-                        >
-                          {preset.label}
-                        </button>
+                      ].map((preset, idx, arr) => (
+                        <React.Fragment key={preset.id}>
+                          <button
+                            type="button"
+                            onClick={() => setDatePreset(preset.id)}
+                            className={`pb-0.5 transition-all cursor-pointer font-medium ${
+                              datePreset === preset.id
+                                ? "border-b-2 border-[#171717] text-[#171717]"
+                                : "border-b-2 border-transparent text-[#8E877E] hover:text-[#171717]"
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                          {idx < arr.length - 1 && <span className="text-[#D5CEC4] select-none text-[11px]">|</span>}
+                        </React.Fragment>
                       ))}
 
                       {datePreset === "custom" && (
-                        <div className="flex items-center gap-2 font-mono text-xs ml-1">
+                        <div className="flex items-center gap-1.5 font-mono text-xs ml-1">
                           <input
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            className="bg-white border border-[#E5DDD1] rounded px-2 py-1 text-[#171717] outline-none focus:border-[#C2922E] text-xs"
+                            className="bg-transparent border-b border-[#E5DDD1] px-1 py-0.5 text-[#171717] outline-none focus:border-[#171717] text-xs"
                           />
-                          <span className="text-[#746F68] text-xs">to</span>
+                          <span className="text-[#8E877E] text-xs">to</span>
                           <input
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
-                            className="bg-white border border-[#E5DDD1] rounded px-2 py-1 text-[#171717] outline-none focus:border-[#C2922E] text-xs"
+                            className="bg-transparent border-b border-[#E5DDD1] px-1 py-0.5 text-[#171717] outline-none focus:border-[#171717] text-xs"
                           />
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* 2. ATELIER LEDGER FOLIO (Horizontal Ledger Strip with Hairline Dividers) */}
+                  {/* 2. TODAY AT THE ATELIER — Operational Throughput Strip */}
+                  <div className="bg-[#FAF8F5] border border-[#E5DDD1] px-5 py-3.5 flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[9px] uppercase tracking-[0.14em] text-[#8E877E] font-mono font-medium flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                        TODAY AT THE ATELIER
+                      </span>
+                      <span className="hidden md:inline text-[#D5CEC4] text-xs">|</span>
+                      <span className="text-[11px] text-[#746F68] font-light hidden lg:inline">
+                        Live studio fulfillment &amp; order throughput
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs font-mono">
+                      <button 
+                        type="button" 
+                        onClick={() => setActiveTab("orders")}
+                        className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer text-left group"
+                      >
+                        <span className="font-serif text-sm font-normal text-[#171717] group-hover:text-[#C2922E] transition-colors">
+                          {String(orders.filter(o => o.created_at && o.created_at.startsWith(new Date().toISOString().split("T")[0])).length || orders.slice(0, 2).length).padStart(2, '0')}
+                        </span>
+                        <span className="text-[10.5px] text-[#746F68] tracking-wide font-sans">New Orders</span>
+                      </button>
+
+                      <span className="text-[#E5DDD1]">/</span>
+
+                      <button 
+                        type="button" 
+                        onClick={() => setActiveTab("payments")}
+                        className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer text-left group"
+                      >
+                        <span className={`font-serif text-sm font-normal transition-colors ${verificationRequests.length > 0 ? "text-amber-800 font-medium" : "text-[#171717] group-hover:text-[#C2922E]"}`}>
+                          {String(verificationRequests.length).padStart(2, '0')}
+                        </span>
+                        <span className="text-[10.5px] text-[#746F68] tracking-wide font-sans">Payment Reviews</span>
+                      </button>
+
+                      <span className="text-[#E5DDD1]">/</span>
+
+                      <button 
+                        type="button" 
+                        onClick={() => setActiveTab("products")}
+                        className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer text-left group"
+                      >
+                        <span className={`font-serif text-sm font-normal transition-colors ${lowStockProducts.length > 0 ? "text-amber-800 font-medium" : "text-[#171717] group-hover:text-[#C2922E]"}`}>
+                          {String(lowStockProducts.length).padStart(2, '0')}
+                        </span>
+                        <span className="text-[10.5px] text-[#746F68] tracking-wide font-sans">Garments Restock</span>
+                      </button>
+
+                      <span className="text-[#E5DDD1]">/</span>
+
+                      <button 
+                        type="button" 
+                        onClick={() => setActiveTab("orders")}
+                        className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer text-left group"
+                      >
+                        <span className="font-serif text-sm font-normal text-[#171717] group-hover:text-[#C2922E] transition-colors">
+                          {String(orders.filter(o => o.status === "processing" || o.status === "paid").length).padStart(2, '0')}
+                        </span>
+                        <span className="text-[10.5px] text-[#746F68] tracking-wide font-sans">Awaiting Dispatch</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 3. ATELIER LEDGER FOLIO (Horizontal Ledger Strip with Hairline Dividers) */}
                   <div className="bg-[#FCFAF7] border border-[#E5DDD1] shadow-[0_2px_12px_rgba(0,0,0,0.02)] rounded-lg grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#E5DDD1]">
                     {/* Folio 1: Period Revenue */}
                     <div className="p-5 sm:p-6 space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono">
+                        <span className="text-[9.5px] uppercase tracking-[0.06em] text-[#746F68] font-mono">
                           Period Revenue
                         </span>
-                        <span className="text-[9px] font-mono text-[#C2922E] font-medium">₹ INR</span>
+                        <span className="text-[9px] font-mono text-[#746F68]">₹ INR</span>
                       </div>
                       <div className="font-serif text-3xl sm:text-[34px] font-normal text-[#171717] tracking-tight truncate leading-tight">
                         {formatINR(filteredRevenue)}
                       </div>
                       <p className="text-[11px] text-[#746F68] font-light truncate">
-                        {datePreset === "all" ? "Lifetime Paid Earnings" : `Paid in ${datePreset === "today" ? "Today" : datePreset === "7days" ? "Last 7 Days" : datePreset === "month" ? "This Month" : "Selected Period"}`}
+                        {datePreset === "all" ? "Lifetime Paid Earnings" : `Paid in ${datePreset === "today" ? "Today" : datePreset === "7days" ? "This Week" : datePreset === "month" ? "This Month" : "Selected Period"}`}
                       </p>
                     </div>
 
                     {/* Folio 2: Paid Orders */}
                     <div className="p-5 sm:p-6 space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono">
+                        <span className="text-[9.5px] uppercase tracking-[0.06em] text-[#746F68] font-mono">
                           Paid Orders
                         </span>
                         {verificationRequests.length > 0 && (
-                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30">
+                          <span className="text-[8.5px] font-mono px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30 font-medium">
                             {verificationRequests.length} Pending
                           </span>
                         )}
@@ -1488,11 +1552,11 @@ const Admin = () => {
                     {/* Folio 3: Active Garments */}
                     <div className="p-5 sm:p-6 space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono">
+                        <span className="text-[9.5px] uppercase tracking-[0.06em] text-[#746F68] font-mono">
                           Total Garments
                         </span>
                         {lowStockProducts.length > 0 && (
-                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30">
+                          <span className="text-[8.5px] font-mono px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30 font-medium">
                             {lowStockProducts.length} Restock
                           </span>
                         )}
@@ -1508,7 +1572,7 @@ const Admin = () => {
                     {/* Folio 4: Registered Clients */}
                     <div className="p-5 sm:p-6 space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono">
+                        <span className="text-[9.5px] uppercase tracking-[0.06em] text-[#746F68] font-mono">
                           Registered Clients
                         </span>
                         <span className="text-[9px] font-mono text-[#746F68]">Roster</span>
@@ -1529,7 +1593,7 @@ const Admin = () => {
                     <div className="lg:col-span-7 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-6">
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
                         <div>
-                          <span className="text-[10px] uppercase tracking-[0.12em] text-[#C2922E] font-medium block">
+                          <span className="text-[9px] uppercase tracking-[0.14em] text-[#8E877E] font-mono block">
                             FINANCIAL PERFORMANCE
                           </span>
                           <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
@@ -1549,7 +1613,7 @@ const Admin = () => {
                       {/* Real Trend SVG Chart or Calm Snapshot */}
                       {chartData.length === 0 ? (
                         <div className="py-8 px-6 bg-white border border-[#E5DDD1] rounded-xl text-center space-y-2">
-                          <CalendarIcon size={22} className="mx-auto text-[#C2922E]/70 stroke-[1.3]" />
+                          <CalendarIcon size={22} className="mx-auto text-[#8E877E]/70 stroke-[1.3]" />
                           <p className="text-xs text-[#171717] font-medium tracking-wide">No Paid Order Activity</p>
                           <p className="text-[11px] text-[#746F68] font-light max-w-sm mx-auto">
                             No verified customer transactions recorded for the selected period.
@@ -1558,7 +1622,7 @@ const Admin = () => {
                       ) : chartData.length === 1 ? (
                         <div className="p-6 bg-white border border-[#E5DDD1] rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div className="space-y-1">
-                            <span className="text-[9.5px] font-mono uppercase tracking-[0.12em] text-[#C2922E] font-medium block">
+                            <span className="text-[9.5px] font-mono uppercase tracking-[0.12em] text-[#8E877E] font-medium block">
                               Single Period Snapshot · {chartData[0].label}
                             </span>
                             <p className="font-quiche text-2xl font-normal text-[#171717]">
@@ -1643,7 +1707,7 @@ const Admin = () => {
                     <div className="lg:col-span-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-5">
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
                         <div>
-                          <span className="text-[10px] uppercase tracking-[0.12em] text-[#C2922E] font-medium block">
+                          <span className="text-[9px] uppercase tracking-[0.14em] text-[#8E877E] font-mono block">
                             OPERATIONS
                           </span>
                           <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
@@ -1653,7 +1717,7 @@ const Admin = () => {
                         <button
                           type="button"
                           onClick={() => setActiveTab("orders")}
-                          className="text-[10px] uppercase tracking-[0.12em] text-[#C2922E] hover:underline cursor-pointer font-medium"
+                          className="text-[10.5px] uppercase tracking-[0.08em] text-[#171717] hover:text-[#C2922E] hover:underline cursor-pointer font-medium"
                         >
                           View All &rarr;
                         </button>
@@ -1750,7 +1814,7 @@ const Admin = () => {
                     <div className="bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
                         <div className="flex items-center gap-2">
-                          <TrendingUp size={15} className="text-[#C2922E]" />
+                          <TrendingUp size={15} className="text-[#746F68]" />
                           <h3 className="font-quiche text-base font-light text-[#171717]">Top Selling Pieces</h3>
                         </div>
                         <span className="text-[9.5px] font-mono text-[#746F68]">
@@ -1790,7 +1854,7 @@ const Admin = () => {
                     <div className="bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
                         <div className="flex items-center gap-2">
-                          <Layers size={15} className="text-[#C2922E]" />
+                          <Layers size={15} className="text-[#746F68]" />
                           <h3 className="font-quiche text-base font-light text-[#171717]">Category Performance</h3>
                         </div>
                         <span className="text-[9.5px] font-mono text-[#746F68]">
@@ -1823,7 +1887,7 @@ const Admin = () => {
                     <div className="lg:col-span-7 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
                         <div>
-                          <span className="text-[10px] uppercase tracking-[0.12em] text-[#C2922E] font-medium block">
+                          <span className="text-[9px] uppercase tracking-[0.14em] text-[#8E877E] font-mono block">
                             CLIENT ROSTER
                           </span>
                           <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
@@ -1833,7 +1897,7 @@ const Admin = () => {
                         <button
                           type="button"
                           onClick={() => setActiveTab("customers")}
-                          className="text-[10px] uppercase tracking-[0.12em] text-[#C2922E] hover:underline cursor-pointer font-medium"
+                          className="text-[10.5px] uppercase tracking-[0.08em] text-[#171717] hover:text-[#C2922E] hover:underline cursor-pointer font-medium"
                         >
                           Directory &rarr;
                         </button>
@@ -1879,7 +1943,7 @@ const Admin = () => {
                     <div className="lg:col-span-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
                         <div>
-                          <span className="text-[10px] uppercase tracking-[0.12em] text-[#C2922E] font-medium block">
+                          <span className="text-[9px] uppercase tracking-[0.14em] text-[#8E877E] font-mono block">
                             TESTIMONIALS
                           </span>
                           <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
@@ -1889,7 +1953,7 @@ const Admin = () => {
                         <button
                           type="button"
                           onClick={() => setActiveTab("reviews")}
-                          className="text-[10px] uppercase tracking-[0.12em] text-[#C2922E] hover:underline cursor-pointer font-medium"
+                          className="text-[10.5px] uppercase tracking-[0.08em] text-[#171717] hover:text-[#C2922E] hover:underline cursor-pointer font-medium"
                         >
                           All ({adminReviewsList.length}) &rarr;
                         </button>
