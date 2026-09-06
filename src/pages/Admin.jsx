@@ -985,7 +985,7 @@ const Admin = () => {
       const matchedProd = products.find(p => p.id === ts.id || p.name === ts.name);
       return {
         ...ts,
-        image: ts.image || matchedProd?.image_url || (matchedProd?.images && matchedProd.images[0]) || "/placeholder.png",
+        image: matchedProd?.image_url || (matchedProd?.images && matchedProd.images[0]) || ts.image || "",
         category: ts.category || matchedProd?.category?.name || matchedProd?.sub_category || ""
       };
     });
@@ -1367,7 +1367,7 @@ const Admin = () => {
               onClick={() => { setActiveTab("categories"); setShowAddCategoryInline(false); }}
               className="hidden sm:inline-flex items-center gap-1 text-xs text-[#55514B] hover:text-[#171717] transition-colors cursor-pointer font-medium tracking-normal"
             >
-              <span>+ Create Garment</span>
+              <span>+ New Piece</span>
             </button>
 
             {/* Notifications Bell for UPI verifications */}
@@ -1507,14 +1507,14 @@ const Admin = () => {
               {activeTab === "overview" && (
                 <div className="space-y-6">
                   
-                  {/* 1. EDITORIAL OPENING MOMENT */}
+                  {/* 1. STUDIO OVERVIEW HEADER */}
                   <div className="pb-4 border-b border-[#E5DDD1] flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                       <h2 className="font-serif text-2xl sm:text-3xl font-normal text-[#171717] tracking-tight leading-tight">
-                        Atelier Registry
+                        Studio Overview
                       </h2>
                       <p className="text-xs text-[#55514B] font-normal">
-                        Private Studio Operations &middot; Fiscal Period {new Date().getFullYear()} &middot; INR (&#8377;)
+                        Performance snapshot &middot; Fiscal {new Date().getFullYear()} &middot; INR (&#8377;)
                       </p>
                     </div>
 
@@ -1563,97 +1563,32 @@ const Admin = () => {
                     </div>
                   </div>
 
-                  {/* 2. STUDIO OPERATIONAL STATUS STRIP (Subtle luxury hairline strip, no SaaS green badges) */}
-                  <div className="border-y border-[#E5DDD1] py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-[11px] uppercase tracking-[0.14em] text-[#171717] font-mono font-medium">
-                        Studio Status &middot; Operational
-                      </span>
-                      <span className="hidden md:inline text-[#C5BDB2] text-xs">&middot;</span>
-                      <span className="text-xs text-[#55514B] font-normal hidden lg:inline">
-                        Daily fulfillment throughput
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs font-mono">
-                      <button 
-                        type="button" 
-                        onClick={() => setActiveTab("orders")}
-                        className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer text-left group"
-                      >
-                        <span className="font-serif text-sm font-semibold text-[#171717] group-hover:text-[#C2922E] transition-colors">
-                          {String(orders.filter(o => o.created_at && o.created_at.startsWith(new Date().toISOString().split("T")[0])).length || orders.slice(0, 2).length).padStart(2, '0')}
-                        </span>
-                        <span className="text-[11px] text-[#55514B] tracking-normal font-sans font-medium">New Orders</span>
-                      </button>
-
-                      <span className="text-[#C5BDB2]">/</span>
-
-                      <button 
-                        type="button" 
-                        onClick={() => setActiveTab("payments")}
-                        className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer text-left group"
-                      >
-                        <span className={`font-serif text-sm font-semibold transition-colors ${verificationRequests.length > 0 ? "text-amber-900 bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/20" : "text-[#171717] group-hover:text-[#C2922E]"}`}>
-                          {String(verificationRequests.length).padStart(2, '0')}
-                        </span>
-                        <span className="text-[11px] text-[#55514B] tracking-normal font-sans font-medium">Payment Reviews</span>
-                      </button>
-
-                      <span className="text-[#C5BDB2]">/</span>
-
-                      <button 
-                        type="button" 
-                        onClick={() => setActiveTab("products")}
-                        className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer text-left group"
-                      >
-                        <span className={`font-serif text-sm font-semibold transition-colors ${lowStockProducts.length > 0 ? "text-amber-900 bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/20" : "text-[#171717] group-hover:text-[#C2922E]"}`}>
-                          {String(lowStockProducts.length).padStart(2, '0')}
-                        </span>
-                        <span className="text-[11px] text-[#55514B] tracking-normal font-sans font-medium">Garments Restock</span>
-                      </button>
-
-                      <span className="text-[#C5BDB2]">/</span>
-
-                      <button 
-                        type="button" 
-                        onClick={() => setActiveTab("orders")}
-                        className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer text-left group"
-                      >
-                        <span className="font-serif text-sm font-semibold text-[#171717] group-hover:text-[#C2922E] transition-colors">
-                          {String(orders.filter(o => o.status === "processing" || o.status === "paid").length).padStart(2, '0')}
-                        </span>
-                        <span className="text-[11px] text-[#55514B] tracking-normal font-sans font-medium">Awaiting Dispatch</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 3. ATELIER LEDGER FOLIO (Open Architectural Folio · Pure Hairlines & Generous Vertical Rhythm) */}
-                  <div className="border-b border-[#E5DDD1] py-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#E5DDD1]">
+                  {/* 2. ATELIER PERFORMANCE LEDGER (Direct Hero Impact) */}
+                  <div className="border-b border-[#E5DDD1] pb-6 pt-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#E5DDD1]">
                     
                     {/* Folio 1: Revenue Generated */}
-                    <div className="py-4 sm:py-3 sm:px-6 first:pl-0 flex flex-col justify-between">
+                    <div className="py-3 sm:py-2 sm:px-6 first:pl-0 flex flex-col justify-between">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] uppercase tracking-[0.14em] text-[#55514B] font-mono font-medium">
+                        <span className="text-[10.5px] uppercase tracking-[0.16em] text-[#55514B] font-mono font-medium">
                           REVENUE GENERATED
                         </span>
                         <span className="text-[10px] font-mono text-[#78726A] border border-[#E5DDD1] px-1.5 py-0.5 rounded-[2px] bg-[#FAF8F5]">
                           &#8377; INR
                         </span>
                       </div>
-                      <div className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#111113] tracking-tight truncate leading-none my-4">
+                      <div className="font-serif text-3xl sm:text-4xl lg:text-[44px] font-normal text-[#111113] tracking-tight truncate leading-none my-4">
                         {formatINR(filteredRevenue)}
                       </div>
                       <p className="text-xs text-[#55514B] font-normal truncate">
-                        {datePreset === "all" ? "Verified paid settlements" : `Paid settlements in ${datePreset === "today" ? "Today" : datePreset === "7days" ? "This Week" : datePreset === "month" ? "This Month" : "Selected Period"}`}
+                        {datePreset === "all" ? "Verified settlements" : `Settlements in ${datePreset === "today" ? "Today" : datePreset === "7days" ? "This Week" : datePreset === "month" ? "This Month" : "Selected Period"}`}
                       </p>
                     </div>
 
-                    {/* Folio 2: Orders Processed */}
-                    <div className="py-4 sm:py-3 sm:px-6 flex flex-col justify-between">
+                    {/* Folio 2: Orders Completed */}
+                    <div className="py-3 sm:py-2 sm:px-6 flex flex-col justify-between">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] uppercase tracking-[0.14em] text-[#55514B] font-mono font-medium">
-                          ORDERS PROCESSED
+                        <span className="text-[10.5px] uppercase tracking-[0.16em] text-[#55514B] font-mono font-medium">
+                          ORDERS COMPLETED
                         </span>
                         {verificationRequests.length > 0 && (
                           <span className="text-[9.5px] font-mono text-amber-900 font-semibold bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30">
@@ -1661,7 +1596,7 @@ const Admin = () => {
                           </span>
                         )}
                       </div>
-                      <div className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#111113] tracking-tight leading-none my-4">
+                      <div className="font-serif text-3xl sm:text-4xl lg:text-[44px] font-normal text-[#111113] tracking-tight leading-none my-4">
                         {String(filteredPaidOrders.length).padStart(2, '0')}
                       </div>
                       <p className="text-xs text-[#55514B] font-normal truncate">
@@ -1669,11 +1604,11 @@ const Admin = () => {
                       </p>
                     </div>
 
-                    {/* Folio 3: Garments In Archive */}
-                    <div className="py-4 sm:py-3 sm:px-6 flex flex-col justify-between">
+                    {/* Folio 3: Active Pieces */}
+                    <div className="py-3 sm:py-2 sm:px-6 flex flex-col justify-between">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] uppercase tracking-[0.14em] text-[#55514B] font-mono font-medium">
-                          GARMENTS IN ARCHIVE
+                        <span className="text-[10.5px] uppercase tracking-[0.16em] text-[#55514B] font-mono font-medium">
+                          ACTIVE PIECES
                         </span>
                         {lowStockProducts.length > 0 && (
                           <span className="text-[9.5px] font-mono text-amber-900 font-semibold bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30">
@@ -1681,29 +1616,29 @@ const Admin = () => {
                           </span>
                         )}
                       </div>
-                      <div className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#111113] tracking-tight leading-none my-4">
+                      <div className="font-serif text-3xl sm:text-4xl lg:text-[44px] font-normal text-[#111113] tracking-tight leading-none my-4">
                         {String(stats.totalProducts).padStart(2, '0')}
                       </div>
                       <p className="text-xs text-[#55514B] font-normal truncate">
-                        {lowStockProducts.length > 0 ? `${lowStockProducts.length} Pieces require restock` : "Garment inventory healthy"}
+                        {lowStockProducts.length > 0 ? `${lowStockProducts.length} Pieces low in stock` : "Inventory healthy"}
                       </p>
                     </div>
 
-                    {/* Folio 4: Clients On Record */}
-                    <div className="py-4 sm:py-3 sm:px-6 last:pr-0 flex flex-col justify-between">
+                    {/* Folio 4: Registered Clients */}
+                    <div className="py-3 sm:py-2 sm:px-6 last:pr-0 flex flex-col justify-between">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] uppercase tracking-[0.14em] text-[#55514B] font-mono font-medium">
-                          CLIENTS ON RECORD
+                        <span className="text-[10.5px] uppercase tracking-[0.16em] text-[#55514B] font-mono font-medium">
+                          REGISTERED CLIENTS
                         </span>
                         <span className="text-[10px] font-mono text-[#78726A] border border-[#E5DDD1] px-1.5 py-0.5 rounded-[2px] bg-[#FAF8F5]">
-                          Private Roster
+                          Directory
                         </span>
                       </div>
-                      <div className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#111113] tracking-tight leading-none my-4">
+                      <div className="font-serif text-3xl sm:text-4xl lg:text-[44px] font-normal text-[#111113] tracking-tight leading-none my-4">
                         {String(stats.totalUsers).padStart(2, '0')}
                       </div>
                       <p className="text-xs text-[#55514B] font-normal truncate">
-                        Registered studio accounts
+                        Client accounts on record
                       </p>
                     </div>
                   </div>
@@ -1716,10 +1651,10 @@ const Admin = () => {
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
                         <div>
                           <h2 className="font-serif text-xl font-normal text-[#171717]">
-                            Financial Ledger
+                            Revenue &amp; Inflow
                           </h2>
                           <p className="text-xs text-[#55514B] font-normal mt-0.5">
-                            {new Date().toLocaleString('en-US', { month: 'long' })} Performance &middot; Verified Settlement Cash Inflow
+                            {new Date().toLocaleString('en-US', { month: 'long' })} &middot; Verified settlement inflows
                           </p>
                         </div>
                         <div className="text-right">
@@ -1905,11 +1840,27 @@ const Admin = () => {
                         {lowStockProducts.slice(0, 4).map(p => (
                           <div key={p.id} className="flex items-center justify-between py-2">
                             <div className="flex items-center gap-2.5">
-                              {p.image_url ? (
-                                <img src={p.image_url} alt={p.name} className="w-7 h-9 object-cover rounded border border-[#E5DDD1]" />
-                              ) : (
-                                <div className="w-7 h-9 bg-[#FAF8F5] border border-[#E5DDD1] rounded flex items-center justify-center text-[8px] text-[#55514B]">N/A</div>
-                              )}
+                              <div className="w-7 h-9 rounded-[2px] border border-[#E5DDD1] bg-[#FAF8F5] overflow-hidden flex items-center justify-center shrink-0">
+                                {p.image_url ? (
+                                  <img 
+                                    src={p.image_url} 
+                                    alt={p.name} 
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                      if (e.currentTarget.nextElementSibling) {
+                                        e.currentTarget.nextElementSibling.style.display = 'flex';
+                                      }
+                                    }}
+                                    className="w-full h-full object-cover" 
+                                  />
+                                ) : null}
+                                <div 
+                                  style={{ display: p.image_url ? 'none' : 'flex' }}
+                                  className="w-full h-full bg-[#EFE9DF] items-center justify-center font-serif text-[10px] text-[#171717] font-medium"
+                                >
+                                  {(p.name || 'P').charAt(0).toUpperCase()}
+                                </div>
+                              </div>
                               <div>
                                 <p className="text-xs font-medium text-[#171717] truncate max-w-[130px]">{p.name}</p>
                                 {p.sizes && <p className="text-[10px] text-[#55514B]">Sizes: {p.sizes}</p>}
@@ -1945,11 +1896,27 @@ const Admin = () => {
                         {topSellingPieces.slice(0, 4).map((ts, idx) => (
                           <div key={idx} className="flex items-center justify-between py-2">
                             <div className="flex items-center gap-2.5">
-                              {ts.image ? (
-                                <img src={ts.image} alt={ts.name} className="w-7 h-9 object-cover rounded border border-[#E5DDD1]" />
-                              ) : (
-                                <div className="w-7 h-9 bg-[#FAF8F5] border border-[#E5DDD1] rounded flex items-center justify-center text-[8px] text-[#55514B]">#{idx + 1}</div>
-                              )}
+                              <div className="w-7 h-9 rounded-[2px] border border-[#E5DDD1] bg-[#FAF8F5] overflow-hidden flex items-center justify-center shrink-0">
+                                {ts.image ? (
+                                  <img 
+                                    src={ts.image} 
+                                    alt={ts.name} 
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                      if (e.currentTarget.nextElementSibling) {
+                                        e.currentTarget.nextElementSibling.style.display = 'flex';
+                                      }
+                                    }}
+                                    className="w-full h-full object-cover" 
+                                  />
+                                ) : null}
+                                <div 
+                                  style={{ display: ts.image ? 'none' : 'flex' }}
+                                  className="w-full h-full bg-[#EFE9DF] items-center justify-center font-serif text-[10px] text-[#171717] font-medium"
+                                >
+                                  {(ts.name || 'P').charAt(0).toUpperCase()}
+                                </div>
+                              </div>
                               <div>
                                 <p className="text-xs font-medium text-[#171717] truncate max-w-[130px]">{ts.name}</p>
                                 <p className="text-[10px] text-[#55514B] font-mono">{ts.qty} pieces ordered</p>
@@ -1969,45 +1936,58 @@ const Admin = () => {
                       </div>
                     </div>
 
-                    {/* C) Collection & Category Performance (Derived dynamically from authentic SUKO taxonomy) */}
+                    {/* C) Collection Performance */}
                     <div className="md:pl-6 space-y-3 pt-6 md:pt-0">
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-2.5">
                         <div className="flex items-center gap-2">
                           <Layers size={14} className="text-[#55514B]" />
-                          <h3 className="font-serif text-base font-normal text-[#171717]">Category Performance</h3>
+                          <h3 className="font-serif text-base font-normal text-[#171717]">Collection Performance</h3>
                         </div>
                         <span className="text-[10px] font-mono text-[#55514B]">
-                          Catalogue
+                          Collections
                         </span>
                       </div>
 
-                      <div className="divide-y divide-[#E5DDD1]/50 max-h-56 overflow-y-auto pr-1">
-                        {categoryPerformance.map((cp, idx) => (
-                          <div key={idx} className="py-2 space-y-0.5">
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="font-medium text-[#171717] truncate max-w-[140px]">{cp.name}</span>
-                              <span className="font-mono font-bold text-[#171717]">{formatINR(cp.revenue)}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-[10px] text-[#55514B] font-mono">
-                              <span>{cp.productCount} Garments</span>
-                              <span>{cp.soldCount} Sold</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      {categoryPerformance.filter(cp => cp.soldCount > 0 || cp.revenue > 0).length === 0 ? (
+                        <div className="py-7 px-4 text-center border border-[#E5DDD1] bg-[#FAF8F5]/80 my-1 rounded-[2px]">
+                          <p className="font-serif text-sm text-[#171717] font-normal mb-1">
+                            No collection sales recorded yet
+                          </p>
+                          <p className="text-xs text-[#55514B] font-normal">
+                            Your first atelier orders will reflect collection performance here.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-[#E5DDD1]/50 pr-1">
+                          {categoryPerformance
+                            .filter(cp => cp.soldCount > 0 || cp.revenue > 0)
+                            .map((cp, idx) => (
+                              <div key={idx} className="py-2 space-y-0.5">
+                                <div className="flex justify-between items-center text-xs">
+                                  <span className="font-medium text-[#171717] truncate max-w-[140px]">{cp.name}</span>
+                                  <span className="font-mono font-bold text-[#171717]">{formatINR(cp.revenue)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[10px] text-[#55514B] font-mono">
+                                  <span>{cp.productCount} Pieces</span>
+                                  <span>{cp.soldCount} Sold</span>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
                     </div>
 
                   </div>
 
-                  {/* 6. CLIENT EXPERIENCE SECTION (Editorial Roster & Authentic Reviews) */}
+                  {/* 6. CLIENT EXPERIENCE SECTION */}
                   <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-[#E5DDD1] gap-6 lg:gap-0 items-start pb-4">
                     
-                    {/* Editorial Client Roster (7 cols) */}
+                    {/* Client Directory (7 cols) */}
                     <div className="lg:col-span-7 lg:pr-8 space-y-3.5">
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
                         <div>
                           <h2 className="font-serif text-xl font-normal text-[#171717]">
-                            Client Roster
+                            Client Directory
                           </h2>
                           <p className="text-xs text-[#55514B] font-normal mt-0.5">
                             Active studio clientele on record
@@ -2022,17 +2002,18 @@ const Admin = () => {
                         </button>
                       </div>
 
-                      {/* Editorial Client Roster (Pure Hairline Rows, No Cards/Boxes) */}
+                      {/* Compact Client Rows */}
                       <div className="divide-y divide-[#E5DDD1]/60">
                         {uniqueClientsList.slice(0, 4).map((cl, i) => (
-                          <div key={i} className="py-2.5 flex items-baseline justify-between hover:bg-[#FAF8F5]/60 transition-colors px-1">
-                            <div className="space-y-0.5">
-                              <p className="font-serif text-sm text-[#171717] font-medium">{cl.name}</p>
-                              <p className="text-[11px] text-[#55514B] font-normal">{cl.city || "India"}</p>
+                          <div key={i} className="py-2.5 flex items-center justify-between hover:bg-[#FAF8F5]/60 transition-colors px-1 text-xs">
+                            <div className="flex items-center gap-2 truncate">
+                              <span className="font-serif text-sm text-[#171717] font-medium truncate">{cl.name}</span>
+                              <span className="text-[#C5BDB2] text-xs">&middot;</span>
+                              <span className="text-[11px] text-[#55514B] font-normal">{cl.city || "India"}</span>
                             </div>
-                            <div className="text-right space-y-0.5 font-mono">
-                              <p className="text-[11px] text-[#55514B]">{cl.ordersCount} {cl.ordersCount === 1 ? 'Order' : 'Orders'}</p>
-                              <p className="text-xs font-semibold text-[#171717]">{formatINR(cl.totalSpent)} Lifetime</p>
+                            <div className="flex items-center gap-3 font-mono text-right shrink-0">
+                              <span className="text-[11px] text-[#55514B]">{cl.ordersCount} {cl.ordersCount === 1 ? 'Order' : 'Orders'}</span>
+                              <span className="text-xs font-semibold text-[#171717]">{formatINR(cl.totalSpent)}</span>
                             </div>
                           </div>
                         ))}
@@ -2090,10 +2071,10 @@ const Admin = () => {
                         {adminReviewsList.length === 0 && (
                           <div className="py-8 px-5 text-center border border-[#E5DDD1] bg-[#FAF8F5]/80 my-1 rounded-[2px]">
                             <span className="text-[10px] uppercase tracking-[0.20em] text-[#C2922E] font-mono font-medium block mb-2">
-                              ATELIER ARCHIVE
+                              CLIENT REVIEWS
                             </span>
                             <p className="font-serif text-base font-normal text-[#171717] mb-1.5">
-                              No verified experiences yet.
+                              No verified reviews yet
                             </p>
                             <p className="text-xs text-[#55514B] font-normal leading-relaxed max-w-[280px] mx-auto">
                               Client feedback and tailoring reviews will appear here once verified patrons submit their experience.
