@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Navigate, Link } from "react-router-dom";
+import { Navigate, Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { 
@@ -179,7 +179,43 @@ const compressAndResizeImage = (file) => {
 const Admin = () => {
   const { user, token, logout } = useAuth();
   const { refresh: refreshGlobalProducts } = useProducts();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const VALID_TABS = [
+    "overview",
+    "orders",
+    "payments",
+    "products",
+    "categories",
+    "customers",
+    "reviews",
+    "coupons",
+    "broadcast",
+    "calendar"
+  ];
+  const rawTab = (searchParams.get("tab") || "").toLowerCase();
+  const activeTab = VALID_TABS.includes(rawTab) ? rawTab : "overview";
+
+  // Modal Navigation & History Stack (for Browser Back Button & ESC Support)
+  const modalStackRef = useRef([]);
+  const isClosingViaCodeRef = useRef(false);
+
+  const setActiveTab = (newTab, options = {}) => {
+    const normalizedTab = VALID_TABS.includes(newTab?.toLowerCase()) ? newTab.toLowerCase() : "overview";
+    if (normalizedTab === activeTab && !options.force) return;
+
+    if (modalStackRef.current.length > 0) {
+      modalStackRef.current.forEach(m => executeModalClose(m));
+      modalStackRef.current = [];
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    if (normalizedTab === "overview") {
+      nextParams.delete("tab");
+    } else {
+      nextParams.set("tab", normalizedTab);
+    }
+    setSearchParams(nextParams, { replace: options.replace ?? false });
+  };
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const profileDropdownRef = useRef(null);
@@ -322,6 +358,7 @@ const Admin = () => {
       status: o.status || "pending",
       cancel_reason: o.cancel_reason || ""
     });
+    pushModalState("editingOrder");
   };
 
   const handleSaveEditedOrder = async (e) => {
@@ -342,7 +379,7 @@ const Admin = () => {
       if (!res.ok) throw new Error(data.error || "Failed to update order");
 
       setOrders(prev => prev.map(o => o.id === editingOrder.id ? { ...o, ...data.order } : o));
-      setEditingOrder(null);
+      closeEditingOrder();
       toast.success(`Order #SUKO-${1000 + editingOrder.id} modified successfully!`);
     } catch (err) {
       toast.error(err.message);
@@ -392,6 +429,7 @@ const Admin = () => {
     
     setEditGalleryImages(existingList);
     setEditImage(null);
+    pushModalState("editingProduct");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -435,9 +473,7 @@ const Admin = () => {
       if (!res.ok) throw new Error(result.error || result.message || "Failed to update product");
 
       toast.success(`"${editFormData.name}" updated successfully!`);
-      setEditingProduct(null);
-      setEditImage(null);
-      setEditGalleryImages([]);
+      closeEditingProduct();
       fetchDashboardData();
       refreshGlobalProducts();
     } catch (err) {
@@ -446,6 +482,112 @@ const Admin = () => {
       setUpdatingProduct(false);
     }
   };
+
+  // Modal Execution & History Interceptors (Enables Browser Back Button for Modals)
+  function executeModalClose(modalId) {
+    switch (modalId) {
+      case "zoomedScreenshot":
+        setZoomedScreenshot(null);
+        break;
+      case "orderDetails":
+        setSelectedOrderDetails(null);
+        break;
+      case "editingOrder":
+        setEditingOrder(null);
+        break;
+      case "editingProduct":
+        setEditingProduct(null);
+        setEditGalleryImages([]);
+        setEditImage(null);
+        break;
+      case "cropper":
+        setCropperSrc(null);
+        setCropperCallback(null);
+        break;
+      case "mobileSidebar":
+        setIsMobileSidebarOpen(false);
+        break;
+      default:
+        break;
+    }
+  }
+
+  const pushModalState = (modalId) => {
+    modalStackRef.current.push(modalId);
+    window.history.pushState({ sukoAdminModal: modalId }, "");
+  };
+
+  const closeModal = (modalId) => {
+    const index = modalStackRef.current.lastIndexOf(modalId);
+    if (index !== -1) {
+      modalStackRef.current.splice(index, 1);
+      isClosingViaCodeRef.current = true;
+      window.history.back();
+    }
+    executeModalClose(modalId);
+  };
+
+  const openOrderDetails = (order) => {
+    setSelectedOrderDetails(order);
+    pushModalState("orderDetails");
+  };
+  const closeOrderDetails = () => closeModal("orderDetails");
+
+  const openZoomedScreenshot = (url) => {
+    setZoomedScreenshot(url);
+    pushModalState("zoomedScreenshot");
+  };
+  const closeZoomedScreenshot = () => closeModal("zoomedScreenshot");
+
+  const closeEditingOrder = () => closeModal("editingOrder");
+  const closeEditingProduct = () => closeModal("editingProduct");
+
+  const openMobileSidebar = () => {
+    setIsMobileSidebarOpen(true);
+    pushModalState("mobileSidebar");
+  };
+  const closeMobileSidebar = (withoutHistory = false) => {
+    if (withoutHistory) {
+      modalStackRef.current = modalStackRef.current.filter(m => m !== "mobileSidebar");
+      setIsMobileSidebarOpen(false);
+    } else {
+      closeModal("mobileSidebar");
+    }
+  };
+
+  // Listen for Browser Back Button (popstate) & Escape Key
+  useEffect(() => {
+    const handlePopState = () => {
+      if (isClosingViaCodeRef.current) {
+        isClosingViaCodeRef.current = false;
+        return;
+      }
+
+      if (modalStackRef.current.length > 0) {
+        const topModal = modalStackRef.current.pop();
+        executeModalClose(topModal);
+      }
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (modalStackRef.current.length > 0) {
+          const topModal = modalStackRef.current[modalStackRef.current.length - 1];
+          closeModal(topModal);
+        } else if (isProfileDropdownOpen) {
+          setIsProfileDropdownOpen(false);
+        }
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isProfileDropdownOpen]);
 
   useEffect(() => {
     if (user?.authenticated && user.role === "admin" && token) {
@@ -1070,7 +1212,7 @@ const Admin = () => {
       {isMobileSidebarOpen && (
         <div 
           className="md:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-xs transition-opacity" 
-          onClick={() => setIsMobileSidebarOpen(false)} 
+          onClick={closeMobileSidebar} 
         />
       )}
 
@@ -1089,7 +1231,7 @@ const Admin = () => {
         <div>
           <div className="pb-5 border-b border-[#E5DDD1]">
             <div className="flex items-start justify-between">
-              <Link to="/" className="inline-block group" onClick={() => setIsMobileSidebarOpen(false)}>
+              <Link to="/" className="inline-block group" onClick={() => closeMobileSidebar(true)}>
                 <div className="flex items-center gap-3">
                   <img
                     src="/logo.png"
@@ -1108,7 +1250,7 @@ const Admin = () => {
               </Link>
               <button
                 type="button"
-                onClick={() => setIsMobileSidebarOpen(false)}
+                onClick={closeMobileSidebar}
                 className="md:hidden p-1 text-[#746F68] hover:text-[#171717] cursor-pointer"
                 aria-label="Close sidebar"
               >
@@ -1131,7 +1273,7 @@ const Admin = () => {
               <div className="space-y-1">
                 <button
                   type="button"
-                  onClick={() => { setActiveTab("overview"); setIsMobileSidebarOpen(false); }}
+                  onClick={() => { setActiveTab("overview"); closeMobileSidebar(true); }}
                   className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "overview"
                       ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
@@ -1143,7 +1285,7 @@ const Admin = () => {
 
                 <button
                   type="button"
-                  onClick={() => { setActiveTab("orders"); setIsMobileSidebarOpen(false); }}
+                  onClick={() => { setActiveTab("orders"); closeMobileSidebar(true); }}
                   className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "orders"
                       ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
@@ -1160,7 +1302,7 @@ const Admin = () => {
 
                 <button
                   type="button"
-                  onClick={() => { setActiveTab("payments"); setIsMobileSidebarOpen(false); }}
+                  onClick={() => { setActiveTab("payments"); closeMobileSidebar(true); }}
                   className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "payments"
                       ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
@@ -1185,7 +1327,7 @@ const Admin = () => {
               <div className="space-y-1">
                 <button
                   type="button"
-                  onClick={() => { setActiveTab("products"); setIsMobileSidebarOpen(false); }}
+                  onClick={() => { setActiveTab("products"); closeMobileSidebar(true); }}
                   className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "products"
                       ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
@@ -1202,7 +1344,7 @@ const Admin = () => {
 
                 <button
                   type="button"
-                  onClick={() => { setActiveTab("categories"); setIsMobileSidebarOpen(false); }}
+                  onClick={() => { setActiveTab("categories"); closeMobileSidebar(true); }}
                   className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "categories"
                       ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
@@ -1222,7 +1364,7 @@ const Admin = () => {
               <div className="space-y-1">
                 <button
                   type="button"
-                  onClick={() => { setActiveTab("customers"); setIsMobileSidebarOpen(false); }}
+                  onClick={() => { setActiveTab("customers"); closeMobileSidebar(true); }}
                   className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "customers"
                       ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
@@ -1234,7 +1376,7 @@ const Admin = () => {
 
                 <button
                   type="button"
-                  onClick={() => { setActiveTab("reviews"); setIsMobileSidebarOpen(false); }}
+                  onClick={() => { setActiveTab("reviews"); closeMobileSidebar(true); }}
                   className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "reviews"
                       ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
@@ -1254,7 +1396,7 @@ const Admin = () => {
               <div className="space-y-1">
                 <button
                   type="button"
-                  onClick={() => { setActiveTab("coupons"); setIsMobileSidebarOpen(false); }}
+                  onClick={() => { setActiveTab("coupons"); closeMobileSidebar(true); }}
                   className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "coupons"
                       ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
@@ -1266,7 +1408,7 @@ const Admin = () => {
 
                 <button
                   type="button"
-                  onClick={() => { setActiveTab("broadcast"); setIsMobileSidebarOpen(false); }}
+                  onClick={() => { setActiveTab("broadcast"); closeMobileSidebar(true); }}
                   className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "broadcast"
                       ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
@@ -1278,7 +1420,7 @@ const Admin = () => {
 
                 <button
                   type="button"
-                  onClick={() => { setActiveTab("calendar"); setIsMobileSidebarOpen(false); }}
+                  onClick={() => { setActiveTab("calendar"); closeMobileSidebar(true); }}
                   className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "calendar"
                       ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
@@ -1335,7 +1477,7 @@ const Admin = () => {
           <div className="flex items-center gap-4">
             <button
               type="button"
-              onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+              onClick={isMobileSidebarOpen ? closeMobileSidebar : openMobileSidebar}
               className="md:hidden p-2 text-[#171717] hover:bg-[#EFE9DF] rounded-lg transition-colors cursor-pointer"
               aria-label="Toggle navigation drawer"
             >
@@ -2512,9 +2654,10 @@ const Admin = () => {
                                     type="button"
                                     onClick={() => {
                                       setCropperSrc(item.preview);
+                                      pushModalState("cropper");
                                       setCropperCallback(() => (cropped) => {
                                         setGalleryFiles(prev => prev.map((g, i) => i === idx ? { ...g, file: cropped.file, preview: cropped.preview } : g));
-                                        setCropperSrc(null);
+                                        closeModal("cropper");
                                       });
                                     }}
                                     className="p-1 bg-white rounded text-[#121215] hover:bg-[#C2922E] hover:text-white transition-colors"
@@ -2640,7 +2783,7 @@ const Admin = () => {
                                 {o.payment_screenshot_url && (
                                   <button
                                     type="button"
-                                    onClick={() => setZoomedScreenshot(`${API_BASE_URL}/api/orders/${o.id}/payment-proof?token=${encodeURIComponent(token)}`)}
+                                    onClick={() => openZoomedScreenshot(`${API_BASE_URL}/api/orders/${o.id}/payment-proof?token=${encodeURIComponent(token)}`)}
                                     className="text-[9px] font-mono uppercase text-[#C2922E] hover:underline flex items-center gap-1"
                                     title="View Payment Proof Screenshot"
                                   >
@@ -2704,7 +2847,7 @@ const Admin = () => {
                           <td className="p-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
-                                onClick={() => setSelectedOrderDetails(o)}
+                                onClick={() => openOrderDetails(o)}
                                 className="text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] border border-[#E8E4DC] rounded-lg p-2 transition-colors"
                                 title="Inspect Details"
                               >
@@ -3162,7 +3305,7 @@ const Admin = () => {
 
                               <button
                                 type="button"
-                                onClick={() => setSelectedOrderDetails(order)}
+                                onClick={() => openOrderDetails(order)}
                                 className="p-2.5 text-[#746F68] hover:text-[#171717] bg-white border border-[#E5DDD1] hover:border-[#171717] rounded-xl transition-colors cursor-pointer"
                                 title="Inspect Full Order"
                               >
@@ -3243,7 +3386,7 @@ const Admin = () => {
                                 <td className="p-4 text-right">
                                   <button
                                     type="button"
-                                    onClick={() => setSelectedOrderDetails(o)}
+                                    onClick={() => openOrderDetails(o)}
                                     className="p-1.5 text-[#746F68] hover:text-[#171717] border border-[#E5DDD1] rounded-lg hover:bg-[#FAF8F5] transition-colors"
                                     title="View Order Details"
                                   >
@@ -3454,16 +3597,23 @@ const Admin = () => {
             onSave={(cropped) => {
               if (cropperCallback) cropperCallback(cropped);
             }}
-            onCancel={() => setCropperSrc(null)}
+            onCancel={() => closeModal("cropper")}
           />
         )}
 
         {/* EDIT PRODUCT MODAL */}
         {editingProduct && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-            <div className="bg-white border border-[#E8E4DC] max-w-2xl w-full p-6 sm:p-8 rounded-2xl relative shadow-2xl space-y-5 text-[#121215]">
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
+            onClick={closeEditingProduct}
+          >
+            <div 
+              className="bg-white border border-[#E8E4DC] max-w-2xl w-full p-6 sm:p-8 rounded-2xl relative shadow-2xl space-y-5 text-[#121215]"
+              onClick={(e) => e.stopPropagation()}
+            >
               <button
-                onClick={() => setEditingProduct(null)}
+                type="button"
+                onClick={closeEditingProduct}
                 className="absolute top-5 right-5 text-[#888890] hover:text-[#121215] p-1.5 rounded-lg hover:bg-[#FAF8F5] transition-all"
               >
                 <X size={18} />
@@ -3548,7 +3698,7 @@ const Admin = () => {
                 <div className="flex gap-3 pt-3">
                   <button
                     type="button"
-                    onClick={() => setEditingProduct(null)}
+                    onClick={closeEditingProduct}
                     className="flex-1 py-3 border border-[#E8E4DC] rounded-xl text-[10px] uppercase tracking-[0.14em] font-body text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] transition-all"
                   >
                     Cancel
@@ -3568,10 +3718,18 @@ const Admin = () => {
 
         {/* INSPECT ORDER DETAILS MODAL */}
         {selectedOrderDetails && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-            <div ref={inspectModalRef} className="bg-white border border-[#E8E4DC] max-w-2xl w-full p-6 sm:p-8 rounded-2xl relative shadow-2xl space-y-5 text-[#121215]">
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
+            onClick={closeOrderDetails}
+          >
+            <div 
+              ref={inspectModalRef} 
+              onClick={(e) => e.stopPropagation()} 
+              className="bg-white border border-[#E8E4DC] max-w-2xl w-full p-6 sm:p-8 rounded-2xl relative shadow-2xl space-y-5 text-[#121215]"
+            >
               <button
-                onClick={() => setSelectedOrderDetails(null)}
+                type="button"
+                onClick={closeOrderDetails}
                 className="absolute top-5 right-5 text-[#888890] hover:text-[#121215] p-1.5 rounded-lg hover:bg-[#FAF8F5] transition-all"
               >
                 <X size={18} />
@@ -3680,10 +3838,10 @@ const Admin = () => {
                           src={`${API_BASE_URL}/api/orders/${selectedOrderDetails.id}/payment-proof?token=${encodeURIComponent(token)}`}
                           alt="Customer Payment Proof"
                           className="w-full h-full max-h-[280px] object-contain cursor-pointer transition-transform group-hover:scale-105"
-                          onClick={() => setZoomedScreenshot(`${API_BASE_URL}/api/orders/${selectedOrderDetails.id}/payment-proof?token=${encodeURIComponent(token)}`)}
+                          onClick={() => openZoomedScreenshot(`${API_BASE_URL}/api/orders/${selectedOrderDetails.id}/payment-proof?token=${encodeURIComponent(token)}`)}
                         />
                         <div 
-                          onClick={() => setZoomedScreenshot(`${API_BASE_URL}/api/orders/${selectedOrderDetails.id}/payment-proof?token=${encodeURIComponent(token)}`)}
+                          onClick={() => openZoomedScreenshot(`${API_BASE_URL}/api/orders/${selectedOrderDetails.id}/payment-proof?token=${encodeURIComponent(token)}`)}
                           className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer text-white text-xs font-mono gap-1.5"
                         >
                           <Eye size={15} /> Click to Enlarge Full Proof
@@ -3760,7 +3918,7 @@ const Admin = () => {
         {zoomedScreenshot && (
           <div 
             className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-            onClick={() => setZoomedScreenshot(null)}
+            onClick={closeZoomedScreenshot}
           >
             <div 
               className="bg-[#121215] border border-white/20 max-w-3xl w-full p-4 rounded-2xl relative shadow-2xl space-y-3"
@@ -3772,7 +3930,7 @@ const Admin = () => {
                 </span>
                 <button
                   type="button"
-                  onClick={() => setZoomedScreenshot(null)}
+                  onClick={closeZoomedScreenshot}
                   className="text-white/60 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
                 >
                   <X size={18} />
@@ -3794,10 +3952,18 @@ const Admin = () => {
 
         {/* EDIT / MODIFY ORDER MODAL */}
         {editingOrder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-            <div ref={editModalRef} className="bg-white border border-[#E8E4DC] max-w-md w-full p-6 sm:p-8 rounded-2xl relative shadow-2xl space-y-5 text-[#121215]">
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
+            onClick={closeEditingOrder}
+          >
+            <div 
+              ref={editModalRef} 
+              onClick={(e) => e.stopPropagation()} 
+              className="bg-white border border-[#E8E4DC] max-w-md w-full p-6 sm:p-8 rounded-2xl relative shadow-2xl space-y-5 text-[#121215]"
+            >
               <button
-                onClick={() => setEditingOrder(null)}
+                type="button"
+                onClick={closeEditingOrder}
                 className="absolute top-5 right-5 text-[#888890] hover:text-[#121215] p-1.5 rounded-lg hover:bg-[#FAF8F5] transition-all"
               >
                 <X size={18} />
@@ -3855,7 +4021,7 @@ const Admin = () => {
                 <div className="flex gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => setEditingOrder(null)}
+                    onClick={closeEditingOrder}
                     className="flex-1 py-3 border border-[#E8E4DC] rounded-xl text-[10px] uppercase tracking-[0.14em] font-body text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] transition-all"
                   >
                     Cancel
