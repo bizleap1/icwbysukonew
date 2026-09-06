@@ -22,6 +22,7 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
     if (!product) return false;
     const cat = (product.category || "").toLowerCase();
     const catName = (product.categoryName || "").toLowerCase();
+    const catType = (product.categoryType || "").toLowerCase();
     const sub = (product.subCategory || "").toLowerCase();
     const slug = (product.slug || "").toLowerCase();
     const name = (product.name || "").toLowerCase();
@@ -29,6 +30,10 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
     // Full suits, sets, or coordinated ensembles are not standalone trousers or skirts
     if (slug.includes("suit") || slug.includes("set") || name.includes("suit") || name.includes("set")) {
       return false;
+    }
+
+    if (catType === "trouser" || catType === "skirt") {
+      return true;
     }
 
     return (
@@ -63,24 +68,25 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
 
   // Image display rules:
   // 1. If useSecondImage is explicitly passed, respect it.
-  // 2. On New In page ("/new-in"):
-  //    - Large cards & all cards show 1st image as default, and on hover reveal 2nd image.
-  // 3. On Homepage ("/"):
+  // 2. Trousers & Skirts across the entire website always show 2nd image by default (hover reveals 1st image).
+  // 3. On New In page ("/new-in"):
+  //    - Large cards & suits/sets show 1st image as default, and on hover reveal 2nd image.
+  // 4. On Homepage ("/"):
   //    - New Arrivals show 2nd image as default, hover reveals 1st image.
-  // 4. On Collection page, PDP ("You May Also Like"), Shop By Moment, etc.:
-  //    - Trousers & skirts show 2nd image as default, hover reveals 1st image.
+  // 5. On Collection page, PDP ("You May Also Like"), Shop By Moment, etc.:
   //    - Suits & sets show 1st image as default, hover reveals 2nd image.
   let preferSecondImage = false;
   if (useSecondImage !== undefined) {
     preferSecondImage = useSecondImage;
+  } else if (isTrouserOrSkirt) {
+    // User: "2nd image he rakh trousers or skirts ke liye product card pe pure website mai"
+    preferSecondImage = true;
   } else if (isNewInPage) {
-    preferSecondImage = false; // Always 1st image by default on New In
+    preferSecondImage = false; // 1st image by default on New In for suits/sets
   } else if (isHomePage) {
     preferSecondImage = true; // 2nd image by default on Homepage
-  } else if (isTrouserOrSkirt) {
-    preferSecondImage = true; // 2nd image by default on Collection / PDP / others for trousers & skirts
   } else {
-    preferSecondImage = false; // 1st image for suits & sets
+    preferSecondImage = false; // 1st image for suits & sets elsewhere
   }
 
   const defaultImg = preferSecondImage ? secondImg : firstImg;
