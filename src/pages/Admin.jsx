@@ -177,13 +177,30 @@ const compressAndResizeImage = (file) => {
 };
 
 const Admin = () => {
-  const { user, token } = useAuth();
+  const { user, token, logout } = useAuth();
   const { refresh: refreshGlobalProducts } = useProducts();
   const [activeTab, setActiveTab] = useState("overview");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const profileDropdownRef = useRef(null);
   const [systemHealth, setSystemHealth] = useState(null);
   const [clientSearch, setClientSearch] = useState("");
   const addFormRef = useRef(null);
+
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target)) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+    if (isProfileDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isProfileDropdownOpen]);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/health`)
@@ -1366,10 +1383,101 @@ const Admin = () => {
               )}
             </button>
 
-            {/* Minimal Studio Admin Profile Trigger */}
-            <div className="flex items-center gap-1.5 text-xs text-[#171717] font-medium cursor-default select-none">
-              <span>Studio Admin</span>
-              <ChevronDown size={12} className="text-[#8E877E]" />
+            {/* Minimal Studio Admin Profile Trigger & Popover */}
+            <div className="relative" ref={profileDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                className="flex items-center gap-1.5 text-xs text-[#171717] hover:text-[#C2922E] font-medium cursor-pointer transition-colors select-none py-1.5 px-2 rounded hover:bg-[#EFE9DF]/50"
+                aria-expanded={isProfileDropdownOpen}
+                aria-haspopup="true"
+              >
+                <span>Studio Admin</span>
+                <ChevronDown 
+                  size={12} 
+                  className={`text-[#8E877E] transition-transform duration-200 ${isProfileDropdownOpen ? "rotate-180 text-[#C2922E]" : ""}`} 
+                />
+              </button>
+
+              {/* Profile Dropdown Popover */}
+              {isProfileDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-60 bg-[#FAF8F5] border border-[#E5DDD1] shadow-lg rounded-[2px] py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {/* Account Header */}
+                  <div className="px-3.5 py-2.5 border-b border-[#E5DDD1]">
+                    <span className="text-[9px] uppercase tracking-[0.20em] text-[#C2922E] font-mono font-medium block mb-1">
+                      ATELIER PRIVILEGE
+                    </span>
+                    <p className="font-serif text-sm font-normal text-[#171717] truncate">
+                      {user?.name || "Studio Administrator"}
+                    </p>
+                    <p className="text-[11px] text-[#55514B] font-mono truncate">
+                      {user?.email || "admin@indiancorporatewear.com"}
+                    </p>
+                    <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-[#EFE9DF] text-[9.5px] font-mono text-[#171717] uppercase tracking-wider">
+                      <ShieldCheck size={11} className="text-[#C2922E]" />
+                      <span>{user?.role === "admin" ? "Master Admin" : "Studio Admin"}</span>
+                    </div>
+                  </div>
+
+                  {/* Quick Atelier Actions */}
+                  <div className="py-1">
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab("overview"); setIsProfileDropdownOpen(false); }}
+                      className="w-full px-3.5 py-2 text-left text-xs text-[#55514B] hover:text-[#171717] hover:bg-[#EFE9DF]/60 transition-colors flex items-center justify-between cursor-pointer"
+                    >
+                      <span>Studio Overview</span>
+                      <span className="text-[10px] font-mono text-[#8E877E]">&rarr;</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab("orders"); setIsProfileDropdownOpen(false); }}
+                      className="w-full px-3.5 py-2 text-left text-xs text-[#55514B] hover:text-[#171717] hover:bg-[#EFE9DF]/60 transition-colors flex items-center justify-between cursor-pointer"
+                    >
+                      <span>All Orders</span>
+                      <span className="text-[10px] font-mono text-[#8E877E]">{orders.length}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab("payments"); setIsProfileDropdownOpen(false); }}
+                      className="w-full px-3.5 py-2 text-left text-xs text-[#55514B] hover:text-[#171717] hover:bg-[#EFE9DF]/60 transition-colors flex items-center justify-between cursor-pointer"
+                    >
+                      <span>Payment Verifications</span>
+                      {verificationRequests.length > 0 && (
+                        <span className="text-[10px] font-mono text-amber-900 bg-amber-500/20 px-1 rounded">
+                          {verificationRequests.length}
+                        </span>
+                      )}
+                    </button>
+
+                    <Link
+                      to="/"
+                      onClick={() => setIsProfileDropdownOpen(false)}
+                      className="w-full px-3.5 py-2 text-left text-xs text-[#55514B] hover:text-[#171717] hover:bg-[#EFE9DF]/60 transition-colors flex items-center justify-between"
+                    >
+                      <span>View Storefront</span>
+                      <ArrowUpRight size={12} className="text-[#8E877E]" />
+                    </Link>
+                  </div>
+
+                  {/* Sign Out Section */}
+                  <div className="pt-1 mt-1 border-t border-[#E5DDD1]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProfileDropdownOpen(false);
+                        if (logout) logout();
+                      }}
+                      className="w-full px-3.5 py-2 text-left text-xs text-rose-900/80 hover:text-rose-900 hover:bg-rose-500/10 transition-colors flex items-center justify-between cursor-pointer font-medium"
+                    >
+                      <span>Sign Out Atelier</span>
+                      <span className="text-[10px] font-mono">&times;</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Storefront Link */}
