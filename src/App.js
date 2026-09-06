@@ -215,6 +215,18 @@ function LayoutContent() {
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith("/admin");
   const isCheckoutPage = location.pathname === "/checkout";
+  const lenis = useLenis();
+
+  useEffect(() => {
+    if (isAdminPage) {
+      lenis?.stop();
+      return () => {
+        lenis?.start();
+      };
+    } else {
+      lenis?.start();
+    }
+  }, [isAdminPage, lenis]);
 
   return (
     <>

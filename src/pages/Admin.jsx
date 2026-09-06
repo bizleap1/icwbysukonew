@@ -6,9 +6,10 @@ import {
   Package, Users, ShoppingCart, DollarSign, Trash2, Edit2,
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, 
   Search, Download, AlertTriangle, Clock, X, Crop, Image as ImageIcon, Star, Eye, Tag, Mail, Send, MessageSquare, ShoppingBag,
-  LayoutDashboard, Layers, ShieldCheck, CheckCircle, RefreshCw, Copy, Check
+  LayoutDashboard, Layers, ShieldCheck, CheckCircle, RefreshCw, Copy, Check,
+  Menu, Bell, ArrowUpRight, TrendingUp
 } from "lucide-react";
-import { formatINR } from "../data/products";
+import { formatINR, CATEGORIES as DEFAULT_CATEGORIES } from "../data/products";
 import { useProducts } from "../context/ProductContext";
 import ImageCropperModal from "../components/ImageCropperModal";
 import { apiClient, API_BASE_URL } from "../config/api";
@@ -53,6 +54,32 @@ const getUserPhone = (user) => {
     return user.addresses[0].phone;
   }
   return "No Phone Registered";
+};
+
+const formatStatus = (status) => {
+  const map = {
+    pending_payment: "Pending Payment",
+    payment_verification_pending: "Verification Pending",
+    paid: "Paid",
+    payment_verification_failed: "Verification Failed",
+    processing: "Processing",
+    cancel_requested: "Cancellation Requested",
+    completed: "Completed",
+    cancelled: "Cancelled",
+  };
+  return map[status] || (status ? status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "—");
+};
+
+const formatPaymentMethod = (method) => {
+  const map = {
+    upi_qr: "UPI QR Transfer",
+    razorpay: "Online Payment",
+    online: "Online Payment",
+    card: "Card Payment",
+    netbanking: "Net Banking",
+    cod: "Cash on Delivery",
+  };
+  return map[method] || (method ? method.replace(/_/g, " ").toUpperCase() : "UPI QR Transfer");
 };
 
 const compressAndResizeImage = (file) => {
@@ -119,7 +146,17 @@ const Admin = () => {
   const { user, token } = useAuth();
   const { refresh: refreshGlobalProducts } = useProducts();
   const [activeTab, setActiveTab] = useState("overview");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [systemHealth, setSystemHealth] = useState(null);
+  const [clientSearch, setClientSearch] = useState("");
   const addFormRef = useRef(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/health`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => setSystemHealth(data?.status === "ok" ? "online" : "offline"))
+      .catch(() => setSystemHealth("offline"));
+  }, []);
   
   // Data States
   const [stats, setStats] = useState({ totalUsers: 0, totalProducts: 0, totalOrders: 0, totalRevenue: 0 });
@@ -804,10 +841,18 @@ const Admin = () => {
   const verificationRequests = orders.filter(o => o.status === "payment_verification_pending");
   const paidOrdersList = orders.filter(o => o.status === "paid" || o.status === "completed");
 
+  // Safeguard #2: Financially valid paid status check (excludes pending, verification pending, failed, cancelled)
+  const isFinanciallyPaid = (status) => {
+    const s = (status || "").toLowerCase();
+    return s === "paid" || s === "completed" || s === "processing" || s === "delivered";
+  };
+
+  const allPaidOrders = orders.filter(o => isFinanciallyPaid(o.status));
+
   const filteredOrders = orders.filter(o => {
     // 1. Status Filter
     if (orderStatusFilter !== "all") {
-      if (orderStatusFilter === "paid" && !(o.status === "paid" || o.status === "completed")) return false;
+      if (orderStatusFilter === "paid" && !isFinanciallyPaid(o.status)) return false;
       if (orderStatusFilter !== "paid" && o.status !== orderStatusFilter) return false;
     }
 
@@ -838,378 +883,991 @@ const Admin = () => {
     return true;
   });
 
-  // Calculate Date-filtered Revenue & Stats dynamically
-  const filteredRevenue = filteredOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+  // Safeguard #2: Calculate Date-filtered Revenue from legitimate paid orders only
+  const filteredPaidOrders = filteredOrders.filter(o => isFinanciallyPaid(o.status));
+  const filteredRevenue = filteredPaidOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
   const filteredDeliveredCount = filteredOrders.filter(o => o.status === 'completed' || o.status === 'delivered').length;
 
   // Low stock products (< 5)
   const lowStockProducts = products.filter(p => p.stock < 5);
 
+  // Safeguard #4: Real SVG chart data grouped strictly from filteredPaidOrders
+  const trendMap = {};
+  filteredPaidOrders.forEach(o => {
+    const d = new Date(o.created_at || Date.now());
+    const dateKey = d.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+    if (!trendMap[dateKey]) {
+      trendMap[dateKey] = { label: dateKey, revenue: 0, count: 0, rawDate: d.getTime() };
+    }
+    trendMap[dateKey].revenue += (parseFloat(o.total) || 0);
+    trendMap[dateKey].count += 1;
+  });
+  const chartData = Object.values(trendMap).sort((a, b) => a.rawDate - b.rawDate);
+
+  // Safeguard #6: Top Selling Products derived from real paid order line items
+  const topSellingMap = {};
+  allPaidOrders.forEach(order => {
+    const items = Array.isArray(order.items) ? order.items : [];
+    items.forEach(item => {
+      const key = item.product_id || item.product_name || item.name || "garment";
+      if (!topSellingMap[key]) {
+        topSellingMap[key] = {
+          id: item.product_id,
+          name: item.product_name || item.name || "Tailored Garment",
+          image: item.product_image_url || item.image_url || "",
+          qty: 0,
+          revenue: 0,
+          category: item.category_name || ""
+        };
+      }
+      const qty = Number(item.quantity) || 1;
+      const price = Number(item.price_at_purchase || item.price) || 0;
+      topSellingMap[key].qty += qty;
+      topSellingMap[key].revenue += (price * qty);
+    });
+  });
+
+  const topSellingPieces = Object.values(topSellingMap)
+    .sort((a, b) => b.qty - a.qty || b.revenue - a.revenue)
+    .slice(0, 5)
+    .map(ts => {
+      const matchedProd = products.find(p => p.id === ts.id || p.name === ts.name);
+      return {
+        ...ts,
+        image: ts.image || matchedProd?.image_url || (matchedProd?.images && matchedProd.images[0]) || "/placeholder.png",
+        category: ts.category || matchedProd?.category?.name || matchedProd?.sub_category || ""
+      };
+    });
+
+  // Safeguards #1 & #6: Authentic SUKO taxonomy & Category Performance from actual catalogue & paid orders
+  const validCategories = (categories && categories.length > 0)
+    ? categories.map(c => c.name)
+    : ["Power Suits & Sets", "Blazers", "Trousers", "Vests & Co-ords", "Signature Pieces"];
+
+  const categoryPerformance = validCategories.map(catName => {
+    const target = catName.toLowerCase();
+    const prodsInCat = products.filter(p => {
+      const pCat = (p.category?.name || p.sub_category || p.category || "").toLowerCase();
+      return pCat === target || pCat.includes(target) || target.includes(pCat);
+    });
+
+    let catRevenue = 0;
+    let catOrdersCount = 0;
+    allPaidOrders.forEach(order => {
+      const items = Array.isArray(order.items) ? order.items : [];
+      items.forEach(item => {
+        const iCat = (item.category_name || "").toLowerCase();
+        const matchedProd = products.find(p => p.id === item.product_id);
+        const pCat = (matchedProd?.category?.name || matchedProd?.sub_category || "").toLowerCase();
+        if (iCat === target || pCat === target || iCat.includes(target) || pCat.includes(target)) {
+          const qty = Number(item.quantity) || 1;
+          const price = Number(item.price_at_purchase || item.price) || 0;
+          catRevenue += (price * qty);
+          catOrdersCount += qty;
+        }
+      });
+    });
+
+    return {
+      name: catName,
+      productCount: prodsInCat.length,
+      revenue: catRevenue,
+      soldCount: catOrdersCount
+    };
+  });
+
+  // Real client directory derived from actual orders (Safeguard #5)
+  const clientMap = {};
+  orders.forEach(o => {
+    const email = o.email || o.user?.email || `client-${o.user_id || o.id}@client.suko`;
+    if (!clientMap[email]) {
+      clientMap[email] = {
+        name: o.name || o.shipping_name || o.user?.name || "Client",
+        email: email,
+        phone: o.phone || o.shipping_phone || o.user?.phone || "—",
+        city: o.city || o.shipping_city || "—",
+        totalSpent: 0,
+        ordersCount: 0,
+        lastOrderDate: o.created_at,
+        lastStatus: o.status
+      };
+    }
+    clientMap[email].ordersCount += 1;
+    if (isFinanciallyPaid(o.status)) {
+      clientMap[email].totalSpent += (parseFloat(o.total) || 0);
+    }
+    if (new Date(o.created_at) > new Date(clientMap[email].lastOrderDate)) {
+      clientMap[email].lastOrderDate = o.created_at;
+      clientMap[email].lastStatus = o.status;
+    }
+  });
+
+  const uniqueClientsList = Object.values(clientMap).sort((a, b) => new Date(b.lastOrderDate) - new Date(a.lastOrderDate));
+
   if (!user?.authenticated) return <Navigate to="/auth" />;
   if (user.role !== "admin") return <Navigate to="/" />;
 
   return (
-    <div className="grain bg-[#FAF8F5] text-[#121215] font-body selection:bg-[#C2922E] selection:text-white pt-8 pb-32 px-4 sm:px-6 lg:px-12 min-h-screen">
-      <div className="max-w-[1400px] mx-auto space-y-8">
-        
-        {/* Luxury Studio Control Header Bar */}
-        <div className="relative bg-[#121215] text-white border border-[#E8E4DC]/20 p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl rounded-2xl overflow-hidden">
-          <div className="absolute -left-12 -top-12 w-48 h-48 bg-[#C2922E]/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute right-0 bottom-0 w-64 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+    <div 
+      data-lenis-prevent="true"
+      data-lenis-prevent-wheel="true"
+      data-lenis-prevent-touch="true"
+      className="h-screen w-full bg-[#F7F3ED] text-[#171717] flex flex-col md:flex-row font-body selection:bg-[#C2922E] selection:text-white relative overflow-hidden"
+    >
+      
+      {/* Mobile Drawer Backdrop */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="md:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-xs transition-opacity" 
+          onClick={() => setIsMobileSidebarOpen(false)} 
+        />
+      )}
 
-          {/* Left Title & Status */}
-          <div className="relative z-10 flex flex-col gap-1.5">
-            <div className="flex items-center gap-3 flex-wrap">
-              <img src="/logo-light.png" alt="ICW BY SUKO" className="h-10 w-auto object-contain" />
-              <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-[#C2922E] font-medium px-2.5 py-0.5 rounded-full bg-[#C2922E]/10 border border-[#C2922E]/20">
-                Studio Control
-              </span>
-              <span className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 shadow-sm">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+      {/* ============================================================= */}
+      {/* 1. FIXED LEFT SIDEBAR NAVIGATION (270px)                      */}
+      {/* ============================================================= */}
+      <aside 
+        data-lenis-prevent="true"
+        data-lenis-prevent-wheel="true"
+        data-lenis-prevent-touch="true"
+        className={`fixed md:relative inset-y-0 left-0 h-screen w-[270px] min-w-[270px] max-w-[270px] shrink-0 bg-[#F7F3ED] border-r border-[#E5DDD1] flex flex-col justify-between p-6 z-40 transition-transform duration-300 overflow-y-auto overscroll-contain suko-scrollbar ${
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+      >
+        {/* Top Header with Logo */}
+        <div>
+          <div className="pb-5 border-b border-[#E5DDD1] flex items-start justify-between">
+            <Link to="/" className="inline-block group" onClick={() => setIsMobileSidebarOpen(false)}>
+              <div className="leading-tight">
+                <span className="font-quiche text-xl font-medium tracking-[0.24em] text-[#171717] block group-hover:text-[#C2922E] transition-colors">
+                  ICW
                 </span>
-                Live Studio
-              </span>
-            </div>
-            <p className="text-xs text-white/60 font-body font-light tracking-wide">
-              Manage inventory, atelier orders, categories, vouchers & concierge operations
-            </p>
-          </div>
-
-          {/* Right Action Buttons */}
-          <div className="relative z-10 flex items-center gap-3 w-full md:w-auto justify-end">
-            <button
-              onClick={exportOrdersCSV}
-              className="text-[11px] uppercase tracking-[0.18em] font-body font-medium py-2.5 px-4 rounded-xl border border-white/15 bg-white/[0.04] text-white hover:bg-white/10 hover:border-[#C2922E]/40 transition-all flex items-center gap-2 shadow-sm group"
-            >
-              <Download size={14} className="text-[#C2922E] group-hover:scale-110 transition-transform" />
-              <span>Export CSV</span>
-            </button>
-
-            <Link
-              to="/"
-              className="text-[11px] uppercase tracking-[0.18em] font-body font-bold py-2.5 px-5 rounded-xl bg-[#C2922E] text-white hover:bg-[#a67c24] transition-all flex items-center gap-2 shadow-md active:scale-98"
-            >
-              <ShoppingBag size={15} className="stroke-[2.5]" />
-              <span>Storefront</span>
+                <span className="text-[10px] uppercase tracking-[0.32em] text-[#746F68] font-light block">
+                  BY SUKO
+                </span>
+              </div>
             </Link>
+            <button
+              type="button"
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="md:hidden p-1 text-[#746F68] hover:text-[#171717]"
+              aria-label="Close sidebar"
+            >
+              <X size={18} />
+            </button>
           </div>
-        </div>
 
-        {/* Tab Navigation Segmented Bar */}
-        <div className="w-full bg-white border border-[#E8E4DC] p-1.5 rounded-2xl shadow-sm">
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
-            {[
-              { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-              { id: 'products', label: 'Products', icon: Package },
-              { id: 'categories', label: 'Categories & New Item', icon: Layers },
-              { 
-                id: 'orders', 
-                label: 'Orders',
-                badge: verificationRequests.length > 0 
-                  ? `${verificationRequests.length} Verify Req` 
-                  : cancellationRequests.length > 0 
-                  ? `${cancellationRequests.length} Cancel Req` 
-                  : null,
-                icon: ShoppingCart 
-              },
-              { id: 'coupons', label: 'Coupons & Vouchers', icon: Tag },
-              { id: 'broadcast', label: 'Broadcast Email', icon: Mail },
-              { id: 'reviews', label: 'Client Reviews', icon: Star },
-              { id: 'calendar', label: 'Schedule', icon: CalendarIcon }
-            ].map(tab => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
+          <div className="w-10 h-px bg-[#C2922E]/60 my-3" />
+          <span className="text-[9.5px] uppercase tracking-[0.28em] text-[#C2922E] font-medium font-mono block mb-5">
+            ATELIER CONTROL
+          </span>
+
+          {/* Navigation Groups */}
+          <nav className="space-y-6">
+            
+            {/* Overview Item */}
+            <div>
+              <button
+                type="button"
+                onClick={() => { setActiveTab("overview"); setIsMobileSidebarOpen(false); }}
+                className={`w-full text-[11.5px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                  activeTab === "overview"
+                    ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
+                    : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                }`}
+              >
+                <LayoutDashboard size={15} className={activeTab === "overview" ? "text-[#C2922E]" : "text-[#746F68]"} />
+                <span>Overview</span>
+              </button>
+            </div>
+
+            {/* CATALOG GROUP */}
+            <div>
+              <span className="text-[9px] uppercase tracking-[0.26em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
+                CATALOG
+              </span>
+              <div className="space-y-1">
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`text-[11px] uppercase tracking-[0.16em] font-body py-2.5 px-4 rounded-xl transition-all whitespace-nowrap flex items-center gap-2 font-medium shrink-0 ${
-                    isActive
-                      ? "bg-[#121215] text-[#C2922E] border border-[#C2922E]/30 shadow-md font-semibold"
-                      : "text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5]"
+                  type="button"
+                  onClick={() => { setActiveTab("products"); setIsMobileSidebarOpen(false); }}
+                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center justify-between transition-colors relative font-medium ${
+                    activeTab === "products"
+                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
                   }`}
                 >
-                  <Icon size={14} className={isActive ? "text-[#C2922E]" : "text-[#888890]"} />
-                  <span>{tab.label}</span>
-                  {tab.badge && (
-                    <span className="flex items-center gap-1 text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 border border-amber-500/30 animate-pulse">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                      {tab.badge}
+                  <div className="flex items-center gap-3">
+                    <Package size={15} className={activeTab === "products" ? "text-[#C2922E]" : "text-[#746F68]"} />
+                    <span>Products</span>
+                  </div>
+                  {lowStockProducts.length > 0 && (
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30">
+                      {lowStockProducts.length}
                     </span>
                   )}
                 </button>
-              );
-            })}
-          </div>
+
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("categories"); setIsMobileSidebarOpen(false); }}
+                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                    activeTab === "categories"
+                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                  }`}
+                >
+                  <Layers size={15} className={activeTab === "categories" ? "text-[#C2922E]" : "text-[#746F68]"} />
+                  <span>Categories &amp; Garments</span>
+                </button>
+              </div>
+            </div>
+
+            {/* COMMERCE GROUP */}
+            <div>
+              <span className="text-[9px] uppercase tracking-[0.26em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
+                COMMERCE
+              </span>
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("orders"); setIsMobileSidebarOpen(false); }}
+                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center justify-between transition-colors relative font-medium ${
+                    activeTab === "orders"
+                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <ShoppingBag size={15} className={activeTab === "orders" ? "text-[#C2922E]" : "text-[#746F68]"} />
+                    <span>Orders</span>
+                  </div>
+                  {cancellationRequests.length > 0 && (
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-rose-500/15 text-rose-800 border border-rose-500/30">
+                      {cancellationRequests.length} Cancel
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("payments"); setIsMobileSidebarOpen(false); }}
+                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center justify-between transition-colors relative font-medium ${
+                    activeTab === "payments"
+                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <ShieldCheck size={15} className={activeTab === "payments" ? "text-[#C2922E]" : "text-[#746F68]"} />
+                    <span>Payments &amp; UTR</span>
+                  </div>
+                  {verificationRequests.length > 0 && (
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-800 border border-amber-500/40 font-bold animate-pulse">
+                      {verificationRequests.length}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("coupons"); setIsMobileSidebarOpen(false); }}
+                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                    activeTab === "coupons"
+                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                  }`}
+                >
+                  <Tag size={15} className={activeTab === "coupons" ? "text-[#C2922E]" : "text-[#746F68]"} />
+                  <span>Coupons</span>
+                </button>
+              </div>
+            </div>
+
+            {/* CLIENTS GROUP */}
+            <div>
+              <span className="text-[9px] uppercase tracking-[0.26em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
+                CLIENTS
+              </span>
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("customers"); setIsMobileSidebarOpen(false); }}
+                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                    activeTab === "customers"
+                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                  }`}
+                >
+                  <Users size={15} className={activeTab === "customers" ? "text-[#C2922E]" : "text-[#746F68]"} />
+                  <span>Customers</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("reviews"); setIsMobileSidebarOpen(false); }}
+                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                    activeTab === "reviews"
+                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                  }`}
+                >
+                  <Star size={15} className={activeTab === "reviews" ? "text-[#C2922E]" : "text-[#746F68]"} />
+                  <span>Reviews</span>
+                </button>
+              </div>
+            </div>
+
+            {/* COMMUNICATION GROUP */}
+            <div>
+              <span className="text-[9px] uppercase tracking-[0.26em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
+                COMMUNICATION
+              </span>
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("broadcast"); setIsMobileSidebarOpen(false); }}
+                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                    activeTab === "broadcast"
+                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                  }`}
+                >
+                  <Mail size={15} className={activeTab === "broadcast" ? "text-[#C2922E]" : "text-[#746F68]"} />
+                  <span>Broadcast Email</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("calendar"); setIsMobileSidebarOpen(false); }}
+                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                    activeTab === "calendar"
+                      ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
+                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
+                  }`}
+                >
+                  <CalendarIcon size={15} className={activeTab === "calendar" ? "text-[#C2922E]" : "text-[#746F68]"} />
+                  <span>Schedule</span>
+                </button>
+              </div>
+            </div>
+
+          </nav>
         </div>
 
-        {loading ? (
-          <div className="text-center py-20 text-[#888890] text-[10px] uppercase tracking-[0.3em] font-body flex items-center justify-center gap-3">
-            <div className="w-4 h-4 rounded-full border-2 border-[#121215] border-t-transparent animate-spin" />
-            Loading Studio Control...
+        {/* Sidebar Footer Controls */}
+        <div className="pt-5 border-t border-[#E5DDD1] space-y-3">
+          {systemHealth === "online" && (
+            <div className="flex items-center gap-2 text-[9.5px] font-mono text-emerald-800 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              <span>Studio Online</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between text-xs pt-1">
+            <button
+              type="button"
+              onClick={exportOrdersCSV}
+              className="text-[10px] uppercase tracking-[0.18em] text-[#746F68] hover:text-[#171717] transition-colors flex items-center gap-1.5"
+            >
+              <Download size={13} className="text-[#C2922E]" />
+              <span>Export CSV</span>
+            </button>
+            <Link
+              to="/"
+              className="text-[10px] uppercase tracking-[0.18em] text-[#C2922E] hover:underline font-medium"
+            >
+              Storefront &rarr;
+            </Link>
           </div>
-        ) : (
-          <div className="space-y-12">
-            
-            {/* OVERVIEW TAB */}
-            {activeTab === "overview" && (
-              <div className="space-y-8">
+        </div>
+      </aside>
 
-                {/* Global Date Filter Bar */}
-                <div className="bg-white border border-[#E8E4DC] p-4 rounded-2xl shadow-sm flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <CalendarIcon size={16} className="text-[#C2922E]" />
-                    <span className="text-xs uppercase tracking-[0.2em] font-mono text-[#121215] font-medium">Date-Wise Analytics:</span>
-                  </div>
+      {/* ============================================================= */}
+      {/* 2. MAIN ATELIER CONTENT AREA                                  */}
+      {/* ============================================================= */}
+      <div 
+        data-lenis-prevent="true"
+        data-lenis-prevent-wheel="true"
+        data-lenis-prevent-touch="true"
+        className="flex-1 min-w-0 bg-[#F7F3ED] flex flex-col h-screen overflow-y-auto overscroll-contain suko-scrollbar"
+      >
+        
+        {/* Minimal Top Header Bar (~80px) */}
+        <header className="h-20 bg-[#F7F3ED]/95 backdrop-blur-md border-b border-[#E5DDD1] px-6 sm:px-8 lg:px-10 flex items-center justify-between sticky top-0 z-30 shrink-0">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+              className="md:hidden p-2 text-[#171717] hover:bg-[#EFE9DF] rounded-lg transition-colors cursor-pointer"
+              aria-label="Toggle navigation drawer"
+            >
+              <Menu size={20} />
+            </button>
+            <div>
+              <h1 className="font-quiche text-xl sm:text-2xl font-light text-[#171717] tracking-tight">
+                {activeTab === "overview" && "Studio Overview"}
+                {activeTab === "products" && "Product Catalog"}
+                {activeTab === "categories" && "Categories & New Garment"}
+                {activeTab === "orders" && "Atelier Orders"}
+                {activeTab === "payments" && "UPI Payments & UTR Audit"}
+                {activeTab === "coupons" && "Coupons & Vouchers"}
+                {activeTab === "customers" && "Client Directory"}
+                {activeTab === "reviews" && "Client Reviews Moderation"}
+                {activeTab === "broadcast" && "Concierge Broadcast"}
+                {activeTab === "calendar" && "Schedule & Calendar"}
+              </h1>
+              <p className="text-[11.5px] text-[#746F68] font-light hidden sm:block">
+                {activeTab === "overview" && "Manage your atelier operations, collections and client experience."}
+                {activeTab === "products" && "Curate garments, manage inventory stock and update atelier pricing."}
+                {activeTab === "categories" && "Organize tailoring lines and create bespoke garments."}
+                {activeTab === "orders" && "Review client commissions, order statuses and generate tax invoices."}
+                {activeTab === "payments" && "Verify manual UPI transactions and review customer payment screenshots."}
+                {activeTab === "coupons" && "Manage promotional vouchers and atelier privileges."}
+                {activeTab === "customers" && "Patron profiles, commission history and lifetime atelier spend."}
+                {activeTab === "reviews" && "Verified client testimonials and bespoke feedback."}
+                {activeTab === "broadcast" && "Dispatch luxury communications to clients via Resend."}
+                {activeTab === "calendar" && "Operational appointments, key delivery milestones and studio notes."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 sm:gap-5">
+            {/* Compact Quick Actions */}
+            <div className="hidden lg:flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { setActiveTab("categories"); setShowAddCategoryInline(false); }}
+                className="text-[10px] uppercase tracking-[0.16em] px-3 py-1.5 border border-[#E5DDD1] hover:border-[#171717] rounded-full text-[#171717] bg-white transition-colors cursor-pointer"
+              >
+                + Product
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("coupons")}
+                className="text-[10px] uppercase tracking-[0.16em] px-3 py-1.5 border border-[#E5DDD1] hover:border-[#171717] rounded-full text-[#171717] bg-white transition-colors cursor-pointer"
+              >
+                + Voucher
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("broadcast")}
+                className="text-[10px] uppercase tracking-[0.16em] px-3 py-1.5 border border-[#E5DDD1] hover:border-[#171717] rounded-full text-[#171717] bg-white transition-colors cursor-pointer"
+              >
+                Broadcast
+              </button>
+            </div>
+
+            {/* Notifications Bell for UPI verifications */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("payments")}
+              className="relative p-2 text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF] rounded-full transition-colors cursor-pointer"
+              title={verificationRequests.length > 0 ? `${verificationRequests.length} pending UPI verifications` : "No pending verifications"}
+            >
+              <Bell size={17} />
+              {verificationRequests.length > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#C2922E]" />
+              )}
+            </button>
+
+            {/* Admin Profile Pill */}
+            <div className="flex items-center gap-2 bg-[#FCFAF7] border border-[#E5DDD1] px-3.5 py-1.5 rounded-full shadow-xs">
+              <div className="w-5 h-5 rounded-full bg-[#EFE5D2] text-[#C2922E] flex items-center justify-center font-serif text-xs font-bold">
+                S
+              </div>
+              <span className="text-[11px] font-medium text-[#171717] tracking-wide">
+                SUKO Admin · Studio Control
+              </span>
+            </div>
+
+            {/* Storefront Link */}
+            <Link
+              to="/"
+              className="hidden sm:inline-flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.18em] font-medium text-[#746F68] hover:text-[#171717] transition-colors"
+            >
+              <span>Storefront</span>
+              <ArrowUpRight size={12} className="text-[#C2922E]" />
+            </Link>
+          </div>
+        </header>
+
+        {/* Content Body */}
+        <main className="flex-1 p-6 sm:p-8 lg:p-10 space-y-8 max-w-[1440px] w-full">
+          {loading ? (
+            <div className="text-center py-24 text-[#746F68] text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-3">
+              <div className="w-4 h-4 rounded-full border-2 border-[#171717] border-t-transparent animate-spin" />
+              <span>Loading Studio Control...</span>
+            </div>
+          ) : (
+            <div className="space-y-10">
+              
+              {/* ============================================================= */}
+              {/* OVERVIEW TAB (Private Luxury Atelier Operational Dashboard)   */}
+              {/* ============================================================= */}
+              {activeTab === "overview" && (
+                <div className="space-y-8">
                   
-                  <div className="flex flex-wrap items-center gap-3">
-                    {[
-                      { id: "all", label: "All Time" },
-                      { id: "today", label: "Today" },
-                      { id: "7days", label: "Last 7 Days" },
-                      { id: "month", label: "This Month" },
-                      { id: "custom", label: "Custom Range" },
-                    ].map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => setDatePreset(preset.id)}
-                        className={`text-[10px] uppercase tracking-[0.15em] font-body px-3.5 py-1.5 rounded-xl border transition-all ${
-                          datePreset === preset.id
-                            ? "border-[#C2922E] bg-[#C2922E]/10 text-[#C2922E] font-bold shadow-sm"
-                            : "border-[#E8E4DC] text-[#555560] hover:text-[#121215] hover:border-[#C2922E]"
-                        }`}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-
-                    {datePreset === "custom" && (
-                      <div className="flex items-center gap-2 font-mono text-xs">
-                        <input
-                          type="date"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          className="bg-[#FAF8F5] border border-[#E8E4DC] rounded-lg px-2.5 py-1 text-[#121215] outline-none focus:border-[#C2922E]"
-                        />
-                        <span className="text-[#888890]">to</span>
-                        <input
-                          type="date"
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                          className="bg-[#FAF8F5] border border-[#E8E4DC] rounded-lg px-2.5 py-1 text-[#121215] outline-none focus:border-[#C2922E]"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <StatCard 
-                    icon={<DollarSign size={20} />} 
-                    label="Period Revenue" 
-                    value={formatINR(filteredRevenue)} 
-                    subText={datePreset === "all" ? "Lifetime Earnings" : `Filtered Earnings (${datePreset})`} 
-                  />
-                  <StatCard 
-                    icon={<ShoppingCart size={20} />} 
-                    label="Period Orders" 
-                    value={filteredOrders.length} 
-                    subText={`${filteredDeliveredCount} Delivered`} 
-                  />
-                  <StatCard icon={<Package size={20} />} label="Total Products" value={stats.totalProducts} subText={`${lowStockProducts.length} Low Stock Alert`} />
-                  <StatCard icon={<Users size={20} />} label="Registered Clients" value={stats.totalUsers} subText="Active Accounts" />
-                </div>
-
-                {/* Dashboard Grid: Calendar + Low Stock & Recent Activity */}
-                <div className="grid lg:grid-cols-12 gap-8">
-                  
-                  {/* Calendar Widget (Left Column) */}
-                  <div className="lg:col-span-7 border border-[#E8E4DC] p-6 bg-white rounded-2xl shadow-sm">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-2">
-                        <CalendarIcon size={18} className="text-[#C2922E]" />
-                        <h2 className="font-quiche text-xl font-light text-[#121215]">Schedule & Events Calendar</h2>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <button 
-                          onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
-                          className="p-1.5 hover:bg-[#FAF8F5] transition-colors border border-[#E8E4DC] rounded-lg text-[#555560] hover:text-[#121215]"
-                        >
-                          <ChevronLeft size={16} />
-                        </button>
-                        <span className="text-xs uppercase tracking-[0.2em] font-mono text-[#121215]">
-                          {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                        </span>
-                        <button 
-                          onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-                          className="p-1.5 hover:bg-[#FAF8F5] transition-colors border border-[#E8E4DC] rounded-lg text-[#555560] hover:text-[#121215]"
-                        >
-                          <ChevronRight size={16} />
-                        </button>
-                      </div>
+                  {/* 1. ANALYTICS CONTROL BAR */}
+                  <div className="bg-[#FCFAF7] border border-[#E5DDD1] p-4 sm:p-5 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <span className="text-[10px] uppercase tracking-[0.24em] text-[#171717] font-semibold block font-sans">
+                        DATE-WISE ANALYTICS
+                      </span>
+                      <p className="text-[11px] text-[#746F68] font-light mt-0.5">
+                        Insights for a more refined tomorrow
+                      </p>
                     </div>
 
-                    {/* Calendar Grid Header */}
-                    <div className="grid grid-cols-7 text-center mb-2 text-[10px] uppercase tracking-widest text-[#888890] font-mono">
-                      <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                      {[
+                        { id: "all", label: "All Time" },
+                        { id: "today", label: "Today" },
+                        { id: "7days", label: "Last 7 Days" },
+                        { id: "month", label: "This Month" },
+                        { id: "custom", label: "Custom Range" },
+                      ].map((preset) => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => setDatePreset(preset.id)}
+                          className={`text-[10.5px] uppercase tracking-[0.14em] px-4 py-1.5 rounded-full transition-all cursor-pointer font-medium ${
+                            datePreset === preset.id
+                              ? "bg-[#171717] text-white shadow-xs"
+                              : "bg-[#FAF8F5] border border-[#E5DDD1] text-[#746F68] hover:text-[#171717] hover:border-[#171717]"
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+
+                      {datePreset === "custom" && (
+                        <div className="flex items-center gap-2 font-mono text-xs">
+                          <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="bg-white border border-[#E5DDD1] rounded-lg px-2.5 py-1 text-[#171717] outline-none focus:border-[#C2922E]"
+                          />
+                          <span className="text-[#746F68]">to</span>
+                          <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="bg-white border border-[#E5DDD1] rounded-lg px-2.5 py-1 text-[#171717] outline-none focus:border-[#C2922E]"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 2. KPI SUMMARY CARDS (4 Cards, restrained 16-18px geometry) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
+                    <StatCard
+                      icon={<DollarSign size={18} />}
+                      label="PERIOD REVENUE"
+                      value={formatINR(filteredRevenue)}
+                      subText={datePreset === "all" ? "Lifetime Paid Earnings" : `Paid in ${datePreset}`}
+                    />
+                    <StatCard
+                      icon={<ShoppingBag size={18} />}
+                      label="PERIOD ORDERS"
+                      value={filteredOrders.length}
+                      subText={`${filteredPaidOrders.length} Paid in Full · ${verificationRequests.length} Verify Req`}
+                    />
+                    <StatCard
+                      icon={<Package size={18} />}
+                      label="TOTAL PRODUCTS"
+                      value={stats.totalProducts}
+                      subText={`${lowStockProducts.length} Require Restock`}
+                    />
+                    <StatCard
+                      icon={<Users size={18} />}
+                      label="REGISTERED CLIENTS"
+                      value={stats.totalUsers}
+                      subText="Client Accounts on Record"
+                    />
+                  </div>
+
+                  {/* 3. MAIN ANALYTICS SECTION (Two-Column Layout) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    
+                    {/* LEFT: Revenue Overview Real Chart (7 cols) */}
+                    <div className="lg:col-span-7 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-6">
+                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
+                        <div>
+                          <span className="text-[10px] uppercase tracking-[0.22em] text-[#C2922E] font-medium block">
+                            FINANCIAL PERFORMANCE
+                          </span>
+                          <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
+                            Revenue &amp; Orders Trend
+                          </h2>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-quiche text-lg sm:text-xl font-normal text-[#171717] block">
+                            {formatINR(filteredRevenue)}
+                          </span>
+                          <span className="text-[10px] font-mono text-[#746F68]">
+                            {filteredPaidOrders.length} paid commissions
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Real Trend SVG Chart */}
+                      {chartData.length === 0 ? (
+                        <div className="py-16 text-center text-[#746F68] font-light">
+                          <CalendarIcon size={24} className="mx-auto mb-2 text-[#C2922E]/60 stroke-[1.2]" />
+                          <p className="text-xs tracking-wide">No paid order activity recorded for the selected period.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="h-56 sm:h-64 w-full relative pt-2">
+                            <svg className="w-full h-full overflow-visible" viewBox="0 0 500 160" preserveAspectRatio="none">
+                              <defs>
+                                <linearGradient id="goldGradient" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#C2922E" stopOpacity="0.22" />
+                                  <stop offset="100%" stopColor="#C2922E" stopOpacity="0.0" />
+                                </linearGradient>
+                              </defs>
+                              {/* Horizontal guidelines */}
+                              <line x1="0" y1="20" x2="500" y2="20" stroke="#E5DDD1" strokeDasharray="3 3" strokeWidth="0.8" />
+                              <line x1="0" y1="75" x2="500" y2="75" stroke="#E5DDD1" strokeDasharray="3 3" strokeWidth="0.8" />
+                              <line x1="0" y1="130" x2="500" y2="130" stroke="#E5DDD1" strokeDasharray="3 3" strokeWidth="0.8" />
+                              
+                              {(() => {
+                                const maxRev = Math.max(...chartData.map(d => d.revenue), 1000);
+                                const points = chartData.map((d, i) => {
+                                  const x = chartData.length === 1 ? 250 : (i / (chartData.length - 1)) * 480 + 10;
+                                  const y = 135 - (d.revenue / maxRev) * 110;
+                                  return { x, y, ...d };
+                                });
+                                const pathPoints = points.map(p => `${p.x},${p.y}`).join(" ");
+                                const firstX = points[0].x;
+                                const lastX = points[points.length - 1].x;
+                                const areaPoints = `${firstX},145 ${pathPoints} ${lastX},145`;
+
+                                return (
+                                  <g>
+                                    <polygon points={areaPoints} fill="url(#goldGradient)" />
+                                    <polyline
+                                      fill="none"
+                                      stroke="#C2922E"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      points={pathPoints}
+                                    />
+                                    {points.map((p, idx) => (
+                                      <g key={idx} className="group cursor-pointer">
+                                        <circle
+                                          cx={p.x}
+                                          cy={p.y}
+                                          r={chartData.length > 15 ? 2.5 : 4}
+                                          fill="#171717"
+                                          stroke="#C2922E"
+                                          strokeWidth="1.5"
+                                          className="transition-transform group-hover:scale-150"
+                                        />
+                                      </g>
+                                    ))}
+                                  </g>
+                                );
+                              })()}
+                            </svg>
+                          </div>
+
+                          <div className="flex justify-between items-center text-[10px] uppercase font-mono text-[#746F68] pt-2 border-t border-[#E5DDD1]">
+                            <span>{chartData[0]?.label}</span>
+                            {chartData.length > 2 && <span>{chartData[Math.floor(chartData.length / 2)]?.label}</span>}
+                            <span>{chartData[chartData.length - 1]?.label}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Calendar Days */}
-                    <div className="grid grid-cols-7 gap-1">
-                      {getDaysInMonth().map((day, idx) => {
-                        if (!day) return <div key={idx} className="h-12 border border-transparent" />;
-                        const dStr = dateKey(day);
-                        const isSelected = dateKey(selectedDate) === dStr;
-                        const isToday = dateKey(new Date()) === dStr;
-                        const dayOrders = orders.filter(o => dateKey(new Date(o.created_at)) === dStr);
-                        const hasNotes = (calendarNotes[dStr] || []).length > 0;
+                    {/* RIGHT: Recent Orders Stream (5 cols) */}
+                    <div className="lg:col-span-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-5">
+                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
+                        <div>
+                          <span className="text-[10px] uppercase tracking-[0.22em] text-[#C2922E] font-medium block">
+                            OPERATIONS
+                          </span>
+                          <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
+                            Recent Orders
+                          </h2>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("orders")}
+                          className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] hover:underline cursor-pointer font-medium"
+                        >
+                          View All &rarr;
+                        </button>
+                      </div>
 
-                        return (
-                          <button
-                            key={idx}
-                            onClick={() => setSelectedDate(day)}
-                            className={`h-12 border rounded-lg p-1.5 text-left flex flex-col justify-between transition-all relative ${
-                              isSelected 
-                                ? "border-[#C2922E] bg-[#C2922E]/10 text-[#C2922E] font-bold" 
-                                : isToday 
-                                ? "border-[#121215] bg-[#121215]/5" 
-                                : "border-[#E8E4DC]/60 hover:border-[#C2922E] bg-white"
-                            }`}
+                      <div className="space-y-3">
+                        {orders.slice(0, 5).map(o => (
+                          <div
+                            key={o.id}
+                            className="p-3.5 bg-white border border-[#E5DDD1] rounded-lg flex items-center justify-between gap-3 hover:border-[#171717] transition-colors"
                           >
-                            <span className={`text-xs font-body ${isToday ? "font-bold text-[#121215]" : "text-[#555560]"}`}>
-                              {day.getDate()}
-                            </span>
-                            <div className="flex gap-1 items-center">
-                              {dayOrders.length > 0 && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title={`${dayOrders.length} orders`} />
-                              )}
-                              {hasNotes && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]" title="Notes added" />
-                              )}
+                            <div className="space-y-0.5">
+                              <p className="text-xs font-medium text-[#171717] font-mono">
+                                #SUKO-{1000 + o.id}
+                              </p>
+                              <p className="text-[11px] text-[#746F68] truncate max-w-[140px] sm:max-w-[180px]">
+                                {o.name || o.shipping_name || o.user?.name || "Client"}
+                              </p>
                             </div>
-                          </button>
-                        );
-                      })}
-                    </div>
 
-                    {/* Selected Date Details & Reminders */}
-                    <div className="mt-6 pt-6 border-t border-[#E8E4DC]">
-                      <div className="flex items-center justify-between mb-4">
-                        <p className="text-xs uppercase tracking-[0.2em] font-mono text-[#555560]">
-                          Notes for {selectedDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                        </p>
-                      </div>
-
-                      {/* Add Note Input */}
-                      <div className="flex gap-2 mb-4">
-                        <input 
-                          type="text"
-                          value={noteInput}
-                          onChange={(e) => setNoteInput(e.target.value)}
-                          placeholder="Add studio reminder or task note..."
-                          onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
-                          className="flex-1 bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl px-3.5 py-2 text-xs font-body focus:border-[#C2922E] focus:bg-white outline-none"
-                        />
-                        <button 
-                          onClick={handleAddNote}
-                          className="bg-[#121215] hover:bg-[#C2922E] text-white px-4 py-2 rounded-xl text-[10px] uppercase tracking-widest font-body transition-all flex items-center gap-1 font-bold shadow-sm"
-                        >
-                          <Plus size={14} /> Add
-                        </button>
-                      </div>
-
-                      {/* Notes List */}
-                      <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
-                        {(calendarNotes[dateKey(selectedDate)] || []).map((note) => (
-                          <div key={note.id} className="flex items-center justify-between p-2.5 bg-[#FAF8F5] border border-[#E8E4DC] rounded-lg text-xs font-body">
-                            <span className="text-[#121215]">{note.text}</span>
-                            <button 
-                              onClick={() => handleDeleteNote(dateKey(selectedDate), note.id)}
-                              className="text-red-500 hover:text-red-700 p-1"
-                            >
-                              <X size={12} />
-                            </button>
+                            <div className="text-right space-y-1">
+                              <span className="font-mono text-xs font-semibold text-[#171717] block">
+                                {formatINR(o.total)}
+                              </span>
+                              <span className={`inline-block text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                                o.status === "paid" || o.status === "completed"
+                                  ? "bg-emerald-500/10 text-emerald-800 border-emerald-500/20"
+                                  : o.status === "payment_verification_pending"
+                                  ? "bg-amber-500/15 text-amber-800 border-amber-500/30 font-bold"
+                                  : o.status === "payment_verification_failed"
+                                  ? "bg-rose-500/10 text-rose-800 border-rose-500/20"
+                                  : "bg-stone-500/10 text-stone-700 border-stone-500/20"
+                              }`}>
+                                {o.status === "payment_verification_pending" ? "Verify Req" : o.status}
+                              </span>
+                            </div>
                           </div>
                         ))}
-                        {(!calendarNotes[dateKey(selectedDate)] || calendarNotes[dateKey(selectedDate)].length === 0) && (
-                          <p className="text-xs text-[#888890] font-body text-center py-2">No notes for this date.</p>
+
+                        {orders.length === 0 && (
+                          <p className="text-xs text-[#746F68] text-center py-8 font-light">
+                            No orders recorded in atelier.
+                          </p>
                         )}
                       </div>
                     </div>
+
                   </div>
 
-                  {/* Low Stock & Activity Stream (Right Column) */}
-                  <div className="lg:col-span-5 space-y-6">
+                  {/* 4. INVENTORY & PRODUCT INSIGHTS (3 Fashion Catalogue Cards) */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     
-                    {/* Low Stock Alert */}
-                    <div className="border border-[#E8E4DC] p-6 bg-white rounded-2xl shadow-sm">
-                      <div className="flex items-center justify-between mb-4">
+                    {/* A) Low Stock Alert */}
+                    <div className="bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
                         <div className="flex items-center gap-2">
-                          <AlertTriangle size={18} className="text-amber-600" />
-                          <h3 className="font-quiche text-lg font-light text-[#121215]">Low Stock Alerts</h3>
+                          <AlertTriangle size={15} className="text-amber-700" />
+                          <h3 className="font-quiche text-base font-light text-[#171717]">Low Stock Alert</h3>
                         </div>
-                        <span className="text-[10px] font-mono uppercase tracking-widest text-amber-700 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                        <span className="text-[9.5px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30">
                           {lowStockProducts.length} Items
                         </span>
                       </div>
+
                       <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
-                        {lowStockProducts.map(p => (
-                          <div key={p.id} className="flex items-center justify-between p-3 bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl font-body">
-                            <div className="flex items-center gap-3">
+                        {lowStockProducts.slice(0, 4).map(p => (
+                          <div key={p.id} className="flex items-center justify-between p-2.5 bg-white border border-[#E5DDD1] rounded-lg">
+                            <div className="flex items-center gap-2.5">
                               {p.image_url ? (
-                                <img src={p.image_url} alt={p.name} className="w-9 h-12 object-cover rounded-md border border-[#E8E4DC]" />
+                                <img src={p.image_url} alt={p.name} className="w-8 h-11 object-cover rounded border border-[#E5DDD1]" />
                               ) : (
-                                <div className="w-9 h-12 bg-white flex items-center justify-center text-[9px] text-[#888890] border border-[#E8E4DC] rounded-md">N/A</div>
+                                <div className="w-8 h-11 bg-[#FAF8F5] border border-[#E5DDD1] rounded flex items-center justify-center text-[8px] text-[#746F68]">N/A</div>
                               )}
                               <div>
-                                <p className="text-xs font-medium text-[#121215] truncate max-w-[150px]">{p.name}</p>
-                                <p className="text-[10px] text-[#888890]">{formatINR(p.price)}</p>
+                                <p className="text-xs font-medium text-[#171717] truncate max-w-[130px]">{p.name}</p>
+                                {p.sizes && <p className="text-[10px] text-[#746F68]">Sizes: {p.sizes}</p>}
                               </div>
                             </div>
-                            <span className="text-xs font-mono font-bold text-amber-700 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20">
+                            <span className="text-[10.5px] font-mono font-bold text-amber-800 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
                               {p.stock} left
                             </span>
                           </div>
                         ))}
+
                         {lowStockProducts.length === 0 && (
-                          <p className="text-xs text-emerald-600 font-body py-4 text-center">All product stocks are healthy!</p>
+                          <p className="text-xs text-emerald-700 py-6 text-center font-light">
+                            All garment inventory is healthy.
+                          </p>
                         )}
                       </div>
                     </div>
 
-                    {/* Activity Feed */}
-                    <div className="border border-[#E8E4DC] p-6 bg-white rounded-2xl shadow-sm">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Clock size={18} className="text-[#C2922E]" />
-                        <h3 className="font-quiche text-lg font-light text-[#121215]">Recent Orders Stream</h3>
+                    {/* B) Top Selling Pieces (Derived strictly from real paid orders) */}
+                    <div className="bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
+                        <div className="flex items-center gap-2">
+                          <TrendingUp size={15} className="text-[#C2922E]" />
+                          <h3 className="font-quiche text-base font-light text-[#171717]">Top Selling Pieces</h3>
+                        </div>
+                        <span className="text-[9.5px] font-mono text-[#746F68]">
+                          Paid Orders
+                        </span>
                       </div>
+
                       <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
-                        {orders.slice(0, 5).map(o => (
-                          <div key={o.id} className="flex items-center justify-between p-3 bg-[#FAF8F5] border border-[#E8E4DC] rounded-xl font-body">
-                            <div>
-                              <p className="text-xs font-medium text-[#121215]">Order #SUKO-{1000 + o.id}</p>
-                              <p className="text-[10px] text-[#888890]">{new Date(o.created_at).toLocaleDateString("en-IN")}</p>
+                        {topSellingPieces.slice(0, 4).map((ts, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-2.5 bg-white border border-[#E5DDD1] rounded-lg">
+                            <div className="flex items-center gap-2.5">
+                              {ts.image ? (
+                                <img src={ts.image} alt={ts.name} className="w-8 h-11 object-cover rounded border border-[#E5DDD1]" />
+                              ) : (
+                                <div className="w-8 h-11 bg-[#FAF8F5] border border-[#E5DDD1] rounded flex items-center justify-center text-[8px] text-[#746F68]">#{idx + 1}</div>
+                              )}
+                              <div>
+                                <p className="text-xs font-medium text-[#171717] truncate max-w-[130px]">{ts.name}</p>
+                                <p className="text-[10px] text-[#746F68] font-mono">{ts.qty} pieces commissioned</p>
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <p className="text-xs font-medium text-[#121215]">{formatINR(o.total)}</p>
-                              <span className="text-[9px] uppercase tracking-wider font-mono text-emerald-700 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">{o.status}</span>
+                            <span className="text-xs font-mono font-bold text-[#171717]">
+                              {formatINR(ts.revenue)}
+                            </span>
+                          </div>
+                        ))}
+
+                        {topSellingPieces.length === 0 && (
+                          <p className="text-xs text-[#746F68] py-6 text-center font-light">
+                            Awaiting paid garment commissions.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* C) Collection & Category Performance (Derived dynamically from authentic SUKO taxonomy) */}
+                    <div className="bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
+                        <div className="flex items-center gap-2">
+                          <Layers size={15} className="text-[#C2922E]" />
+                          <h3 className="font-quiche text-base font-light text-[#171717]">Category Performance</h3>
+                        </div>
+                        <span className="text-[9.5px] font-mono text-[#746F68]">
+                          Catalogue
+                        </span>
+                      </div>
+
+                      <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+                        {categoryPerformance.map((cp, idx) => (
+                          <div key={idx} className="p-2.5 bg-white border border-[#E5DDD1] rounded-lg space-y-1">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="font-medium text-[#171717] truncate max-w-[140px]">{cp.name}</span>
+                              <span className="font-mono font-bold text-[#171717]">{formatINR(cp.revenue)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[10px] text-[#746F68] font-mono">
+                              <span>{cp.productCount} Garments</span>
+                              <span>{cp.soldCount} Sold</span>
                             </div>
                           </div>
                         ))}
-                        {orders.length === 0 && (
-                          <p className="text-xs text-[#888890] font-body py-4 text-center">No recent orders.</p>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* 5. CLIENT EXPERIENCE SECTION (Real clients & authentic reviews) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    
+                    {/* Recent Clients Roster (7 cols) */}
+                    <div className="lg:col-span-7 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
+                        <div>
+                          <span className="text-[10px] uppercase tracking-[0.22em] text-[#C2922E] font-medium block">
+                            CLIENT ROSTER
+                          </span>
+                          <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
+                            Recent Clients
+                          </h2>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("customers")}
+                          className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] hover:underline cursor-pointer font-medium"
+                        >
+                          Directory &rarr;
+                        </button>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs font-body">
+                          <thead className="text-[9.5px] uppercase tracking-[0.18em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
+                            <tr>
+                              <th className="pb-2.5 font-medium">Client</th>
+                              <th className="pb-2.5 font-medium">City</th>
+                              <th className="pb-2.5 font-medium text-center">Orders</th>
+                              <th className="pb-2.5 font-medium text-right">Total Paid</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#E5DDD1]/60">
+                            {uniqueClientsList.slice(0, 5).map((cl, i) => (
+                              <tr key={i} className="hover:bg-white/60 transition-colors">
+                                <td className="py-3 pr-2">
+                                  <p className="font-medium text-[#171717]">{cl.name}</p>
+                                  <p className="text-[10.5px] text-[#746F68] font-mono">{cl.email}</p>
+                                </td>
+                                <td className="py-3 px-2 text-[#746F68]">{cl.city}</td>
+                                <td className="py-3 px-2 text-center font-mono">{cl.ordersCount}</td>
+                                <td className="py-3 pl-2 text-right font-mono font-semibold text-[#171717]">
+                                  {formatINR(cl.totalSpent)}
+                                </td>
+                              </tr>
+                            ))}
+                            {uniqueClientsList.length === 0 && (
+                              <tr>
+                                <td colSpan="4" className="py-6 text-center text-[#746F68]">
+                                  No client records found.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Latest Client Reviews (5 cols) */}
+                    <div className="lg:col-span-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
+                        <div>
+                          <span className="text-[10px] uppercase tracking-[0.22em] text-[#C2922E] font-medium block">
+                            TESTIMONIALS
+                          </span>
+                          <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
+                            Client Reviews
+                          </h2>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("reviews")}
+                          className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] hover:underline cursor-pointer font-medium"
+                        >
+                          All ({adminReviewsList.length}) &rarr;
+                        </button>
+                      </div>
+
+                      <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                        {adminReviewsList.slice(0, 3).map((r) => (
+                          <div key={r.id} className="p-3 bg-white border border-[#E5DDD1] rounded-lg space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-[#171717]">{r.user?.name || "Client"}</span>
+                              <div className="flex items-center text-[#C2922E]">
+                                {[...Array(r.rating || 5)].map((_, i) => (
+                                  <Star key={i} size={11} fill="#C2922E" />
+                                ))}
+                              </div>
+                            </div>
+                            <p className="text-xs text-[#746F68] font-light leading-relaxed italic">
+                              "{r.comment}"
+                            </p>
+                          </div>
+                        ))}
+
+                        {adminReviewsList.length === 0 && (
+                          <p className="text-xs text-[#746F68] py-8 text-center font-light">
+                            No reviews submitted yet.
+                          </p>
                         )}
                       </div>
                     </div>
 
                   </div>
+
                 </div>
-              </div>
-            )}
+              )}
 
             {/* CALENDAR TAB FULL */}
             {activeTab === "calendar" && (
@@ -2110,8 +2768,474 @@ const Admin = () => {
               </div>
             )}
 
+            {/* ============================================================= */}
+            {/* PAYMENTS TAB (Dedicated UPI QR Verification & UTR Audit)      */}
+            {/* ============================================================= */}
+            {activeTab === "payments" && (
+              <div className="space-y-8">
+                {/* Section Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5DDD1] pb-5">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-[0.24em] text-[#C2922E] font-mono block mb-1">
+                      — AUDIT & RECONCILIATION
+                    </span>
+                    <h2 className="text-2xl font-quiche font-light text-[#171717]">
+                      UPI Payments & UTR Verification
+                    </h2>
+                    <p className="text-xs text-[#746F68] font-light mt-1">
+                      Review manual QR payments, verify customer UTR reference codes, and approve orders.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10.5px] font-mono uppercase tracking-wider px-3.5 py-1.5 rounded-full bg-amber-500/10 text-amber-800 border border-amber-500/30 font-semibold">
+                      {verificationRequests.length} Pending Verification
+                    </span>
+                  </div>
+                </div>
+
+                {/* 1. PENDING VERIFICATION QUEUE */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm uppercase tracking-[0.16em] font-semibold text-[#171717] flex items-center gap-2">
+                      <ShieldCheck size={16} className="text-[#C2922E]" />
+                      Pending Approval Queue
+                    </h3>
+                    <span className="text-xs font-mono text-[#746F68]">
+                      Awaiting administrative reconciliation
+                    </span>
+                  </div>
+
+                  {verificationRequests.length > 0 ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                      {verificationRequests.map((order) => {
+                        const clientName = order.user?.name || (order.shipping_address ? `${order.shipping_address.first_name || ""} ${order.shipping_address.last_name || ""}`.trim() : "Private Client");
+                        const clientEmail = order.user?.email || order.shipping_address?.email || "No email";
+                        const clientPhone = order.shipping_address?.phone || getUserPhone(order.user);
+
+                        return (
+                          <div
+                            key={order.id}
+                            className="bg-[#FCFAF7] border-2 border-amber-500/30 rounded-2xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.03)] space-y-5"
+                          >
+                            {/* Card Header */}
+                            <div className="flex items-start justify-between border-b border-[#E5DDD1] pb-4">
+                              <div>
+                                <span className="text-[10px] font-mono uppercase tracking-wider text-amber-800 bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">
+                                  Verification Required
+                                </span>
+                                <h4 className="font-quiche text-xl text-[#171717] font-normal mt-2">
+                                  Order #SUKO-{1000 + order.id}
+                                </h4>
+                                <p className="text-[11px] text-[#746F68] font-mono mt-0.5">
+                                  Commissioned on {new Date(order.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-[10px] uppercase tracking-widest text-[#746F68] font-mono block">
+                                  Commission Total
+                                </span>
+                                <span className="font-quiche text-2xl font-normal text-[#171717]">
+                                  {formatINR(order.total)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Client & Payment Info Grid */}
+                            <div className="grid grid-cols-2 gap-4 text-xs font-body">
+                              <div className="space-y-1">
+                                <span className="text-[10px] uppercase tracking-wider text-[#746F68] font-mono block">Client</span>
+                                <p className="font-medium text-[#171717]">{clientName}</p>
+                                <p className="text-[11px] text-[#746F68] truncate">{clientEmail}</p>
+                                <p className="text-[11px] font-mono text-[#746F68]">{clientPhone}</p>
+                              </div>
+
+                              <div className="space-y-1">
+                                <span className="text-[10px] uppercase tracking-wider text-[#746F68] font-mono block">Payment Mode</span>
+                                <p className="font-medium text-[#171717]">UPI QR Transfer</p>
+                                <div className="pt-1">
+                                  <span className="text-[10px] uppercase tracking-wider text-[#746F68] font-mono block">UTR / Transaction ID</span>
+                                  {order.payment_transaction_id ? (
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="font-mono text-xs font-bold text-[#171717] bg-white border border-[#E5DDD1] px-2 py-0.5 rounded select-all">
+                                        {order.payment_transaction_id}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(order.payment_transaction_id);
+                                          toast.success("UTR copied to clipboard");
+                                        }}
+                                        className="p-1 text-[#746F68] hover:text-[#171717] border border-[#E5DDD1] rounded bg-white"
+                                        title="Copy UTR"
+                                      >
+                                        <Copy size={11} />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-rose-600 font-mono italic">Not provided</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Screenshot Preview */}
+                            <div>
+                              <span className="text-[10px] uppercase tracking-wider text-[#746F68] font-mono block mb-2">
+                                Customer Payment Screenshot
+                              </span>
+                              {order.payment_screenshot_url ? (
+                                <div className="flex items-center gap-3 p-3 bg-white border border-[#E5DDD1] rounded-xl">
+                                  <a
+                                    href={order.payment_screenshot_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="group relative block w-16 h-16 rounded-lg overflow-hidden border border-[#E5DDD1] shrink-0 bg-[#FAF8F5]"
+                                  >
+                                    <img
+                                      src={order.payment_screenshot_url}
+                                      alt="Payment Screenshot"
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                    />
+                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                      <Eye size={14} />
+                                    </div>
+                                  </a>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-medium text-[#171717]">Transfer Proof Attached</p>
+                                    <p className="text-[11px] text-[#746F68] mt-0.5 font-light">Verify that bank name, UTR, and amount match.</p>
+                                    <a
+                                      href={order.payment_screenshot_url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-[10.5px] uppercase tracking-wider text-[#C2922E] font-medium hover:underline inline-flex items-center gap-1 mt-1"
+                                    >
+                                      Open High-Res Proof <ArrowUpRight size={11} />
+                                    </a>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="p-3 bg-rose-50/50 border border-rose-200 rounded-xl text-xs text-rose-700 font-light flex items-center gap-2">
+                                  <AlertTriangle size={14} className="shrink-0" />
+                                  <span>No screenshot uploaded with this submission. Verify bank statement manually using UTR.</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-[#E5DDD1]">
+                              <button
+                                type="button"
+                                onClick={() => handleVerifyPayment(order.id)}
+                                disabled={verifyingOrderId === order.id}
+                                className="flex-1 min-w-[140px] bg-emerald-700 hover:bg-emerald-800 text-white py-2.5 px-4 rounded-xl text-[10.5px] uppercase tracking-[0.16em] font-semibold transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                              >
+                                {verifyingOrderId === order.id ? (
+                                  <>
+                                    <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                                    Approving...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle size={14} /> Approve & Confirm
+                                  </>
+                                )}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRejectPayment(order.id)}
+                                disabled={rejectingOrderId === order.id}
+                                className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 py-2.5 px-4 rounded-xl text-[10.5px] uppercase tracking-[0.16em] font-semibold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                              >
+                                {rejectingOrderId === order.id ? "Rejecting..." : "Reject Proof"}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setSelectedOrderDetails(order)}
+                                className="p-2.5 text-[#746F68] hover:text-[#171717] bg-white border border-[#E5DDD1] hover:border-[#171717] rounded-xl transition-colors cursor-pointer"
+                                title="Inspect Full Order"
+                              >
+                                <Eye size={15} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="bg-[#FCFAF7] border border-[#E5DDD1] rounded-2xl p-12 text-center space-y-3">
+                      <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center mx-auto">
+                        <Check size={20} />
+                      </div>
+                      <h4 className="font-quiche text-lg text-[#171717]">All UPI Payments Reconciled</h4>
+                      <p className="text-xs text-[#746F68] font-light max-w-md mx-auto">
+                        No pending payment verification requests. New customer UPI transfers will immediately appear here for your review.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. RECENT RECONCILED TRANSACTIONS TABLE */}
+                <div className="space-y-4 pt-6 border-t border-[#E5DDD1]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm uppercase tracking-[0.16em] font-semibold text-[#171717]">
+                        Reconciled Paid Orders ({filteredPaidOrders.length})
+                      </h3>
+                      <p className="text-xs text-[#746F68] font-light mt-0.5">
+                        Historical orders with verified payment settlements.
+                      </p>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-[#171717]">
+                      Total Settled: {formatINR(filteredRevenue)}
+                    </span>
+                  </div>
+
+                  <div className="border border-[#E5DDD1] bg-[#FCFAF7] rounded-2xl overflow-hidden shadow-xs">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left font-body text-xs">
+                        <thead className="bg-[#FAF8F5] text-[9.5px] uppercase tracking-[0.18em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
+                          <tr>
+                            <th className="p-4 font-medium">Order ID</th>
+                            <th className="p-4 font-medium">Client</th>
+                            <th className="p-4 font-medium">Amount</th>
+                            <th className="p-4 font-medium">Method</th>
+                            <th className="p-4 font-medium">UTR / Transaction ID</th>
+                            <th className="p-4 font-medium">Settled Date</th>
+                            <th className="p-4 font-medium text-right">Audit</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#E5DDD1]/60 text-[#171717]">
+                          {filteredPaidOrders.slice(0, 15).map((o) => {
+                            const clientName = o.user?.name || (o.shipping_address ? `${o.shipping_address.first_name || ""} ${o.shipping_address.last_name || ""}`.trim() : "Client");
+                            return (
+                              <tr key={o.id} className="hover:bg-white transition-colors">
+                                <td className="p-4 font-mono font-bold text-[#171717]">
+                                  #SUKO-{1000 + o.id}
+                                </td>
+                                <td className="p-4">
+                                  <p className="font-medium text-[#171717]">{clientName}</p>
+                                  <p className="text-[10px] text-[#746F68] truncate max-w-[150px]">{o.user?.email || "—"}</p>
+                                </td>
+                                <td className="p-4 font-mono font-bold text-[#171717]">
+                                  {formatINR(o.total)}
+                                </td>
+                                <td className="p-4 font-mono text-[11px] uppercase text-[#746F68]">
+                                  {o.payment_method === "upi_qr" ? "UPI QR" : (o.payment_method || "Online")}
+                                </td>
+                                <td className="p-4 font-mono text-[11px] text-[#171717]">
+                                  {o.payment_transaction_id || "Reconciled"}
+                                </td>
+                                <td className="p-4 font-mono text-[11px] text-[#746F68]">
+                                  {new Date(o.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                                </td>
+                                <td className="p-4 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedOrderDetails(o)}
+                                    className="p-1.5 text-[#746F68] hover:text-[#171717] border border-[#E5DDD1] rounded-lg hover:bg-[#FAF8F5] transition-colors"
+                                    title="View Order Details"
+                                  >
+                                    <Eye size={13} />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {filteredPaidOrders.length === 0 && (
+                            <tr>
+                              <td colSpan="7" className="p-8 text-center text-[#746F68] font-light">
+                                No verified paid orders recorded in this date range.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ============================================================= */}
+            {/* CLIENTS TAB (Registered Client Directory & Patron Profiles)    */}
+            {/* ============================================================= */}
+            {activeTab === "customers" && (
+              <div className="space-y-8">
+                {/* Section Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5DDD1] pb-5">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-[0.24em] text-[#C2922E] font-mono block mb-1">
+                      — PATRON DIRECTORY
+                    </span>
+                    <h2 className="text-2xl font-quiche font-light text-[#171717]">
+                      Registered Clients ({uniqueClientsList.length})
+                    </h2>
+                    <p className="text-xs text-[#746F68] font-light mt-1">
+                      Client accounts on record, commissioned orders, and lifetime atelier spend.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmailForm({ target: "all", recipientEmail: "", subject: "", message: "" });
+                      setActiveTab("broadcast");
+                    }}
+                    className="bg-[#171717] hover:bg-[#C2922E] text-white px-5 py-2.5 rounded-full text-[10px] uppercase tracking-[0.18em] font-medium transition-all shadow-xs flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+                  >
+                    <Mail size={13} /> Client Broadcast
+                  </button>
+                </div>
+
+                {/* Client Metrics Summary Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="p-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-2xl">
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#746F68] font-mono block mb-1">
+                      Registered Clients
+                    </span>
+                    <span className="font-quiche text-3xl font-light text-[#171717]">
+                      {uniqueClientsList.length}
+                    </span>
+                    <p className="text-[11px] text-[#746F68] font-light mt-1">Total patron accounts on record</p>
+                  </div>
+
+                  <div className="p-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-2xl">
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#746F68] font-mono block mb-1">
+                      Active Commissioners
+                    </span>
+                    <span className="font-quiche text-3xl font-light text-[#171717]">
+                      {uniqueClientsList.filter(c => c.orderCount > 0).length}
+                    </span>
+                    <p className="text-[11px] text-[#746F68] font-light mt-1">Patrons with placed garment orders</p>
+                  </div>
+
+                  <div className="p-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-2xl">
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#746F68] font-mono block mb-1">
+                      Total Paid Volume
+                    </span>
+                    <span className="font-quiche text-3xl font-light text-[#171717]">
+                      {formatINR(uniqueClientsList.reduce((acc, c) => acc + c.totalSpent, 0))}
+                    </span>
+                    <p className="text-[11px] text-[#746F68] font-light mt-1">Reconciled patron spend</p>
+                  </div>
+                </div>
+
+                {/* Search & Filter Bar */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#FCFAF7] border border-[#E5DDD1] p-3 sm:p-4 rounded-xl">
+                  <div className="relative flex-1">
+                    <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#746F68]" />
+                    <input
+                      type="text"
+                      placeholder="Search clients by name, email, phone or city..."
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                      className="w-full bg-white border border-[#E5DDD1] rounded-lg pl-9 pr-4 py-2 text-xs text-[#171717] outline-none focus:border-[#C2922E]"
+                    />
+                  </div>
+                  {clientSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setClientSearch("")}
+                      className="text-[10.5px] uppercase tracking-wider text-[#746F68] hover:text-[#171717] font-mono px-2 py-1"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {/* Client Directory Table */}
+                <div className="border border-[#E5DDD1] bg-[#FCFAF7] rounded-2xl overflow-hidden shadow-xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left font-body text-xs">
+                      <thead className="bg-[#FAF8F5] text-[9.5px] uppercase tracking-[0.18em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
+                        <tr>
+                          <th className="p-4 font-medium">Patron Name</th>
+                          <th className="p-4 font-medium">Contact Details</th>
+                          <th className="p-4 font-medium">Location</th>
+                          <th className="p-4 font-medium">Orders Placed</th>
+                          <th className="p-4 font-medium">Lifetime Spend</th>
+                          <th className="p-4 font-medium">Last Commission</th>
+                          <th className="p-4 font-medium text-right">Concierge Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#E5DDD1]/60 text-[#171717]">
+                        {uniqueClientsList
+                          .filter((c) => {
+                            if (!clientSearch) return true;
+                            const q = clientSearch.toLowerCase();
+                            return (
+                              c.name.toLowerCase().includes(q) ||
+                              c.email.toLowerCase().includes(q) ||
+                              c.phone.toLowerCase().includes(q) ||
+                              c.city.toLowerCase().includes(q)
+                            );
+                          })
+                          .map((client, idx) => (
+                            <tr key={idx} className="hover:bg-white transition-colors">
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-[#EFE5D2] text-[#C2922E] flex items-center justify-center font-serif text-xs font-bold shrink-0">
+                                    {client.name.charAt(0).toUpperCase() || "C"}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-[#171717]">{client.name}</p>
+                                    <p className="text-[10px] text-[#746F68] font-mono">Patron #{idx + 1}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <p className="text-xs text-[#171717]">{client.email || "—"}</p>
+                                <p className="text-[11px] text-[#746F68] font-mono">{client.phone}</p>
+                              </td>
+                              <td className="p-4 font-mono text-[11px] text-[#746F68]">
+                                {client.city}
+                              </td>
+                              <td className="p-4 font-mono text-xs">
+                                <span className="px-2 py-0.5 rounded bg-white border border-[#E5DDD1] font-semibold">
+                                  {client.orderCount} {client.orderCount === 1 ? "order" : "orders"}
+                                </span>
+                              </td>
+                              <td className="p-4 font-mono font-bold text-xs text-[#171717]">
+                                {formatINR(client.totalSpent)}
+                              </td>
+                              <td className="p-4 font-mono text-[11px] text-[#746F68]">
+                                {client.lastOrderDate 
+                                  ? new Date(client.lastOrderDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+                                  : "—"}
+                              </td>
+                              <td className="p-4 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEmailForm({ target: "single", recipientEmail: client.email, subject: "", message: "" });
+                                    setActiveTab("broadcast");
+                                  }}
+                                  className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] font-medium text-[#171717] hover:text-[#C2922E] border border-[#E5DDD1] hover:border-[#C2922E] px-2.5 py-1.5 rounded-lg bg-white transition-colors cursor-pointer"
+                                  title="Send direct email"
+                                >
+                                  <Mail size={12} /> Contact
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        {uniqueClientsList.length === 0 && (
+                          <tr>
+                            <td colSpan="7" className="p-8 text-center text-[#746F68] font-light">
+                              No registered clients found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         )}
+      </main>
 
         {/* IMAGE CROPPER MODAL */}
         {cropperSrc && (
@@ -2559,14 +3683,14 @@ const Admin = () => {
 };
 
 const StatCard = ({ icon, label, value, subText }) => (
-  <div className="border border-[#E8E4DC] p-6 bg-white rounded-2xl shadow-sm hover:border-[#C2922E]/50 transition-all flex items-start gap-4">
-    <div className="w-11 h-11 rounded-xl bg-[#C2922E]/10 text-[#C2922E] flex items-center justify-center shrink-0 mt-0.5">
+  <div className="p-6 lg:p-7 bg-[#FCFAF7] border border-[#E5DDD1] rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.02)] hover:border-[#C2922E]/40 transition-all flex items-start gap-4 group">
+    <div className="w-11 h-11 rounded-xl bg-[#FAF8F5] border border-[#E5DDD1] text-[#C2922E] flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
       {icon}
     </div>
-    <div>
-      <p className="text-[10.5px] uppercase tracking-[0.22em] text-[#888890] font-mono mb-1">{label}</p>
-      <p className="font-quiche text-3xl font-light text-[#121215] tracking-tight">{value}</p>
-      {subText && <p className="text-[11px] text-[#555560] font-body mt-1">{subText}</p>}
+    <div className="min-w-0 flex-1">
+      <p className="text-[10px] uppercase tracking-[0.2em] text-[#746F68] font-mono mb-1">{label}</p>
+      <p className="font-quiche text-3xl sm:text-4xl font-light text-[#171717] tracking-tight truncate">{value}</p>
+      {subText && <p className="text-[11px] text-[#746F68] font-light mt-1.5">{subText}</p>}
     </div>
   </div>
 );
