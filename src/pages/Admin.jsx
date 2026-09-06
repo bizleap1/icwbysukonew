@@ -693,7 +693,7 @@ const Admin = () => {
         body: JSON.stringify({ status: newStatus })
       });
       if (!res.ok) throw new Error("Failed to update status");
-      toast.success(`Order #${orderId} status updated to ${newStatus}`);
+      toast.success(`Order #${orderId} status updated to ${formatStatus(newStatus)}`);
       fetchDashboardData();
     } catch (err) {
       toast.error(err.message);
@@ -1039,10 +1039,10 @@ const Admin = () => {
           <div className="pb-5 border-b border-[#E5DDD1] flex items-start justify-between">
             <Link to="/" className="inline-block group" onClick={() => setIsMobileSidebarOpen(false)}>
               <div className="leading-tight">
-                <span className="font-quiche text-xl font-medium tracking-[0.24em] text-[#171717] block group-hover:text-[#C2922E] transition-colors">
+                <span className="font-quiche text-2xl sm:text-[26px] font-medium tracking-[0.16em] text-[#171717] block group-hover:text-[#C2922E] transition-colors leading-none">
                   ICW
                 </span>
-                <span className="text-[10px] uppercase tracking-[0.32em] text-[#746F68] font-light block">
+                <span className="text-[10.5px] uppercase tracking-[0.18em] text-[#746F68] font-light block mt-1">
                   BY SUKO
                 </span>
               </div>
@@ -1058,7 +1058,7 @@ const Admin = () => {
           </div>
 
           <div className="w-10 h-px bg-[#C2922E]/60 my-3" />
-          <span className="text-[9.5px] uppercase tracking-[0.28em] text-[#C2922E] font-medium font-mono block mb-5">
+          <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#C2922E] font-medium font-mono block mb-5">
             ATELIER CONTROL
           </span>
 
@@ -1070,7 +1070,7 @@ const Admin = () => {
               <button
                 type="button"
                 onClick={() => { setActiveTab("overview"); setIsMobileSidebarOpen(false); }}
-                className={`w-full text-[11.5px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                className={`w-full text-[11.5px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
                   activeTab === "overview"
                     ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
                     : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
@@ -1083,14 +1083,14 @@ const Admin = () => {
 
             {/* CATALOG GROUP */}
             <div>
-              <span className="text-[9px] uppercase tracking-[0.26em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
+              <span className="text-[9px] uppercase tracking-[0.12em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
                 CATALOG
               </span>
               <div className="space-y-1">
                 <button
                   type="button"
                   onClick={() => { setActiveTab("products"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center justify-between transition-colors relative font-medium ${
+                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center justify-between transition-colors relative font-medium ${
                     activeTab === "products"
                       ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
                       : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
@@ -1110,28 +1110,28 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("categories"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
                     activeTab === "categories"
                       ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
                       : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
                   }`}
                 >
                   <Layers size={15} className={activeTab === "categories" ? "text-[#C2922E]" : "text-[#746F68]"} />
-                  <span>Categories &amp; Garments</span>
+                  <span>Categories</span>
                 </button>
               </div>
             </div>
 
             {/* COMMERCE GROUP */}
             <div>
-              <span className="text-[9px] uppercase tracking-[0.26em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
+              <span className="text-[9px] uppercase tracking-[0.12em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
                 COMMERCE
               </span>
               <div className="space-y-1">
                 <button
                   type="button"
                   onClick={() => { setActiveTab("orders"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center justify-between transition-colors relative font-medium ${
+                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center justify-between transition-colors relative font-medium ${
                     activeTab === "orders"
                       ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
                       : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
@@ -1151,7 +1151,7 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("payments"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center justify-between transition-colors relative font-medium ${
+                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center justify-between transition-colors relative font-medium ${
                     activeTab === "payments"
                       ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
                       : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
@@ -1171,7 +1171,7 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("coupons"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
                     activeTab === "coupons"
                       ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
                       : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
@@ -1185,14 +1185,14 @@ const Admin = () => {
 
             {/* CLIENTS GROUP */}
             <div>
-              <span className="text-[9px] uppercase tracking-[0.26em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
+              <span className="text-[9px] uppercase tracking-[0.12em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
                 CLIENTS
               </span>
               <div className="space-y-1">
                 <button
                   type="button"
                   onClick={() => { setActiveTab("customers"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
                     activeTab === "customers"
                       ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
                       : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
@@ -1205,7 +1205,7 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("reviews"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
                     activeTab === "reviews"
                       ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
                       : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
@@ -1219,14 +1219,14 @@ const Admin = () => {
 
             {/* COMMUNICATION GROUP */}
             <div>
-              <span className="text-[9px] uppercase tracking-[0.26em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
+              <span className="text-[9px] uppercase tracking-[0.12em] text-[#A8A29A] font-medium px-3.5 block mb-1.5">
                 COMMUNICATION
               </span>
               <div className="space-y-1">
                 <button
                   type="button"
                   onClick={() => { setActiveTab("broadcast"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
                     activeTab === "broadcast"
                       ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
                       : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
@@ -1239,7 +1239,7 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("calendar"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11px] tracking-[0.12em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
+                  className={`w-full text-[11px] tracking-[0.06em] uppercase py-2.5 px-3.5 rounded-lg flex items-center gap-3 transition-colors relative font-medium ${
                     activeTab === "calendar"
                       ? "bg-[#EFE5D2] text-[#171717] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:bg-[#C2922E] before:rounded-r"
                       : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50"
@@ -1306,7 +1306,7 @@ const Admin = () => {
               <h1 className="font-quiche text-xl sm:text-2xl font-light text-[#171717] tracking-tight">
                 {activeTab === "overview" && "Studio Overview"}
                 {activeTab === "products" && "Product Catalog"}
-                {activeTab === "categories" && "Categories & New Garment"}
+                {activeTab === "categories" && "Categories"}
                 {activeTab === "orders" && "Atelier Orders"}
                 {activeTab === "payments" && "UPI Payments & UTR Audit"}
                 {activeTab === "coupons" && "Coupons & Vouchers"}
@@ -1319,10 +1319,10 @@ const Admin = () => {
                 {activeTab === "overview" && "Manage your atelier operations, collections and client experience."}
                 {activeTab === "products" && "Curate garments, manage inventory stock and update atelier pricing."}
                 {activeTab === "categories" && "Organize tailoring lines and create bespoke garments."}
-                {activeTab === "orders" && "Review client commissions, order statuses and generate tax invoices."}
+                {activeTab === "orders" && "Review client orders, payment statuses and generate tax invoices."}
                 {activeTab === "payments" && "Verify manual UPI transactions and review customer payment screenshots."}
                 {activeTab === "coupons" && "Manage promotional vouchers and atelier privileges."}
-                {activeTab === "customers" && "Patron profiles, commission history and lifetime atelier spend."}
+                {activeTab === "customers" && "Client profiles, order history and lifetime atelier spend."}
                 {activeTab === "reviews" && "Verified client testimonials and bespoke feedback."}
                 {activeTab === "broadcast" && "Dispatch luxury communications to clients via Resend."}
                 {activeTab === "calendar" && "Operational appointments, key delivery milestones and studio notes."}
@@ -1330,31 +1330,16 @@ const Admin = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-5">
-            {/* Compact Quick Actions */}
-            <div className="hidden lg:flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => { setActiveTab("categories"); setShowAddCategoryInline(false); }}
-                className="text-[10px] uppercase tracking-[0.16em] px-3 py-1.5 border border-[#E5DDD1] hover:border-[#171717] rounded-full text-[#171717] bg-white transition-colors cursor-pointer"
-              >
-                + Product
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("coupons")}
-                className="text-[10px] uppercase tracking-[0.16em] px-3 py-1.5 border border-[#E5DDD1] hover:border-[#171717] rounded-full text-[#171717] bg-white transition-colors cursor-pointer"
-              >
-                + Voucher
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("broadcast")}
-                className="text-[10px] uppercase tracking-[0.16em] px-3 py-1.5 border border-[#E5DDD1] hover:border-[#171717] rounded-full text-[#171717] bg-white transition-colors cursor-pointer"
-              >
-                Broadcast
-              </button>
-            </div>
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Simplified Single Quick Action */}
+            <button
+              type="button"
+              onClick={() => { setActiveTab("categories"); setShowAddCategoryInline(false); }}
+              className="hidden sm:inline-flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.08em] font-medium px-4 py-2 border border-[#E5DDD1] hover:border-[#171717] rounded-full text-[#171717] bg-white shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus size={13} className="text-[#C2922E]" />
+              <span>Add Garment</span>
+            </button>
 
             {/* Notifications Bell for UPI verifications */}
             <button
@@ -1375,14 +1360,14 @@ const Admin = () => {
                 S
               </div>
               <span className="text-[11px] font-medium text-[#171717] tracking-wide">
-                SUKO Admin · Studio Control
+                SUKO Admin
               </span>
             </div>
 
             {/* Storefront Link */}
             <Link
               to="/"
-              className="hidden sm:inline-flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.18em] font-medium text-[#746F68] hover:text-[#171717] transition-colors"
+              className="hidden sm:inline-flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.1em] font-medium text-[#746F68] hover:text-[#171717] transition-colors"
             >
               <span>Storefront</span>
               <ArrowUpRight size={12} className="text-[#C2922E]" />
@@ -1393,7 +1378,7 @@ const Admin = () => {
         {/* Content Body */}
         <main className="flex-1 p-6 sm:p-8 lg:p-10 space-y-8 max-w-[1440px] w-full">
           {loading ? (
-            <div className="text-center py-24 text-[#746F68] text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-3">
+            <div className="text-center py-24 text-[#746F68] text-[10px] uppercase tracking-[0.14em] flex items-center justify-center gap-3">
               <div className="w-4 h-4 rounded-full border-2 border-[#171717] border-t-transparent animate-spin" />
               <span>Loading Studio Control...</span>
             </div>
@@ -1409,7 +1394,7 @@ const Admin = () => {
                   {/* 1. ANALYTICS CONTROL BAR */}
                   <div className="bg-[#FCFAF7] border border-[#E5DDD1] p-4 sm:p-5 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-wrap items-center justify-between gap-4">
                     <div>
-                      <span className="text-[10px] uppercase tracking-[0.24em] text-[#171717] font-semibold block font-sans">
+                      <span className="text-[10px] uppercase tracking-[0.12em] text-[#171717] font-semibold block font-sans">
                         DATE-WISE ANALYTICS
                       </span>
                       <p className="text-[11px] text-[#746F68] font-light mt-0.5">
@@ -1469,9 +1454,9 @@ const Admin = () => {
                     />
                     <StatCard
                       icon={<ShoppingBag size={18} />}
-                      label="PERIOD ORDERS"
-                      value={filteredOrders.length}
-                      subText={`${filteredPaidOrders.length} Paid in Full · ${verificationRequests.length} Verify Req`}
+                      label="PAID ORDERS"
+                      value={filteredPaidOrders.length}
+                      subText={`${filteredPaidOrders.length} Paid in Full · ${verificationRequests.length} Pending Verification`}
                     />
                     <StatCard
                       icon={<Package size={18} />}
@@ -1494,7 +1479,7 @@ const Admin = () => {
                     <div className="lg:col-span-7 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-6">
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
                         <div>
-                          <span className="text-[10px] uppercase tracking-[0.22em] text-[#C2922E] font-medium block">
+                          <span className="text-[10px] uppercase tracking-[0.12em] text-[#C2922E] font-medium block">
                             FINANCIAL PERFORMANCE
                           </span>
                           <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
@@ -1506,20 +1491,41 @@ const Admin = () => {
                             {formatINR(filteredRevenue)}
                           </span>
                           <span className="text-[10px] font-mono text-[#746F68]">
-                            {filteredPaidOrders.length} paid commissions
+                            {filteredPaidOrders.length} paid orders
                           </span>
                         </div>
                       </div>
 
-                      {/* Real Trend SVG Chart */}
+                      {/* Real Trend SVG Chart or Calm Snapshot */}
                       {chartData.length === 0 ? (
-                        <div className="py-16 text-center text-[#746F68] font-light">
-                          <CalendarIcon size={24} className="mx-auto mb-2 text-[#C2922E]/60 stroke-[1.2]" />
-                          <p className="text-xs tracking-wide">No paid order activity recorded for the selected period.</p>
+                        <div className="py-8 px-6 bg-white border border-[#E5DDD1] rounded-xl text-center space-y-2">
+                          <CalendarIcon size={22} className="mx-auto text-[#C2922E]/70 stroke-[1.3]" />
+                          <p className="text-xs text-[#171717] font-medium tracking-wide">No Paid Order Activity</p>
+                          <p className="text-[11px] text-[#746F68] font-light max-w-sm mx-auto">
+                            No verified customer transactions recorded for the selected period.
+                          </p>
+                        </div>
+                      ) : chartData.length === 1 ? (
+                        <div className="p-6 bg-white border border-[#E5DDD1] rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="space-y-1">
+                            <span className="text-[9.5px] font-mono uppercase tracking-[0.12em] text-[#C2922E] font-medium block">
+                              Single Period Snapshot · {chartData[0].label}
+                            </span>
+                            <p className="font-quiche text-2xl font-normal text-[#171717]">
+                              {formatINR(chartData[0].revenue)}
+                            </p>
+                            <p className="text-[11px] text-[#746F68] font-light">
+                              Generated from {chartData[0].orderCount || filteredPaidOrders.length} verified paid {chartData[0].orderCount === 1 ? "order" : "orders"}.
+                            </p>
+                          </div>
+                          <div className="px-4 py-2 bg-[#FAF8F5] border border-[#E5DDD1] rounded-lg text-left sm:text-right">
+                            <span className="text-[9.5px] uppercase font-mono text-[#746F68] block">Date Recorded</span>
+                            <span className="font-mono text-xs font-bold text-[#171717]">{chartData[0].date}</span>
+                          </div>
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          <div className="h-56 sm:h-64 w-full relative pt-2">
+                          <div className="h-52 sm:h-56 w-full relative pt-2">
                             <svg className="w-full h-full overflow-visible" viewBox="0 0 500 160" preserveAspectRatio="none">
                               <defs>
                                 <linearGradient id="goldGradient" x1="0" y1="0" x2="0" y2="1">
@@ -1535,7 +1541,7 @@ const Admin = () => {
                               {(() => {
                                 const maxRev = Math.max(...chartData.map(d => d.revenue), 1000);
                                 const points = chartData.map((d, i) => {
-                                  const x = chartData.length === 1 ? 250 : (i / (chartData.length - 1)) * 480 + 10;
+                                  const x = (i / (chartData.length - 1)) * 480 + 10;
                                   const y = 135 - (d.revenue / maxRev) * 110;
                                   return { x, y, ...d };
                                 });
@@ -1587,7 +1593,7 @@ const Admin = () => {
                     <div className="lg:col-span-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-5">
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
                         <div>
-                          <span className="text-[10px] uppercase tracking-[0.22em] text-[#C2922E] font-medium block">
+                          <span className="text-[10px] uppercase tracking-[0.12em] text-[#C2922E] font-medium block">
                             OPERATIONS
                           </span>
                           <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
@@ -1597,7 +1603,7 @@ const Admin = () => {
                         <button
                           type="button"
                           onClick={() => setActiveTab("orders")}
-                          className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] hover:underline cursor-pointer font-medium"
+                          className="text-[10px] uppercase tracking-[0.12em] text-[#C2922E] hover:underline cursor-pointer font-medium"
                         >
                           View All &rarr;
                         </button>
@@ -1624,14 +1630,14 @@ const Admin = () => {
                               </span>
                               <span className={`inline-block text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                                 o.status === "paid" || o.status === "completed"
-                                  ? "bg-emerald-500/10 text-emerald-800 border-emerald-500/20"
+                                  ? "bg-emerald-500/10 text-emerald-800 border-emerald-500/20 font-semibold"
                                   : o.status === "payment_verification_pending"
                                   ? "bg-amber-500/15 text-amber-800 border-amber-500/30 font-bold"
                                   : o.status === "payment_verification_failed"
-                                  ? "bg-rose-500/10 text-rose-800 border-rose-500/20"
+                                  ? "bg-rose-500/10 text-rose-800 border-rose-500/20 font-semibold"
                                   : "bg-stone-500/10 text-stone-700 border-stone-500/20"
                               }`}>
-                                {o.status === "payment_verification_pending" ? "Verify Req" : o.status}
+                                {formatStatus(o.status)}
                               </span>
                             </div>
                           </div>
@@ -1713,7 +1719,7 @@ const Admin = () => {
                               )}
                               <div>
                                 <p className="text-xs font-medium text-[#171717] truncate max-w-[130px]">{ts.name}</p>
-                                <p className="text-[10px] text-[#746F68] font-mono">{ts.qty} pieces commissioned</p>
+                                <p className="text-[10px] text-[#746F68] font-mono">{ts.qty} pieces ordered</p>
                               </div>
                             </div>
                             <span className="text-xs font-mono font-bold text-[#171717]">
@@ -1724,7 +1730,7 @@ const Admin = () => {
 
                         {topSellingPieces.length === 0 && (
                           <p className="text-xs text-[#746F68] py-6 text-center font-light">
-                            Awaiting paid garment commissions.
+                            Awaiting paid garment orders.
                           </p>
                         )}
                       </div>
@@ -1767,7 +1773,7 @@ const Admin = () => {
                     <div className="lg:col-span-7 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
                         <div>
-                          <span className="text-[10px] uppercase tracking-[0.22em] text-[#C2922E] font-medium block">
+                          <span className="text-[10px] uppercase tracking-[0.12em] text-[#C2922E] font-medium block">
                             CLIENT ROSTER
                           </span>
                           <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
@@ -1777,7 +1783,7 @@ const Admin = () => {
                         <button
                           type="button"
                           onClick={() => setActiveTab("customers")}
-                          className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] hover:underline cursor-pointer font-medium"
+                          className="text-[10px] uppercase tracking-[0.12em] text-[#C2922E] hover:underline cursor-pointer font-medium"
                         >
                           Directory &rarr;
                         </button>
@@ -1785,7 +1791,7 @@ const Admin = () => {
 
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs font-body">
-                          <thead className="text-[9.5px] uppercase tracking-[0.18em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
+                          <thead className="text-[9.5px] uppercase tracking-[0.12em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
                             <tr>
                               <th className="pb-2.5 font-medium">Client</th>
                               <th className="pb-2.5 font-medium">City</th>
@@ -1823,7 +1829,7 @@ const Admin = () => {
                     <div className="lg:col-span-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
                         <div>
-                          <span className="text-[10px] uppercase tracking-[0.22em] text-[#C2922E] font-medium block">
+                          <span className="text-[10px] uppercase tracking-[0.12em] text-[#C2922E] font-medium block">
                             TESTIMONIALS
                           </span>
                           <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
@@ -1833,7 +1839,7 @@ const Admin = () => {
                         <button
                           type="button"
                           onClick={() => setActiveTab("reviews")}
-                          className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] hover:underline cursor-pointer font-medium"
+                          className="text-[10px] uppercase tracking-[0.12em] text-[#C2922E] hover:underline cursor-pointer font-medium"
                         >
                           All ({adminReviewsList.length}) &rarr;
                         </button>
@@ -1884,7 +1890,7 @@ const Admin = () => {
                     >
                       <ChevronLeft size={18} />
                     </button>
-                    <span className="text-sm uppercase tracking-[0.2em] font-mono text-[#121215]">
+                    <span className="text-sm uppercase tracking-[0.12em] font-mono text-[#121215]">
                       {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
                     </span>
                     <button 
@@ -1952,7 +1958,7 @@ const Admin = () => {
                   </div>
                   <button
                     onClick={() => setActiveTab("categories")}
-                    className="bg-[#121215] hover:bg-[#C2922E] text-white px-5 py-2.5 rounded-xl text-[10px] uppercase tracking-[0.2em] font-body transition-all flex items-center gap-2 font-bold shadow-md"
+                    className="bg-[#121215] hover:bg-[#C2922E] text-white px-5 py-2.5 rounded-xl text-[10px] uppercase tracking-[0.12em] font-body transition-all flex items-center gap-2 font-bold shadow-md"
                   >
                     <Plus size={14} /> Add New Product
                   </button>
@@ -1973,7 +1979,7 @@ const Admin = () => {
                           setProductGenderFilter(tab.id);
                           setSelectedCategory("all");
                         }}
-                        className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase tracking-[0.18em] font-body transition-all whitespace-nowrap ${
+                        className={`px-3.5 py-1.5 rounded-lg text-[10px] uppercase tracking-[0.12em] font-body transition-all whitespace-nowrap ${
                           productGenderFilter === tab.id 
                             ? "bg-[#121215] text-[#C2922E] font-bold shadow-sm" 
                             : "text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5]"
@@ -2011,7 +2017,7 @@ const Admin = () => {
 
                 <div className="overflow-x-auto border border-[#E8E4DC] bg-white rounded-2xl shadow-sm">
                   <table className="w-full text-left font-body text-sm">
-                    <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono border-b border-[#E8E4DC]">
+                    <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.12em] text-[#555560] font-mono border-b border-[#E8E4DC]">
                       <tr>
                         <th className="p-4 font-normal">Image</th>
                         <th className="p-4 font-normal">Name & Details</th>
@@ -2092,7 +2098,7 @@ const Admin = () => {
 
                   {showAddCategoryInline && (
                     <div className="p-4 border border-[#E8E4DC] bg-white rounded-2xl shadow-sm space-y-3">
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono block">New Category Name</label>
+                      <label className="text-[10px] uppercase tracking-[0.12em] text-[#555560] font-mono block">New Category Name</label>
                       <div className="flex gap-2">
                         <input
                           type="text"
@@ -2104,7 +2110,7 @@ const Admin = () => {
                         <button
                           type="button"
                           onClick={handleCreateCategory}
-                          className="bg-[#121215] hover:bg-[#C2922E] text-white px-4 py-2 rounded-xl text-[10px] uppercase tracking-widest font-body font-bold transition-all shadow-sm"
+                          className="bg-[#121215] hover:bg-[#C2922E] text-white px-4 py-2 rounded-xl text-[10px] uppercase tracking-wider font-body font-bold transition-all shadow-sm"
                         >
                           Save
                         </button>
@@ -2114,7 +2120,7 @@ const Admin = () => {
 
                   <div className="border border-[#E8E4DC] bg-white rounded-2xl shadow-sm overflow-hidden">
                     <table className="w-full text-left font-body text-sm">
-                      <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono border-b border-[#E8E4DC]">
+                      <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.12em] text-[#555560] font-mono border-b border-[#E8E4DC]">
                         <tr>
                           <th className="p-4 font-normal">Category Name</th>
                           <th className="p-4 font-normal">Products</th>
@@ -2149,7 +2155,7 @@ const Admin = () => {
                 <div className="lg:col-span-7">
                   <div className="border border-[#E8E4DC] bg-white rounded-2xl shadow-sm p-6 sm:p-8 space-y-6">
                     <div className="border-b border-[#E8E4DC] pb-4">
-                      <span className="text-[10px] uppercase tracking-[0.25em] text-[#C2922E] font-mono block mb-1">
+                      <span className="text-[10px] uppercase tracking-[0.14em] text-[#C2922E] font-mono block mb-1">
                         — ATELIER CATALOG ENTRY
                       </span>
                       <h2 className="text-2xl font-quiche font-light text-[#121215]">Add New Garment</h2>
@@ -2157,7 +2163,7 @@ const Admin = () => {
 
                     <form onSubmit={handleUploadSubmit} className="space-y-5 font-body">
                       <div>
-                        <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1.5">Garment Title *</label>
+                        <label className="text-[10.5px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1.5">Garment Title *</label>
                         <input
                           type="text"
                           name="name"
@@ -2171,7 +2177,7 @@ const Admin = () => {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1.5">Price (INR) *</label>
+                          <label className="text-[10.5px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1.5">Price (INR) *</label>
                           <input
                             type="number"
                             name="price"
@@ -2183,7 +2189,7 @@ const Admin = () => {
                           />
                         </div>
                         <div>
-                          <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1.5">Category *</label>
+                          <label className="text-[10.5px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1.5">Category *</label>
                           <select
                             name="category_id"
                             value={formData.category_id}
@@ -2201,7 +2207,7 @@ const Admin = () => {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1.5">Sub-Category Tag</label>
+                          <label className="text-[10.5px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1.5">Sub-Category Tag</label>
                           <input
                             type="text"
                             name="sub_category"
@@ -2212,7 +2218,7 @@ const Admin = () => {
                           />
                         </div>
                         <div>
-                          <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1.5">Total Fallback Stock</label>
+                          <label className="text-[10.5px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1.5">Total Fallback Stock</label>
                           <input
                             type="number"
                             name="stock"
@@ -2227,7 +2233,7 @@ const Admin = () => {
                       {/* Size Stock Distribution Map */}
                       <div className="space-y-2 border border-[#E8E4DC] p-4 rounded-xl bg-[#FAF8F5]">
                         <div className="flex items-center justify-between">
-                          <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono">Exact Size Inventory Map</label>
+                          <label className="text-[10px] uppercase tracking-[0.12em] text-[#555560] font-mono">Exact Size Inventory Map</label>
                           <span className="text-[10px] font-mono text-[#C2922E]">
                             Total: {Object.values(sizeStockMap).reduce((a, b) => a + (Number(b) || 0), 0)} units
                           </span>
@@ -2249,7 +2255,7 @@ const Admin = () => {
                       </div>
 
                       <div>
-                        <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1.5">Garment Description</label>
+                        <label className="text-[10.5px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1.5">Garment Description</label>
                         <textarea
                           name="description"
                           rows={3}
@@ -2262,7 +2268,7 @@ const Admin = () => {
 
                       {/* Image Upload / Cropping Zone */}
                       <div className="space-y-3">
-                        <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block">Product Imagery Gallery</label>
+                        <label className="text-[10.5px] uppercase tracking-[0.12em] text-[#555560] font-mono block">Product Imagery Gallery</label>
                         <div className="border-2 border-dashed border-[#E8E4DC] hover:border-[#C2922E] bg-[#FAF8F5] hover:bg-white rounded-2xl p-6 text-center transition-all">
                           <ImageIcon size={28} className="mx-auto text-[#C2922E] mb-2" />
                           <p className="text-xs text-[#121215] font-medium">Click or drag images to upload</p>
@@ -2320,7 +2326,7 @@ const Admin = () => {
                       <button
                         type="submit"
                         disabled={uploading}
-                        className="w-full bg-[#121215] hover:bg-[#C2922E] text-white py-3.5 px-8 rounded-xl text-xs uppercase tracking-[0.22em] font-bold shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="w-full bg-[#121215] hover:bg-[#C2922E] text-white py-3.5 px-8 rounded-xl text-xs uppercase tracking-[0.14em] font-bold shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {uploading ? (
                           <>
@@ -2365,7 +2371,7 @@ const Admin = () => {
                         key={st.id}
                         type="button"
                         onClick={() => setOrderStatusFilter(st.id)}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-[0.18em] font-body transition-all whitespace-nowrap ${
+                        className={`px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-[0.12em] font-body transition-all whitespace-nowrap ${
                           orderStatusFilter === st.id
                             ? "bg-[#121215] text-[#C2922E] font-bold shadow-sm"
                             : "text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5]"
@@ -2380,7 +2386,7 @@ const Admin = () => {
                 {/* Orders Data Table */}
                 <div className="overflow-x-auto border border-[#E8E4DC] bg-white rounded-2xl shadow-sm">
                   <table className="w-full text-left font-body text-sm">
-                    <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono border-b border-[#E8E4DC]">
+                    <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.12em] text-[#555560] font-mono border-b border-[#E8E4DC]">
                       <tr>
                         <th className="p-4 font-normal">Order #</th>
                         <th className="p-4 font-normal">Date</th>
@@ -2414,8 +2420,8 @@ const Admin = () => {
                           <td className="p-4">
                             <div className="space-y-1">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#FAF8F5] border border-[#E8E4DC] text-[#121215]">
-                                  {o.payment_method === "upi_qr" ? "UPI QR" : (o.payment_method || "UPI QR")}
+                                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#FAF8F5] border border-[#E8E4DC] text-[#121215]">
+                                  {formatPaymentMethod(o.payment_method)}
                                 </span>
                                 {o.payment_screenshot_url && (
                                   <button
@@ -2533,7 +2539,7 @@ const Admin = () => {
                 <div className="lg:col-span-5">
                   <div className="border border-[#E8E4DC] bg-white rounded-2xl shadow-sm p-6 space-y-5">
                     <div className="border-b border-[#E8E4DC] pb-3">
-                      <span className="text-[10px] uppercase tracking-[0.25em] text-[#C2922E] font-mono block mb-1">
+                      <span className="text-[10px] uppercase tracking-[0.14em] text-[#C2922E] font-mono block mb-1">
                         — PROMOTIONAL VOUCHERS
                       </span>
                       <h2 className="text-xl font-quiche font-light text-[#121215]">Create Coupon</h2>
@@ -2541,7 +2547,7 @@ const Admin = () => {
 
                     <form onSubmit={handleCreateCouponSubmit} className="space-y-4 font-body">
                       <div>
-                        <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Coupon Code *</label>
+                        <label className="text-[10.5px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1">Coupon Code *</label>
                         <input
                           type="text"
                           value={newCouponForm.code}
@@ -2554,7 +2560,7 @@ const Admin = () => {
 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Discount %</label>
+                          <label className="text-[10.5px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1">Discount %</label>
                           <input
                             type="number"
                             min="1"
@@ -2566,7 +2572,7 @@ const Admin = () => {
                           />
                         </div>
                         <div>
-                          <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Flat Discount (₹)</label>
+                          <label className="text-[10.5px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1">Flat Discount (₹)</label>
                           <input
                             type="number"
                             value={newCouponForm.discount_flat}
@@ -2578,7 +2584,7 @@ const Admin = () => {
                       </div>
 
                       <div>
-                        <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Min Order Value (₹)</label>
+                        <label className="text-[10.5px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1">Min Order Value (₹)</label>
                         <input
                           type="number"
                           value={newCouponForm.min_order_value}
@@ -2590,7 +2596,7 @@ const Admin = () => {
 
                       <button
                         type="submit"
-                        className="w-full bg-[#121215] hover:bg-[#C2922E] text-white py-3 rounded-xl text-xs uppercase tracking-[0.2em] font-bold shadow-md transition-all"
+                        className="w-full bg-[#121215] hover:bg-[#C2922E] text-white py-3 rounded-xl text-xs uppercase tracking-[0.14em] font-bold shadow-md transition-all"
                       >
                         Create Voucher
                       </button>
@@ -2601,7 +2607,7 @@ const Admin = () => {
                 <div className="lg:col-span-7">
                   <div className="border border-[#E8E4DC] bg-white rounded-2xl shadow-sm overflow-hidden">
                     <table className="w-full text-left font-body text-sm">
-                      <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono border-b border-[#E8E4DC]">
+                      <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.12em] text-[#555560] font-mono border-b border-[#E8E4DC]">
                         <tr>
                           <th className="p-4 font-normal">Code</th>
                           <th className="p-4 font-normal">Discount</th>
@@ -2641,7 +2647,7 @@ const Admin = () => {
             {activeTab === "broadcast" && (
               <div className="border border-[#E8E4DC] bg-white rounded-2xl shadow-sm p-6 sm:p-8 max-w-3xl mx-auto space-y-6">
                 <div className="border-b border-[#E8E4DC] pb-4">
-                  <span className="text-[10px] uppercase tracking-[0.25em] text-[#C2922E] font-mono block mb-1">
+                  <span className="text-[10px] uppercase tracking-[0.14em] text-[#C2922E] font-mono block mb-1">
                     — CONCIERGE EMAIL DISPATCHER
                   </span>
                   <h2 className="text-2xl font-quiche font-light text-[#121215]">Client Broadcast Notification</h2>
@@ -2650,7 +2656,7 @@ const Admin = () => {
 
                 <form onSubmit={handleSendEmailSubmit} className="space-y-4 font-body">
                   <div>
-                    <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Target Audience</label>
+                    <label className="text-[10.5px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1">Target Audience</label>
                     <select
                       value={emailForm.target}
                       onChange={(e) => setEmailForm({ ...emailForm, target: e.target.value })}
@@ -2663,7 +2669,7 @@ const Admin = () => {
 
                   {emailForm.target === "single" && (
                     <div>
-                      <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Recipient Email *</label>
+                      <label className="text-[10.5px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1">Recipient Email *</label>
                       <input
                         type="email"
                         value={emailForm.recipientEmail}
@@ -2676,7 +2682,7 @@ const Admin = () => {
                   )}
 
                   <div>
-                    <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Subject Header *</label>
+                    <label className="text-[10.5px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1">Subject Header *</label>
                     <input
                       type="text"
                       value={emailForm.subject}
@@ -2688,7 +2694,7 @@ const Admin = () => {
                   </div>
 
                   <div>
-                    <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Message Body *</label>
+                    <label className="text-[10.5px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1">Message Body *</label>
                     <textarea
                       rows={5}
                       value={emailForm.message}
@@ -2702,7 +2708,7 @@ const Admin = () => {
                   <button
                     type="submit"
                     disabled={sendingEmail}
-                    className="w-full bg-[#121215] hover:bg-[#C2922E] text-white py-3.5 rounded-xl text-xs uppercase tracking-[0.22em] font-bold shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full bg-[#121215] hover:bg-[#C2922E] text-white py-3.5 rounded-xl text-xs uppercase tracking-[0.14em] font-bold shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {sendingEmail ? (
                       <>
@@ -2729,7 +2735,7 @@ const Admin = () => {
 
                 <div className="border border-[#E8E4DC] bg-white rounded-2xl shadow-sm overflow-hidden">
                   <table className="w-full text-left font-body text-sm">
-                    <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono border-b border-[#E8E4DC]">
+                    <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.12em] text-[#555560] font-mono border-b border-[#E8E4DC]">
                       <tr>
                         <th className="p-4 font-normal">Client</th>
                         <th className="p-4 font-normal">Rating</th>
@@ -2776,7 +2782,7 @@ const Admin = () => {
                 {/* Section Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5DDD1] pb-5">
                   <div>
-                    <span className="text-[10px] uppercase tracking-[0.24em] text-[#C2922E] font-mono block mb-1">
+                    <span className="text-[10px] uppercase tracking-[0.14em] text-[#C2922E] font-mono block mb-1">
                       — AUDIT & RECONCILIATION
                     </span>
                     <h2 className="text-2xl font-quiche font-light text-[#171717]">
@@ -2827,12 +2833,12 @@ const Admin = () => {
                                   Order #SUKO-{1000 + order.id}
                                 </h4>
                                 <p className="text-[11px] text-[#746F68] font-mono mt-0.5">
-                                  Commissioned on {new Date(order.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+                                  Ordered on {new Date(order.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
                                 </p>
                               </div>
                               <div className="text-right">
-                                <span className="text-[10px] uppercase tracking-widest text-[#746F68] font-mono block">
-                                  Commission Total
+                                <span className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block">
+                                  Order Total
                                 </span>
                                 <span className="font-quiche text-2xl font-normal text-[#171717]">
                                   {formatINR(order.total)}
@@ -3021,8 +3027,8 @@ const Admin = () => {
                                 <td className="p-4 font-mono font-bold text-[#171717]">
                                   {formatINR(o.total)}
                                 </td>
-                                <td className="p-4 font-mono text-[11px] uppercase text-[#746F68]">
-                                  {o.payment_method === "upi_qr" ? "UPI QR" : (o.payment_method || "Online")}
+                                <td className="p-4 font-mono text-[11px] text-[#746F68]">
+                                  {formatPaymentMethod(o.payment_method)}
                                 </td>
                                 <td className="p-4 font-mono text-[11px] text-[#171717]">
                                   {o.payment_transaction_id || "Reconciled"}
@@ -3066,14 +3072,14 @@ const Admin = () => {
                 {/* Section Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5DDD1] pb-5">
                   <div>
-                    <span className="text-[10px] uppercase tracking-[0.24em] text-[#C2922E] font-mono block mb-1">
+                    <span className="text-[10px] uppercase tracking-[0.14em] text-[#C2922E] font-mono block mb-1">
                       — PATRON DIRECTORY
                     </span>
                     <h2 className="text-2xl font-quiche font-light text-[#171717]">
                       Registered Clients ({uniqueClientsList.length})
                     </h2>
                     <p className="text-xs text-[#746F68] font-light mt-1">
-                      Client accounts on record, commissioned orders, and lifetime atelier spend.
+                      Client accounts on record, placed orders, and lifetime atelier spend.
                     </p>
                   </div>
                   <button
@@ -3082,7 +3088,7 @@ const Admin = () => {
                       setEmailForm({ target: "all", recipientEmail: "", subject: "", message: "" });
                       setActiveTab("broadcast");
                     }}
-                    className="bg-[#171717] hover:bg-[#C2922E] text-white px-5 py-2.5 rounded-full text-[10px] uppercase tracking-[0.18em] font-medium transition-all shadow-xs flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+                    className="bg-[#171717] hover:bg-[#C2922E] text-white px-5 py-2.5 rounded-full text-[10px] uppercase tracking-[0.14em] font-medium transition-all shadow-xs flex items-center gap-2 cursor-pointer self-start sm:self-auto"
                   >
                     <Mail size={13} /> Client Broadcast
                   </button>
@@ -3091,7 +3097,7 @@ const Admin = () => {
                 {/* Client Metrics Summary Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="p-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-2xl">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#746F68] font-mono block mb-1">
+                    <span className="text-[10px] uppercase tracking-[0.12em] text-[#746F68] font-mono block mb-1">
                       Registered Clients
                     </span>
                     <span className="font-quiche text-3xl font-light text-[#171717]">
@@ -3101,17 +3107,17 @@ const Admin = () => {
                   </div>
 
                   <div className="p-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-2xl">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#746F68] font-mono block mb-1">
-                      Active Commissioners
+                    <span className="text-[10px] uppercase tracking-[0.12em] text-[#746F68] font-mono block mb-1">
+                      Paying Clients
                     </span>
                     <span className="font-quiche text-3xl font-light text-[#171717]">
                       {uniqueClientsList.filter(c => c.orderCount > 0).length}
                     </span>
-                    <p className="text-[11px] text-[#746F68] font-light mt-1">Patrons with placed garment orders</p>
+                    <p className="text-[11px] text-[#746F68] font-light mt-1">Clients with verified orders</p>
                   </div>
 
                   <div className="p-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-2xl">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#746F68] font-mono block mb-1">
+                    <span className="text-[10px] uppercase tracking-[0.12em] text-[#746F68] font-mono block mb-1">
                       Total Paid Volume
                     </span>
                     <span className="font-quiche text-3xl font-light text-[#171717]">
@@ -3148,14 +3154,14 @@ const Admin = () => {
                 <div className="border border-[#E5DDD1] bg-[#FCFAF7] rounded-2xl overflow-hidden shadow-xs">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left font-body text-xs">
-                      <thead className="bg-[#FAF8F5] text-[9.5px] uppercase tracking-[0.18em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
+                      <thead className="bg-[#FAF8F5] text-[9.5px] uppercase tracking-[0.12em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
                         <tr>
                           <th className="p-4 font-medium">Patron Name</th>
                           <th className="p-4 font-medium">Contact Details</th>
                           <th className="p-4 font-medium">Location</th>
                           <th className="p-4 font-medium">Orders Placed</th>
                           <th className="p-4 font-medium">Lifetime Spend</th>
-                          <th className="p-4 font-medium">Last Commission</th>
+                          <th className="p-4 font-medium">Last Order Date</th>
                           <th className="p-4 font-medium text-right">Concierge Action</th>
                         </tr>
                       </thead>
@@ -3260,7 +3266,7 @@ const Admin = () => {
               </button>
 
               <div className="border-b border-[#E8E4DC] pb-3">
-                <span className="text-[10px] uppercase tracking-[0.25em] text-[#C2922E] font-mono block mb-1">
+                <span className="text-[10px] uppercase tracking-[0.14em] text-[#C2922E] font-mono block mb-1">
                   — ATELIER EDIT ENTRY
                 </span>
                 <h2 className="text-2xl font-quiche font-light text-[#121215]">
@@ -3270,7 +3276,7 @@ const Admin = () => {
 
               <form onSubmit={handleEditSubmit} className="space-y-4 font-body text-xs">
                 <div>
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Garment Name</label>
+                  <label className="text-[10px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1">Garment Name</label>
                   <input
                     type="text"
                     value={editFormData.name}
@@ -3282,7 +3288,7 @@ const Admin = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Price (INR)</label>
+                    <label className="text-[10px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1">Price (INR)</label>
                     <input
                       type="number"
                       value={editFormData.price}
@@ -3292,7 +3298,7 @@ const Admin = () => {
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Category</label>
+                    <label className="text-[10px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1">Category</label>
                     <select
                       value={editFormData.category_id}
                       onChange={(e) => setEditFormData({ ...editFormData, category_id: e.target.value })}
@@ -3308,7 +3314,7 @@ const Admin = () => {
 
                 {/* Size Stock Distribution */}
                 <div className="space-y-2 border border-[#E8E4DC] p-3 rounded-xl bg-[#FAF8F5]">
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono block">Exact Size Inventory</label>
+                  <label className="text-[10px] uppercase tracking-[0.12em] text-[#555560] font-mono block">Exact Size Inventory</label>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                     {["38", "40", "42", "44", "46", "Free"].map(sz => (
                       <div key={sz} className="text-center">
@@ -3326,7 +3332,7 @@ const Admin = () => {
                 </div>
 
                 <div>
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono block mb-1">Description</label>
+                  <label className="text-[10px] uppercase tracking-[0.12em] text-[#555560] font-mono block mb-1">Description</label>
                   <textarea
                     rows={3}
                     value={editFormData.description}
@@ -3339,14 +3345,14 @@ const Admin = () => {
                   <button
                     type="button"
                     onClick={() => setEditingProduct(null)}
-                    className="flex-1 py-3 border border-[#E8E4DC] rounded-xl text-[10px] uppercase tracking-[0.2em] font-body text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] transition-all"
+                    className="flex-1 py-3 border border-[#E8E4DC] rounded-xl text-[10px] uppercase tracking-[0.14em] font-body text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={updatingProduct}
-                    className="flex-1 py-3 bg-[#121215] hover:bg-[#C2922E] text-white font-bold text-[10px] uppercase tracking-[0.2em] font-body rounded-xl shadow-md transition-all"
+                    className="flex-1 py-3 bg-[#121215] hover:bg-[#C2922E] text-white font-bold text-[10px] uppercase tracking-[0.14em] font-body rounded-xl shadow-md transition-all"
                   >
                     {updatingProduct ? "Saving..." : "Save Product Changes"}
                   </button>
@@ -3368,7 +3374,7 @@ const Admin = () => {
               </button>
 
               <div className="border-b border-[#E8E4DC] pb-3">
-                <span className="text-[10px] uppercase tracking-[0.25em] text-[#C2922E] font-mono block mb-1">
+                <span className="text-[10px] uppercase tracking-[0.14em] text-[#C2922E] font-mono block mb-1">
                   — ORDER AUDIT INSPECTOR
                 </span>
                 <h2 className="text-2xl font-quiche font-light text-[#121215]">
@@ -3401,7 +3407,7 @@ const Admin = () => {
                       ? "border-rose-500/30 bg-rose-500/10 text-rose-700 font-bold"
                       : "border-amber-500/30 bg-amber-500/10 text-amber-700 font-medium"
                   }`}>
-                    {selectedOrderDetails.status}
+                    {formatStatus(selectedOrderDetails.status)}
                   </span>
                 </div>
               </div>
@@ -3411,7 +3417,7 @@ const Admin = () => {
                 <div className="flex items-center justify-between border-b border-[#E8E4DC] pb-3">
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={18} className="text-[#C2922E]" />
-                    <span className="text-[11px] uppercase tracking-[0.2em] font-mono font-bold text-[#121215]">
+                    <span className="text-[11px] uppercase tracking-[0.12em] font-mono font-bold text-[#121215]">
                       Payment Verification &amp; UTR Audit
                     </span>
                   </div>
@@ -3424,7 +3430,7 @@ const Admin = () => {
                       ? "bg-rose-500/15 text-rose-700 border-rose-500/30 font-bold"
                       : "bg-stone-500/10 text-stone-600 border-stone-500/20"
                   }`}>
-                    {selectedOrderDetails.status}
+                    {formatStatus(selectedOrderDetails.status)}
                   </span>
                 </div>
 
@@ -3459,7 +3465,7 @@ const Admin = () => {
 
                     <div>
                       <p className="text-[10px] uppercase tracking-wider font-mono text-[#888890]">Payment Method</p>
-                      <p className="font-mono text-xs text-[#121215] uppercase font-medium">{selectedOrderDetails.payment_method || "upi_qr"}</p>
+                      <p className="font-mono text-xs text-[#121215] font-medium">{formatPaymentMethod(selectedOrderDetails.payment_method)}</p>
                     </div>
 
                     {selectedOrderDetails.cancel_reason && (
@@ -3510,7 +3516,7 @@ const Admin = () => {
                     type="button"
                     onClick={() => handleVerifyPayment(selectedOrderDetails.id)}
                     disabled={selectedOrderDetails.status === "paid" || verifyingOrderId === selectedOrderDetails.id}
-                    className="flex-1 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white font-bold text-[10.5px] uppercase tracking-[0.2em] font-body py-3 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
+                    className="flex-1 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white font-bold text-[10.5px] uppercase tracking-[0.14em] font-body py-3 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
                   >
                     <CheckCircle size={15} />
                     {selectedOrderDetails.status === "paid" ? "PAYMENT ALREADY VERIFIED" : verifyingOrderId === selectedOrderDetails.id ? "VERIFYING..." : "VERIFY PAYMENT"}
@@ -3519,7 +3525,7 @@ const Admin = () => {
                     type="button"
                     onClick={() => handleRejectPayment(selectedOrderDetails.id)}
                     disabled={selectedOrderDetails.status === "paid" || rejectingOrderId === selectedOrderDetails.id}
-                    className="flex-1 bg-rose-700 hover:bg-rose-800 disabled:opacity-40 text-white font-bold text-[10.5px] uppercase tracking-[0.2em] font-body py-3 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
+                    className="flex-1 bg-rose-700 hover:bg-rose-800 disabled:opacity-40 text-white font-bold text-[10.5px] uppercase tracking-[0.14em] font-body py-3 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
                   >
                     <AlertTriangle size={15} />
                     {rejectingOrderId === selectedOrderDetails.id ? "REJECTING..." : "PAYMENT NOT FOUND / REJECT"}
@@ -3529,7 +3535,7 @@ const Admin = () => {
 
               {/* Items Purchased List */}
               <div className="space-y-3">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono">PURCHASED GARMENT ITEMS ({selectedOrderDetails.items?.length || 1})</p>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-[#555560] font-mono">PURCHASED GARMENT ITEMS ({selectedOrderDetails.items?.length || 1})</p>
                 <div className="divide-y divide-[#E8E4DC]/60 border-t border-b border-[#E8E4DC]">
                   {selectedOrderDetails.items?.map((item, idx) => (
                     <div key={idx} className="py-3 flex items-center justify-between text-xs font-body">
@@ -3610,7 +3616,7 @@ const Admin = () => {
               </button>
 
               <div className="border-b border-[#E8E4DC] pb-3">
-                <span className="text-[10px] uppercase tracking-[0.25em] text-[#C2922E] font-mono block mb-1">
+                <span className="text-[10px] uppercase tracking-[0.14em] text-[#C2922E] font-mono block mb-1">
                   — MODIFY ORDER SPECS
                 </span>
                 <h2 className="text-2xl font-quiche font-light text-[#121215]">
@@ -3620,7 +3626,7 @@ const Admin = () => {
 
               <form onSubmit={handleSaveEditedOrder} className="space-y-4 font-mono text-xs">
                 <div>
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] block mb-1">Order Total Amount (₹) *</label>
+                  <label className="text-[10px] uppercase tracking-[0.12em] text-[#555560] block mb-1">Order Total Amount (₹) *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -3632,7 +3638,7 @@ const Admin = () => {
                 </div>
 
                 <div>
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] block mb-1">Order Status *</label>
+                  <label className="text-[10px] uppercase tracking-[0.12em] text-[#555560] block mb-1">Order Status *</label>
                   <select
                     value={editOrderForm.status}
                     onChange={(e) => setEditOrderForm({ ...editOrderForm, status: e.target.value })}
@@ -3648,7 +3654,7 @@ const Admin = () => {
                 </div>
 
                 <div>
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] block mb-1">Modification Note</label>
+                  <label className="text-[10px] uppercase tracking-[0.12em] text-[#555560] block mb-1">Modification Note</label>
                   <textarea
                     rows={3}
                     value={editOrderForm.cancel_reason}
@@ -3662,13 +3668,13 @@ const Admin = () => {
                   <button
                     type="button"
                     onClick={() => setEditingOrder(null)}
-                    className="flex-1 py-3 border border-[#E8E4DC] rounded-xl text-[10px] uppercase tracking-[0.2em] font-body text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] transition-all"
+                    className="flex-1 py-3 border border-[#E8E4DC] rounded-xl text-[10px] uppercase tracking-[0.14em] font-body text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-3 bg-[#121215] hover:bg-[#C2922E] text-white font-bold text-[10px] uppercase tracking-[0.2em] font-body rounded-xl shadow-md transition-all"
+                    className="flex-1 py-3 bg-[#121215] hover:bg-[#C2922E] text-white font-bold text-[10px] uppercase tracking-[0.14em] font-body rounded-xl shadow-md transition-all"
                   >
                     Save Changes
                   </button>
@@ -3683,14 +3689,14 @@ const Admin = () => {
 };
 
 const StatCard = ({ icon, label, value, subText }) => (
-  <div className="p-6 lg:p-7 bg-[#FCFAF7] border border-[#E5DDD1] rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.02)] hover:border-[#C2922E]/40 transition-all flex items-start gap-4 group">
-    <div className="w-11 h-11 rounded-xl bg-[#FAF8F5] border border-[#E5DDD1] text-[#C2922E] flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
+  <div className="p-4 sm:p-4.5 lg:p-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.015)] hover:border-[#C2922E]/40 transition-all flex items-start gap-3.5 group">
+    <div className="w-9.5 h-9.5 rounded-lg bg-[#FAF8F5] border border-[#E5DDD1] text-[#C2922E] flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
       {icon}
     </div>
     <div className="min-w-0 flex-1">
-      <p className="text-[10px] uppercase tracking-[0.2em] text-[#746F68] font-mono mb-1">{label}</p>
-      <p className="font-quiche text-3xl sm:text-4xl font-light text-[#171717] tracking-tight truncate">{value}</p>
-      {subText && <p className="text-[11px] text-[#746F68] font-light mt-1.5">{subText}</p>}
+      <p className="text-[10px] uppercase tracking-[0.12em] text-[#746F68] font-mono mb-0.5">{label}</p>
+      <p className="font-quiche text-2xl sm:text-[26px] font-light text-[#171717] tracking-tight truncate leading-tight">{value}</p>
+      {subText && <p className="text-[10.5px] text-[#746F68] font-light mt-1 truncate">{subText}</p>}
     </div>
   </div>
 );
