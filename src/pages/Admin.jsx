@@ -1070,46 +1070,38 @@ const Admin = () => {
           </div>
 
           {/* Navigation Chapters */}
-          <nav className="space-y-4 mt-5">
+          <nav className="space-y-5 mt-5">
             
-            {/* REGISTRY CHAPTER */}
+            {/* ATELIER CHAPTER */}
             <div>
-              <span className="text-[8.5px] uppercase tracking-[0.16em] text-[#8E877E] font-mono font-medium px-3 block mb-1">
-                REGISTRY
-              </span>
-              <div>
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab("overview"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
-                    activeTab === "overview"
-                      ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
-                  }`}
-                >
-                  <span>Overview</span>
-                </button>
-              </div>
-            </div>
-
-            {/* OPERATIONS CHAPTER */}
-            <div>
-              <span className="text-[8.5px] uppercase tracking-[0.16em] text-[#8E877E] font-mono font-medium px-3 block mb-1">
-                OPERATIONS
+              <span className="text-[9.5px] uppercase tracking-[0.08em] text-[#8E877E] font-mono font-medium px-3 block mb-1.5">
+                ATELIER
               </span>
               <div className="space-y-0.5">
                 <button
                   type="button"
+                  onClick={() => { setActiveTab("overview"); setIsMobileSidebarOpen(false); }}
+                  className={`w-full text-xs tracking-normal py-2 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
+                    activeTab === "overview"
+                      ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
+                      : "text-[#59554F] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
+                  }`}
+                >
+                  <span>Overview</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => { setActiveTab("orders"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
+                  className={`w-full text-xs tracking-normal py-2 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "orders"
                       ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
+                      : "text-[#59554F] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Orders</span>
                   {cancellationRequests.length > 0 && (
-                    <span className="text-[8.5px] font-mono px-1.5 py-0.2 rounded-full bg-rose-500/15 text-rose-800 border border-rose-500/30">
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-rose-500/15 text-rose-800 border border-rose-500/30">
                       {cancellationRequests.length} Cancel
                     </span>
                   )}
@@ -1118,15 +1110,15 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("payments"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
+                  className={`w-full text-xs tracking-normal py-2 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "payments"
                       ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
+                      : "text-[#59554F] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Payments &amp; UTR</span>
                   {verificationRequests.length > 0 && (
-                    <span className="text-[8.5px] font-mono px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-800 border border-amber-500/40 font-semibold animate-pulse">
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-800 border border-amber-500/40 font-semibold animate-pulse">
                       {verificationRequests.length}
                     </span>
                   )}
@@ -1136,22 +1128,22 @@ const Admin = () => {
 
             {/* CATALOGUE CHAPTER */}
             <div>
-              <span className="text-[8.5px] uppercase tracking-[0.16em] text-[#8E877E] font-mono font-medium px-3 block mb-1">
+              <span className="text-[9.5px] uppercase tracking-[0.08em] text-[#8E877E] font-mono font-medium px-3 block mb-1.5">
                 CATALOGUE
               </span>
               <div className="space-y-0.5">
                 <button
                   type="button"
                   onClick={() => { setActiveTab("products"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
+                  className={`w-full text-xs tracking-normal py-2 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "products"
                       ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
+                      : "text-[#59554F] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Products</span>
                   {lowStockProducts.length > 0 && (
-                    <span className="text-[8.5px] font-mono px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30">
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30">
                       {lowStockProducts.length}
                     </span>
                   )}
@@ -1160,10 +1152,10 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("categories"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
+                  className={`w-full text-xs tracking-normal py-2 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "categories"
                       ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
+                      : "text-[#59554F] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Categories</span>
@@ -1173,17 +1165,17 @@ const Admin = () => {
 
             {/* CLIENTS CHAPTER */}
             <div>
-              <span className="text-[8.5px] uppercase tracking-[0.16em] text-[#8E877E] font-mono font-medium px-3 block mb-1">
+              <span className="text-[9.5px] uppercase tracking-[0.08em] text-[#8E877E] font-mono font-medium px-3 block mb-1.5">
                 CLIENTS
               </span>
               <div className="space-y-0.5">
                 <button
                   type="button"
                   onClick={() => { setActiveTab("customers"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
+                  className={`w-full text-xs tracking-normal py-2 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "customers"
                       ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
+                      : "text-[#59554F] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Customers</span>
@@ -1192,10 +1184,10 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("reviews"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
+                  className={`w-full text-xs tracking-normal py-2 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "reviews"
                       ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
+                      : "text-[#59554F] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Reviews</span>
@@ -1205,17 +1197,17 @@ const Admin = () => {
 
             {/* DISPATCH CHAPTER */}
             <div>
-              <span className="text-[8.5px] uppercase tracking-[0.16em] text-[#8E877E] font-mono font-medium px-3 block mb-1">
+              <span className="text-[9.5px] uppercase tracking-[0.08em] text-[#8E877E] font-mono font-medium px-3 block mb-1.5">
                 DISPATCH
               </span>
               <div className="space-y-0.5">
                 <button
                   type="button"
                   onClick={() => { setActiveTab("coupons"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
+                  className={`w-full text-xs tracking-normal py-2 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "coupons"
                       ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
+                      : "text-[#59554F] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Coupons</span>
@@ -1224,10 +1216,10 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("broadcast"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
+                  className={`w-full text-xs tracking-normal py-2 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "broadcast"
                       ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
+                      : "text-[#59554F] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Broadcast Email</span>
@@ -1236,10 +1228,10 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setActiveTab("calendar"); setIsMobileSidebarOpen(false); }}
-                  className={`w-full text-[11.5px] tracking-[0.02em] py-1.5 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
+                  className={`w-full text-xs tracking-normal py-2 px-3 rounded flex items-center justify-between transition-all cursor-pointer ${
                     activeTab === "calendar"
                       ? "bg-[#EFE9DF]/80 text-[#171717] font-medium border-l-2 border-[#C2922E]"
-                      : "text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
+                      : "text-[#59554F] hover:text-[#171717] hover:bg-[#EFE9DF]/40 border-l-2 border-transparent font-light"
                   }`}
                 >
                   <span>Schedule</span>
@@ -1331,7 +1323,7 @@ const Admin = () => {
             <button
               type="button"
               onClick={() => { setActiveTab("categories"); setShowAddCategoryInline(false); }}
-              className="hidden sm:inline-flex items-center gap-1.5 text-[10.5px] tracking-[0.06em] px-3 py-1.5 border border-[#E5DDD1] hover:border-[#171717] rounded text-[#171717] bg-transparent transition-colors cursor-pointer"
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs px-3 py-1.5 border border-[#EAE6DF] hover:border-[#171717] rounded text-[#171717] bg-transparent transition-colors cursor-pointer"
             >
               <span>+ New Garment</span>
             </button>
@@ -1350,11 +1342,11 @@ const Admin = () => {
             </button>
 
             {/* Studio Admin Monogram Pill */}
-            <div className="flex items-center gap-2 border border-[#E5DDD1] px-2.5 py-1 rounded bg-white/60">
+            <div className="flex items-center gap-2 border border-[#EAE6DF] px-2.5 py-1 rounded bg-white/60">
               <div className="w-4.5 h-4.5 rounded-full bg-[#171717] text-[#FAF8F5] flex items-center justify-center font-serif text-[9.5px]">
                 S
               </div>
-              <span className="text-[10px] uppercase tracking-[0.1em] text-[#171717] font-medium">
+              <span className="text-[11px] text-[#171717] font-medium tracking-normal">
                 Studio Admin
               </span>
             </div>
@@ -1362,7 +1354,7 @@ const Admin = () => {
             {/* Storefront Link */}
             <Link
               to="/"
-              className="hidden sm:inline-flex items-center gap-1 text-[10.5px] uppercase tracking-[0.1em] text-[#8E877E] hover:text-[#171717] transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 text-xs text-[#746F68] hover:text-[#171717] transition-colors tracking-normal"
             >
               <span>Storefront</span>
               <ArrowUpRight size={11} className="text-[#8E877E]" />
@@ -1371,25 +1363,25 @@ const Admin = () => {
         </header>
 
         {/* Content Body */}
-        <main className="flex-1 p-6 sm:p-8 lg:p-10 space-y-8 max-w-[1440px] w-full">
+        <main className="flex-1 p-5 sm:p-7 lg:p-8 space-y-6 max-w-[1440px] w-full">
           {loading ? (
-            <div className="text-center py-24 text-[#746F68] text-[10px] uppercase tracking-[0.14em] flex items-center justify-center gap-3">
+            <div className="text-center py-20 text-[#746F68] text-xs flex items-center justify-center gap-3 font-light">
               <div className="w-4 h-4 rounded-full border-2 border-[#171717] border-t-transparent animate-spin" />
               <span>Loading Studio Control...</span>
             </div>
           ) : (
-            <div className="space-y-10">
+            <div className="space-y-6 sm:space-y-7">
               
               {/* ============================================================= */}
               {/* OVERVIEW TAB (Private Luxury Atelier Operational Dashboard)   */}
               {/* ============================================================= */}
               {activeTab === "overview" && (
-                <div className="space-y-8">
+                <div className="space-y-5 sm:space-y-6">
                   
                   {/* 1. EDITORIAL OPENING MOMENT */}
-                  <div className="pb-6 border-b border-[#E5DDD1] flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+                  <div className="pb-5 border-b border-[#EAE6DF] flex flex-col lg:flex-row lg:items-end justify-between gap-4">
                     <div className="space-y-1">
-                      <span className="text-[9px] uppercase tracking-[0.16em] text-[#8E877E] font-mono block">
+                      <span className="text-[9.5px] uppercase tracking-[0.08em] text-[#8E877E] font-mono block">
                         SUKO ATELIER · PRIVATE CONSOLE
                       </span>
                       <h2 className="font-serif text-2xl sm:text-3xl lg:text-[32px] font-normal text-[#171717] tracking-tight leading-tight">
@@ -1401,7 +1393,7 @@ const Admin = () => {
                     </div>
 
                     {/* Architectural Text Tabs with Underline */}
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10.5px] tracking-[0.06em] uppercase">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs tracking-normal">
                       {[
                         { id: "all", label: "All Records" },
                         { id: "today", label: "Today" },
@@ -1421,7 +1413,7 @@ const Admin = () => {
                           >
                             {preset.label}
                           </button>
-                          {idx < arr.length - 1 && <span className="text-[#D5CEC4] select-none text-[11px]">|</span>}
+                          {idx < arr.length - 1 && <span className="text-[#D5CEC4] select-none text-xs">|</span>}
                         </React.Fragment>
                       ))}
 
@@ -1431,14 +1423,14 @@ const Admin = () => {
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            className="bg-transparent border-b border-[#E5DDD1] px-1 py-0.5 text-[#171717] outline-none focus:border-[#171717] text-xs"
+                            className="bg-transparent border-b border-[#EAE6DF] px-1 py-0.5 text-[#171717] outline-none focus:border-[#171717] text-xs"
                           />
                           <span className="text-[#8E877E] text-xs">to</span>
                           <input
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
-                            className="bg-transparent border-b border-[#E5DDD1] px-1 py-0.5 text-[#171717] outline-none focus:border-[#171717] text-xs"
+                            className="bg-transparent border-b border-[#EAE6DF] px-1 py-0.5 text-[#171717] outline-none focus:border-[#171717] text-xs"
                           />
                         </div>
                       )}
@@ -1446,11 +1438,11 @@ const Admin = () => {
                   </div>
 
                   {/* 2. TODAY AT THE ATELIER — Operational Throughput Strip */}
-                  <div className="bg-[#FAF8F5] border border-[#E5DDD1] px-5 py-3.5 flex flex-wrap items-center justify-between gap-4">
+                  <div className="bg-[#FAF8F5] border border-[#EAE6DF] px-5 py-3 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-[9px] uppercase tracking-[0.14em] text-[#8E877E] font-mono font-medium flex items-center gap-2">
+                      <span className="text-[9.5px] uppercase tracking-[0.08em] text-[#8E877E] font-mono font-medium flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-                        TODAY AT THE ATELIER
+                        Today At Atelier
                       </span>
                       <span className="hidden md:inline text-[#D5CEC4] text-xs">|</span>
                       <span className="text-[11px] text-[#746F68] font-light hidden lg:inline">
@@ -1467,10 +1459,10 @@ const Admin = () => {
                         <span className="font-serif text-sm font-normal text-[#171717] group-hover:text-[#C2922E] transition-colors">
                           {String(orders.filter(o => o.created_at && o.created_at.startsWith(new Date().toISOString().split("T")[0])).length || orders.slice(0, 2).length).padStart(2, '0')}
                         </span>
-                        <span className="text-[10.5px] text-[#746F68] tracking-wide font-sans">New Orders</span>
+                        <span className="text-[10.5px] text-[#746F68] tracking-normal font-sans">New Orders</span>
                       </button>
 
-                      <span className="text-[#E5DDD1]">/</span>
+                      <span className="text-[#EAE6DF]">/</span>
 
                       <button 
                         type="button" 
@@ -1480,10 +1472,10 @@ const Admin = () => {
                         <span className={`font-serif text-sm font-normal transition-colors ${verificationRequests.length > 0 ? "text-amber-800 font-medium" : "text-[#171717] group-hover:text-[#C2922E]"}`}>
                           {String(verificationRequests.length).padStart(2, '0')}
                         </span>
-                        <span className="text-[10.5px] text-[#746F68] tracking-wide font-sans">Payment Reviews</span>
+                        <span className="text-[10.5px] text-[#746F68] tracking-normal font-sans">Payment Reviews</span>
                       </button>
 
-                      <span className="text-[#E5DDD1]">/</span>
+                      <span className="text-[#EAE6DF]">/</span>
 
                       <button 
                         type="button" 
@@ -1493,10 +1485,10 @@ const Admin = () => {
                         <span className={`font-serif text-sm font-normal transition-colors ${lowStockProducts.length > 0 ? "text-amber-800 font-medium" : "text-[#171717] group-hover:text-[#C2922E]"}`}>
                           {String(lowStockProducts.length).padStart(2, '0')}
                         </span>
-                        <span className="text-[10.5px] text-[#746F68] tracking-wide font-sans">Garments Restock</span>
+                        <span className="text-[10.5px] text-[#746F68] tracking-normal font-sans">Garments Restock</span>
                       </button>
 
-                      <span className="text-[#E5DDD1]">/</span>
+                      <span className="text-[#EAE6DF]">/</span>
 
                       <button 
                         type="button" 
@@ -1506,113 +1498,116 @@ const Admin = () => {
                         <span className="font-serif text-sm font-normal text-[#171717] group-hover:text-[#C2922E] transition-colors">
                           {String(orders.filter(o => o.status === "processing" || o.status === "paid").length).padStart(2, '0')}
                         </span>
-                        <span className="text-[10.5px] text-[#746F68] tracking-wide font-sans">Awaiting Dispatch</span>
+                        <span className="text-[10.5px] text-[#746F68] tracking-normal font-sans">Awaiting Dispatch</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* 3. ATELIER LEDGER FOLIO (Horizontal Ledger Strip with Hairline Dividers) */}
-                  <div className="bg-[#FCFAF7] border border-[#E5DDD1] shadow-[0_2px_12px_rgba(0,0,0,0.02)] rounded-lg grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#E5DDD1]">
-                    {/* Folio 1: Period Revenue */}
-                    <div className="p-5 sm:p-6 space-y-1.5">
+                  {/* 3. ATELIER LEDGER FOLIO (Numbers as Hero · Quiet Luxury) */}
+                  <div className="bg-[#FCFAF7] border border-[#EAE6DF] shadow-[0_2px_12px_rgba(0,0,0,0.015)] rounded-lg grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#EAE6DF]">
+                    {/* Folio 1: Revenue Generated */}
+                    <div className="p-5 sm:p-6 flex flex-col justify-between space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9.5px] uppercase tracking-[0.06em] text-[#746F68] font-mono">
-                          Period Revenue
+                        <span className="text-xs text-[#746F68] font-normal">
+                          Revenue Generated
                         </span>
-                        <span className="text-[9px] font-mono text-[#746F68]">₹ INR</span>
+                        <span className="text-[10px] font-mono text-[#8E877E] tracking-normal">₹ INR</span>
                       </div>
-                      <div className="font-serif text-3xl sm:text-[34px] font-normal text-[#171717] tracking-tight truncate leading-tight">
+                      <div className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#171717] tracking-tight truncate leading-none my-1">
                         {formatINR(filteredRevenue)}
                       </div>
-                      <p className="text-[11px] text-[#746F68] font-light truncate">
+                      <p className="text-[11px] text-[#8E877E] font-light truncate">
                         {datePreset === "all" ? "Lifetime Paid Earnings" : `Paid in ${datePreset === "today" ? "Today" : datePreset === "7days" ? "This Week" : datePreset === "month" ? "This Month" : "Selected Period"}`}
                       </p>
                     </div>
 
-                    {/* Folio 2: Paid Orders */}
-                    <div className="p-5 sm:p-6 space-y-1.5">
+                    {/* Folio 2: Orders Processed */}
+                    <div className="p-5 sm:p-6 flex flex-col justify-between space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9.5px] uppercase tracking-[0.06em] text-[#746F68] font-mono">
-                          Paid Orders
+                        <span className="text-xs text-[#746F68] font-normal">
+                          Orders Processed
                         </span>
                         {verificationRequests.length > 0 && (
-                          <span className="text-[8.5px] font-mono px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30 font-medium">
+                          <span className="text-[9.5px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30 font-medium">
                             {verificationRequests.length} Pending
                           </span>
                         )}
                       </div>
-                      <div className="font-serif text-3xl sm:text-[34px] font-normal text-[#171717] tracking-tight truncate leading-tight">
-                        {filteredPaidOrders.length}
+                      <div className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#171717] tracking-tight leading-none my-1">
+                        {String(filteredPaidOrders.length).padStart(2, '0')}
                       </div>
-                      <p className="text-[11px] text-[#746F68] font-light truncate">
-                        {filteredPaidOrders.length} Reconciled · {verificationRequests.length} Pending Verification
+                      <p className="text-[11px] text-[#8E877E] font-light truncate">
+                        {filteredPaidOrders.length} Reconciled · {verificationRequests.length} Pending
                       </p>
                     </div>
 
-                    {/* Folio 3: Active Garments */}
-                    <div className="p-5 sm:p-6 space-y-1.5">
+                    {/* Folio 3: Garments In Archive */}
+                    <div className="p-5 sm:p-6 flex flex-col justify-between space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9.5px] uppercase tracking-[0.06em] text-[#746F68] font-mono">
-                          Total Garments
+                        <span className="text-xs text-[#746F68] font-normal">
+                          Garments In Archive
                         </span>
                         {lowStockProducts.length > 0 && (
-                          <span className="text-[8.5px] font-mono px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30 font-medium">
+                          <span className="text-[9.5px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30 font-medium">
                             {lowStockProducts.length} Restock
                           </span>
                         )}
                       </div>
-                      <div className="font-serif text-3xl sm:text-[34px] font-normal text-[#171717] tracking-tight truncate leading-tight">
-                        {stats.totalProducts}
+                      <div className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#171717] tracking-tight leading-none my-1">
+                        {String(stats.totalProducts).padStart(2, '0')}
                       </div>
-                      <p className="text-[11px] text-[#746F68] font-light truncate">
+                      <p className="text-[11px] text-[#8E877E] font-light truncate">
                         {lowStockProducts.length > 0 ? `${lowStockProducts.length} Pieces Require Restock` : "Garment Inventory Healthy"}
                       </p>
                     </div>
 
-                    {/* Folio 4: Registered Clients */}
-                    <div className="p-5 sm:p-6 space-y-1.5">
+                    {/* Folio 4: Clients On Record */}
+                    <div className="p-5 sm:p-6 flex flex-col justify-between space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9.5px] uppercase tracking-[0.06em] text-[#746F68] font-mono">
-                          Registered Clients
+                        <span className="text-xs text-[#746F68] font-normal">
+                          Clients On Record
                         </span>
-                        <span className="text-[9px] font-mono text-[#746F68]">Roster</span>
+                        <span className="text-[10px] font-mono text-[#8E877E]">Private Roster</span>
                       </div>
-                      <div className="font-serif text-3xl sm:text-[34px] font-normal text-[#171717] tracking-tight truncate leading-tight">
-                        {stats.totalUsers}
+                      <div className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#171717] tracking-tight leading-none my-1">
+                        {String(stats.totalUsers).padStart(2, '0')}
                       </div>
-                      <p className="text-[11px] text-[#746F68] font-light truncate">
-                        Client Accounts on Record
+                      <p className="text-[11px] text-[#8E877E] font-light truncate">
+                        Registered Studio Accounts
                       </p>
                     </div>
                   </div>
 
-                  {/* 3. MAIN ANALYTICS SECTION (Two-Column Layout) */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                  {/* 3. MAIN ANALYTICS SECTION (Two-Column Financial Ledger) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     
-                    {/* LEFT: Revenue Overview Real Chart (7 cols) */}
-                    <div className="lg:col-span-7 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-6">
-                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
+                    {/* LEFT: Financial Ledger Chart (7 cols) */}
+                    <div className="lg:col-span-7 bg-[#FCFAF7] border border-[#EAE6DF] rounded-xl p-5 sm:p-7 shadow-[0_2px_16px_rgba(0,0,0,0.015)] space-y-5">
+                      <div className="flex items-center justify-between border-b border-[#EAE6DF] pb-4">
                         <div>
-                          <span className="text-[9px] uppercase tracking-[0.14em] text-[#8E877E] font-mono block">
-                            FINANCIAL PERFORMANCE
+                          <span className="text-[9.5px] uppercase tracking-[0.08em] text-[#8E877E] font-mono block">
+                            Financial Ledger
                           </span>
-                          <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
-                            Revenue &amp; Orders Trend
+                          <h2 className="font-serif text-xl font-normal text-[#171717] mt-0.5">
+                            {new Date().toLocaleString('en-US', { month: 'long' })} Performance
                           </h2>
+                          <p className="text-[11px] text-[#746F68] font-light">
+                            Verified settlement cash inflow &amp; volume
+                          </p>
                         </div>
                         <div className="text-right">
-                          <span className="font-quiche text-lg sm:text-xl font-normal text-[#171717] block">
+                          <span className="font-serif text-xl sm:text-2xl font-normal text-[#171717] block">
                             {formatINR(filteredRevenue)}
                           </span>
-                          <span className="text-[10px] font-mono text-[#746F68]">
-                            {filteredPaidOrders.length} paid orders
+                          <span className="text-[10.5px] font-mono text-[#746F68]">
+                            {filteredPaidOrders.length} Settled Orders
                           </span>
                         </div>
                       </div>
 
                       {/* Real Trend SVG Chart or Calm Snapshot */}
                       {chartData.length === 0 ? (
-                        <div className="py-8 px-6 bg-white border border-[#E5DDD1] rounded-xl text-center space-y-2">
+                        <div className="py-8 px-6 bg-white border border-[#EAE6DF] rounded-xl text-center space-y-2">
                           <CalendarIcon size={22} className="mx-auto text-[#8E877E]/70 stroke-[1.3]" />
                           <p className="text-xs text-[#171717] font-medium tracking-wide">No Paid Order Activity</p>
                           <p className="text-[11px] text-[#746F68] font-light max-w-sm mx-auto">
@@ -1620,19 +1615,19 @@ const Admin = () => {
                           </p>
                         </div>
                       ) : chartData.length === 1 ? (
-                        <div className="p-6 bg-white border border-[#E5DDD1] rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="p-6 bg-white border border-[#EAE6DF] rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div className="space-y-1">
-                            <span className="text-[9.5px] font-mono uppercase tracking-[0.12em] text-[#8E877E] font-medium block">
+                            <span className="text-[9.5px] font-mono uppercase tracking-[0.08em] text-[#8E877E] font-medium block">
                               Single Period Snapshot · {chartData[0].label}
                             </span>
-                            <p className="font-quiche text-2xl font-normal text-[#171717]">
+                            <p className="font-serif text-2xl font-normal text-[#171717]">
                               {formatINR(chartData[0].revenue)}
                             </p>
                             <p className="text-[11px] text-[#746F68] font-light">
                               Generated from {chartData[0].orderCount || filteredPaidOrders.length} verified paid {chartData[0].orderCount === 1 ? "order" : "orders"}.
                             </p>
                           </div>
-                          <div className="px-4 py-2 bg-[#FAF8F5] border border-[#E5DDD1] rounded-lg text-left sm:text-right">
+                          <div className="px-4 py-2 bg-[#FAF8F5] border border-[#EAE6DF] rounded-lg text-left sm:text-right">
                             <span className="text-[9.5px] uppercase font-mono text-[#746F68] block">Date Recorded</span>
                             <span className="font-mono text-xs font-bold text-[#171717]">{chartData[0].date}</span>
                           </div>
@@ -1648,9 +1643,9 @@ const Admin = () => {
                                 </linearGradient>
                               </defs>
                               {/* Horizontal guidelines */}
-                              <line x1="0" y1="20" x2="500" y2="20" stroke="#E5DDD1" strokeDasharray="3 3" strokeWidth="0.8" />
-                              <line x1="0" y1="75" x2="500" y2="75" stroke="#E5DDD1" strokeDasharray="3 3" strokeWidth="0.8" />
-                              <line x1="0" y1="130" x2="500" y2="130" stroke="#E5DDD1" strokeDasharray="3 3" strokeWidth="0.8" />
+                              <line x1="0" y1="20" x2="500" y2="20" stroke="#EAE6DF" strokeDasharray="3 3" strokeWidth="0.8" />
+                              <line x1="0" y1="75" x2="500" y2="75" stroke="#EAE6DF" strokeDasharray="3 3" strokeWidth="0.8" />
+                              <line x1="0" y1="130" x2="500" y2="130" stroke="#EAE6DF" strokeDasharray="3 3" strokeWidth="0.8" />
                               
                               {(() => {
                                 const maxRev = Math.max(...chartData.map(d => d.revenue), 1000);
@@ -1694,7 +1689,7 @@ const Admin = () => {
                             </svg>
                           </div>
 
-                          <div className="flex justify-between items-center text-[10px] uppercase font-mono text-[#746F68] pt-2 border-t border-[#E5DDD1]">
+                          <div className="flex justify-between items-center text-[10px] font-mono text-[#746F68] pt-2 border-t border-[#EAE6DF]">
                             <span>{chartData[0]?.label}</span>
                             {chartData.length > 2 && <span>{chartData[Math.floor(chartData.length / 2)]?.label}</span>}
                             <span>{chartData[chartData.length - 1]?.label}</span>
@@ -1704,30 +1699,30 @@ const Admin = () => {
                     </div>
 
                     {/* RIGHT: Recent Orders Stream (5 cols) */}
-                    <div className="lg:col-span-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-5">
-                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
+                    <div className="lg:col-span-5 bg-[#FCFAF7] border border-[#EAE6DF] rounded-xl p-5 sm:p-7 shadow-[0_2px_16px_rgba(0,0,0,0.015)] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#EAE6DF] pb-4">
                         <div>
-                          <span className="text-[9px] uppercase tracking-[0.14em] text-[#8E877E] font-mono block">
-                            OPERATIONS
+                          <span className="text-[9.5px] uppercase tracking-[0.08em] text-[#8E877E] font-mono block">
+                            Atelier Activity
                           </span>
-                          <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
+                          <h2 className="font-serif text-xl font-normal text-[#171717] mt-0.5">
                             Recent Orders
                           </h2>
                         </div>
                         <button
                           type="button"
                           onClick={() => setActiveTab("orders")}
-                          className="text-[10.5px] uppercase tracking-[0.08em] text-[#171717] hover:text-[#C2922E] hover:underline cursor-pointer font-medium"
+                          className="text-[10.5px] tracking-normal text-[#171717] hover:text-[#C2922E] hover:underline cursor-pointer font-medium"
                         >
                           View All &rarr;
                         </button>
                       </div>
 
-                      <div className="space-y-3">
+                      <div className="space-y-2.5">
                         {orders.slice(0, 5).map(o => (
                           <div
                             key={o.id}
-                            className="p-3.5 bg-white border border-[#E5DDD1] rounded-lg flex items-center justify-between gap-3 hover:border-[#171717] transition-colors"
+                            className="p-3 bg-white border border-[#EAE6DF] rounded-lg flex items-center justify-between gap-3 hover:border-[#171717] transition-colors"
                           >
                             <div className="space-y-0.5">
                               <p className="text-xs font-medium text-[#171717] font-mono">
@@ -1771,25 +1766,25 @@ const Admin = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     
                     {/* A) Low Stock Alert */}
-                    <div className="bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
-                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
+                    <div className="bg-[#FCFAF7] border border-[#EAE6DF] rounded-xl p-5 sm:p-6 shadow-[0_2px_16px_rgba(0,0,0,0.015)] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#EAE6DF] pb-3">
                         <div className="flex items-center gap-2">
                           <AlertTriangle size={15} className="text-amber-700" />
-                          <h3 className="font-quiche text-base font-light text-[#171717]">Low Stock Alert</h3>
+                          <h3 className="font-serif text-base font-normal text-[#171717]">Low Stock Alert</h3>
                         </div>
                         <span className="text-[9.5px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30">
                           {lowStockProducts.length} Items
                         </span>
                       </div>
 
-                      <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+                      <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
                         {lowStockProducts.slice(0, 4).map(p => (
-                          <div key={p.id} className="flex items-center justify-between p-2.5 bg-white border border-[#E5DDD1] rounded-lg">
+                          <div key={p.id} className="flex items-center justify-between p-2.5 bg-white border border-[#EAE6DF] rounded-lg">
                             <div className="flex items-center gap-2.5">
                               {p.image_url ? (
-                                <img src={p.image_url} alt={p.name} className="w-8 h-11 object-cover rounded border border-[#E5DDD1]" />
+                                <img src={p.image_url} alt={p.name} className="w-8 h-11 object-cover rounded border border-[#EAE6DF]" />
                               ) : (
-                                <div className="w-8 h-11 bg-[#FAF8F5] border border-[#E5DDD1] rounded flex items-center justify-center text-[8px] text-[#746F68]">N/A</div>
+                                <div className="w-8 h-11 bg-[#FAF8F5] border border-[#EAE6DF] rounded flex items-center justify-center text-[8px] text-[#746F68]">N/A</div>
                               )}
                               <div>
                                 <p className="text-xs font-medium text-[#171717] truncate max-w-[130px]">{p.name}</p>
@@ -1811,25 +1806,25 @@ const Admin = () => {
                     </div>
 
                     {/* B) Top Selling Pieces (Derived strictly from real paid orders) */}
-                    <div className="bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
-                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
+                    <div className="bg-[#FCFAF7] border border-[#EAE6DF] rounded-xl p-5 sm:p-6 shadow-[0_2px_16px_rgba(0,0,0,0.015)] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#EAE6DF] pb-3">
                         <div className="flex items-center gap-2">
                           <TrendingUp size={15} className="text-[#746F68]" />
-                          <h3 className="font-quiche text-base font-light text-[#171717]">Top Selling Pieces</h3>
+                          <h3 className="font-serif text-base font-normal text-[#171717]">Top Selling Pieces</h3>
                         </div>
                         <span className="text-[9.5px] font-mono text-[#746F68]">
                           Paid Orders
                         </span>
                       </div>
 
-                      <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+                      <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
                         {topSellingPieces.slice(0, 4).map((ts, idx) => (
-                          <div key={idx} className="flex items-center justify-between p-2.5 bg-white border border-[#E5DDD1] rounded-lg">
+                          <div key={idx} className="flex items-center justify-between p-2.5 bg-white border border-[#EAE6DF] rounded-lg">
                             <div className="flex items-center gap-2.5">
                               {ts.image ? (
-                                <img src={ts.image} alt={ts.name} className="w-8 h-11 object-cover rounded border border-[#E5DDD1]" />
+                                <img src={ts.image} alt={ts.name} className="w-8 h-11 object-cover rounded border border-[#EAE6DF]" />
                               ) : (
-                                <div className="w-8 h-11 bg-[#FAF8F5] border border-[#E5DDD1] rounded flex items-center justify-center text-[8px] text-[#746F68]">#{idx + 1}</div>
+                                <div className="w-8 h-11 bg-[#FAF8F5] border border-[#EAE6DF] rounded flex items-center justify-center text-[8px] text-[#746F68]">#{idx + 1}</div>
                               )}
                               <div>
                                 <p className="text-xs font-medium text-[#171717] truncate max-w-[130px]">{ts.name}</p>
@@ -1851,20 +1846,20 @@ const Admin = () => {
                     </div>
 
                     {/* C) Collection & Category Performance (Derived dynamically from authentic SUKO taxonomy) */}
-                    <div className="bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
-                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
+                    <div className="bg-[#FCFAF7] border border-[#EAE6DF] rounded-xl p-5 sm:p-6 shadow-[0_2px_16px_rgba(0,0,0,0.015)] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#EAE6DF] pb-3">
                         <div className="flex items-center gap-2">
                           <Layers size={15} className="text-[#746F68]" />
-                          <h3 className="font-quiche text-base font-light text-[#171717]">Category Performance</h3>
+                          <h3 className="font-serif text-base font-normal text-[#171717]">Category Performance</h3>
                         </div>
                         <span className="text-[9.5px] font-mono text-[#746F68]">
                           Catalogue
                         </span>
                       </div>
 
-                      <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+                      <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
                         {categoryPerformance.map((cp, idx) => (
-                          <div key={idx} className="p-2.5 bg-white border border-[#E5DDD1] rounded-lg space-y-1">
+                          <div key={idx} className="p-2.5 bg-white border border-[#EAE6DF] rounded-lg space-y-1">
                             <div className="flex justify-between items-center text-xs">
                               <span className="font-medium text-[#171717] truncate max-w-[140px]">{cp.name}</span>
                               <span className="font-mono font-bold text-[#171717]">{formatINR(cp.revenue)}</span>
@@ -1881,23 +1876,23 @@ const Admin = () => {
                   </div>
 
                   {/* 5. CLIENT EXPERIENCE SECTION (Real clients & authentic reviews) */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     
                     {/* Recent Clients Roster (7 cols) */}
-                    <div className="lg:col-span-7 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
-                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
+                    <div className="lg:col-span-7 bg-[#FCFAF7] border border-[#EAE6DF] rounded-xl p-5 sm:p-7 shadow-[0_2px_16px_rgba(0,0,0,0.015)] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#EAE6DF] pb-4">
                         <div>
-                          <span className="text-[9px] uppercase tracking-[0.14em] text-[#8E877E] font-mono block">
-                            CLIENT ROSTER
+                          <span className="text-[9.5px] uppercase tracking-[0.08em] text-[#8E877E] font-mono block">
+                            Client Roster
                           </span>
-                          <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
+                          <h2 className="font-serif text-xl font-normal text-[#171717] mt-0.5">
                             Recent Clients
                           </h2>
                         </div>
                         <button
                           type="button"
                           onClick={() => setActiveTab("customers")}
-                          className="text-[10.5px] uppercase tracking-[0.08em] text-[#171717] hover:text-[#C2922E] hover:underline cursor-pointer font-medium"
+                          className="text-[10.5px] tracking-normal text-[#171717] hover:text-[#C2922E] hover:underline cursor-pointer font-medium"
                         >
                           Directory &rarr;
                         </button>
@@ -1905,7 +1900,7 @@ const Admin = () => {
 
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs font-body">
-                          <thead className="text-[9.5px] uppercase tracking-[0.12em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
+                          <thead className="text-[9.5px] uppercase tracking-[0.08em] text-[#746F68] font-mono border-b border-[#EAE6DF]">
                             <tr>
                               <th className="pb-2.5 font-medium">Client</th>
                               <th className="pb-2.5 font-medium">City</th>
@@ -1913,7 +1908,7 @@ const Admin = () => {
                               <th className="pb-2.5 font-medium text-right">Total Paid</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-[#E5DDD1]/60">
+                          <tbody className="divide-y divide-[#EAE6DF]/60">
                             {uniqueClientsList.slice(0, 5).map((cl, i) => (
                               <tr key={i} className="hover:bg-white/60 transition-colors">
                                 <td className="py-3 pr-2">
@@ -1940,28 +1935,28 @@ const Admin = () => {
                     </div>
 
                     {/* Latest Client Reviews (5 cols) */}
-                    <div className="lg:col-span-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
-                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-4">
+                    <div className="lg:col-span-5 bg-[#FCFAF7] border border-[#EAE6DF] rounded-xl p-5 sm:p-7 shadow-[0_2px_16px_rgba(0,0,0,0.015)] space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#EAE6DF] pb-4">
                         <div>
-                          <span className="text-[9px] uppercase tracking-[0.14em] text-[#8E877E] font-mono block">
-                            TESTIMONIALS
+                          <span className="text-[9.5px] uppercase tracking-[0.08em] text-[#8E877E] font-mono block">
+                            Client Feedback
                           </span>
-                          <h2 className="font-quiche text-xl font-light text-[#171717] mt-0.5">
+                          <h2 className="font-serif text-xl font-normal text-[#171717] mt-0.5">
                             Client Reviews
                           </h2>
                         </div>
                         <button
                           type="button"
                           onClick={() => setActiveTab("reviews")}
-                          className="text-[10.5px] uppercase tracking-[0.08em] text-[#171717] hover:text-[#C2922E] hover:underline cursor-pointer font-medium"
+                          className="text-[10.5px] tracking-normal text-[#171717] hover:text-[#C2922E] hover:underline cursor-pointer font-medium"
                         >
                           All ({adminReviewsList.length}) &rarr;
                         </button>
                       </div>
 
-                      <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                      <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
                         {adminReviewsList.slice(0, 3).map((r) => (
-                          <div key={r.id} className="p-3 bg-white border border-[#E5DDD1] rounded-lg space-y-1.5">
+                          <div key={r.id} className="p-3 bg-white border border-[#EAE6DF] rounded-lg space-y-1.5">
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-medium text-[#171717]">{r.user?.name || "Client"}</span>
                               <div className="flex items-center text-[#C2922E]">
