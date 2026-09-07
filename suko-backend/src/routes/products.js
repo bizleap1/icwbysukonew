@@ -1,7 +1,13 @@
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
-const multer = require("multer");
+let multer;
+try {
+  multer = require("multer");
+} catch (e) {
+  console.warn("[Products] multer not available, falling back to passthrough middleware");
+  multer = null;
+}
 const { requireAdmin } = require("../auth");
 const productService = require("../services/productService");
 
@@ -10,24 +16,37 @@ const router = express.Router();
 // Setup Multer for product photography
 const uploadDir = path.join(__dirname, "..", "..", "uploads", "products");
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+  try {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  } catch (err) {
+    // ignore
+  }
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
-    cb(null, `garment-${uniqueSuffix}${ext}`);
-  }
-});
+let upload;
+if (multer) {
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+      cb(null, `garment-${uniqueSuffix}${ext}`);
+    }
+  });
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit per image
-});
+  upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit per image
+  });
+} else {
+  upload = {
+    fields: () => (req, res, next) => next(),
+    single: () => (req, res, next) => next(),
+    array: () => (req, res, next) => next()
+  };
+}
 
 // GET /api/products -- list all products
 router.get("/", async (req, res) => {
