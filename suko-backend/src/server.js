@@ -3,10 +3,13 @@ const express = require("express");
 const cors = require("cors");
 
 const { pool } = require("./db");
+const path = require("path");
 const authRoutes = require("./routes/auth");
 const ordersRoutes = require("./routes/orders");
 const statsRoutes = require("./routes/stats");
 const paymentsRoutes = require("./routes/payments");
+const productsRoutes = require("./routes/products");
+const categoriesRoutes = require("./routes/categories");
 
 const { securityHeaders, requestLogger } = require("./middleware/security");
 const { apiLimiter } = require("./middleware/rateLimiter");
@@ -70,10 +73,15 @@ app.get("/health", async (req, res) => {
 // Rate limiting on all /api routes
 app.use("/api", apiLimiter);
 
+// Serve static uploaded assets
+app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+
 app.use("/api/auth", authRoutes);
 app.use("/api/orders", ordersRoutes);
 app.use("/api/payments", paymentsRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/products", productsRoutes);
+app.use("/api/categories", categoriesRoutes);
 
 // 404 fallback
 app.use((req, res) => {

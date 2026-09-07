@@ -185,7 +185,7 @@ const CartDrawer = () => {
                   className="w-full bg-[#111113] text-white py-4 text-[11px] uppercase tracking-[0.26em] font-medium hover:bg-[#C2922E] transition-all duration-300 shadow-sm flex items-center justify-center gap-2 group cursor-pointer"
                 >
                   <span>PROCEED TO CHECKOUT</span>
-                  <ArrowRight size={13} className="text-[#C2922E] transition-transform duration-300 group-hover:translate-x-1" />
+                  <ArrowRight size={13} className="text-[#C2922E] group-hover:text-white transition-all duration-300 group-hover:translate-x-1" />
                 </button>
               </div>
             )}

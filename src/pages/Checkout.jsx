@@ -630,9 +630,9 @@ const Checkout = () => {
               <button
                 type="button"
                 onClick={() => setShowInvoiceModal(true)}
-                className="w-full sm:w-auto bg-[#111113] hover:bg-[#C2922E] text-white px-7 py-3.5 text-[11px] uppercase tracking-[0.22em] font-medium transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                className="group w-full sm:w-auto bg-[#111113] hover:bg-[#C2922E] text-white px-7 py-3.5 text-[11px] uppercase tracking-[0.22em] font-medium transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
               >
-                <Download size={14} className="text-[#C2922E]" />
+                <Download size={14} className="text-[#C2922E] group-hover:text-white transition-colors" />
                 <span>Download Invoice</span>
               </button>
               <Link
@@ -1251,11 +1251,11 @@ const Checkout = () => {
                         type="button"
                         onClick={handleSubmitPaymentProof}
                         disabled={!transactionId.trim() || !screenshotPreview || isSubmittingProof}
-                        className="w-full bg-[#111113] hover:bg-[#C2922E] text-white py-4 px-8 text-[11.5px] uppercase tracking-[0.24em] font-medium flex items-center justify-center gap-3 transition-colors duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed rounded-none"
+                        className="group w-full bg-[#111113] hover:bg-[#C2922E] text-white py-4 px-8 text-[11.5px] uppercase tracking-[0.24em] font-medium flex items-center justify-center gap-3 transition-colors duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed rounded-none"
                       >
                         {isSubmittingProof ? (
                           <>
-                            <Loader2 size={15} className="animate-spin text-[#C2922E]" />
+                            <Loader2 size={15} className="animate-spin text-[#C2922E] group-hover:text-white transition-colors" />
                             <span>Submitting for Verification...</span>
                           </>
                         ) : (
