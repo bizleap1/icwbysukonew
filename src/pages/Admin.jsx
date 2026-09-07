@@ -61,9 +61,9 @@ const formatStatus = (status) => {
     pending_payment: "Pending Payment",
     payment_verification_pending: "Awaiting Verification",
     paid: "Settled",
-    payment_verification_failed: "Payment Review Required",
+    payment_verification_failed: "Review Required",
     processing: "In Atelier",
-    cancel_requested: "Cancellation Requested",
+    cancel_requested: "Cancel Requested",
     completed: "Completed",
     cancelled: "Cancelled",
   };
@@ -72,12 +72,12 @@ const formatStatus = (status) => {
 
 const ORDER_STATUS_CONFIG = [
   { value: "pending_payment", label: "Pending Payment", dotColor: "bg-[#8E877E]" },
-  { value: "payment_verification_pending", label: "Awaiting Verification", dotColor: "bg-amber-600" },
+  { value: "payment_verification_pending", label: "Awaiting Verification", dotColor: "bg-[#A77B1E]" },
   { value: "paid", label: "Settled", dotColor: "bg-[#111113]" },
-  { value: "payment_verification_failed", label: "Payment Review Required", dotColor: "bg-rose-600" },
+  { value: "payment_verification_failed", label: "Review Required", dotColor: "bg-[#8B3A3A]" },
   { value: "processing", label: "In Atelier", dotColor: "bg-[#A77B1E]" },
-  { value: "cancel_requested", label: "Cancel Requested", dotColor: "bg-rose-500" },
-  { value: "completed", label: "Completed", dotColor: "bg-emerald-700" },
+  { value: "cancel_requested", label: "Cancel Requested", dotColor: "bg-[#8B3A3A]" },
+  { value: "completed", label: "Completed", dotColor: "bg-[#3B6E4C]" },
   { value: "cancelled", label: "Cancelled", dotColor: "bg-[#746F68]" },
 ];
 
@@ -87,27 +87,27 @@ const renderStatusIndicator = (status) => {
 
   if (status === "paid" || status === "completed") {
     return (
-      <span className="inline-block text-[9px] sm:text-[9.5px] font-mono tracking-[0.14em] text-[#111113] px-1.5 py-0.5 border border-[#E5DDD1] bg-transparent rounded-[2px] font-medium">
+      <span className="inline-block text-[9px] sm:text-[9.5px] font-mono tracking-[0.14em] text-[#111113] px-1.5 py-0.5 border border-[#E5DDD1] bg-transparent rounded-[2px] font-medium whitespace-nowrap">
         [ {upper} ]
       </span>
     );
   }
   if (status === "payment_verification_pending") {
     return (
-      <span className="inline-block text-[9px] sm:text-[9.5px] font-mono tracking-[0.14em] text-[#8F6517] px-1.5 py-0.5 border border-[#D4B26F] bg-transparent rounded-[2px] font-medium">
+      <span className="inline-block text-[9px] sm:text-[9.5px] font-mono tracking-[0.14em] text-[#8F6517] px-1.5 py-0.5 border border-[#D4B26F] bg-transparent rounded-[2px] font-medium whitespace-nowrap">
         [ {upper} ]
       </span>
     );
   }
   if (status === "payment_verification_failed" || status === "cancelled" || status === "cancel_requested") {
     return (
-      <span className="inline-block text-[9px] sm:text-[9.5px] font-mono tracking-[0.14em] text-[#8B3A3A] px-1.5 py-0.5 border border-[#D9A4A4] bg-transparent rounded-[2px] font-medium">
+      <span className="inline-block text-[9px] sm:text-[9.5px] font-mono tracking-[0.14em] text-[#8B3A3A] px-1.5 py-0.5 border border-[#D9A4A4] bg-transparent rounded-[2px] font-medium whitespace-nowrap">
         [ {upper} ]
       </span>
     );
   }
   return (
-    <span className="inline-block text-[9px] sm:text-[9.5px] font-mono tracking-[0.14em] text-[#746F68] px-1.5 py-0.5 border border-[#E5DDD1] bg-transparent rounded-[2px] font-medium">
+    <span className="inline-block text-[9px] sm:text-[9.5px] font-mono tracking-[0.14em] text-[#746F68] px-1.5 py-0.5 border border-[#E5DDD1] bg-transparent rounded-[2px] font-medium whitespace-nowrap">
       [ {upper} ]
     </span>
   );
@@ -2922,24 +2922,26 @@ const Admin = () => {
             {/* ORDERS TAB */}
             {activeTab === "orders" && (
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-end justify-between border-b border-[#E5DDD1] pb-4 gap-4">
-                  <div>
-                    <h2 className="font-serif text-2xl sm:text-3xl font-medium text-[#111113] tracking-tight leading-tight">
-                      Atelier Order Registry
-                    </h2>
-                    <p className="text-xs sm:text-[12.5px] text-[#746F68] font-sans font-normal mt-1">
-                      Manage client orders, payments and garment fulfilment.
-                    </p>
+                <div className="space-y-4 border-b border-[#E5DDD1] pb-0">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-2">
+                    <div>
+                      <h2 className="font-serif text-2xl sm:text-3xl font-medium text-[#111113] tracking-tight leading-tight">
+                        Atelier Orders
+                      </h2>
+                      <p className="text-xs sm:text-[12.5px] text-[#746F68] font-sans font-normal mt-1">
+                        Client purchases, payment verification and fulfilment.
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Status Filter Tabs (Refined Luxury Standard) */}
-                  <div className="flex items-center gap-1 bg-[#FAF8F5] p-1 rounded-[2px] border border-[#E5DDD1] overflow-x-auto suko-scrollbar overscroll-y-auto">
+                  {/* Status Filter Tabs (Editorial Underline Standard) */}
+                  <div className="flex items-center gap-6 sm:gap-8 overflow-x-auto suko-scrollbar overscroll-y-auto -mb-px pt-2">
                     {[
                       { id: "all", label: "All" },
                       { id: "payment_verification_pending", label: `Awaiting Verification${verificationRequests.length > 0 ? ` (${verificationRequests.length})` : ''}` },
                       { id: "pending_payment", label: "Pending Payment" },
                       { id: "paid", label: "Settled" },
-                      { id: "payment_verification_failed", label: "Payment Review Required" },
+                      { id: "payment_verification_failed", label: "Review Required" },
                       { id: "processing", label: "In Atelier" },
                       { id: "cancel_requested", label: "Cancel Requested" },
                       { id: "completed", label: "Completed" },
@@ -2949,10 +2951,10 @@ const Admin = () => {
                         key={st.id}
                         type="button"
                         onClick={() => setOrderStatusFilter(st.id)}
-                        className={`px-3 py-1.5 rounded-[2px] text-[9.5px] uppercase tracking-[0.10em] font-mono transition-all whitespace-nowrap cursor-pointer ${
+                        className={`pb-3 text-xs uppercase tracking-[0.08em] font-mono transition-all whitespace-nowrap cursor-pointer border-b-2 ${
                           orderStatusFilter === st.id
-                            ? "bg-[#111113] text-[#FAF8F5] font-semibold shadow-xs"
-                            : "text-[#55514B] hover:text-[#111113] hover:bg-[#EFE9DF]/50"
+                            ? "border-[#111113] text-[#111113] font-semibold"
+                            : "border-transparent text-[#746F68] hover:text-[#111113] hover:border-[#C5BDB2] font-normal"
                         }`}
                       >
                         {st.label}
@@ -2966,20 +2968,20 @@ const Admin = () => {
                   <table className="w-full text-left font-body text-sm">
                     <thead className="bg-[#F7F3ED] text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
                       <tr>
-                        <th className="py-3 px-4 font-normal">Order #</th>
-                        <th className="py-3 px-4 font-normal">Date</th>
-                        <th className="py-3 px-4 font-normal">Customer</th>
-                        <th className="py-3 px-4 font-normal">Items</th>
-                        <th className="py-3 px-4 font-normal">Total</th>
-                        <th className="py-3 px-4 font-normal">Payment & UTR</th>
-                        <th className="py-3 px-4 font-normal">Status</th>
-                        <th className="py-3 px-4 font-normal text-right">Actions</th>
+                        <th className="py-2.5 px-3.5 font-normal">Order #</th>
+                        <th className="py-2.5 px-3.5 font-normal whitespace-nowrap">Date</th>
+                        <th className="py-2.5 px-3.5 font-normal">Customer</th>
+                        <th className="py-2.5 px-3.5 font-normal">Items</th>
+                        <th className="py-2.5 px-3.5 font-normal">Total</th>
+                        <th className="py-2.5 px-3.5 font-normal">Payment &amp; UTR</th>
+                        <th className="py-2.5 px-3.5 font-normal">Status</th>
+                        <th className="py-2.5 px-3.5 font-normal text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E5DDD1]/70 text-[#111113]">
                       {filteredOrders.map(o => (
                         <tr key={o.id} className="hover:bg-[#FAF8F5]/80 transition-colors">
-                          <td className="py-3.5 sm:py-4 px-4 align-top">
+                          <td className="py-3 px-3.5 align-top whitespace-nowrap">
                             <div className="space-y-0.5">
                               <span className="font-mono text-xs font-semibold text-[#111113] block">
                                 #SUKO-{1000 + o.id}
@@ -2989,26 +2991,26 @@ const Admin = () => {
                               </span>
                             </div>
                           </td>
-                          <td className="py-3.5 sm:py-4 px-4 align-top">
+                          <td className="py-3 px-3.5 align-top whitespace-nowrap">
                             <div className="space-y-0.5">
-                              <span className="text-xs text-[#171717] font-mono block">
+                              <span className="text-xs text-[#111113] font-mono block">
                                 {new Date(o.created_at || Date.now()).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                               </span>
-                              <span className="text-[10px] text-[#746F68] font-mono block">
-                                {new Date(o.created_at || Date.now()).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                              <span className="text-[10.5px] text-[#746F68] font-mono block">
+                                {new Date(o.created_at || Date.now()).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).toUpperCase()}
                               </span>
                             </div>
                           </td>
-                          <td className="py-3.5 sm:py-4 px-4 align-top">
-                            <div className="space-y-0.5 max-w-[170px]">
+                          <td className="py-3 px-3.5 align-top">
+                            <div className="space-y-0.5 max-w-[180px]">
                               <p className="font-medium text-xs text-[#111113] truncate">{getUserDisplayName(o.user)}</p>
                               <p className="text-[11px] text-[#746F68] font-sans truncate">{o.city || o.shipping_city || "India"}</p>
                               <p className="text-[10px] font-mono text-[#8E877E] truncate">{o.user?.email || o.email || "—"}</p>
                             </div>
                           </td>
-                          <td className="py-3.5 sm:py-4 px-4 align-top">
-                            <div className="space-y-0.5">
-                              <span className="text-xs font-serif text-[#111113] block truncate max-w-[150px]">
+                          <td className="py-3 px-3.5 align-top">
+                            <div className="space-y-0.5 max-w-[160px]">
+                              <span className="text-xs font-serif text-[#111113] block truncate">
                                 {o.items?.[0]?.product_name || o.items?.[0]?.name || "Tailored Garment"}
                               </span>
                               <span className="text-[10px] text-[#746F68] font-mono block">
@@ -3016,46 +3018,51 @@ const Admin = () => {
                               </span>
                             </div>
                           </td>
-                          <td className="py-3.5 sm:py-4 px-4 align-top">
+                          <td className="py-3 px-3.5 align-top whitespace-nowrap">
                             <div className="space-y-0.5">
-                              <span className="font-serif text-sm font-semibold text-[#111113] block">
+                              <span className="font-serif text-sm font-medium text-[#111113] block">
                                 {formatINR(o.total)}
                               </span>
                               <span className="text-[10px] text-[#746F68] font-mono block">
-                                {isFinanciallyPaid(o.status) ? "Settlement complete" : "Payment pending"}
+                                {isFinanciallyPaid(o.status) ? "Settled" : "Pending"}
                               </span>
                             </div>
                           </td>
-                          <td className="py-3.5 sm:py-4 px-4 align-top">
-                            <div className="space-y-1">
+                          <td className="py-3 px-3.5 align-top">
+                            <div className="space-y-1.5">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-[9.5px] font-mono px-2 py-0.5 rounded-[2px] bg-[#F7F3ED] border border-[#E5DDD1] text-[#111113]">
+                                <span className="text-xs font-sans text-[#111113]">
                                   {formatPaymentMethod(o.payment_method)}
                                 </span>
                                 {o.payment_screenshot_url && (
                                   <button
                                     type="button"
                                     onClick={() => openZoomedScreenshot(`${API_BASE_URL}/api/orders/${o.id}/payment-proof?token=${encodeURIComponent(token)}`)}
-                                    className="text-[9.5px] font-mono uppercase text-[#A77B1E] hover:text-[#111113] hover:underline flex items-center gap-1 cursor-pointer"
+                                    className="text-[9px] font-mono uppercase tracking-wider text-[#A77B1E] hover:text-[#111113] hover:underline flex items-center gap-0.5 cursor-pointer"
                                     title="View Payment Proof Screenshot"
                                   >
-                                    <ImageIcon size={10} /> Proof
+                                    [Proof &nearr;]
                                   </button>
                                 )}
                               </div>
-                              {o.transaction_id ? (
-                                <p className="font-mono text-[11px] text-[#111113] font-semibold tracking-wide select-all" title="UTR / Transaction ID">
-                                  {o.transaction_id}
-                                </p>
-                              ) : (
-                                <span className="text-[10px] text-[#8E877E] italic">No UTR yet</span>
-                              )}
+                              <div>
+                                <span className="text-[8.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono block leading-none mb-0.5">
+                                  UTR
+                                </span>
+                                {o.transaction_id ? (
+                                  <p className="font-mono text-[11px] text-[#111113] font-medium tracking-wide select-all leading-none" title="UTR / Transaction ID">
+                                    {o.transaction_id}
+                                  </p>
+                                ) : (
+                                  <span className="text-[10.5px] text-[#8E877E] font-sans italic block leading-none">Not recorded</span>
+                                )}
+                              </div>
                             </div>
                           </td>
-                          <td className="py-3.5 sm:py-4 px-4 align-top">
+                          <td className="py-3 px-3.5 align-top whitespace-nowrap">
                             {o.status === "payment_verification_pending" ? (
-                              <div className="space-y-1.5">
-                                <span className="inline-flex items-center gap-1.5 text-[10.5px] font-mono text-[#8F6517] font-medium bg-transparent border border-[#D4B26F] px-2 py-0.5 rounded-[2px]">
+                              <div className="space-y-1.5 whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-[#8F6517] font-medium bg-transparent border border-[#D4B26F] px-2 py-0.5 rounded-[2px]">
                                   <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]" /> Awaiting Verification
                                 </span>
                                 <div className="flex items-center gap-1.5">
@@ -3063,7 +3070,7 @@ const Admin = () => {
                                     type="button"
                                     onClick={() => handleVerifyPayment(o.id)}
                                     disabled={verifyingOrderId === o.id}
-                                    className="text-[9.5px] font-mono font-medium bg-[#111113] hover:bg-[#C2922E] text-white px-2.5 py-1 rounded-[2px] transition-colors disabled:opacity-50 cursor-pointer"
+                                    className="text-[9.5px] font-mono font-medium bg-[#111113] hover:bg-[#C2922E] text-white px-2 py-0.5 rounded-[2px] transition-colors disabled:opacity-50 cursor-pointer"
                                     title="Verify & Confirm Payment"
                                   >
                                     {verifyingOrderId === o.id ? "..." : "Approve"}
@@ -3072,7 +3079,7 @@ const Admin = () => {
                                     type="button"
                                     onClick={() => handleRejectPayment(o.id)}
                                     disabled={rejectingOrderId === o.id}
-                                    className="text-[9.5px] font-mono font-medium text-[#8B3A3A] hover:text-[#111113] border border-[#D9A4A4] px-2.5 py-1 rounded-[2px] transition-colors disabled:opacity-50 cursor-pointer bg-transparent hover:bg-[#D9A4A4]/15"
+                                    className="text-[9.5px] font-mono font-medium text-[#8B3A3A] hover:text-[#111113] border border-[#D9A4A4] px-2 py-0.5 rounded-[2px] transition-colors disabled:opacity-50 cursor-pointer bg-transparent hover:bg-[#D9A4A4]/15"
                                     title="Reject Payment Proof"
                                   >
                                     {rejectingOrderId === o.id ? "..." : "Reject"}
@@ -3080,11 +3087,11 @@ const Admin = () => {
                                 </div>
                               </div>
                             ) : (
-                              <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
+                              <div className="relative inline-block text-left whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                                 <button
                                   type="button"
                                   onClick={() => setOpenStatusDropdownOrderId(openStatusDropdownOrderId === o.id ? null : o.id)}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] border border-[#E5DDD1] bg-[#FAF8F5] hover:bg-[#EFE9DF] text-[10px] font-mono tracking-[0.08em] uppercase text-[#111113] font-medium transition-colors cursor-pointer"
+                                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] border border-[#E5DDD1] bg-[#FAF8F5] hover:bg-[#EFE9DF] text-[10px] font-mono tracking-[0.08em] uppercase text-[#111113] font-medium transition-colors cursor-pointer whitespace-nowrap"
                                 >
                                   <span className={`w-1.5 h-1.5 rounded-full ${ORDER_STATUS_CONFIG.find(s => s.value === o.status)?.dotColor || "bg-[#8E877E]"}`} />
                                   <span>{formatStatus(o.status)}</span>
@@ -3092,7 +3099,7 @@ const Admin = () => {
                                 </button>
 
                                 {openStatusDropdownOrderId === o.id && (
-                                  <div className="absolute left-0 mt-1 w-52 bg-[#FAF8F5] border border-[#E5DDD1] shadow-xl rounded-[2px] py-1 z-30 divide-y divide-[#E5DDD1]/40 animate-in fade-in duration-100">
+                                  <div className="absolute left-0 mt-1 w-48 bg-[#FAF8F5] border border-[#E5DDD1] shadow-xl rounded-[2px] py-1 z-30 divide-y divide-[#E5DDD1]/40 animate-in fade-in duration-100">
                                     {ORDER_STATUS_CONFIG.map(opt => (
                                       <button
                                         key={opt.value}
@@ -3101,7 +3108,7 @@ const Admin = () => {
                                           handleUpdateOrderStatus(o.id, opt.value);
                                           setOpenStatusDropdownOrderId(null);
                                         }}
-                                        className={`w-full px-3 py-1.5 text-left text-[11px] font-mono flex items-center justify-between hover:bg-[#EFE9DF]/60 transition-colors cursor-pointer ${
+                                        className={`w-full px-3 py-1.5 text-left text-[10.5px] font-mono flex items-center justify-between hover:bg-[#EFE9DF]/60 transition-colors cursor-pointer ${
                                           o.status === opt.value ? "font-semibold text-[#111113] bg-[#EFE9DF]/30" : "text-[#55514B]"
                                         }`}
                                       >
@@ -3117,32 +3124,30 @@ const Admin = () => {
                               </div>
                             )}
                           </td>
-                          <td className="py-3.5 sm:py-4 px-4 align-top text-right">
-                            <div className="flex items-center justify-end gap-1 relative" onClick={(e) => e.stopPropagation()}>
+                          <td className="py-3 px-3.5 align-top text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-2.5 text-xs" onClick={(e) => e.stopPropagation()}>
                               <button
                                 type="button"
                                 onClick={() => openOrderDetails(o)}
-                                className="p-1.5 text-[#55514B] hover:text-[#111113] hover:bg-[#EFE9DF]/60 rounded-[2px] transition-colors cursor-pointer"
-                                title="Inspect Details"
+                                className="text-xs text-[#111113] hover:text-[#C2922E] hover:underline font-medium transition-colors cursor-pointer"
                               >
-                                <Eye size={15} />
+                                View
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditOrder(o)}
-                                className="p-1.5 text-[#55514B] hover:text-[#111113] hover:bg-[#EFE9DF]/60 rounded-[2px] transition-colors cursor-pointer"
-                                title="Edit Order"
+                                className="text-xs text-[#746F68] hover:text-[#111113] hover:underline transition-colors cursor-pointer"
                               >
-                                <Edit2 size={14} />
+                                Edit
                               </button>
                               <div className="relative">
                                 <button
                                   type="button"
                                   onClick={() => setOpenActionMenuOrderId(openActionMenuOrderId === o.id ? null : o.id)}
-                                  className="p-1.5 text-[#55514B] hover:text-[#111113] hover:bg-[#EFE9DF]/60 rounded-[2px] transition-colors cursor-pointer"
+                                  className="p-1 text-[#746F68] hover:text-[#111113] hover:bg-[#EFE9DF]/60 rounded-[2px] transition-colors cursor-pointer leading-none font-bold"
                                   title="More Actions"
                                 >
-                                  <MoreHorizontal size={15} />
+                                  <MoreHorizontal size={14} />
                                 </button>
                                 {openActionMenuOrderId === o.id && (
                                   <div className="absolute right-0 mt-1 w-44 bg-[#FAF8F5] border border-[#E5DDD1] shadow-xl rounded-[2px] py-1 z-30">
@@ -3164,7 +3169,7 @@ const Admin = () => {
                                         setOpenActionMenuOrderId(null);
                                         handleDeleteOrder(o.id);
                                       }}
-                                      className="w-full px-3 py-1.5 text-left text-xs text-rose-800 hover:text-rose-900 hover:bg-rose-500/10 transition-colors flex items-center justify-between cursor-pointer font-medium"
+                                      className="w-full px-3 py-1.5 text-left text-xs text-[#8B3A3A] hover:bg-[#D9A4A4]/15 transition-colors flex items-center justify-between cursor-pointer font-medium"
                                     >
                                       <span>Delete Order</span>
                                       <Trash2 size={12} />
@@ -3177,7 +3182,7 @@ const Admin = () => {
                         </tr>
                       ))}
                       {filteredOrders.length === 0 && (
-                        <tr><td colSpan="8" className="p-8 text-center text-[#888890]">No orders found for this filter.</td></tr>
+                        <tr><td colSpan="8" className="p-8 text-center text-[#746F68] font-sans italic">No orders found for this filter.</td></tr>
                       )}
                     </tbody>
                   </table>
