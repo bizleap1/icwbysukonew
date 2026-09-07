@@ -241,7 +241,6 @@ input {
 .suko-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #E5DDD1 transparent;
-  overscroll-behavior: contain;
 }
 
 .suko-scrollbar::-webkit-scrollbar {

@@ -7,7 +7,7 @@ import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown, Plus, 
   Search, Download, AlertTriangle, Clock, X, Crop, Image as ImageIcon, Star, Eye, Tag, Mail, Send, MessageSquare, ShoppingBag,
   LayoutDashboard, Layers, ShieldCheck, CheckCircle, RefreshCw, Copy, Check,
-  Menu, Bell, ArrowUpRight, TrendingUp
+  Menu, Bell, ArrowUpRight, TrendingUp, LogOut, MoreHorizontal
 } from "lucide-react";
 import { formatINR, CATEGORIES as DEFAULT_CATEGORIES } from "../data/products";
 import { useProducts } from "../context/ProductContext";
@@ -70,36 +70,45 @@ const formatStatus = (status) => {
   return map[status] || (status ? status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "—");
 };
 
+const ORDER_STATUS_CONFIG = [
+  { value: "pending_payment", label: "Pending Payment", dotColor: "bg-[#8E877E]" },
+  { value: "payment_verification_pending", label: "Awaiting Verification", dotColor: "bg-amber-600" },
+  { value: "paid", label: "Settled", dotColor: "bg-[#111113]" },
+  { value: "payment_verification_failed", label: "Payment Review Required", dotColor: "bg-rose-600" },
+  { value: "processing", label: "In Atelier", dotColor: "bg-[#A77B1E]" },
+  { value: "cancel_requested", label: "Cancel Requested", dotColor: "bg-rose-500" },
+  { value: "completed", label: "Completed", dotColor: "bg-emerald-700" },
+  { value: "cancelled", label: "Cancelled", dotColor: "bg-[#746F68]" },
+];
+
 const renderStatusIndicator = (status) => {
   const label = formatStatus(status);
+  const upper = label.toUpperCase();
+
   if (status === "paid" || status === "completed") {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#171717]">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#171717]" />
-        <span>{label}</span>
+      <span className="inline-block text-[9px] sm:text-[9.5px] font-mono tracking-[0.14em] text-[#111113] px-1.5 py-0.5 border border-[#E5DDD1] bg-transparent rounded-[2px] font-medium">
+        [ {upper} ]
       </span>
     );
   }
   if (status === "payment_verification_pending") {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-amber-800 font-medium">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-        <span>{label}</span>
+      <span className="inline-block text-[9px] sm:text-[9.5px] font-mono tracking-[0.14em] text-[#8F6517] px-1.5 py-0.5 border border-[#D4B26F] bg-transparent rounded-[2px] font-medium">
+        [ {upper} ]
       </span>
     );
   }
-  if (status === "payment_verification_failed") {
+  if (status === "payment_verification_failed" || status === "cancelled" || status === "cancel_requested") {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-rose-800 font-medium">
-        <span className="w-1.5 h-1.5 rounded-full bg-rose-600" />
-        <span>{label}</span>
+      <span className="inline-block text-[9px] sm:text-[9.5px] font-mono tracking-[0.14em] text-[#8B3A3A] px-1.5 py-0.5 border border-[#D9A4A4] bg-transparent rounded-[2px] font-medium">
+        [ {upper} ]
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#746F68]">
-      <span className="w-1.5 h-1.5 rounded-full bg-[#8E877E]" />
-      <span>{label}</span>
+    <span className="inline-block text-[9px] sm:text-[9.5px] font-mono tracking-[0.14em] text-[#746F68] px-1.5 py-0.5 border border-[#E5DDD1] bg-transparent rounded-[2px] font-medium">
+      [ {upper} ]
     </span>
   );
 };
@@ -313,6 +322,19 @@ const Admin = () => {
   const [editingOrder, setEditingOrder] = useState(null);
   const [editOrderForm, setEditOrderForm] = useState({ total: "", status: "pending", cancel_reason: "" });
   const editModalRef = useRef(null);
+
+  // Orders Table Custom Dropdown & Action Popover States
+  const [openStatusDropdownOrderId, setOpenStatusDropdownOrderId] = useState(null);
+  const [openActionMenuOrderId, setOpenActionMenuOrderId] = useState(null);
+
+  useEffect(() => {
+    const handleClosePopovers = () => {
+      setOpenStatusDropdownOrderId(null);
+      setOpenActionMenuOrderId(null);
+    };
+    window.addEventListener("click", handleClosePopovers);
+    return () => window.removeEventListener("click", handleClosePopovers);
+  }, []);
 
   useEffect(() => {
     if (editingOrder) {
@@ -1097,6 +1119,75 @@ const Admin = () => {
   });
   const chartData = Object.values(trendMap).sort((a, b) => a.rawDate - b.rawDate);
 
+  // Helper for luxury formatted date range label
+  const getActiveDateRangeLabel = () => {
+    const now = new Date();
+    const opts = { day: "2-digit", month: "short", year: "numeric" };
+    if (datePreset === "today") {
+      return now.toLocaleDateString("en-IN", opts);
+    }
+    if (datePreset === "7days") {
+      const past = new Date();
+      past.setDate(now.getDate() - 6);
+      return `${past.toLocaleDateString("en-IN", opts)} — ${now.toLocaleDateString("en-IN", opts)}`;
+    }
+    if (datePreset === "month") {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      return `${start.toLocaleDateString("en-IN", opts)} — ${now.toLocaleDateString("en-IN", opts)}`;
+    }
+    if (datePreset === "custom") {
+      if (startDate && endDate) {
+        return `${new Date(startDate).toLocaleDateString("en-IN", opts)} — ${new Date(endDate).toLocaleDateString("en-IN", opts)}`;
+      }
+      if (startDate) return `From ${new Date(startDate).toLocaleDateString("en-IN", opts)}`;
+      if (endDate) return `Until ${new Date(endDate).toLocaleDateString("en-IN", opts)}`;
+      return "Select Date Range";
+    }
+    return `Fiscal ${now.getFullYear()} · All Records`;
+  };
+
+  // Continuous timeline for Financial Chart (ensures elegant multi-point curve)
+  const getContinuousTimeline = () => {
+    if (chartData.length >= 4) return chartData;
+
+    const days = 7;
+    const timeline = [];
+    const now = new Date();
+
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const label = d.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+      const fullDate = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
+      let rev = 0;
+      let count = 0;
+      filteredPaidOrders.forEach(o => {
+        const od = new Date(o.created_at || Date.now());
+        if (od.toDateString() === d.toDateString()) {
+          rev += (parseFloat(o.total) || 0);
+          count += 1;
+        }
+      });
+
+      timeline.push({
+        label,
+        date: fullDate,
+        revenue: rev,
+        count,
+        rawDate: d.getTime()
+      });
+    }
+
+    if (filteredRevenue > 0 && timeline.every(t => t.revenue === 0) && chartData.length > 0) {
+      return chartData;
+    }
+
+    return timeline;
+  };
+
+  const activeChartData = getContinuousTimeline();
+
   // Safeguard #6: Top Selling Products derived from real paid order line items
   const topSellingMap = {};
   allPaidOrders.forEach(order => {
@@ -1219,246 +1310,255 @@ const Admin = () => {
       {/* ============================================================= */}
       {/* 1. FIXED LEFT SIDEBAR NAVIGATION (270px)                      */}
       {/* ============================================================= */}
+      {/* ============================================================= */}
+      {/* 1. FIXED LEFT SIDEBAR NAVIGATION (3-ZONE ARCHITECTURE)        */}
+      {/* ============================================================= */}
       <aside 
         data-lenis-prevent="true"
         data-lenis-prevent-wheel="true"
         data-lenis-prevent-touch="true"
-        className={`fixed md:relative inset-y-0 left-0 h-screen w-[270px] min-w-[270px] max-w-[270px] shrink-0 bg-[#F7F3ED] border-r border-[#E5DDD1] flex flex-col justify-between p-6 z-40 transition-transform duration-300 overflow-y-auto overscroll-contain suko-scrollbar ${
+        className={`fixed md:relative inset-y-0 left-0 h-screen w-[270px] min-w-[270px] max-w-[270px] shrink-0 bg-[#F7F3ED] border-r border-[#E5DDD1] flex flex-col z-40 transition-transform duration-300 overflow-hidden ${
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
-        {/* Top Header with Brand Atelier Identity */}
-        <div>
-          <div className="pb-5 border-b border-[#E5DDD1]">
-            <div className="flex items-start justify-between">
-              <Link to="/" className="inline-block group" onClick={() => closeMobileSidebar(true)}>
-                <div className="flex items-center gap-3">
-                  <img
-                    src="/logo.png"
-                    alt="SUKO Atelier"
-                    className="h-[36px] sm:h-[40px] w-auto object-contain transition-transform duration-300 group-hover:scale-[1.02]"
-                  />
-                  <div className="space-y-0.5">
-                    <span className="font-serif text-[11px] tracking-[0.16em] uppercase text-[#171717] font-medium block leading-tight">
-                      ICW BY SUKO
-                    </span>
-                    <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#C2922E] font-medium font-mono block leading-tight">
-                      ATELIER CONTROL
-                    </span>
-                  </div>
-                </div>
-              </Link>
-              <button
-                type="button"
-                onClick={closeMobileSidebar}
-                className="md:hidden p-1 text-[#746F68] hover:text-[#171717] cursor-pointer"
-                aria-label="Close sidebar"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <p className="text-[10px] text-[#746F68] font-light mt-3 tracking-wide pl-0.5">
-              Private Studio Operations
-            </p>
+        {/* Zone 1: Fixed Brand Header */}
+        <div className="shrink-0 p-4.5 sm:p-5 pb-4 border-b border-[#E5DDD1] bg-[#F7F3ED] relative">
+          <div className="flex items-start justify-between">
+            <Link to="/" className="inline-block group" onClick={() => closeMobileSidebar(true)}>
+              <img
+                src="/logo.png"
+                alt="SUKO Atelier"
+                className="h-[56px] sm:h-[60px] w-auto max-w-[145px] object-contain object-left transition-transform duration-300 group-hover:scale-[1.02]"
+              />
+            </Link>
+            <button
+              type="button"
+              onClick={closeMobileSidebar}
+              className="md:hidden p-1 text-[#746F68] hover:text-[#171717] cursor-pointer"
+              aria-label="Close sidebar"
+            >
+              <X size={18} />
+            </button>
           </div>
 
-          {/* Navigation Chapters */}
-          <nav className="space-y-6 mt-6">
-            
-            {/* ATELIER CHAPTER */}
-            <div>
-              <span className="text-[10px] uppercase tracking-[0.14em] text-[#78726A] font-mono font-semibold px-3 block mb-1.5">
-                ATELIER
-              </span>
-              <div className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab("overview"); closeMobileSidebar(true); }}
-                  className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
-                    activeTab === "overview"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
-                      : "text-[#55514B] hover:text-[#171717] hover:bg-[#EFE9DF]/60 border-l-[3px] border-transparent font-medium"
-                  }`}
-                >
-                  <span>Overview</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab("orders"); closeMobileSidebar(true); }}
-                  className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
-                    activeTab === "orders"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
-                      : "text-[#55514B] hover:text-[#171717] hover:bg-[#EFE9DF]/60 border-l-[3px] border-transparent font-medium"
-                  }`}
-                >
-                  <span>Orders</span>
-                  {cancellationRequests.length > 0 && (
-                    <span className="text-[9.5px] font-mono font-medium px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-900 border border-rose-500/30">
-                      {cancellationRequests.length} Cancel
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab("payments"); closeMobileSidebar(true); }}
-                  className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
-                    activeTab === "payments"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
-                      : "text-[#55514B] hover:text-[#171717] hover:bg-[#EFE9DF]/60 border-l-[3px] border-transparent font-medium"
-                  }`}
-                >
-                  <span>Payments &amp; UTR</span>
-                  {verificationRequests.length > 0 && (
-                    <span className="text-[10px] font-mono text-amber-900 font-semibold bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30">
-                      {verificationRequests.length}
-                    </span>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* CATALOGUE CHAPTER */}
-            <div>
-              <span className="text-[10px] uppercase tracking-[0.14em] text-[#78726A] font-mono font-semibold px-3 block mb-1.5">
-                CATALOGUE
-              </span>
-              <div className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab("products"); closeMobileSidebar(true); }}
-                  className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
-                    activeTab === "products"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
-                      : "text-[#55514B] hover:text-[#171717] hover:bg-[#EFE9DF]/60 border-l-[3px] border-transparent font-medium"
-                  }`}
-                >
-                  <span>Products</span>
-                  {lowStockProducts.length > 0 && (
-                    <span className="text-[10.5px] font-mono text-amber-800 font-medium">
-                      ({lowStockProducts.length})
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab("categories"); closeMobileSidebar(true); }}
-                  className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
-                    activeTab === "categories"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
-                      : "text-[#55514B] hover:text-[#171717] hover:bg-[#EFE9DF]/60 border-l-[3px] border-transparent font-medium"
-                  }`}
-                >
-                  <span>Categories</span>
-                </button>
-              </div>
-            </div>
-
-            {/* CLIENTS CHAPTER */}
-            <div>
-              <span className="text-[10px] uppercase tracking-[0.14em] text-[#78726A] font-mono font-semibold px-3 block mb-1.5">
-                CLIENTS
-              </span>
-              <div className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab("customers"); closeMobileSidebar(true); }}
-                  className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
-                    activeTab === "customers"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
-                      : "text-[#55514B] hover:text-[#171717] hover:bg-[#EFE9DF]/60 border-l-[3px] border-transparent font-medium"
-                  }`}
-                >
-                  <span>Customers</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab("reviews"); closeMobileSidebar(true); }}
-                  className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
-                    activeTab === "reviews"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
-                      : "text-[#55514B] hover:text-[#171717] hover:bg-[#EFE9DF]/60 border-l-[3px] border-transparent font-medium"
-                  }`}
-                >
-                  <span>Reviews</span>
-                </button>
-              </div>
-            </div>
-
-            {/* DISPATCH CHAPTER */}
-            <div>
-              <span className="text-[10px] uppercase tracking-[0.14em] text-[#78726A] font-mono font-semibold px-3 block mb-1.5">
-                DISPATCH
-              </span>
-              <div className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab("coupons"); closeMobileSidebar(true); }}
-                  className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
-                    activeTab === "coupons"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
-                      : "text-[#55514B] hover:text-[#171717] hover:bg-[#EFE9DF]/60 border-l-[3px] border-transparent font-medium"
-                  }`}
-                >
-                  <span>Coupons</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab("broadcast"); closeMobileSidebar(true); }}
-                  className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
-                    activeTab === "broadcast"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
-                      : "text-[#55514B] hover:text-[#171717] hover:bg-[#EFE9DF]/60 border-l-[3px] border-transparent font-medium"
-                  }`}
-                >
-                  <span>Broadcast</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab("calendar"); closeMobileSidebar(true); }}
-                  className={`w-full text-[13.5px] tracking-normal py-2.5 px-3.5 rounded flex items-center justify-between transition-all cursor-pointer ${
-                    activeTab === "calendar"
-                      ? "bg-[#EFE9DF] text-[#171717] font-semibold border-l-[3px] border-[#C2922E] shadow-2xs"
-                      : "text-[#55514B] hover:text-[#171717] hover:bg-[#EFE9DF]/60 border-l-[3px] border-transparent font-medium"
-                  }`}
-                >
-                  <span>Schedule</span>
-                </button>
-              </div>
-            </div>
-
-          </nav>
+          <div className="mt-2.5 space-y-1">
+            <span className="font-serif text-[14px] tracking-[0.14em] uppercase text-[#171717] font-medium block leading-none">
+              SUKO ATELIER
+            </span>
+            <span className="text-[10px] uppercase tracking-[0.14em] text-[#A77B1E] font-mono font-medium block leading-none">
+              STUDIO CONTROL
+            </span>
+          </div>
         </div>
 
-        {/* Sidebar Footer Controls */}
-        <div className="pt-4 border-t border-[#E5DDD1] space-y-2.5">
-          {systemHealth === "online" && (
-            <div className="flex items-center gap-2 text-[10.5px] font-mono text-[#78726A] px-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]/80" />
-              <span>Studio &middot; Operational</span>
+        {/* Zone 2: Scrollable Navigation Area */}
+        <nav 
+          data-lenis-prevent="true"
+          className="flex-1 overflow-y-auto overscroll-contain suko-scrollbar px-4.5 sm:px-5 py-3 space-y-3"
+        >
+          {/* ATELIER CHAPTER */}
+          <div>
+            <span className="text-[9px] uppercase tracking-[0.10em] text-[#8E877E] font-mono font-semibold px-2 block mb-1">
+              ATELIER
+            </span>
+            <div className="space-y-0.5">
+              <button
+                type="button"
+                onClick={() => { setActiveTab("overview"); closeMobileSidebar(true); }}
+                className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${
+                  activeTab === "overview"
+                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
+                }`}
+              >
+                <span>Overview</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab("orders"); closeMobileSidebar(true); }}
+                className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${
+                  activeTab === "orders"
+                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
+                }`}
+              >
+                <span>Orders</span>
+                {cancellationRequests.length > 0 && (
+                  <span className="text-[9px] font-mono font-medium px-1.5 py-0.5 rounded-[2px] bg-transparent text-[#8B3A3A] border border-[#D9A4A4]">
+                    {cancellationRequests.length} Cancel
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab("payments"); closeMobileSidebar(true); }}
+                className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${
+                  activeTab === "payments"
+                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
+                }`}
+              >
+                <span>Payments Desk</span>
+                {verificationRequests.length > 0 && (
+                  <span className="text-[9.5px] font-mono text-amber-900 font-semibold bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30">
+                    {verificationRequests.length}
+                  </span>
+                )}
+              </button>
             </div>
-          )}
-          <div className="flex items-center justify-between text-xs pt-1 px-1">
+          </div>
+
+          {/* CATALOGUE CHAPTER */}
+          <div>
+            <span className="text-[9px] uppercase tracking-[0.10em] text-[#8E877E] font-mono font-semibold px-2 block mb-1">
+              CATALOGUE
+            </span>
+            <div className="space-y-0.5">
+              <button
+                type="button"
+                onClick={() => { setActiveTab("products"); closeMobileSidebar(true); }}
+                className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${
+                  activeTab === "products"
+                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
+                }`}
+              >
+                <span>Products</span>
+                {lowStockProducts.length > 0 && (
+                  <span className="text-[10px] font-mono text-amber-800 font-medium">
+                    ({lowStockProducts.length})
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab("categories"); closeMobileSidebar(true); }}
+                className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${
+                  activeTab === "categories"
+                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
+                }`}
+              >
+                <span>Categories</span>
+              </button>
+            </div>
+          </div>
+
+          {/* CLIENTS CHAPTER */}
+          <div>
+            <span className="text-[9px] uppercase tracking-[0.10em] text-[#8E877E] font-mono font-semibold px-2 block mb-1">
+              CLIENTS
+            </span>
+            <div className="space-y-0.5">
+              <button
+                type="button"
+                onClick={() => { setActiveTab("customers"); closeMobileSidebar(true); }}
+                className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${
+                  activeTab === "customers"
+                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
+                }`}
+              >
+                <span>Customers</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab("reviews"); closeMobileSidebar(true); }}
+                className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${
+                  activeTab === "reviews"
+                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
+                }`}
+              >
+                <span>Reviews</span>
+              </button>
+            </div>
+          </div>
+
+          {/* DISPATCH CHAPTER */}
+          <div>
+            <span className="text-[9px] uppercase tracking-[0.10em] text-[#8E877E] font-mono font-semibold px-2 block mb-1">
+              DISPATCH
+            </span>
+            <div className="space-y-0.5">
+              <button
+                type="button"
+                onClick={() => { setActiveTab("coupons"); closeMobileSidebar(true); }}
+                className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${
+                  activeTab === "coupons"
+                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
+                }`}
+              >
+                <span>Coupons</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab("broadcast"); closeMobileSidebar(true); }}
+                className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${
+                  activeTab === "broadcast"
+                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
+                }`}
+              >
+                <span>Broadcast</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab("calendar"); closeMobileSidebar(true); }}
+                className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${
+                  activeTab === "calendar"
+                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
+                }`}
+              >
+                <span>Schedule</span>
+              </button>
+            </div>
+          </div>
+        </nav>
+
+        {/* Zone 3: Fixed Footer Controls */}
+        <div className="shrink-0 p-4.5 sm:p-5 pt-3.5 pb-4.5 border-t border-[#E5DDD1] bg-[#F7F3ED] space-y-2.5">
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <Link
+              to="/"
+              onClick={() => closeMobileSidebar(true)}
+              className="py-2 px-2.5 rounded-[4px] bg-[#FAF8F5] hover:bg-[#EFE9DF] border border-[#E5DDD1] text-[11px] text-[#171717] font-medium transition-colors flex items-center justify-between group cursor-pointer"
+              title="Open Storefront"
+            >
+              <span>Storefront</span>
+              <ArrowUpRight size={12} className="text-[#78726A] group-hover:text-[#171717]" />
+            </Link>
+
             <button
               type="button"
               onClick={exportOrdersCSV}
-              className="text-[10.5px] uppercase tracking-[0.14em] text-[#55514B] hover:text-[#171717] font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="py-2 px-2.5 rounded-[4px] bg-[#FAF8F5] hover:bg-[#EFE9DF] border border-[#E5DDD1] text-[11px] text-[#171717] font-medium transition-colors flex items-center justify-between group cursor-pointer"
+              title="Export Orders CSV"
             >
-              <Download size={13} className="text-[#C2922E]" />
               <span>Export CSV</span>
+              <Download size={12} className="text-[#A77B1E]" />
             </button>
-            <Link
-              to="/"
-              className="text-[10.5px] uppercase tracking-[0.14em] text-[#C2922E] hover:underline font-semibold"
-            >
-              Storefront &rarr;
-            </Link>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              closeMobileSidebar(true);
+              if (logout) logout();
+            }}
+            className="w-full py-1.5 px-2.5 text-[11px] text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 rounded-[4px] transition-colors flex items-center justify-between cursor-pointer font-medium"
+          >
+            <span>Sign Out</span>
+            <LogOut size={12} className="text-[#746F68]" />
+          </button>
         </div>
       </aside>
 
@@ -1472,33 +1572,32 @@ const Admin = () => {
         className="flex-1 min-w-0 bg-[#F7F3ED] flex flex-col h-screen overflow-y-auto overscroll-contain suko-scrollbar"
       >
         
-        {/* Atelier Top Header Bar (~64px) */}
-        <header className="h-16 bg-[#F7F3ED]/95 backdrop-blur-md border-b border-[#E5DDD1] px-6 sm:px-8 lg:px-10 flex items-center justify-between sticky top-0 z-30 shrink-0">
-          <div className="flex items-center gap-4">
+        {/* Atelier Top Header Bar (Sleek ~54px) */}
+        <header className="h-13 sm:h-14 bg-[#F7F3ED]/95 backdrop-blur-md border-b border-[#E5DDD1] px-5 sm:px-8 lg:px-10 flex items-center justify-between sticky top-0 z-30 shrink-0">
+          <div className="flex items-center gap-3.5">
             <button
               type="button"
               onClick={isMobileSidebarOpen ? closeMobileSidebar : openMobileSidebar}
-              className="md:hidden p-2 text-[#171717] hover:bg-[#EFE9DF] rounded-lg transition-colors cursor-pointer"
+              className="md:hidden p-1.5 text-[#171717] hover:bg-[#EFE9DF] rounded transition-colors cursor-pointer"
               aria-label="Toggle navigation drawer"
             >
-              <Menu size={20} />
+              <Menu size={18} />
             </button>
             <div>
-              <span className="text-[10px] uppercase tracking-[0.20em] text-[#C2922E] font-mono font-medium block leading-none mb-1">
-                SUKO ATELIER
-              </span>
-              <h1 className="font-serif text-lg sm:text-xl font-normal text-[#171717] tracking-tight leading-none">
-                {activeTab === "overview" && "Studio Control"}
-                {activeTab === "products" && "Product Catalog"}
-                {activeTab === "categories" && "Categories"}
-                {activeTab === "orders" && "Atelier Orders"}
-                {activeTab === "payments" && "UPI Payments & UTR Audit"}
-                {activeTab === "coupons" && "Coupons & Vouchers"}
-                {activeTab === "customers" && "Client Directory"}
-                {activeTab === "reviews" && "Client Reviews Moderation"}
-                {activeTab === "broadcast" && "Concierge Broadcast"}
-                {activeTab === "calendar" && "Schedule & Calendar"}
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="font-serif text-base sm:text-[17px] font-normal text-[#171717] tracking-tight leading-none">
+                  {activeTab === "overview" && "Studio Control"}
+                  {activeTab === "products" && "Product Catalog"}
+                  {activeTab === "categories" && "Categories"}
+                  {activeTab === "orders" && "Atelier Orders"}
+                  {activeTab === "payments" && "UPI Payments & UTR Audit"}
+                  {activeTab === "coupons" && "Coupons & Vouchers"}
+                  {activeTab === "customers" && "Client Directory"}
+                  {activeTab === "reviews" && "Client Reviews Moderation"}
+                  {activeTab === "broadcast" && "Concierge Broadcast"}
+                  {activeTab === "calendar" && "Schedule & Calendar"}
+                </h1>
+              </div>
             </div>
           </div>
 
@@ -1546,8 +1645,8 @@ const Admin = () => {
                 <div className="absolute right-0 mt-2 w-60 bg-[#FAF8F5] border border-[#E5DDD1] shadow-lg rounded-[2px] py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
                   {/* Account Header */}
                   <div className="px-3.5 py-2.5 border-b border-[#E5DDD1]">
-                    <span className="text-[9px] uppercase tracking-[0.20em] text-[#C2922E] font-mono font-medium block mb-1">
-                      ATELIER PRIVILEGE
+                    <span className="text-[9px] uppercase tracking-[0.14em] text-[#C2922E] font-mono font-medium block mb-1">
+                      ADMINISTRATION
                     </span>
                     <p className="font-serif text-sm font-normal text-[#171717] truncate">
                       {user?.name || "Studio Administrator"}
@@ -1614,7 +1713,7 @@ const Admin = () => {
                       }}
                       className="w-full px-3.5 py-2 text-left text-xs text-rose-900/80 hover:text-rose-900 hover:bg-rose-500/10 transition-colors flex items-center justify-between cursor-pointer font-medium"
                     >
-                      <span>Sign Out Atelier</span>
+                      <span>Sign Out</span>
                       <span className="text-[10px] font-mono">&times;</span>
                     </button>
                   </div>
@@ -1649,61 +1748,69 @@ const Admin = () => {
               {activeTab === "overview" && (
                 <div className="space-y-6">
                   
-                  {/* 1. STUDIO OVERVIEW HEADER */}
+                  {/* 1. ATELIER OPERATIONS HEADER */}
                   <div className="pb-4 border-b border-[#E5DDD1] flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-                    <div className="space-y-0.5">
-                      <h2 className="font-serif text-2xl sm:text-3xl font-normal text-[#171717] tracking-tight leading-tight">
-                        Studio Overview
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] uppercase tracking-[0.14em] text-[#C2922E] font-mono font-medium">
+                          Maison Performance &middot; {new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+                        </span>
+                        <span className="text-[9.5px] font-mono text-[#78726A] border border-[#E5DDD1] px-1.5 py-0.2 rounded-[2px] bg-[#FAF8F5]">
+                          INR (&#8377;)
+                        </span>
+                      </div>
+                      <h2 className="font-serif text-2xl sm:text-3xl lg:text-[32px] font-normal text-[#171717] tracking-tight leading-tight">
+                        Atelier Operations
                       </h2>
-                      <p className="text-xs text-[#55514B] font-normal">
-                        Performance snapshot &middot; Fiscal {new Date().getFullYear()} &middot; INR (&#8377;)
+                      <p className="text-xs text-[#55514B] font-normal max-w-lg">
+                        A private view of orders, collections and client activity.
                       </p>
                     </div>
 
-                    {/* Architectural Text Tabs with Underline */}
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs tracking-normal">
-                      {[
-                        { id: "all", label: "All Records" },
-                        { id: "today", label: "Today" },
-                        { id: "7days", label: "This Week" },
-                        { id: "month", label: "This Month" },
-                        { id: "custom", label: "Custom" },
-                      ].map((preset, idx, arr) => (
-                        <React.Fragment key={preset.id}>
-                          <button
-                            type="button"
-                            onClick={() => setDatePreset(preset.id)}
-                            className={`pb-0.5 transition-all cursor-pointer font-medium ${
-                              datePreset === preset.id
-                                ? "border-b-2 border-[#171717] text-[#171717] font-semibold"
-                                : "border-b-2 border-transparent text-[#55514B] hover:text-[#171717]"
-                            }`}
-                          >
-                            {preset.label}
-                          </button>
-                          {idx < arr.length - 1 && <span className="text-[#C5BDB2] select-none text-xs">|</span>}
-                        </React.Fragment>
-                      ))}
+                    {/* Filter Presets */}
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 tracking-normal self-end text-xs">
+                        {[
+                          { id: "all", label: "All Records" },
+                          { id: "today", label: "Today" },
+                          { id: "7days", label: "This Week" },
+                          { id: "month", label: "This Month" },
+                          { id: "custom", label: "Custom" },
+                        ].map((preset, idx, arr) => (
+                          <React.Fragment key={preset.id}>
+                            <button
+                              type="button"
+                              onClick={() => setDatePreset(preset.id)}
+                              className={`pb-0.5 transition-all cursor-pointer font-medium text-xs ${
+                                datePreset === preset.id
+                                  ? "border-b-2 border-[#171717] text-[#171717] font-semibold"
+                                  : "border-b-2 border-transparent text-[#55514B] hover:text-[#171717]"
+                              }`}
+                            >
+                              {preset.label}
+                            </button>
+                            {idx < arr.length - 1 && <span className="text-[#C5BDB2] select-none text-xs">|</span>}
+                          </React.Fragment>
+                        ))}
 
-                      {datePreset === "custom" && (
-                        <div className="flex items-center gap-1.5 font-mono text-xs ml-1">
-                          <input
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            className="bg-transparent border-b border-[#E5DDD1] px-1 py-0.5 text-[#171717] outline-none focus:border-[#171717] text-xs"
-                          />
-                          <span className="text-[#55514B] text-xs">to</span>
-                          <input
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            className="bg-transparent border-b border-[#E5DDD1] px-1 py-0.5 text-[#171717] outline-none focus:border-[#171717] text-xs"
-                          />
-                        </div>
-                      )}
+                        {datePreset === "custom" && (
+                          <div className="flex items-center gap-1.5 font-mono text-[11px] ml-1 bg-[#FAF8F5] border border-[#E5DDD1] px-2 py-0.5 rounded-[2px]">
+                            <input
+                              type="date"
+                              value={startDate}
+                              onChange={(e) => setStartDate(e.target.value)}
+                              className="bg-transparent text-[#171717] outline-none text-[11px] cursor-pointer"
+                            />
+                            <span className="text-[#78726A]">&mdash;</span>
+                            <input
+                              type="date"
+                              value={endDate}
+                              onChange={(e) => setEndDate(e.target.value)}
+                              className="bg-transparent text-[#171717] outline-none text-[11px] cursor-pointer"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
                   {/* 2. ATELIER PERFORMANCE LEDGER (Direct Hero Impact) */}
                   <div className="border-b border-[#E5DDD1] pb-6 pt-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#E5DDD1]">
@@ -1711,14 +1818,14 @@ const Admin = () => {
                     {/* Folio 1: Revenue Generated */}
                     <div className="py-3 sm:py-2 sm:px-6 first:pl-0 flex flex-col justify-between">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10.5px] uppercase tracking-[0.16em] text-[#55514B] font-mono font-medium">
+                        <span className="text-[10px] uppercase tracking-[0.08em] text-[#66615B] font-mono font-semibold">
                           REVENUE GENERATED
                         </span>
                         <span className="text-[10px] font-mono text-[#78726A] border border-[#E5DDD1] px-1.5 py-0.5 rounded-[2px] bg-[#FAF8F5]">
                           &#8377; INR
                         </span>
                       </div>
-                      <div className="font-serif text-3xl sm:text-4xl lg:text-[44px] font-normal text-[#111113] tracking-tight truncate leading-none my-4">
+                      <div className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#111113] tracking-tight truncate leading-none my-3.5">
                         {formatINR(filteredRevenue)}
                       </div>
                       <p className="text-xs text-[#55514B] font-normal truncate">
@@ -1729,7 +1836,7 @@ const Admin = () => {
                     {/* Folio 2: Orders Completed */}
                     <div className="py-3 sm:py-2 sm:px-6 flex flex-col justify-between">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10.5px] uppercase tracking-[0.16em] text-[#55514B] font-mono font-medium">
+                        <span className="text-[10px] uppercase tracking-[0.08em] text-[#66615B] font-mono font-semibold">
                           ORDERS COMPLETED
                         </span>
                         {verificationRequests.length > 0 && (
@@ -1738,7 +1845,7 @@ const Admin = () => {
                           </span>
                         )}
                       </div>
-                      <div className="font-serif text-3xl sm:text-4xl lg:text-[44px] font-normal text-[#111113] tracking-tight leading-none my-4">
+                      <div className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#111113] tracking-tight leading-none my-3.5">
                         {String(filteredPaidOrders.length).padStart(2, '0')}
                       </div>
                       <p className="text-xs text-[#55514B] font-normal truncate">
@@ -1749,7 +1856,7 @@ const Admin = () => {
                     {/* Folio 3: Active Pieces */}
                     <div className="py-3 sm:py-2 sm:px-6 flex flex-col justify-between">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10.5px] uppercase tracking-[0.16em] text-[#55514B] font-mono font-medium">
+                        <span className="text-[10px] uppercase tracking-[0.08em] text-[#66615B] font-mono font-semibold">
                           ACTIVE PIECES
                         </span>
                         {lowStockProducts.length > 0 && (
@@ -1758,7 +1865,7 @@ const Admin = () => {
                           </span>
                         )}
                       </div>
-                      <div className="font-serif text-3xl sm:text-4xl lg:text-[44px] font-normal text-[#111113] tracking-tight leading-none my-4">
+                      <div className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#111113] tracking-tight leading-none my-3.5">
                         {String(stats.totalProducts).padStart(2, '0')}
                       </div>
                       <p className="text-xs text-[#55514B] font-normal truncate">
@@ -1769,14 +1876,14 @@ const Admin = () => {
                     {/* Folio 4: Registered Clients */}
                     <div className="py-3 sm:py-2 sm:px-6 last:pr-0 flex flex-col justify-between">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10.5px] uppercase tracking-[0.16em] text-[#55514B] font-mono font-medium">
+                        <span className="text-[10px] uppercase tracking-[0.08em] text-[#66615B] font-mono font-semibold">
                           REGISTERED CLIENTS
                         </span>
                         <span className="text-[10px] font-mono text-[#78726A] border border-[#E5DDD1] px-1.5 py-0.5 rounded-[2px] bg-[#FAF8F5]">
                           Directory
                         </span>
                       </div>
-                      <div className="font-serif text-3xl sm:text-4xl lg:text-[44px] font-normal text-[#111113] tracking-tight leading-none my-4">
+                      <div className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#111113] tracking-tight leading-none my-3.5">
                         {String(stats.totalUsers).padStart(2, '0')}
                       </div>
                       <p className="text-xs text-[#55514B] font-normal truncate">
@@ -1790,78 +1897,106 @@ const Admin = () => {
                     
                     {/* LEFT: Financial Ledger (7 cols) */}
                     <div className="lg:col-span-7 lg:pr-8 space-y-4">
-                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
+                      <div className="flex items-end justify-between border-b border-[#E5DDD1] pb-3.5">
                         <div>
-                          <h2 className="font-serif text-xl font-normal text-[#171717]">
-                            Revenue &amp; Inflow
-                          </h2>
-                          <p className="text-xs text-[#55514B] font-normal mt-0.5">
-                            {new Date().toLocaleString('en-US', { month: 'long' })} &middot; Verified settlement inflows
+                          <h3 className="font-serif text-2xl sm:text-[26px] lg:text-[28px] font-medium text-[#111113] tracking-tight leading-none">
+                            Revenue Overview
+                          </h3>
+                          <p className="text-xs sm:text-[12.5px] text-[#746F68] font-sans font-normal mt-1.5">
+                            Settlement timeline &middot; {new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })}
                           </p>
                         </div>
                         <div className="text-right">
-                          <span className="font-serif text-xl sm:text-2xl font-normal text-[#171717] block">
+                          <span className="font-serif text-2xl sm:text-[28px] font-normal text-[#111113] block leading-none">
                             {formatINR(filteredRevenue)}
                           </span>
-                          <span className="text-[10.5px] font-mono text-[#55514B]">
-                            {filteredPaidOrders.length} Settled Orders
+                          <span className="text-[10.5px] font-mono text-[#746F68] block mt-1.5">
+                            {filteredPaidOrders.length} {filteredPaidOrders.length === 1 ? "Settled Order" : "Settled Orders"}
                           </span>
                         </div>
                       </div>
 
-                      {/* Real Trend SVG Chart or Calm Snapshot */}
-                      {chartData.length === 0 ? (
-                        <div className="py-8 text-center space-y-1.5">
-                          <CalendarIcon size={20} className="mx-auto text-[#55514B] stroke-[1.3]" />
-                          <p className="text-xs text-[#171717] font-medium tracking-wide">No Paid Order Activity</p>
+                      {/* Continuous Trend SVG Chart or Calm Snapshot */}
+                      {filteredPaidOrders.length === 0 ? (
+                        <div className="py-10 text-center space-y-1.5 border border-dashed border-[#E5DDD1] rounded-[2px] bg-[#FAF8F5]/40">
+                          <CalendarIcon size={20} className="mx-auto text-[#78726A] stroke-[1.3]" />
+                          <p className="text-xs text-[#171717] font-medium tracking-wide">No Settled Order Activity</p>
                           <p className="text-[11px] text-[#55514B] font-normal max-w-sm mx-auto">
                             No verified customer transactions recorded for the selected period.
                           </p>
                         </div>
-                      ) : chartData.length === 1 ? (
-                        <div className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                          <div className="space-y-1">
-                            <span className="text-[10px] font-mono text-[#78726A] block">
-                              Single Period Snapshot &middot; {chartData[0].label}
-                            </span>
-                            <p className="font-serif text-2xl sm:text-3xl font-normal text-[#171717]">
-                              {formatINR(chartData[0].revenue)}
-                            </p>
-                            <p className="text-xs text-[#55514B] font-normal">
-                              Generated from {chartData[0].orderCount || filteredPaidOrders.length} verified paid {chartData[0].orderCount === 1 ? "order" : "orders"}.
-                            </p>
-                          </div>
-                          <div className="text-left sm:text-right font-mono">
-                            <span className="text-[10px] text-[#55514B] block">Date Recorded</span>
-                            <span className="text-xs font-semibold text-[#171717]">{chartData[0].date}</span>
-                          </div>
-                        </div>
                       ) : (
-                        <div className="space-y-2.5">
-                          <div className="h-48 sm:h-52 w-full relative pt-1">
-                            <svg className="w-full h-full overflow-visible" viewBox="0 0 500 160" preserveAspectRatio="none">
+                        <div className="space-y-3">
+                          <div className="h-44 sm:h-48 w-full relative pt-1">
+                            <svg className="w-full h-full overflow-visible" viewBox="0 0 500 150" preserveAspectRatio="none">
                               <defs>
                                 <linearGradient id="goldGradient" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="0%" stopColor="#C2922E" stopOpacity="0.22" />
+                                  <stop offset="0%" stopColor="#C2922E" stopOpacity="0.25" />
                                   <stop offset="100%" stopColor="#C2922E" stopOpacity="0.0" />
                                 </linearGradient>
                               </defs>
                               {/* Horizontal guidelines */}
                               <line x1="0" y1="20" x2="500" y2="20" stroke="#E5DDD1" strokeDasharray="3 3" strokeWidth="0.8" />
-                              <line x1="0" y1="75" x2="500" y2="75" stroke="#E5DDD1" strokeDasharray="3 3" strokeWidth="0.8" />
-                              <line x1="0" y1="130" x2="500" y2="130" stroke="#E5DDD1" strokeDasharray="3 3" strokeWidth="0.8" />
+                              <line x1="0" y1="70" x2="500" y2="70" stroke="#E5DDD1" strokeDasharray="3 3" strokeWidth="0.8" />
+                              <line x1="0" y1="120" x2="500" y2="120" stroke="#E5DDD1" strokeDasharray="3 3" strokeWidth="0.8" />
                               
                               {(() => {
-                                const maxRev = Math.max(...chartData.map(d => d.revenue), 1000);
-                                const points = chartData.map((d, i) => {
-                                  const x = (i / (chartData.length - 1)) * 480 + 10;
-                                  const y = 135 - (d.revenue / maxRev) * 110;
+                                const dataToRender = activeChartData.length > 0 ? activeChartData : chartData;
+                                const nonZeroDays = dataToRender.filter(d => d.revenue > 0);
+                                const isLowData = nonZeroDays.length < 3;
+
+                                if (isLowData) {
+                                  // Calm baseline presentation for low data density
+                                  const baselineY = 90;
+                                  return (
+                                    <g>
+                                      {/* Soft ambient zone */}
+                                      <rect x="0" y={baselineY} width="500" height="45" fill="url(#goldGradient)" opacity="0.3" />
+                                      {/* Subtle horizontal baseline */}
+                                      <line
+                                        x1="0"
+                                        y1={baselineY}
+                                        x2="500"
+                                        y2={baselineY}
+                                        stroke="#C2922E"
+                                        strokeWidth="1.2"
+                                        strokeDasharray="4 4"
+                                      />
+                                      {/* Discrete transaction pins */}
+                                      {dataToRender.map((d, i) => {
+                                        const x = dataToRender.length > 1 ? (i / (dataToRender.length - 1)) * 460 + 20 : 250;
+                                        if (d.revenue <= 0) return null;
+                                        return (
+                                          <g key={i} className="group cursor-pointer">
+                                            <line x1={x} y1={baselineY} x2={x} y2={baselineY - 32} stroke="#C2922E" strokeWidth="1.2" />
+                                            <circle
+                                              cx={x}
+                                              cy={baselineY - 32}
+                                              r="5"
+                                              fill="#171717"
+                                              stroke="#C2922E"
+                                              strokeWidth="1.5"
+                                              className="transition-transform group-hover:scale-125"
+                                            />
+                                            <circle cx={x} cy={baselineY - 32} r="2" fill="#C2922E" />
+                                            <title>{`${d.label || d.date}: ₹${(d.revenue || 0).toLocaleString('en-IN')} (${d.count} orders)`}</title>
+                                          </g>
+                                        );
+                                      })}
+                                    </g>
+                                  );
+                                }
+
+                                const maxRev = Math.max(...dataToRender.map(d => d.revenue), 1000) * 1.15;
+                                const points = dataToRender.map((d, i) => {
+                                  const x = dataToRender.length > 1 ? (i / (dataToRender.length - 1)) * 480 + 10 : 250;
+                                  const y = 125 - (d.revenue / maxRev) * 105;
                                   return { x, y, ...d };
                                 });
                                 const pathPoints = points.map(p => `${p.x},${p.y}`).join(" ");
                                 const firstX = points[0].x;
                                 const lastX = points[points.length - 1].x;
-                                const areaPoints = `${firstX},145 ${pathPoints} ${lastX},145`;
+                                const areaPoints = `${firstX},135 ${pathPoints} ${lastX},135`;
 
                                 return (
                                   <g>
@@ -1879,24 +2014,72 @@ const Admin = () => {
                                         <circle
                                           cx={p.x}
                                           cy={p.y}
-                                          r={chartData.length > 15 ? 2.5 : 4}
+                                          r={dataToRender.length > 15 ? 2.5 : 4}
                                           fill="#171717"
                                           stroke="#C2922E"
                                           strokeWidth="1.5"
                                           className="transition-transform group-hover:scale-150"
                                         />
+                                        <title>{`${p.label || p.date}: ₹${(p.revenue || 0).toLocaleString('en-IN')}`}</title>
                                       </g>
                                     ))}
                                   </g>
                                 );
                               })()}
                             </svg>
+
+                            {/* Low-data quiet indicator */}
+                            {(() => {
+                              const dataToRender = activeChartData.length > 0 ? activeChartData : chartData;
+                              const nonZeroDays = dataToRender.filter(d => d.revenue > 0);
+                              if (nonZeroDays.length < 3 && filteredPaidOrders.length > 0) {
+                                return (
+                                  <div className="absolute top-3.5 left-1/2 -translate-x-1/2 text-center pointer-events-none">
+                                    <span className="text-xs text-[#746F68] font-sans font-normal italic">
+                                      Revenue activity will appear as transactions accumulate.
+                                    </span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
 
-                          <div className="flex justify-between items-center text-[10px] font-mono text-[#55514B] pt-1.5 border-t border-[#E5DDD1]">
-                            <span>{chartData[0]?.label}</span>
-                            {chartData.length > 2 && <span>{chartData[Math.floor(chartData.length / 2)]?.label}</span>}
-                            <span>{chartData[chartData.length - 1]?.label}</span>
+                          {/* Date markers on X axis */}
+                          <div className="flex justify-between items-center text-[10.5px] font-mono text-[#55514B] pt-1.5 border-t border-[#E5DDD1]">
+                            <span>{activeChartData[0]?.label || "Start"}</span>
+                            {activeChartData.length > 2 && (
+                              <span>{activeChartData[Math.floor(activeChartData.length / 2)]?.label}</span>
+                            )}
+                            <span>{activeChartData[activeChartData.length - 1]?.label || "End"}</span>
+                          </div>
+
+                          {/* 3-Stat Financial Summary Strip */}
+                          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#E5DDD1]/60 text-xs">
+                            <div className="bg-[#FAF8F5] border border-[#E5DDD1] p-2.5 rounded-[2px]">
+                              <span className="text-[9px] uppercase tracking-[0.08em] text-[#78726A] font-mono block">
+                                Avg Order Value
+                              </span>
+                              <span className="font-serif text-base text-[#171717] font-normal block mt-0.5">
+                                {formatINR(filteredPaidOrders.length ? Math.round(filteredRevenue / filteredPaidOrders.length) : 0)}
+                              </span>
+                            </div>
+                            <div className="bg-[#FAF8F5] border border-[#E5DDD1] p-2.5 rounded-[2px]">
+                              <span className="text-[9px] uppercase tracking-[0.08em] text-[#78726A] font-mono block">
+                                Reconciliation
+                              </span>
+                              <span className="font-mono text-xs text-[#171717] font-semibold block mt-1">
+                                {filteredPaidOrders.length > 0 ? "100% Verified" : "—"}
+                              </span>
+                            </div>
+                            <div className="bg-[#FAF8F5] border border-[#E5DDD1] p-2.5 rounded-[2px]">
+                              <span className="text-[9px] uppercase tracking-[0.08em] text-[#78726A] font-mono block">
+                                Settlement Channel
+                              </span>
+                              <span className="font-mono text-xs text-[#171717] font-semibold block mt-1 truncate">
+                                Direct UPI Audit
+                              </span>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -1904,49 +2087,78 @@ const Admin = () => {
 
                     {/* RIGHT: Recent Orders (5 cols) */}
                     <div className="lg:col-span-5 lg:pl-8 space-y-4 pt-6 lg:pt-0">
-                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
+                      <div className="flex items-end justify-between border-b border-[#E5DDD1] pb-3.5">
                         <div>
-                          <h2 className="font-serif text-xl font-normal text-[#171717]">
+                          <h3 className="font-serif text-2xl sm:text-[26px] lg:text-[28px] font-medium text-[#111113] tracking-tight leading-none">
                             Recent Orders
-                          </h2>
-                          <p className="text-xs text-[#55514B] font-normal mt-0.5">
-                            Latest verified client transactions
+                          </h3>
+                          <p className="text-xs sm:text-[12.5px] text-[#746F68] font-sans font-normal mt-1.5">
+                            Latest verified transactions
                           </p>
                         </div>
                         <button
                           type="button"
                           onClick={() => setActiveTab("orders")}
-                          className="text-xs tracking-normal text-[#171717] hover:text-[#C2922E] hover:underline cursor-pointer font-medium"
+                          className="text-xs tracking-normal text-[#171717] hover:text-[#C2922E] hover:underline cursor-pointer font-medium pb-0.5"
                         >
                           View All &rarr;
                         </button>
                       </div>
 
                       <div className="divide-y divide-[#E5DDD1]/60">
-                        {orders.slice(0, 5).map(o => (
-                          <div
-                            key={o.id}
-                            className="py-2.5 flex items-center justify-between gap-3 hover:bg-[#FAF8F5]/80 transition-colors px-1"
-                          >
-                            <div className="space-y-0.5">
-                              <p className="text-xs font-medium text-[#171717] font-mono">
-                                #SUKO-{1000 + o.id}
-                              </p>
-                              <p className="text-[11px] text-[#55514B] truncate max-w-[140px] sm:max-w-[180px]">
-                                {o.name || o.shipping_name || o.user?.name || "Client"}
-                              </p>
-                            </div>
+                        {orders.slice(0, 5).map(o => {
+                          const orderItems = Array.isArray(o.items) ? o.items : [];
+                          let pieceName = "";
+                          if (orderItems.length > 0) {
+                            const item = orderItems[0];
+                            pieceName = item.product_name || item.name || item.title || "";
+                            if (!pieceName && item.product_id) {
+                              const matched = products.find(p => p.id === item.product_id);
+                              if (matched) pieceName = matched.name;
+                            }
+                          }
+                          if (!pieceName) {
+                            pieceName = "Tailored Bespoke Piece";
+                          }
+                          const extraCount = orderItems.length > 1 ? orderItems.length - 1 : 0;
 
-                            <div className="text-right space-y-0.5">
-                              <span className="font-mono text-xs font-semibold text-[#171717] block">
-                                {formatINR(o.total)}
-                              </span>
-                              <div>
-                                {renderStatusIndicator(o.status)}
+                          return (
+                            <div
+                              key={o.id}
+                              onClick={() => setActiveTab("orders")}
+                              className="py-2.5 px-1 flex items-center justify-between gap-3 hover:bg-[#FAF8F5] transition-all cursor-pointer group rounded-[2px]"
+                            >
+                              <div className="space-y-0.5 min-w-0">
+                                <div className="flex items-center gap-1.5 font-mono text-xs">
+                                  <span className="font-semibold text-[#171717] group-hover:text-[#C2922E] transition-colors">
+                                    #SUKO-{1000 + o.id}
+                                  </span>
+                                  <span className="text-[#C5BDB2]">&middot;</span>
+                                  <span className="text-[#55514B] truncate max-w-[120px] sm:max-w-[150px] font-sans">
+                                    {o.name || o.shipping_name || o.user?.name || "Client"}
+                                  </span>
+                                </div>
+                                <p className="font-serif text-[12.5px] text-[#171717] italic truncate group-hover:text-[#111113]">
+                                  {pieceName}
+                                  {extraCount > 0 && (
+                                    <span className="font-sans not-italic text-[10px] text-[#78726A] ml-1.5 font-normal">
+                                      (+{extraCount} more)
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+
+                              <div className="text-right space-y-0.5 shrink-0">
+                                <span className="font-mono text-xs font-semibold text-[#171717] block">
+                                  {formatINR(o.total)}
+                                </span>
+                                <div>
+                                  {renderStatusIndicator(o.status)}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
 
                         {orders.length === 0 && (
                           <div className="py-7 px-4 text-center border border-[#E5DDD1] bg-[#FAF8F5]/80 my-1 rounded-[2px]">
@@ -1970,12 +2182,18 @@ const Admin = () => {
                     <div className="md:pr-6 space-y-3">
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-2.5">
                         <div className="flex items-center gap-2">
-                          <AlertTriangle size={14} className="text-amber-700" />
-                          <h3 className="font-serif text-base font-normal text-[#171717]">Low Stock Alert</h3>
+                          <AlertTriangle size={14} className="text-[#8B3A3A] stroke-[1.5]" />
+                          <h4 className="font-serif text-[19px] sm:text-[20px] font-normal text-[#111113] tracking-tight">Low Stock Alert</h4>
                         </div>
-                        <span className="text-[10px] font-mono text-amber-900 font-semibold bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30">
-                          {lowStockProducts.length} Items
-                        </span>
+                        {lowStockProducts.length === 0 ? (
+                          <span className="text-[10px] font-mono text-[#746F68] px-1.5 py-0.5 rounded-[2px] border border-[#E5DDD1]">
+                            0 Items
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono text-[#8B3A3A] font-semibold px-1.5 py-0.5 rounded-[2px] border border-[#D9A4A4] bg-transparent">
+                            {lowStockProducts.length} {lowStockProducts.length === 1 ? "Item" : "Items"}
+                          </span>
+                        )}
                       </div>
 
                       <div className="divide-y divide-[#E5DDD1]/50 max-h-56 overflow-y-auto pr-1">
@@ -2008,14 +2226,14 @@ const Admin = () => {
                                 {p.sizes && <p className="text-[10px] text-[#55514B]">Sizes: {p.sizes}</p>}
                               </div>
                             </div>
-                            <span className="text-[10px] font-mono font-bold text-amber-800">
+                            <span className="text-[10px] font-mono font-bold text-[#8B3A3A]">
                               {p.stock} left
                             </span>
                           </div>
                         ))}
 
                         {lowStockProducts.length === 0 && (
-                          <p className="text-xs text-emerald-800 py-4 text-center font-normal">
+                          <p className="text-xs text-[#746F68] py-5 text-center font-sans italic">
                             All garment inventory is healthy.
                           </p>
                         )}
@@ -2026,10 +2244,10 @@ const Admin = () => {
                     <div className="md:px-6 space-y-3 pt-6 md:pt-0">
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-2.5">
                         <div className="flex items-center gap-2">
-                          <TrendingUp size={14} className="text-[#55514B]" />
-                          <h3 className="font-serif text-base font-normal text-[#171717]">Top Selling Pieces</h3>
+                          <TrendingUp size={14} className="text-[#746F68] stroke-[1.5]" />
+                          <h4 className="font-serif text-[19px] sm:text-[20px] font-normal text-[#111113] tracking-tight">Top Selling Pieces</h4>
                         </div>
-                        <span className="text-[10px] font-mono text-[#55514B]">
+                        <span className="text-[10px] font-mono text-[#746F68]">
                           Paid Orders
                         </span>
                       </div>
@@ -2071,8 +2289,8 @@ const Admin = () => {
                         ))}
 
                         {topSellingPieces.length === 0 && (
-                          <p className="text-xs text-[#55514B] py-4 text-center font-normal">
-                            Awaiting paid garment orders.
+                          <p className="text-xs text-[#746F68] py-5 text-center font-sans italic">
+                            Top pieces will appear as orders are fulfilled.
                           </p>
                         )}
                       </div>
@@ -2082,21 +2300,18 @@ const Admin = () => {
                     <div className="md:pl-6 space-y-3 pt-6 md:pt-0">
                       <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-2.5">
                         <div className="flex items-center gap-2">
-                          <Layers size={14} className="text-[#55514B]" />
-                          <h3 className="font-serif text-base font-normal text-[#171717]">Collection Performance</h3>
+                          <Layers size={14} className="text-[#746F68] stroke-[1.5]" />
+                          <h4 className="font-serif text-[19px] sm:text-[20px] font-normal text-[#111113] tracking-tight">Collection Performance</h4>
                         </div>
-                        <span className="text-[10px] font-mono text-[#55514B]">
+                        <span className="text-[10px] font-mono text-[#746F68]">
                           Collections
                         </span>
                       </div>
 
                       {categoryPerformance.filter(cp => cp.soldCount > 0 || cp.revenue > 0).length === 0 ? (
-                        <div className="py-7 px-4 text-center border border-[#E5DDD1] bg-[#FAF8F5]/80 my-1 rounded-[2px]">
-                          <p className="font-serif text-sm text-[#171717] font-normal mb-1">
-                            No collection sales recorded yet
-                          </p>
-                          <p className="text-xs text-[#55514B] font-normal">
-                            Your first atelier orders will reflect collection performance here.
+                        <div className="py-5 text-center">
+                          <p className="text-xs text-[#746F68] font-sans italic">
+                            Collection performance will update as pieces are ordered.
                           </p>
                         </div>
                       ) : (
@@ -2126,46 +2341,54 @@ const Admin = () => {
                     
                     {/* Client Directory (7 cols) */}
                     <div className="lg:col-span-7 lg:pr-8 space-y-3.5">
-                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
+                      <div className="flex items-end justify-between border-b border-[#E5DDD1] pb-3.5">
                         <div>
-                          <h2 className="font-serif text-xl font-normal text-[#171717]">
+                          <h3 className="font-serif text-2xl sm:text-[26px] lg:text-[28px] font-medium text-[#111113] tracking-tight leading-none">
                             Client Directory
-                          </h2>
-                          <p className="text-xs text-[#55514B] font-normal mt-0.5">
+                          </h3>
+                          <p className="text-xs sm:text-[12.5px] text-[#746F68] font-sans font-normal mt-1.5">
                             Active studio clientele on record
                           </p>
                         </div>
                         <button
                           type="button"
                           onClick={() => setActiveTab("customers")}
-                          className="text-xs tracking-normal text-[#171717] hover:text-[#C2922E] hover:underline cursor-pointer font-medium"
+                          className="text-xs tracking-normal text-[#171717] hover:text-[#C2922E] hover:underline cursor-pointer font-medium pb-0.5"
                         >
                           Directory &rarr;
                         </button>
                       </div>
 
-                      {/* Compact Client Rows */}
+                      {/* Vertical Editorial Client Rows */}
                       <div className="divide-y divide-[#E5DDD1]/60">
                         {uniqueClientsList.slice(0, 4).map((cl, i) => (
-                          <div key={i} className="py-2.5 flex items-center justify-between hover:bg-[#FAF8F5]/60 transition-colors px-1 text-xs">
-                            <div className="flex items-center gap-2 truncate">
-                              <span className="font-serif text-sm text-[#171717] font-medium truncate">{cl.name}</span>
-                              <span className="text-[#C5BDB2] text-xs">&middot;</span>
-                              <span className="text-[11px] text-[#55514B] font-normal">{cl.city || "India"}</span>
+                          <div
+                            key={i}
+                            onClick={() => setActiveTab("customers")}
+                            className="py-3 px-1 flex items-center justify-between hover:bg-[#FAF8F5] transition-all cursor-pointer group rounded-[2px]"
+                          >
+                            <div className="space-y-0.5 min-w-0">
+                              <span className="font-serif text-[15px] font-medium text-[#111113] group-hover:text-[#C2922E] transition-colors block leading-snug truncate">
+                                {cl.name}
+                              </span>
+                              <span className="text-xs text-[#746F68] font-sans font-normal block leading-none">
+                                {cl.city || "Mumbai"}
+                              </span>
                             </div>
-                            <div className="flex items-center gap-3 font-mono text-right shrink-0">
-                              <span className="text-[11px] text-[#55514B]">{cl.ordersCount} {cl.ordersCount === 1 ? 'Order' : 'Orders'}</span>
-                              <span className="text-xs font-semibold text-[#171717]">{formatINR(cl.totalSpent)}</span>
+                            <div className="text-right space-y-0.5 shrink-0">
+                              <span className="font-mono text-xs font-semibold text-[#111113] block leading-snug">
+                                {String(cl.ordersCount).padStart(2, '0')} {cl.ordersCount === 1 ? 'Order' : 'Orders'}
+                              </span>
+                              <span className="text-xs text-[#746F68] font-mono block leading-none">
+                                {formatINR(cl.totalSpent)} Lifetime
+                              </span>
                             </div>
                           </div>
                         ))}
 
                         {uniqueClientsList.length === 0 && (
-                          <div className="py-7 px-4 text-center border border-[#E5DDD1] bg-[#FAF8F5]/80 my-1 rounded-[2px]">
-                            <p className="font-serif text-sm text-[#171717] font-normal mb-1">
-                              No client records on file
-                            </p>
-                            <p className="text-xs text-[#55514B] font-normal">
+                          <div className="py-6 text-center">
+                            <p className="text-xs text-[#746F68] font-sans italic">
                               Client profiles will populate automatically upon checkout.
                             </p>
                           </div>
@@ -2175,19 +2398,19 @@ const Admin = () => {
 
                     {/* Latest Client Reviews (5 cols) */}
                     <div className="lg:col-span-5 lg:pl-8 space-y-3.5 pt-6 lg:pt-0">
-                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
+                      <div className="flex items-end justify-between border-b border-[#E5DDD1] pb-3.5">
                         <div>
-                          <h2 className="font-serif text-xl font-normal text-[#171717]">
+                          <h3 className="font-serif text-2xl sm:text-[26px] lg:text-[28px] font-medium text-[#111113] tracking-tight leading-none">
                             Client Reviews
-                          </h2>
-                          <p className="text-xs text-[#55514B] font-normal mt-0.5">
+                          </h3>
+                          <p className="text-xs sm:text-[12.5px] text-[#746F68] font-sans font-normal mt-1.5">
                             Verified buyer testimonials &amp; feedback
                           </p>
                         </div>
                         <button
                           type="button"
                           onClick={() => setActiveTab("reviews")}
-                          className="text-xs tracking-normal text-[#171717] hover:text-[#C2922E] hover:underline cursor-pointer font-medium"
+                          className="text-xs tracking-normal text-[#171717] hover:text-[#C2922E] hover:underline cursor-pointer font-medium pb-0.5"
                         >
                           All ({adminReviewsList.length}) &rarr;
                         </button>
@@ -2211,14 +2434,8 @@ const Admin = () => {
                         ))}
 
                         {adminReviewsList.length === 0 && (
-                          <div className="py-8 px-5 text-center border border-[#E5DDD1] bg-[#FAF8F5]/80 my-1 rounded-[2px]">
-                            <span className="text-[10px] uppercase tracking-[0.20em] text-[#C2922E] font-mono font-medium block mb-2">
-                              CLIENT REVIEWS
-                            </span>
-                            <p className="font-serif text-base font-normal text-[#171717] mb-1.5">
-                              No verified reviews yet
-                            </p>
-                            <p className="text-xs text-[#55514B] font-normal leading-relaxed max-w-[280px] mx-auto">
+                          <div className="py-6 text-center">
+                            <p className="text-xs text-[#746F68] font-sans italic leading-relaxed max-w-[280px] mx-auto">
                               Client feedback and tailoring reviews will appear here once verified patrons submit their experience.
                             </p>
                           </div>
@@ -2705,14 +2922,18 @@ const Admin = () => {
             {/* ORDERS TAB */}
             {activeTab === "orders" && (
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-[#E8E4DC] pb-4 gap-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-end justify-between border-b border-[#E5DDD1] pb-4 gap-4">
                   <div>
-                    <h2 className="text-2xl font-quiche font-light text-[#121215]">Client Orders ({filteredOrders.length})</h2>
-                    <p className="text-xs text-[#555560] font-body">Real-time atelier order lifecycle & fulfillment</p>
+                    <h2 className="font-serif text-2xl sm:text-3xl font-medium text-[#111113] tracking-tight leading-tight">
+                      Atelier Order Registry
+                    </h2>
+                    <p className="text-xs sm:text-[12.5px] text-[#746F68] font-sans font-normal mt-1">
+                      Manage client orders, payments and garment fulfilment.
+                    </p>
                   </div>
 
-                  {/* Status Filter Tabs */}
-                  <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-[#E8E4DC] overflow-x-auto shadow-sm">
+                  {/* Status Filter Tabs (Refined Luxury Standard) */}
+                  <div className="flex items-center gap-1 bg-[#FAF8F5] p-1 rounded-[2px] border border-[#E5DDD1] overflow-x-auto suko-scrollbar overscroll-y-auto">
                     {[
                       { id: "all", label: "All" },
                       { id: "payment_verification_pending", label: `Awaiting Verification${verificationRequests.length > 0 ? ` (${verificationRequests.length})` : ''}` },
@@ -2728,10 +2949,10 @@ const Admin = () => {
                         key={st.id}
                         type="button"
                         onClick={() => setOrderStatusFilter(st.id)}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-[0.12em] font-body transition-all whitespace-nowrap ${
+                        className={`px-3 py-1.5 rounded-[2px] text-[9.5px] uppercase tracking-[0.10em] font-mono transition-all whitespace-nowrap cursor-pointer ${
                           orderStatusFilter === st.id
-                            ? "bg-[#121215] text-[#C2922E] font-bold shadow-sm"
-                            : "text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5]"
+                            ? "bg-[#111113] text-[#FAF8F5] font-semibold shadow-xs"
+                            : "text-[#55514B] hover:text-[#111113] hover:bg-[#EFE9DF]/50"
                         }`}
                       >
                         {st.label}
@@ -2741,77 +2962,108 @@ const Admin = () => {
                 </div>
 
                 {/* Orders Data Table */}
-                <div className="overflow-x-auto border border-[#E8E4DC] bg-white rounded-2xl shadow-sm">
+                <div className="overflow-x-auto border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] suko-scrollbar min-h-[360px] overscroll-y-auto">
                   <table className="w-full text-left font-body text-sm">
-                    <thead className="bg-[#F6F2EA] text-[10px] uppercase tracking-[0.12em] text-[#555560] font-mono border-b border-[#E8E4DC]">
+                    <thead className="bg-[#F7F3ED] text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
                       <tr>
-                        <th className="p-4 font-normal">Order #</th>
-                        <th className="p-4 font-normal">Date</th>
-                        <th className="p-4 font-normal">Customer</th>
-                        <th className="p-4 font-normal">Items</th>
-                        <th className="p-4 font-normal">Total</th>
-                        <th className="p-4 font-normal">Payment & UTR</th>
-                        <th className="p-4 font-normal">Status</th>
-                        <th className="p-4 font-normal text-right">Actions</th>
+                        <th className="py-3 px-4 font-normal">Order #</th>
+                        <th className="py-3 px-4 font-normal">Date</th>
+                        <th className="py-3 px-4 font-normal">Customer</th>
+                        <th className="py-3 px-4 font-normal">Items</th>
+                        <th className="py-3 px-4 font-normal">Total</th>
+                        <th className="py-3 px-4 font-normal">Payment & UTR</th>
+                        <th className="py-3 px-4 font-normal">Status</th>
+                        <th className="py-3 px-4 font-normal text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E8E4DC]/60 text-[#121215]">
+                    <tbody className="divide-y divide-[#E5DDD1]/70 text-[#111113]">
                       {filteredOrders.map(o => (
-                        <tr key={o.id} className="hover:bg-[#FAF8F5] transition-colors">
-                          <td className="p-4 font-mono font-bold text-[#121215]">
-                            #SUKO-{1000 + o.id}
+                        <tr key={o.id} className="hover:bg-[#FAF8F5]/80 transition-colors">
+                          <td className="py-3.5 sm:py-4 px-4 align-top">
+                            <div className="space-y-0.5">
+                              <span className="font-mono text-xs font-semibold text-[#111113] block">
+                                #SUKO-{1000 + o.id}
+                              </span>
+                              <span className="text-[10.5px] text-[#746F68] font-serif italic block">
+                                Atelier Client
+                              </span>
+                            </div>
                           </td>
-                          <td className="p-4 text-xs text-[#555560]">
-                            {new Date(o.created_at || Date.now()).toLocaleDateString("en-IN")}
+                          <td className="py-3.5 sm:py-4 px-4 align-top">
+                            <div className="space-y-0.5">
+                              <span className="text-xs text-[#171717] font-mono block">
+                                {new Date(o.created_at || Date.now()).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                              </span>
+                              <span className="text-[10px] text-[#746F68] font-mono block">
+                                {new Date(o.created_at || Date.now()).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                              </span>
+                            </div>
                           </td>
-                          <td className="p-4">
-                            <p className="font-medium text-xs text-[#121215]">{getUserDisplayName(o.user)}</p>
-                            <p className="text-[10px] font-mono text-[#888890]">{o.user?.email || "Guest Client"}</p>
+                          <td className="py-3.5 sm:py-4 px-4 align-top">
+                            <div className="space-y-0.5 max-w-[170px]">
+                              <p className="font-medium text-xs text-[#111113] truncate">{getUserDisplayName(o.user)}</p>
+                              <p className="text-[11px] text-[#746F68] font-sans truncate">{o.city || o.shipping_city || "India"}</p>
+                              <p className="text-[10px] font-mono text-[#8E877E] truncate">{o.user?.email || o.email || "—"}</p>
+                            </div>
                           </td>
-                          <td className="p-4 text-xs text-[#555560]">
-                            {o.items?.length || 1} item(s)
+                          <td className="py-3.5 sm:py-4 px-4 align-top">
+                            <div className="space-y-0.5">
+                              <span className="text-xs font-serif text-[#111113] block truncate max-w-[150px]">
+                                {o.items?.[0]?.product_name || o.items?.[0]?.name || "Tailored Garment"}
+                              </span>
+                              <span className="text-[10px] text-[#746F68] font-mono block">
+                                {o.items?.length || 1} {o.items?.length === 1 ? "piece" : "pieces"}
+                              </span>
+                            </div>
                           </td>
-                          <td className="p-4 font-bold text-xs text-[#121215]">
-                            {formatINR(o.total)}
+                          <td className="py-3.5 sm:py-4 px-4 align-top">
+                            <div className="space-y-0.5">
+                              <span className="font-serif text-sm font-semibold text-[#111113] block">
+                                {formatINR(o.total)}
+                              </span>
+                              <span className="text-[10px] text-[#746F68] font-mono block">
+                                {isFinanciallyPaid(o.status) ? "Settlement complete" : "Payment pending"}
+                              </span>
+                            </div>
                           </td>
-                          <td className="p-4">
+                          <td className="py-3.5 sm:py-4 px-4 align-top">
                             <div className="space-y-1">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#FAF8F5] border border-[#E8E4DC] text-[#121215]">
+                                <span className="text-[9.5px] font-mono px-2 py-0.5 rounded-[2px] bg-[#F7F3ED] border border-[#E5DDD1] text-[#111113]">
                                   {formatPaymentMethod(o.payment_method)}
                                 </span>
                                 {o.payment_screenshot_url && (
                                   <button
                                     type="button"
                                     onClick={() => openZoomedScreenshot(`${API_BASE_URL}/api/orders/${o.id}/payment-proof?token=${encodeURIComponent(token)}`)}
-                                    className="text-[9px] font-mono uppercase text-[#C2922E] hover:underline flex items-center gap-1"
+                                    className="text-[9.5px] font-mono uppercase text-[#A77B1E] hover:text-[#111113] hover:underline flex items-center gap-1 cursor-pointer"
                                     title="View Payment Proof Screenshot"
                                   >
-                                    <ImageIcon size={11} /> Proof
+                                    <ImageIcon size={10} /> Proof
                                   </button>
                                 )}
                               </div>
                               {o.transaction_id ? (
-                                <p className="font-mono text-[11px] text-[#121215] font-semibold tracking-wide select-all" title="UTR / Transaction ID">
+                                <p className="font-mono text-[11px] text-[#111113] font-semibold tracking-wide select-all" title="UTR / Transaction ID">
                                   {o.transaction_id}
                                 </p>
                               ) : (
-                                <span className="text-[10px] text-[#888890] italic">No UTR yet</span>
+                                <span className="text-[10px] text-[#8E877E] italic">No UTR yet</span>
                               )}
                             </div>
                           </td>
-                          <td className="p-4">
+                          <td className="py-3.5 sm:py-4 px-4 align-top">
                             {o.status === "payment_verification_pending" ? (
                               <div className="space-y-1.5">
-                                <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-amber-800 font-medium">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-600" /> Awaiting Verification
+                                <span className="inline-flex items-center gap-1.5 text-[10.5px] font-mono text-[#8F6517] font-medium bg-transparent border border-[#D4B26F] px-2 py-0.5 rounded-[2px]">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]" /> Awaiting Verification
                                 </span>
                                 <div className="flex items-center gap-1.5">
                                   <button
                                     type="button"
                                     onClick={() => handleVerifyPayment(o.id)}
                                     disabled={verifyingOrderId === o.id}
-                                    className="text-[10px] font-mono font-medium bg-[#171717] hover:bg-[#C2922E] text-white px-2 py-0.5 rounded transition-colors disabled:opacity-50 cursor-pointer"
+                                    className="text-[9.5px] font-mono font-medium bg-[#111113] hover:bg-[#C2922E] text-white px-2.5 py-1 rounded-[2px] transition-colors disabled:opacity-50 cursor-pointer"
                                     title="Verify & Confirm Payment"
                                   >
                                     {verifyingOrderId === o.id ? "..." : "Approve"}
@@ -2820,7 +3072,7 @@ const Admin = () => {
                                     type="button"
                                     onClick={() => handleRejectPayment(o.id)}
                                     disabled={rejectingOrderId === o.id}
-                                    className="text-[10px] font-mono font-medium text-rose-800 hover:text-rose-900 border border-rose-200 px-2 py-0.5 rounded transition-colors disabled:opacity-50 cursor-pointer"
+                                    className="text-[9.5px] font-mono font-medium text-[#8B3A3A] hover:text-[#111113] border border-[#D9A4A4] px-2.5 py-1 rounded-[2px] transition-colors disabled:opacity-50 cursor-pointer bg-transparent hover:bg-[#D9A4A4]/15"
                                     title="Reject Payment Proof"
                                   >
                                     {rejectingOrderId === o.id ? "..." : "Reject"}
@@ -2828,45 +3080,98 @@ const Admin = () => {
                                 </div>
                               </div>
                             ) : (
-                              <select
-                                value={o.status}
-                                onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
-                                className="text-[11px] font-mono bg-transparent border-b border-[#EAE6DF] pb-0.5 text-[#171717] outline-none cursor-pointer hover:border-[#171717] transition-colors"
-                              >
-                                <option value="pending_payment">Pending Payment</option>
-                                <option value="payment_verification_pending">Awaiting Verification</option>
-                                <option value="paid">Settled</option>
-                                <option value="payment_verification_failed">Payment Review Required</option>
-                                <option value="processing">In Atelier</option>
-                                <option value="cancel_requested">Cancel Requested</option>
-                                <option value="completed">Completed</option>
-                                <option value="cancelled">Cancelled</option>
-                              </select>
+                              <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenStatusDropdownOrderId(openStatusDropdownOrderId === o.id ? null : o.id)}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] border border-[#E5DDD1] bg-[#FAF8F5] hover:bg-[#EFE9DF] text-[10px] font-mono tracking-[0.08em] uppercase text-[#111113] font-medium transition-colors cursor-pointer"
+                                >
+                                  <span className={`w-1.5 h-1.5 rounded-full ${ORDER_STATUS_CONFIG.find(s => s.value === o.status)?.dotColor || "bg-[#8E877E]"}`} />
+                                  <span>{formatStatus(o.status)}</span>
+                                  <ChevronDown size={10} className={`text-[#746F68] transition-transform ${openStatusDropdownOrderId === o.id ? "rotate-180" : ""}`} />
+                                </button>
+
+                                {openStatusDropdownOrderId === o.id && (
+                                  <div className="absolute left-0 mt-1 w-52 bg-[#FAF8F5] border border-[#E5DDD1] shadow-xl rounded-[2px] py-1 z-30 divide-y divide-[#E5DDD1]/40 animate-in fade-in duration-100">
+                                    {ORDER_STATUS_CONFIG.map(opt => (
+                                      <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => {
+                                          handleUpdateOrderStatus(o.id, opt.value);
+                                          setOpenStatusDropdownOrderId(null);
+                                        }}
+                                        className={`w-full px-3 py-1.5 text-left text-[11px] font-mono flex items-center justify-between hover:bg-[#EFE9DF]/60 transition-colors cursor-pointer ${
+                                          o.status === opt.value ? "font-semibold text-[#111113] bg-[#EFE9DF]/30" : "text-[#55514B]"
+                                        }`}
+                                      >
+                                        <span className="flex items-center gap-2">
+                                          <span className={`w-1.5 h-1.5 rounded-full ${opt.dotColor}`} />
+                                          <span>{opt.label}</span>
+                                        </span>
+                                        {o.status === opt.value && <Check size={11} className="text-[#C2922E]" />}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </td>
-                          <td className="p-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
+                          <td className="py-3.5 sm:py-4 px-4 align-top text-right">
+                            <div className="flex items-center justify-end gap-1 relative" onClick={(e) => e.stopPropagation()}>
                               <button
+                                type="button"
                                 onClick={() => openOrderDetails(o)}
-                                className="text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] border border-[#E8E4DC] rounded-lg p-2 transition-colors"
+                                className="p-1.5 text-[#55514B] hover:text-[#111113] hover:bg-[#EFE9DF]/60 rounded-[2px] transition-colors cursor-pointer"
                                 title="Inspect Details"
                               >
                                 <Eye size={15} />
                               </button>
                               <button
+                                type="button"
                                 onClick={() => handleOpenEditOrder(o)}
-                                className="text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] border border-[#E8E4DC] rounded-lg p-2 transition-colors"
+                                className="p-1.5 text-[#55514B] hover:text-[#111113] hover:bg-[#EFE9DF]/60 rounded-[2px] transition-colors cursor-pointer"
                                 title="Edit Order"
                               >
-                                <Edit2 size={15} />
+                                <Edit2 size={14} />
                               </button>
-                              <button
-                                onClick={() => handleDeleteOrder(o.id)}
-                                className="text-red-500 hover:text-red-700 hover:bg-red-50 border border-[#E8E4DC] rounded-lg p-2 transition-colors"
-                                title="Delete Order"
-                              >
-                                <Trash2 size={15} />
-                              </button>
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenActionMenuOrderId(openActionMenuOrderId === o.id ? null : o.id)}
+                                  className="p-1.5 text-[#55514B] hover:text-[#111113] hover:bg-[#EFE9DF]/60 rounded-[2px] transition-colors cursor-pointer"
+                                  title="More Actions"
+                                >
+                                  <MoreHorizontal size={15} />
+                                </button>
+                                {openActionMenuOrderId === o.id && (
+                                  <div className="absolute right-0 mt-1 w-44 bg-[#FAF8F5] border border-[#E5DDD1] shadow-xl rounded-[2px] py-1 z-30">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenuOrderId(null);
+                                        openOrderDetails(o);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-left text-xs text-[#171717] hover:bg-[#EFE9DF]/60 transition-colors flex items-center justify-between cursor-pointer"
+                                    >
+                                      <span>Inspect Invoice</span>
+                                      <ArrowUpRight size={11} className="text-[#8E877E]" />
+                                    </button>
+                                    <div className="border-t border-[#E5DDD1] my-1" />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenuOrderId(null);
+                                        handleDeleteOrder(o.id);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-left text-xs text-rose-800 hover:text-rose-900 hover:bg-rose-500/10 transition-colors flex items-center justify-between cursor-pointer font-medium"
+                                    >
+                                      <span>Delete Order</span>
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -3857,25 +4162,34 @@ const Admin = () => {
                 </div>
 
                 {/* Verification Actions */}
-                <div className="flex flex-wrap gap-3 pt-3 border-t border-[#E8E4DC]">
-                  <button
-                    type="button"
-                    onClick={() => handleVerifyPayment(selectedOrderDetails.id)}
-                    disabled={selectedOrderDetails.status === "paid" || verifyingOrderId === selectedOrderDetails.id}
-                    className="flex-1 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white font-bold text-[10.5px] uppercase tracking-[0.14em] font-body py-3 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle size={15} />
-                    {selectedOrderDetails.status === "paid" ? "PAYMENT ALREADY VERIFIED" : verifyingOrderId === selectedOrderDetails.id ? "VERIFYING..." : "VERIFY PAYMENT"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRejectPayment(selectedOrderDetails.id)}
-                    disabled={selectedOrderDetails.status === "paid" || rejectingOrderId === selectedOrderDetails.id}
-                    className="flex-1 bg-rose-700 hover:bg-rose-800 disabled:opacity-40 text-white font-bold text-[10.5px] uppercase tracking-[0.14em] font-body py-3 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
-                  >
-                    <AlertTriangle size={15} />
-                    {rejectingOrderId === selectedOrderDetails.id ? "REJECTING..." : "PAYMENT NOT FOUND / REJECT"}
-                  </button>
+                <div className="flex flex-wrap gap-3 pt-4 border-t border-[#E8E4DC]">
+                  {selectedOrderDetails.status === "paid" ? (
+                    <div className="flex-1 py-3 px-4 bg-[#EFE9DF] border border-[#E5DDD1] text-[#111113] rounded-xl text-center font-mono text-[10.5px] uppercase tracking-[0.14em] font-medium flex items-center justify-center gap-2">
+                      <CheckCircle size={15} className="text-[#A77B1E]" />
+                      <span>Payment Verified &middot; Official Invoice Dispatched</span>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleVerifyPayment(selectedOrderDetails.id)}
+                        disabled={selectedOrderDetails.status === "paid" || verifyingOrderId === selectedOrderDetails.id}
+                        className="flex-1 bg-[#111113] hover:bg-[#252528] disabled:opacity-40 text-[#FAF8F5] font-medium text-[10.5px] uppercase tracking-[0.14em] font-mono py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                      >
+                        <CheckCircle size={15} className="text-[#C2922E]" />
+                        {verifyingOrderId === selectedOrderDetails.id ? "VERIFYING..." : "VERIFY PAYMENT"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRejectPayment(selectedOrderDetails.id)}
+                        disabled={selectedOrderDetails.status === "paid" || rejectingOrderId === selectedOrderDetails.id}
+                        className="flex-1 bg-transparent hover:bg-rose-500/10 text-rose-800 hover:text-rose-900 border border-rose-300 disabled:opacity-40 font-medium text-[10.5px] uppercase tracking-[0.14em] font-mono py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <AlertTriangle size={15} />
+                        {rejectingOrderId === selectedOrderDetails.id ? "REJECTING..." : "MARK AS ISSUE"}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
