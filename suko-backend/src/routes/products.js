@@ -255,6 +255,20 @@ router.put("/:id", requireAdmin, handleOptionalMultipart, async (req, res) => {
   }
 });
 
+// GET /api/products/:id/delete-info -- inspect deletion eligibility & order dependencies (Admin)
+router.get("/:id/delete-info", requireAdmin, async (req, res) => {
+  try {
+    const info = await productService.checkProductDeletionEligibility(req.params.id);
+    if (!info.exists) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+    res.json(info);
+  } catch (err) {
+    console.error("Check product deletion eligibility error:", err);
+    res.status(500).json({ error: "Failed to inspect garment deletion status" });
+  }
+});
+
 // DELETE /api/products/:id -- safe delete/archive garment (Admin)
 router.delete("/:id", requireAdmin, async (req, res) => {
   try {

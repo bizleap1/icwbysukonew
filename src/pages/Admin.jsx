@@ -266,6 +266,8 @@ const Admin = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
   const [productGenderFilter, setProductGenderFilter] = useState("all");
+  const [productStatusFilter, setProductStatusFilter] = useState("all");
+  const [garmentToDelete, setGarmentToDelete] = useState(null);
 
   // Category Form State
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -290,7 +292,7 @@ const Admin = () => {
   const [noteInput, setNoteInput] = useState("");
 
   // Form State
-  const [formData, setFormData] = useState({ name: "", price: "", stock: "", description: "", category_id: "", sub_category: "", sizes: "" });
+  const [formData, setFormData] = useState({ name: "", price: "", stock: "", description: "", category_id: "", sub_category: "", sizes: "", status: "active" });
   const [sizeStockMap, setSizeStockMap] = useState({ "38": 10, "40": 10, "42": 5 });
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -418,7 +420,7 @@ const Admin = () => {
   // Edit Product / Garment Detail Drawer State
   const [editingProduct, setEditingProduct] = useState(null);
   const [isDrawerInEditMode, setIsDrawerInEditMode] = useState(false);
-  const [editFormData, setEditFormData] = useState({ name: "", price: "", stock: "", category_id: "", sub_category: "", description: "", sizes: "" });
+  const [editFormData, setEditFormData] = useState({ name: "", price: "", stock: "", category_id: "", sub_category: "", description: "", sizes: "", status: "active" });
   const [editSizeStockMap, setEditSizeStockMap] = useState({});
   const [editImage, setEditImage] = useState(null);
   const [updatingProduct, setUpdatingProduct] = useState(false);
@@ -442,7 +444,8 @@ const Admin = () => {
       price: p.price || "",
       category_id: p.category_id || "",
       sub_category: p.sub_category || "",
-      description: p.description || ""
+      description: p.description || "",
+      status: p.status || "active"
     });
     setEditSizeStockMap(initialMap);
 
@@ -469,6 +472,7 @@ const Admin = () => {
       data.append("description", editFormData.description);
       if (editFormData.category_id) data.append("category_id", editFormData.category_id);
       if (editFormData.sub_category) data.append("sub_category", editFormData.sub_category);
+      data.append("status", editFormData.status || "active");
       data.append("size_stock", JSON.stringify(editSizeStockMap));
 
       const existingUrls = editGalleryImages.filter(g => g.url && !g.file).map(g => g.url);
@@ -530,6 +534,9 @@ const Admin = () => {
         break;
       case "mobileSidebar":
         setIsMobileSidebarOpen(false);
+        break;
+      case "deleteGarmentModal":
+        setGarmentToDelete(null);
         break;
       default:
         break;
@@ -785,7 +792,7 @@ const Admin = () => {
 
       const [statsRes, prodRes, ordRes, catRes, couponRes, reviewRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/stats`, { headers }),
-        fetch(`${API_BASE_URL}/api/products`, { headers }),
+        fetch(`${API_BASE_URL}/api/products?includeArchived=true`, { headers }),
         fetch(`${API_BASE_URL}/api/orders/all`, { headers }),
         fetch(`${API_BASE_URL}/api/categories`, { headers }),
         fetch(`${API_BASE_URL}/api/coupons`, { headers }),
@@ -891,20 +898,63 @@ const Admin = () => {
     }
   };
 
+  const closeDeleteGarmentModal = () => closeModal("deleteGarmentModal");
+
   const handleDeleteProduct = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
+    const targetProd = products.find(p => String(p.id) === String(id));
+    if (!targetProd) return;
+
+    setGarmentToDelete({
+      product: targetProd,
+      info: null,
+      loading: true,
+      submitting: false
+    });
+    pushModalState("deleteGarmentModal");
+
     try {
-      const res = await fetch(`${API_BASE_URL}/api/products/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/products/${id}/delete-info`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const info = await res.json();
+        setGarmentToDelete(prev => prev ? { ...prev, info, loading: false } : null);
+      } else {
+        setGarmentToDelete(prev => prev ? { ...prev, info: { hasOrders: false, orderCount: 0, canPermanentlyDelete: true }, loading: false } : null);
+      }
+    } catch (e) {
+      setGarmentToDelete(prev => prev ? { ...prev, info: { hasOrders: false, orderCount: 0, canPermanentlyDelete: true }, loading: false } : null);
+    }
+  };
+
+  const executeDeleteGarment = async (permanent = false) => {
+    if (!garmentToDelete?.product) return;
+    setGarmentToDelete(prev => ({ ...prev, submitting: true }));
+
+    try {
+      const pId = garmentToDelete.product.id;
+      const url = permanent 
+        ? `${API_BASE_URL}/api/products/${pId}?permanent=true`
+        : `${API_BASE_URL}/api/products/${pId}`;
+
+      const res = await fetch(url, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || data.message || "Failed to delete product");
-      toast.success(data.message || "Product deleted successfully");
+      if (!res.ok) throw new Error(data.error || data.message || "Failed to process garment");
+
+      toast.success(data.message || (permanent ? "Garment permanently removed" : "Garment safely archived"));
+      closeModal("deleteGarmentModal");
+      setGarmentToDelete(null);
+      if (editingProduct && String(editingProduct.id) === String(pId)) {
+        closeEditingProduct();
+      }
       fetchDashboardData();
       refreshGlobalProducts();
     } catch (err) {
       toast.error(err.message);
+      setGarmentToDelete(prev => ({ ...prev, submitting: false }));
     }
   };
 
@@ -1047,6 +1097,9 @@ const Admin = () => {
 
   // Filtered Products
   const filteredProducts = products.filter(p => {
+    const currentStatus = (p.status || "active").toLowerCase();
+    if (productStatusFilter !== "all" && currentStatus !== productStatusFilter) return false;
+
     const catName = typeof p.category === 'object' ? (p.category?.name || "") : (p.categoryName || p.category || "");
     const catLower = catName.toLowerCase();
     const nameLower = (p.name || "").toLowerCase();
@@ -2554,9 +2607,9 @@ const Admin = () => {
                   {/* TOP EDITORIAL SUMMARY STRIP */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#FAF8F5] border border-[#E5DDD1] p-4 rounded-[2px]">
                     <div>
-                      <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#C2922E] block font-medium">Archive Holdings</span>
-                      <p className="font-serif text-xl font-medium text-[#111113] mt-0.5">{products.length} Active Pieces</p>
-                      <span className="text-[10px] text-[#746F68] font-mono">{filteredProducts.length} Currently Visible</span>
+                      <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#C2922E] block font-medium">Showroom Catalog</span>
+                      <p className="font-serif text-xl font-medium text-[#111113] mt-0.5">{products.filter(p => (p.status || "active") === "active").length} Active Showroom</p>
+                      <span className="text-[10px] text-[#746F68] font-mono">{products.filter(p => p.status === "archived").length} Safely Archived</span>
                     </div>
                     <div>
                       <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#746F68] block font-medium">Collections</span>
@@ -2577,33 +2630,60 @@ const Admin = () => {
                     <div>
                       <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#746F68] block font-medium">Registry Status</span>
                       <p className="font-serif text-xl font-medium text-[#111113] mt-0.5">Live Atelier</p>
-                      <span className="text-[10px] text-[#746F68] font-mono">Updated Today</span>
+                      <span className="text-[10px] text-[#746F68] font-mono">Single Source of Truth</span>
                     </div>
                   </div>
 
                   {/* Mini Navigation Bar & Filters */}
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-[#E5DDD1] pb-4 gap-4">
-                    <div className="flex items-center gap-1.5 bg-[#FAF8F5] p-1 rounded-[2px] border border-[#E5DDD1] overflow-x-auto">
-                      {[
-                        { id: "all", label: "All Silhouettes" },
-                        { id: "womens", label: "Womenswear" },
-                        { id: "low_stock", label: "Low Allocation (< 5)" }
-                      ].map(tab => (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          onClick={() => {
-                            setProductGenderFilter(tab.id);
-                            setSelectedCategory("all");
-                          }}
-                          className={`px-3 py-1.5 rounded-[2px] text-[10px] uppercase tracking-[0.14em] font-mono transition-colors whitespace-nowrap cursor-pointer ${productGenderFilter === tab.id
-                              ? "bg-[#111113] text-[#FAF8F5] font-medium"
-                              : "text-[#746F68] hover:text-[#111113] hover:bg-[#EFE9DF]"
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Status Filter Group */}
+                      <div className="flex items-center gap-1 bg-[#FAF8F5] p-1 rounded-[2px] border border-[#E5DDD1] overflow-x-auto">
+                        {[
+                          { id: "all", label: `All (${products.length})` },
+                          { id: "active", label: `Active (${products.filter(p => (p.status || "active") === "active").length})` },
+                          { id: "draft", label: `Drafts (${products.filter(p => p.status === "draft").length})` },
+                          { id: "archived", label: `Archived (${products.filter(p => p.status === "archived").length})` }
+                        ].map(st => (
+                          <button
+                            key={st.id}
+                            type="button"
+                            onClick={() => setProductStatusFilter(st.id)}
+                            className={`px-2.5 py-1 rounded-[2px] text-[10px] uppercase tracking-[0.14em] font-mono transition-colors whitespace-nowrap cursor-pointer ${
+                              productStatusFilter === st.id
+                                ? "bg-[#111113] text-[#FAF8F5] font-medium"
+                                : "text-[#746F68] hover:text-[#111113] hover:bg-[#EFE9DF]"
                             }`}
-                        >
-                          {tab.label}
-                        </button>
-                      ))}
+                          >
+                            {st.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Silhouette & Stock Filter Group */}
+                      <div className="flex items-center gap-1 bg-[#FAF8F5] p-1 rounded-[2px] border border-[#E5DDD1] overflow-x-auto">
+                        {[
+                          { id: "all", label: "All Silhouettes" },
+                          { id: "womens", label: "Womenswear" },
+                          { id: "low_stock", label: "Low Stock (< 5)" }
+                        ].map(tab => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => {
+                              setProductGenderFilter(tab.id);
+                              setSelectedCategory("all");
+                            }}
+                            className={`px-2.5 py-1 rounded-[2px] text-[10px] uppercase tracking-[0.14em] font-mono transition-colors whitespace-nowrap cursor-pointer ${
+                              productGenderFilter === tab.id
+                                ? "bg-[#111113] text-[#FAF8F5] font-medium"
+                                : "text-[#746F68] hover:text-[#111113] hover:bg-[#EFE9DF]"
+                            }`}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {/* Search & Category Filter */}
@@ -2674,6 +2754,15 @@ const Admin = () => {
                                   {p.name}
                                 </p>
                                 <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                  <span className={`text-[9px] uppercase tracking-wider font-mono px-2 py-0.5 rounded-[2px] font-medium ${
+                                    p.status === "archived"
+                                      ? "bg-stone-100 text-stone-600 border border-stone-200"
+                                      : p.status === "draft"
+                                      ? "bg-amber-50 text-amber-800 border border-amber-200"
+                                      : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                  }`}>
+                                    {p.status || "active"}
+                                  </span>
                                   {p.category && (
                                     <span className="text-[9px] uppercase tracking-wider font-mono text-[#C2922E] border border-[#C2922E]/30 bg-[#C2922E]/10 px-2 py-0.5 rounded-[2px]">
                                       {typeof p.category === 'object' ? p.category.name : (p.categoryName || p.category)}
@@ -2928,7 +3017,7 @@ const Admin = () => {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                           <div>
                             <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Sub-Category Line Tag</label>
                             <input
@@ -2950,6 +3039,19 @@ const Admin = () => {
                               placeholder="25"
                               className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
                             />
+                          </div>
+                          <div>
+                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Lifecycle Status</label>
+                            <select
+                              name="status"
+                              value={formData.status || "active"}
+                              onChange={handleInputChange}
+                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
+                            >
+                              <option value="active">Active (Showroom)</option>
+                              <option value="draft">Draft (Private)</option>
+                              <option value="archived">Archived</option>
+                            </select>
                           </div>
                         </div>
 
@@ -4128,7 +4230,16 @@ const Admin = () => {
                         </p>
                         <span className="text-[10px] text-[#746F68] font-mono">Showroom Allocation</span>
                       </div>
-                      <div className="col-span-2 pt-2.5 border-t border-[#E5DDD1] flex flex-wrap gap-2">
+                      <div className="col-span-2 pt-2.5 border-t border-[#E5DDD1] flex flex-wrap items-center gap-2">
+                        <span className={`text-[9.5px] uppercase font-mono tracking-wider px-2 py-0.5 rounded-[2px] font-medium ${
+                          editingProduct.status === "archived"
+                            ? "bg-stone-100 text-stone-600 border border-stone-200"
+                            : editingProduct.status === "draft"
+                            ? "bg-amber-50 text-amber-800 border border-amber-200"
+                            : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                        }`}>
+                          Status: {editingProduct.status || "active"}
+                        </span>
                         <span className="text-[9.5px] uppercase font-mono tracking-wider text-[#C2922E] bg-[#C2922E]/10 border border-[#C2922E]/25 px-2 py-0.5 rounded-[2px]">
                           Collection: {typeof editingProduct.category === 'object' ? (editingProduct.category?.name || "Atelier Silhouette") : (categories.find(c => c.id === editingProduct.category_id || c.slug === editingProduct.category_id)?.name || editingProduct.categoryName || "Atelier Silhouette")}
                         </span>
@@ -4153,26 +4264,25 @@ const Admin = () => {
                       {editingProduct.size_stock && typeof editingProduct.size_stock === 'object' && Object.keys(editingProduct.size_stock).length > 0 ? (
                         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                           {Object.entries(editingProduct.size_stock).map(([sz, qty]) => (
-                            <div key={sz} className="text-center p-2 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px]">
-                              <span className="text-[9.5px] font-mono text-[#746F68] block">{sz}</span>
-                              <span className="font-serif text-base font-medium text-[#111113] block mt-0.5">{qty}</span>
+                            <div key={sz} className="border border-[#E5DDD1] p-2 rounded-[2px] text-center bg-[#FAF8F5]">
+                              <span className="font-mono text-[10px] text-[#746F68] block">{sz}</span>
+                              <span className="font-mono text-sm font-semibold text-[#111113]">{qty}</span>
+                              <span className="text-[9px] text-[#746F68] block">units</span>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="p-3 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] text-xs font-mono text-[#746F68]">
-                          Standard allocation across silhouette sizes ({editingProduct.sizes?.join(', ') || "Free Size"}).
-                        </div>
+                        <p className="text-xs font-mono text-[#746F68]">No exact size breakdown provided.</p>
                       )}
                     </div>
 
                     {/* Fabric Weave & Description */}
                     <div className="bg-white border border-[#E5DDD1] p-4 rounded-[2px] space-y-1.5">
-                      <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#746F68] font-medium block">
-                        FABRIC WEAVE &amp; SPECIFICATIONS
+                      <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#746F68] block font-medium">
+                        GARMENT SPECIFICATION &amp; WEAVE
                       </span>
-                      <p className="text-xs text-[#55514B] font-sans leading-relaxed">
-                        {editingProduct.description || "Bespoke SUKO Atelier tailored garment. Handcrafted with bespoke Indian corporate wear standards, structured cuts, and premium suiting fabrics."}
+                      <p className="text-xs text-[#111113] leading-relaxed font-sans">
+                        {editingProduct.description || "Bespoke corporate atelier garment crafted with premium Indian textile heritage."}
                       </p>
                     </div>
                   </div>
@@ -4216,15 +4326,29 @@ const Admin = () => {
                       </div>
                     </div>
 
-                    <div>
-                      <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Sub-Category Line Tag</label>
-                      <input
-                        type="text"
-                        value={editFormData.sub_category}
-                        onChange={(e) => setEditFormData({ ...editFormData, sub_category: e.target.value })}
-                        placeholder="e.g. Luxury Wool, Corporate Festive"
-                        className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Sub-Category Line Tag</label>
+                        <input
+                          type="text"
+                          value={editFormData.sub_category}
+                          onChange={(e) => setEditFormData({ ...editFormData, sub_category: e.target.value })}
+                          placeholder="e.g. Luxury Wool, Corporate Festive"
+                          className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Lifecycle Status *</label>
+                        <select
+                          value={editFormData.status || "active"}
+                          onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                          className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
+                        >
+                          <option value="active">Active (Showroom)</option>
+                          <option value="draft">Draft (Private)</option>
+                          <option value="archived">Archived (Retired)</option>
+                        </select>
+                      </div>
                     </div>
 
                     {/* Size Stock Distribution */}
@@ -4685,6 +4809,173 @@ const Admin = () => {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* SAFE DELETION & ARCHIVAL CONFIRMATION MODAL */}
+        {garmentToDelete && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => !garmentToDelete.submitting && closeDeleteGarmentModal()}
+          >
+            <div 
+              className="bg-[#FAF8F5] border border-[#E5DDD1] w-full max-w-lg rounded-[2px] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="px-5 py-3.5 bg-[#F7F3ED] border-b border-[#E5DDD1] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck size={16} className="text-[#C2922E]" />
+                  <span className="text-[10.5px] uppercase tracking-[0.16em] font-mono font-medium text-[#111113]">
+                    Atelier Integrity · Garment Lifecycle
+                  </span>
+                </div>
+                {!garmentToDelete.submitting && (
+                  <button 
+                    type="button" 
+                    onClick={closeDeleteGarmentModal}
+                    className="p-1 text-[#746F68] hover:text-[#111113] rounded-[2px] transition-colors cursor-pointer"
+                  >
+                    <X size={15} />
+                  </button>
+                )}
+              </div>
+
+              {/* Body */}
+              <div className="p-5 space-y-4 text-xs font-body text-[#111113]">
+                {/* Product preview */}
+                <div className="flex items-center gap-3.5 p-3 bg-white border border-[#E5DDD1] rounded-[2px]">
+                  <div className="w-14 h-18 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] overflow-hidden shrink-0 flex items-center justify-center">
+                    {garmentToDelete.product.image_url ? (
+                      <img src={garmentToDelete.product.image_url} alt={garmentToDelete.product.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-[9px] font-mono text-[#746F68]">No Image</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[9px] font-mono uppercase tracking-wider text-[#C2922E] block">
+                      {garmentToDelete.product.id}
+                    </span>
+                    <h4 className="font-medium text-sm text-[#111113] truncate mt-0.5">
+                      {garmentToDelete.product.name}
+                    </h4>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="font-mono text-xs text-[#111113] font-medium">
+                        {formatINR(garmentToDelete.product.price)}
+                      </span>
+                      <span className="text-[#746F68] text-[10px] font-mono">·</span>
+                      <span className={`text-[9.5px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-[1px] ${
+                        garmentToDelete.product.status === "archived" 
+                          ? "bg-stone-100 text-stone-600 border border-stone-200"
+                          : garmentToDelete.product.status === "draft"
+                          ? "bg-amber-50 text-amber-800 border border-amber-200"
+                          : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                      }`}>
+                        {garmentToDelete.product.status || "active"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Loading state */}
+                {garmentToDelete.loading ? (
+                  <div className="py-6 flex flex-col items-center justify-center text-[#746F68] gap-2">
+                    <RefreshCw size={18} className="animate-spin text-[#C2922E]" />
+                    <span className="font-mono text-[11px] tracking-wider uppercase">
+                      Verifying client orders &amp; tax invoice dependencies...
+                    </span>
+                  </div>
+                ) : garmentToDelete.info?.hasOrders ? (
+                  /* Has historical orders -> Protected Safe Archival */
+                  <div className="space-y-3">
+                    <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-[2px] space-y-1.5">
+                      <div className="flex items-center gap-2 text-amber-900 font-medium text-xs">
+                        <AlertTriangle size={15} className="text-amber-700 shrink-0" />
+                        <span>Client Order &amp; Invoice History Protected</span>
+                      </div>
+                      <p className="text-[11.5px] text-stone-700 leading-relaxed">
+                        This silhouette was purchased in <strong>{garmentToDelete.info.orderCount} client order(s)</strong>.
+                        To safeguard customer tax invoices, financial records, and order histories, this piece will be <strong>safely retired to the Private Archive</strong>.
+                      </p>
+                      <ul className="text-[10.5px] text-stone-600 space-y-1 pt-1 list-disc list-inside font-mono">
+                        <li>Immediately removed from public showroom &amp; storefront search.</li>
+                        <li>Preserves historical client invoices &amp; receipts with 100% fidelity.</li>
+                        <li>Zero broken references in client account order listings.</li>
+                      </ul>
+                    </div>
+                  </div>
+                ) : (
+                  /* No historical orders */
+                  <div className="space-y-3">
+                    <div className="p-3.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] space-y-1.5">
+                      <p className="text-[11.5px] text-stone-700 leading-relaxed">
+                        This garment has <strong>0 recorded client orders</strong> in atelier history. You may choose between soft archival or permanent database removal:
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1.5">
+                        <div className="p-2.5 bg-white border border-[#E5DDD1] rounded-[2px]">
+                          <span className="font-mono text-[10px] uppercase tracking-wider text-[#C2922E] font-medium block">
+                            Option A: Archive (Recommended)
+                          </span>
+                          <p className="text-[10.5px] text-[#746F68] mt-1">
+                            Hides from public showroom, but retains pattern specs, sizing, and pricing for future re-issues.
+                          </p>
+                        </div>
+                        <div className="p-2.5 bg-white border border-rose-200/60 rounded-[2px]">
+                          <span className="font-mono text-[10px] uppercase tracking-wider text-rose-800 font-medium block">
+                            Option B: Permanent Delete
+                          </span>
+                          <p className="text-[10.5px] text-[#746F68] mt-1">
+                            Completely removes database record and cleans up exclusive photography files from storage.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Actions */}
+              <div className="px-5 py-3.5 bg-[#F7F3ED] border-t border-[#E5DDD1] flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={closeDeleteGarmentModal}
+                  disabled={garmentToDelete.submitting}
+                  className="px-4 py-2 border border-[#E5DDD1] bg-white hover:bg-[#EFE9DF] text-[#746F68] rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                {garmentToDelete.info?.hasOrders ? (
+                  <button
+                    type="button"
+                    onClick={() => executeDeleteGarment(false)}
+                    disabled={garmentToDelete.submitting || garmentToDelete.loading}
+                    className="px-4 py-2 bg-[#111113] hover:bg-[#C2922E] text-white rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  >
+                    {garmentToDelete.submitting ? "Archiving..." : "Move to Private Archive"}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => executeDeleteGarment(false)}
+                      disabled={garmentToDelete.submitting || garmentToDelete.loading}
+                      className="px-4 py-2 bg-[#111113] hover:bg-[#C2922E] text-white rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                    >
+                      {garmentToDelete.submitting ? "Archiving..." : "Move to Archive"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => executeDeleteGarment(true)}
+                      disabled={garmentToDelete.submitting || garmentToDelete.loading}
+                      className="px-4 py-2 bg-rose-800 hover:bg-rose-900 text-white rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                    >
+                      {garmentToDelete.submitting ? "Deleting..." : "Permanently Delete"}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

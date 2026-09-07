@@ -34,7 +34,6 @@ function getInitialData() {
 let store = null;
 
 function loadStore() {
-  if (store) return store;
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
