@@ -97,3 +97,36 @@ VALUES (
   'admin'
 )
 ON CONFLICT (email) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS coupons (
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(50) UNIQUE NOT NULL,
+  discount_percent NUMERIC(5,2),
+  discount_flat NUMERIC(10,2),
+  min_order_value NUMERIC(10,2) DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS reviews (
+  id SERIAL PRIMARY KEY,
+  product_id VARCHAR(100),
+  product_name VARCHAR(255),
+  user_name VARCHAR(255),
+  rating INTEGER NOT NULL DEFAULT 5,
+  comment TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS cart_items (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  product_id VARCHAR(100) NOT NULL,
+  product_name VARCHAR(255),
+  price NUMERIC(10,2) NOT NULL DEFAULT 0,
+  size VARCHAR(20),
+  quantity INTEGER NOT NULL DEFAULT 1,
+  image_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

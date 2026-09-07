@@ -180,7 +180,18 @@ async function getAllProducts(options = {}) {
     }
     return res.rows;
   } catch (err) {
-    console.error("[ProductService] Postgres query error:", err);
+    console.error("[ProductService] Postgres query error:", err.message);
+    if (err.code === "42P01") {
+      try {
+        console.log("[ProductService] Missing relation detected. Running auto-initialization...");
+        const { initDatabase } = require("../db");
+        await initDatabase();
+        const retryRes = await pool.query(query, params);
+        return retryRes.rows;
+      } catch (retryErr) {
+        console.error("[ProductService] Auto-initialization retry failed:", retryErr.message);
+      }
+    }
     const store = ensureDevStoreProducts();
     return store.products || [];
   }
@@ -566,6 +577,17 @@ async function getAllCategories() {
     }
     return res.rows;
   } catch (err) {
+    console.error("[ProductService] Categories query error:", err.message);
+    if (err.code === "42P01") {
+      try {
+        const { initDatabase } = require("../db");
+        await initDatabase();
+        const retryRes = await pool.query("SELECT * FROM categories ORDER BY name ASC");
+        return retryRes.rows;
+      } catch (retryErr) {
+        console.error("[ProductService] Auto-initialization retry for categories failed:", retryErr.message);
+      }
+    }
     const store = ensureDevStoreProducts();
     return store.categories || [];
   }

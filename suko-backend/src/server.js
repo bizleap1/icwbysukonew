@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
-const { pool } = require("./db");
+const { pool, initDatabase } = require("./db");
 const path = require("path");
 const authRoutes = require("./routes/auth");
 const ordersRoutes = require("./routes/orders");
@@ -10,6 +10,9 @@ const statsRoutes = require("./routes/stats");
 const paymentsRoutes = require("./routes/payments");
 const productsRoutes = require("./routes/products");
 const categoriesRoutes = require("./routes/categories");
+const couponsRoutes = require("./routes/coupons");
+const reviewsRoutes = require("./routes/reviews");
+const cartRoutes = require("./routes/cart");
 
 const { securityHeaders, requestLogger } = require("./middleware/security");
 const { apiLimiter } = require("./middleware/rateLimiter");
@@ -82,6 +85,9 @@ app.use("/api/payments", paymentsRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/products", productsRoutes);
 app.use("/api/categories", categoriesRoutes);
+app.use("/api/coupons", couponsRoutes);
+app.use("/api/reviews", reviewsRoutes);
+app.use("/api/cart", cartRoutes);
 
 // 404 fallback
 app.use((req, res) => {
@@ -95,6 +101,11 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`SUKO backend listening on port ${PORT}`);
+  try {
+    await initDatabase();
+  } catch (err) {
+    console.error("Startup database initialization error:", err.message);
+  }
 });
