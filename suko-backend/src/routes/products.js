@@ -52,15 +52,44 @@ if (multer) {
 router.get("/", async (req, res) => {
   try {
     const { status, category, includeArchived } = req.query;
-    const products = await productService.getAllProducts({
+    let products = await productService.getAllProducts({
       status,
       category,
       includeArchived: includeArchived === "true" || status === "all"
     });
+
+    // If database has 0 products, auto-initialize and seed
+    if (products.length === 0 && !status && !category) {
+      try {
+        const { initDatabase } = require("../db");
+        await initDatabase();
+        products = await productService.getAllProducts({
+          status,
+          category,
+          includeArchived: includeArchived === "true" || status === "all"
+        });
+      } catch (seedErr) {
+        console.warn("[Products] Auto-seed fallback error:", seedErr.message);
+      }
+    }
+
     res.json(products);
   } catch (err) {
     console.error("Fetch products error:", err);
     res.status(500).json({ error: "Failed to load products" });
+  }
+});
+
+// POST /api/products/seed -- trigger catalog verification and seeding
+router.post("/seed", async (req, res) => {
+  try {
+    const { initDatabase } = require("../db");
+    await initDatabase();
+    const products = await productService.getAllProducts({ includeArchived: true });
+    res.json({ success: true, count: products.length, products });
+  } catch (err) {
+    console.error("Seed error:", err);
+    res.status(500).json({ error: err.message || "Failed to seed products" });
   }
 });
 

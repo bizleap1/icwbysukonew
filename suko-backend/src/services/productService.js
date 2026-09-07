@@ -148,11 +148,23 @@ async function getAllProducts(options = {}) {
     if (res.rows.length === 0 && !status && !category) {
       // Auto-seed Postgres if empty
       const seed = getSeedData();
+
+      // 1. Seed categories first to satisfy foreign key constraints
+      for (const c of seed.categories) {
+        await pool.query(
+          `INSERT INTO categories (id, name, slug, tagline)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (id) DO NOTHING`,
+          [c.slug, c.name, c.slug, c.tagline || `${c.name} Collection`]
+        );
+      }
+
+      // 2. Seed products with all 17 column parameters ($1..$17)
       for (const p of seed.products) {
         const catId = p.category || p.category_id || "suits";
         await pool.query(
           `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
            ON CONFLICT (id) DO NOTHING`,
           [
             String(p.id),
