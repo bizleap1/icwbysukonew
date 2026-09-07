@@ -85,8 +85,9 @@ router.post("/seed", async (req, res) => {
   try {
     const { initDatabase } = require("../db");
     await initDatabase();
+    const seedResult = await productService.seedCatalog(req.query.force === "true");
     const products = await productService.getAllProducts({ includeArchived: true });
-    res.json({ success: true, count: products.length, products });
+    res.json({ success: true, count: products.length, seedResult, products });
   } catch (err) {
     console.error("Seed error:", err);
     res.status(500).json({ error: err.message || "Failed to seed products" });

@@ -8,12 +8,24 @@ const SEED_FILE = path.join(DATA_DIR, "seed-products.json");
 
 // Helper to load seed products & categories
 function getSeedData() {
-  try {
-    if (fs.existsSync(SEED_FILE)) {
-      return JSON.parse(fs.readFileSync(SEED_FILE, "utf-8"));
+  const candidatePaths = [
+    SEED_FILE,
+    path.join(__dirname, "..", "..", "data", "seed-products.json"),
+    path.join(__dirname, "..", "data", "seed-products.json"),
+    path.join(process.cwd(), "data", "seed-products.json"),
+    path.join(process.cwd(), "suko-backend", "data", "seed-products.json")
+  ];
+  for (const candidate of candidatePaths) {
+    try {
+      if (fs.existsSync(candidate)) {
+        const data = JSON.parse(fs.readFileSync(candidate, "utf-8"));
+        if (data && Array.isArray(data.products) && data.products.length > 0) {
+          return data;
+        }
+      }
+    } catch (err) {
+      console.warn("[ProductService] Error reading candidate seed file:", candidate, err.message);
     }
-  } catch (err) {
-    console.warn("[ProductService] Could not read seed file:", err.message);
   }
   return { products: [], categories: [] };
 }
@@ -146,47 +158,7 @@ async function getAllProducts(options = {}) {
 
     const res = await pool.query(query, params);
     if (res.rows.length === 0 && !status && !category) {
-      // Auto-seed Postgres if empty
-      const seed = getSeedData();
-
-      // 1. Seed categories first to satisfy foreign key constraints
-      for (const c of seed.categories) {
-        await pool.query(
-          `INSERT INTO categories (id, name, slug, tagline)
-           VALUES ($1, $2, $3, $4)
-           ON CONFLICT (id) DO NOTHING`,
-          [c.slug, c.name, c.slug, c.tagline || `${c.name} Collection`]
-        );
-      }
-
-      // 2. Seed products with all 17 column parameters ($1..$17)
-      for (const p of seed.products) {
-        const catId = p.category || p.category_id || "suits";
-        await pool.query(
-          `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-           ON CONFLICT (id) DO NOTHING`,
-          [
-            String(p.id),
-            p.name,
-            p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-            p.price || 0,
-            p.discount_price || null,
-            p.stock || 15,
-            catId,
-            p.sub_category || p.shortType || "Atelier Silhouette",
-            p.description || "",
-            p.images?.[0] || "/placeholder.png",
-            JSON.stringify(p.images || []),
-            JSON.stringify(p.sizes || []),
-            JSON.stringify(p.size_stock || {}),
-            p.status || "active",
-            p.sku || `SKU-${p.id}`,
-            p.gender || "female",
-            p.fabric || ""
-          ]
-        );
-      }
+      await seedCatalog(false);
       const seeded = await pool.query("SELECT * FROM products WHERE status != 'archived' ORDER BY created_at DESC");
       return seeded.rows;
     }
@@ -650,6 +622,71 @@ async function deleteCategory(id) {
   return res.rowCount > 0;
 }
 
+async function seedCatalog(force = false) {
+  if (pool.isMock) {
+    return ensureDevStoreProducts();
+  }
+
+  const { rows } = await pool.query("SELECT COUNT(*) FROM products");
+  const count = parseInt(rows[0]?.count, 10) || 0;
+  if (count > 0 && !force) {
+    return { count, message: "Catalog already contains products" };
+  }
+
+  const seed = getSeedData();
+  if (!seed.products || seed.products.length === 0) {
+    console.warn("[ProductService] Seed catalog called but seed data contains 0 products!");
+    return { count: 0, message: "No seed products found" };
+  }
+
+  // 1. Seed categories first to satisfy foreign key constraints
+  if (Array.isArray(seed.categories)) {
+    for (const c of seed.categories) {
+      await pool.query(
+        `INSERT INTO categories (id, name, slug, tagline)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, tagline = EXCLUDED.tagline`,
+        [c.slug, c.name, c.slug, c.tagline || `${c.name} Collection`]
+      );
+    }
+  }
+
+  // 2. Seed products with all 17 column parameters
+  let inserted = 0;
+  for (const p of seed.products) {
+    const catId = p.category || p.category_id || "suits";
+    const res = await pool.query(
+      `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+       ON CONFLICT (id) DO NOTHING
+       RETURNING id`,
+      [
+        String(p.id),
+        p.name,
+        p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        p.price || 0,
+        p.discount_price || null,
+        p.stock || 15,
+        catId,
+        p.sub_category || p.shortType || "Atelier Silhouette",
+        p.description || "",
+        p.images?.[0] || "/placeholder.png",
+        JSON.stringify(p.images || []),
+        JSON.stringify(p.sizes || []),
+        JSON.stringify(p.size_stock || {}),
+        p.status || "active",
+        p.sku || `SKU-${p.id}`,
+        p.gender || "female",
+        p.fabric || ""
+      ]
+    );
+    if (res.rowCount > 0) inserted++;
+  }
+
+  console.log(`[ProductService] Seeded ${inserted} garments and ${seed.categories?.length || 0} categories.`);
+  return { count: inserted, total: seed.products.length };
+}
+
 module.exports = {
   getAllProducts,
   getProductById,
@@ -660,5 +697,7 @@ module.exports = {
   getAllCategories,
   createCategory,
   deleteCategory,
-  ensureDevStoreProducts
+  ensureDevStoreProducts,
+  getSeedData,
+  seedCatalog
 };
