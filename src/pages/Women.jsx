@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import { useLenis } from "lenis/react";
 import SEO from "../components/SEO";
 import { useProducts } from "../context/ProductContext";
-import { PRODUCTS as FALLBACK_PRODUCTS } from "../data/products";
 import WomenHero from "../components/women/WomenHero";
 import { WomenBrandIntro, WomenCategories } from "../components/women/WomenCategories";
 import { WomenNewInGrid, WomenBoardroomBanner, WomenAtelierBanner, WomenSignatureEdit } from "../components/women/WomenSections";
@@ -27,7 +26,7 @@ const Women = () => {
 
   // Women catalog products (5 items for asymmetric editorial block: 1 large + 4 small)
   const newInProducts = useMemo(() => {
-    const rawList = products && products.length > 0 ? products : FALLBACK_PRODUCTS;
+    const rawList = products || [];
     const femaleItems = rawList.filter((p) => p.gender === "female" || p.gender === "women" || !p.gender);
     return femaleItems.slice(0, 5);
   }, [products]);

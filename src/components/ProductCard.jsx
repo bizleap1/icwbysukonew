@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Heart, ShoppingBag, Check } from "lucide-react";
-import { formatINR, PRODUCTS } from "../data/products";
+import { formatINR } from "../data/products";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import { getCardImage } from "../utils/mediaUtils";
@@ -101,8 +101,9 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
 
   const wishlisted = isInWishlist ? isInWishlist(product.id) : false;
 
-  const matchedProduct = PRODUCTS.find((p) => p.id === product.id || p.slug === product.slug);
-  const availableSizes = product.sizes || matchedProduct?.sizes || (product.gender === "male" ? ["38R", "40R", "42R", "44R"] : ["XS", "S", "M", "L", "XL"]);
+  const availableSizes = Array.isArray(product.sizes) && product.sizes.length > 0 
+    ? product.sizes 
+    : (product.gender === "male" ? ["38R", "40R", "42R", "44R"] : ["XS", "S", "M", "L", "XL"]);
 
   const handleWishlistClick = (e) => {
     e.preventDefault();

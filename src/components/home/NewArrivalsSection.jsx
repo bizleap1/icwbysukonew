@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import ProductCard from "../ProductCard";
-import { PRODUCTS } from "../../data/products";
+import { useProducts } from "../../context/ProductContext";
 
 export const NewArrivalsSection = () => {
+  const { products } = useProducts();
+
   // 4 Core Flagship Full Sets
   const displayedSlugs = [
     "the-noir-tailored-suit",
@@ -12,9 +14,12 @@ export const NewArrivalsSection = () => {
     "the-lilac-flare-suit"
   ];
 
-  const displayedProducts = displayedSlugs
-    .map((slug) => PRODUCTS.find((p) => p.slug === slug))
-    .filter(Boolean);
+  const displayedProducts = useMemo(() => {
+    const list = displayedSlugs
+      .map((slug) => (products || []).find((p) => p.slug === slug))
+      .filter(Boolean);
+    return list.length >= 4 ? list : (products || []).slice(0, 4);
+  }, [products]);
 
   return (
     <section className="bg-[#FAF8F5] pt-8 sm:pt-10 lg:pt-12 pb-6 sm:pb-8 lg:pb-9 transition-colors duration-300">

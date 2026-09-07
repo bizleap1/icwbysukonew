@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { X, ArrowRight, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PRODUCTS, MOMENTS, CATEGORIES, formatINR } from "../data/products";
+import { MOMENTS, formatINR } from "../data/products";
+import { useProducts } from "../context/ProductContext";
 import { getCardImage } from "../utils/mediaUtils";
 
 const POPULAR_SEARCHES = [
@@ -57,6 +58,7 @@ const MOMENT_PORTRAITS = {
 };
 
 export const SearchModal = ({ isOpen, onClose }) => {
+  const { products, categories } = useProducts();
   const [query, setQuery] = useState("");
   const [productResults, setProductResults] = useState([]);
   const [momentResults, setMomentResults] = useState([]);
@@ -119,23 +121,23 @@ export const SearchModal = ({ isOpen, onClose }) => {
     }
 
     const timer = setTimeout(() => {
-      // 1. Match Products
-      const matchedProducts = PRODUCTS.filter(
+      // 1. Match Products from live database
+      const matchedProducts = (products || []).filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q) ||
-          p.fabric.toLowerCase().includes(q) ||
-          p.tagline?.toLowerCase().includes(q) ||
-          p.description?.toLowerCase().includes(q) ||
-          p.styleNotes?.toLowerCase().includes(q)
+          (p.category || '').toLowerCase().includes(q) ||
+          (p.categoryName || '').toLowerCase().includes(q) ||
+          (p.sub_category || '').toLowerCase().includes(q) ||
+          (p.fabric || '').toLowerCase().includes(q) ||
+          (p.description || '').toLowerCase().includes(q)
       ).slice(0, 8);
 
-      // 2. Match Categories / Collections
-      const matchedCategories = CATEGORIES.filter(
+      // 2. Match Categories / Collections from live database
+      const matchedCategories = (categories || []).filter(
         (c) =>
           c.name.toLowerCase().includes(q) ||
-          c.tagline.toLowerCase().includes(q) ||
-          c.slug.toLowerCase().includes(q)
+          (c.tagline && c.tagline.toLowerCase().includes(q)) ||
+          (c.slug && c.slug.toLowerCase().includes(q))
       );
 
       // 3. Match Moments

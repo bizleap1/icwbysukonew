@@ -3,7 +3,6 @@ import { Link, useSearchParams, useLocation, useNavigationType } from "react-rou
 import { useLenis } from "lenis/react";
 import SEO from "../components/SEO";
 import { useProducts } from "../context/ProductContext";
-import { PRODUCTS as FALLBACK_PRODUCTS } from "../data/products";
 import { StickyFilterBar } from "../components/newIn/StickyFilterBar";
 import { FilterDrawer, SortSheet } from "../components/newIn/FilterModals";
 import { EditorialGrid } from "../components/newIn/EditorialGrid";
@@ -29,7 +28,7 @@ const NewIn = () => {
   };
 
   const { products: storeProducts } = useProducts();
-  const productsList = storeProducts && storeProducts.length > 0 ? storeProducts : FALLBACK_PRODUCTS;
+  const productsList = storeProducts || [];
 
   // Active Filter States (persisted across navigation and back-button)
   const [selectedCategory, setSelectedCategory] = useState(() => getInitialValue("category", "suko_newin_cat", "all").toLowerCase());

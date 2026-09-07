@@ -32,7 +32,12 @@ const upload = multer({
 // GET /api/products -- list all products
 router.get("/", async (req, res) => {
   try {
-    const products = await productService.getAllProducts();
+    const { status, category, includeArchived } = req.query;
+    const products = await productService.getAllProducts({
+      status,
+      category,
+      includeArchived: includeArchived === "true" || status === "all"
+    });
     res.json(products);
   } catch (err) {
     console.error("Fetch products error:", err);
@@ -52,7 +57,27 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /api/products/upload -- add new garment (Admin)
+// POST /api/products -- create garment via JSON payload (Admin)
+router.post("/", requireAdmin, async (req, res) => {
+  try {
+    const { name, price } = req.body;
+    if (!name || typeof price === "undefined") {
+      return res.status(400).json({ error: "Garment name and price are required." });
+    }
+
+    const newProduct = await productService.createProduct(req.body);
+    res.status(201).json({
+      success: true,
+      message: "Garment successfully registered in atelier archive",
+      product: newProduct
+    });
+  } catch (err) {
+    console.error("Create product JSON error:", err);
+    res.status(500).json({ error: err.message || "Failed to create garment" });
+  }
+});
+
+// POST /api/products/upload -- add new garment with multipart photos (Admin)
 router.post(
   "/upload",
   requireAdmin,
@@ -62,7 +87,20 @@ router.post(
   ]),
   async (req, res) => {
     try {
-      const { name, price, stock, description, category_id, sub_category, size_stock } = req.body;
+      const { 
+        name, 
+        price, 
+        discount_price, 
+        stock, 
+        description, 
+        category_id, 
+        sub_category, 
+        size_stock, 
+        status, 
+        sku, 
+        gender, 
+        fabric 
+      } = req.body;
 
       if (!name || !price) {
         return res.status(400).json({ error: "Garment name and price are required." });
@@ -91,14 +129,19 @@ router.post(
       const newProduct = await productService.createProduct({
         name,
         price: Number(price),
-        stock: Number(stock) || 10,
+        discount_price: discount_price ? Number(discount_price) : null,
+        stock: typeof stock !== "undefined" ? Number(stock) : 10,
         description,
         category_id,
         sub_category,
         size_stock: parsedSizeStock,
         sizes: Object.keys(parsedSizeStock).length > 0 ? Object.keys(parsedSizeStock) : ["38", "40", "42", "44", "46"],
         image_url: imageUrl,
-        images: images.length > 0 ? images : [imageUrl]
+        images: images.length > 0 ? images : [imageUrl],
+        status: status || "active",
+        sku: sku || undefined,
+        gender: gender || "female",
+        fabric: fabric || ""
       });
 
       res.status(201).json({
@@ -113,74 +156,117 @@ router.post(
   }
 );
 
-// PUT /api/products/:id -- update garment specs (Admin)
-router.put(
-  "/:id",
-  requireAdmin,
-  upload.fields([
-    { name: "image", maxCount: 1 },
-    { name: "images", maxCount: 10 }
-  ]),
-  async (req, res) => {
-    try {
-      const { name, price, stock, description, category_id, sub_category, size_stock } = req.body;
-
-      let parsedSizeStock = undefined;
-      if (size_stock) {
-        try {
-          parsedSizeStock = typeof size_stock === "string" ? JSON.parse(size_stock) : size_stock;
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      const updateData = {};
-      if (name) updateData.name = name;
-      if (typeof price !== "undefined") updateData.price = Number(price);
-      if (typeof stock !== "undefined") updateData.stock = Number(stock);
-      if (description) updateData.description = description;
-      if (category_id) updateData.category_id = category_id;
-      if (sub_category) updateData.sub_category = sub_category;
-      if (parsedSizeStock) {
-        updateData.size_stock = parsedSizeStock;
-        updateData.sizes = Object.keys(parsedSizeStock);
-      }
-
-      // Check if new images were uploaded
-      const newImages = [];
-      if (req.files?.image && req.files.image.length > 0) {
-        newImages.push(`/uploads/products/${req.files.image[0].filename}`);
-      }
-      if (req.files?.images && req.files.images.length > 0) {
-        req.files.images.forEach(f => newImages.push(`/uploads/products/${f.filename}`));
-      }
-
-      if (newImages.length > 0) {
-        updateData.image_url = newImages[0];
-        updateData.images = newImages;
-      }
-
-      const updated = await productService.updateProduct(req.params.id, updateData);
-      if (!updated) return res.status(404).json({ error: "Product not found" });
-
-      res.json({
-        success: true,
-        message: "Garment updated successfully",
-        product: updated
-      });
-    } catch (err) {
-      console.error("Update product error:", err);
-      res.status(500).json({ error: err.message || "Failed to update product" });
-    }
+// Flexible middleware to handle both multipart and JSON for PUT
+const handleOptionalMultipart = (req, res, next) => {
+  const contentType = req.headers["content-type"] || "";
+  if (contentType.includes("multipart/form-data")) {
+    return upload.fields([
+      { name: "image", maxCount: 1 },
+      { name: "images", maxCount: 10 }
+    ])(req, res, next);
   }
-);
+  next();
+};
 
-// DELETE /api/products/:id -- delete garment (Admin)
+// PUT /api/products/:id -- update garment specs (Admin)
+router.put("/:id", requireAdmin, handleOptionalMultipart, async (req, res) => {
+  try {
+    const { 
+      name, 
+      price, 
+      discount_price, 
+      stock, 
+      description, 
+      category_id, 
+      sub_category, 
+      size_stock, 
+      sizes,
+      status,
+      sku,
+      gender,
+      fabric,
+      existing_images
+    } = req.body;
+
+    let parsedSizeStock = undefined;
+    if (size_stock) {
+      try {
+        parsedSizeStock = typeof size_stock === "string" ? JSON.parse(size_stock) : size_stock;
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (typeof price !== "undefined") updateData.price = Number(price);
+    if (typeof discount_price !== "undefined") updateData.discount_price = discount_price ? Number(discount_price) : null;
+    if (typeof stock !== "undefined") updateData.stock = Number(stock);
+    if (description !== undefined) updateData.description = description;
+    if (category_id) updateData.category_id = category_id;
+    if (sub_category) updateData.sub_category = sub_category;
+    if (status) updateData.status = status;
+    if (sku) updateData.sku = sku;
+    if (gender) updateData.gender = gender;
+    if (fabric !== undefined) updateData.fabric = fabric;
+
+    if (parsedSizeStock) {
+      updateData.size_stock = parsedSizeStock;
+      updateData.sizes = Object.keys(parsedSizeStock);
+    } else if (Array.isArray(sizes)) {
+      updateData.sizes = sizes;
+    }
+
+    // Check if new images were uploaded or existing images preserved
+    let parsedExisting = [];
+    if (existing_images) {
+      try {
+        parsedExisting = typeof existing_images === "string" ? JSON.parse(existing_images) : existing_images;
+      } catch (e) {}
+    }
+
+    const newUploadedFiles = [];
+    if (req.files?.image && req.files.image.length > 0) {
+      newUploadedFiles.push(`/uploads/products/${req.files.image[0].filename}`);
+    }
+    if (req.files?.images && req.files.images.length > 0) {
+      req.files.images.forEach(f => newUploadedFiles.push(`/uploads/products/${f.filename}`));
+    }
+
+    const combinedImages = [...parsedExisting, ...newUploadedFiles];
+    if (combinedImages.length > 0) {
+      updateData.images = combinedImages;
+      updateData.image_url = combinedImages[0];
+    } else if (req.body.image_url) {
+      updateData.image_url = req.body.image_url;
+    }
+
+    const updated = await productService.updateProduct(req.params.id, updateData);
+    if (!updated) return res.status(404).json({ error: "Product not found" });
+
+    res.json({
+      success: true,
+      message: "Garment updated successfully",
+      product: updated
+    });
+  } catch (err) {
+    console.error("Update product error:", err);
+    res.status(500).json({ error: err.message || "Failed to update product" });
+  }
+});
+
+// DELETE /api/products/:id -- safe delete/archive garment (Admin)
 router.delete("/:id", requireAdmin, async (req, res) => {
   try {
-    const success = await productService.deleteProduct(req.params.id);
-    if (!success) return res.status(404).json({ error: "Product not found" });
-    res.json({ success: true, message: "Garment removed from atelier archive" });
+    const permanent = req.query.permanent === "true";
+    const result = await productService.deleteProduct(req.params.id, { permanent });
+    if (!result) return res.status(404).json({ error: "Product not found" });
+
+    res.json({
+      success: true,
+      archived: result.archived,
+      message: result.message || "Garment processed successfully"
+    });
   } catch (err) {
     console.error("Delete product error:", err);
     res.status(500).json({ error: "Failed to delete product" });

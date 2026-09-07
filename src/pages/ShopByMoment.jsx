@@ -3,13 +3,15 @@ import { useSearchParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, MessageCircle, Sparkles } from "lucide-react";
 import SEO from "../components/SEO";
-import { MOMENTS, PRODUCTS, formatINR, WHATSAPP_LINK } from "../data/products";
+import { MOMENTS, formatINR, WHATSAPP_LINK } from "../data/products";
+import { useProducts } from "../context/ProductContext";
 import ServiceStrip from "../components/home/ServiceStrip";
 
 export const ShopByMoment = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const momentParam = searchParams.get("moment") || "boardroom";
 
+  const { products } = useProducts();
   const [activeMomentId, setActiveMomentId] = useState(momentParam);
   const tabsStripRef = useRef(null);
 
@@ -36,7 +38,7 @@ export const ShopByMoment = () => {
   const activeMoment = MOMENTS.find((m) => m.id === activeMomentId) || MOMENTS[0];
 
   // Filter products for active moment
-  const momentProducts = PRODUCTS.filter(
+  const momentProducts = (products || []).filter(
     (p) => p.moment === activeMoment.id || (p.moments && p.moments.includes(activeMoment.id))
   );
 

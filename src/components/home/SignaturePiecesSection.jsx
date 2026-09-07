@@ -1,18 +1,8 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { PRODUCTS, formatINR } from "../../data/products";
+import { formatINR } from "../../data/products";
+import { useProducts } from "../../context/ProductContext";
 import { getCardImage } from "../../utils/mediaUtils";
-
-const heroProduct = PRODUCTS.find((p) => p.slug === "the-noir-tailored-suit");
-const SIGNATURE_HERO = {
-  id: heroProduct?.id || "w-08",
-  slug: heroProduct?.slug || "the-noir-tailored-suit",
-  name: heroProduct?.name || "Noir Tailored Set",
-  category: "Single-Breasted Blazer & Wide-Leg Trousers",
-  price: heroProduct?.price ? formatINR(heroProduct.price) : "₹4,550",
-  image: "/boardroom_women.webp",
-  position: "object-[50%_15%]"
-};
 
 const supportingSlugs = [
   {
@@ -32,22 +22,40 @@ const supportingSlugs = [
   }
 ];
 
-const SUPPORTING_PIECES = supportingSlugs.map((cfg) => {
-  const p = PRODUCTS.find((prod) => prod.slug === cfg.slug);
-  const ghostImg = p?.images?.find((img) => img.includes("2.png")) || p?.images?.[1] || p?.images?.[0];
-  return {
-    id: p?.id || cfg.slug,
-    slug: p?.slug || cfg.slug,
-    number: cfg.number,
-    name: p?.name || "Signature Piece",
-    category: p?.shortType || p?.setType || p?.subCategory || "Tailored Separate",
-    price: p?.price ? formatINR(p.price) : "",
-    image: ghostImg || `/products/${cfg.slug.replace("the-", "")}/2.png`,
-    position: cfg.position
-  };
-});
-
 export const SignaturePiecesSection = () => {
+  const { products } = useProducts();
+
+  const heroProduct = useMemo(() => {
+    return (products || []).find((p) => p.slug === "the-noir-tailored-suit") || products?.[0];
+  }, [products]);
+
+  const SIGNATURE_HERO = useMemo(() => ({
+    id: heroProduct?.id || "w-08",
+    slug: heroProduct?.slug || "the-noir-tailored-suit",
+    name: heroProduct?.name || "Noir Tailored Set",
+    category: heroProduct?.sub_category || "Single-Breasted Blazer & Wide-Leg Trousers",
+    price: heroProduct?.price ? formatINR(heroProduct.price) : "₹4,550",
+    image: "/boardroom_women.webp",
+    position: "object-[50%_15%]"
+  }), [heroProduct]);
+
+  const SUPPORTING_PIECES = useMemo(() => {
+    return supportingSlugs.map((cfg) => {
+      const p = (products || []).find((prod) => prod.slug === cfg.slug);
+      const ghostImg = p?.images?.find((img) => img.includes("2.png")) || p?.images?.[1] || p?.images?.[0];
+      return {
+        id: p?.id || cfg.slug,
+        slug: p?.slug || cfg.slug,
+        number: cfg.number,
+        name: p?.name || "Signature Piece",
+        category: p?.sub_category || p?.shortType || p?.setType || "Tailored Separate",
+        price: p?.price ? formatINR(p.price) : "",
+        image: ghostImg || `/products/${cfg.slug.replace("the-", "")}/2.png`,
+        position: cfg.position
+      };
+    });
+  }, [products]);
+
   return (
     <section className="bg-[#FAF8F5] pt-4 sm:pt-5 lg:pt-6 pb-6 sm:pb-8 lg:pb-10 transition-colors duration-300">
       <div className="w-full mx-auto px-5 sm:px-8 lg:px-12 xl:px-14">

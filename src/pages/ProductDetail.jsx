@@ -4,7 +4,7 @@ import { Heart, ChevronLeft, ChevronRight, Maximize2, MessageCircle, Sparkles, C
 import { useLenis } from "lenis/react";
 import { toast } from "sonner";
 import SEO from "../components/SEO";
-import { formatINR, SIZES, COLOURS, PRODUCTS, WHATSAPP_LINK } from "../data/products";
+import { formatINR, SIZES, COLOURS, WHATSAPP_LINK } from "../data/products";
 import { useProducts } from "../context/ProductContext";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
@@ -20,7 +20,7 @@ import { getThumbImage, getHighResImage } from "../utils/mediaUtils";
 export const ProductDetail = () => {
   const { slug } = useParams();
   const { products, getProductBySlug, loading } = useProducts();
-  const product = getProductBySlug(slug) || PRODUCTS.find((p) => p.slug === slug);
+  const product = getProductBySlug(slug);
   const { addItem } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { user } = useAuth();
@@ -221,7 +221,7 @@ export const ProductDetail = () => {
           const cSlug = typeof coord === "string" ? coord : coord?.slug;
           const customLabel = typeof coord === "object" ? coord?.label : null;
           const target = cleanSlug(cSlug);
-          const foundProduct = (products || PRODUCTS).find((p) => p.slug === cSlug || cleanSlug(p.slug) === target || p.id === cSlug);
+          const foundProduct = (products || []).find((p) => p.slug === cSlug || cleanSlug(p.slug) === target || p.id === cSlug);
           if (!foundProduct) return null;
           return { product: foundProduct, customLabel };
         })
@@ -229,13 +229,13 @@ export const ProductDetail = () => {
     : [];
 
   // Separates resolution for Full Sets (supporting { slug, label } objects)
-  const separateItems = (isFullSet && product.separates && product.separates.length > 0)
+  const separateItems = (isFullSet && product?.separates && product.separates.length > 0)
     ? product.separates
         .map((sep) => {
           const sSlug = typeof sep === "string" ? sep : sep?.slug;
           const customLabel = typeof sep === "object" ? sep?.label : null;
           const target = cleanSlug(sSlug);
-          const foundProduct = (products || PRODUCTS).find((p) => p.slug === sSlug || cleanSlug(p.slug) === target || p.id === sSlug);
+          const foundProduct = (products || []).find((p) => p.slug === sSlug || cleanSlug(p.slug) === target || p.id === sSlug);
           if (!foundProduct) return null;
           return { product: foundProduct, customLabel };
         })
@@ -246,8 +246,8 @@ export const ProductDetail = () => {
   const separateSlugs = separateItems.map((si) => si.product.slug);
 
   // Related products (Max 4, excluding active item, coordinates, and separates)
-  const related = (products || PRODUCTS)
-    .filter((p) => p.id !== product.id && !coordinateSlugs.includes(p.slug) && !separateSlugs.includes(p.slug))
+  const related = (products || [])
+    .filter((p) => p.id !== product?.id && !coordinateSlugs.includes(p.slug) && !separateSlugs.includes(p.slug))
     .slice(0, 4);
 
   const activeColors = product.availableColors && product.availableColors.length > 0

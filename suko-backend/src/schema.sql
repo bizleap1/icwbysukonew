@@ -1,5 +1,39 @@
--- SUKO Backend - Database Schema (Phase 1: Orders + Admin)
+-- SUKO Backend - Database Schema (Unified Product Architecture + Orders + Admin)
 -- Safe to run multiple times (uses IF NOT EXISTS)
+
+CREATE TABLE IF NOT EXISTS categories (
+  id VARCHAR(100) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  tagline TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS products (
+  id VARCHAR(100) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  category_id VARCHAR(100) REFERENCES categories(id) ON DELETE SET NULL,
+  sub_category VARCHAR(100),
+  description TEXT,
+  price NUMERIC(10,2) NOT NULL DEFAULT 0,
+  discount_price NUMERIC(10,2),
+  stock INTEGER NOT NULL DEFAULT 0,
+  status VARCHAR(30) NOT NULL DEFAULT 'active',
+  sku VARCHAR(100),
+  gender VARCHAR(20) DEFAULT 'female',
+  fabric VARCHAR(255),
+  image_url TEXT,
+  images JSONB DEFAULT '[]'::jsonb,
+  sizes JSONB DEFAULT '[]'::jsonb,
+  size_stock JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
+CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
+CREATE INDEX IF NOT EXISTS idx_products_status ON products(status);
 
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,

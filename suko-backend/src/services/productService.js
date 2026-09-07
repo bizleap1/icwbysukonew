@@ -92,29 +92,74 @@ function ensureDevStoreProducts() {
   }
 }
 
-async function getAllProducts() {
+async function getAllProducts(options = {}) {
+  const { status, category, includeArchived = false } = options;
+
   if (pool.isMock) {
     const store = ensureDevStoreProducts();
-    return store.products || [];
+    let list = [...(store.products || [])];
+
+    // Status filtering
+    if (status && status !== "all") {
+      list = list.filter(p => (p.status || "active") === status);
+    } else if (!includeArchived && status !== "all") {
+      // By default, exclude archived items from storefront
+      list = list.filter(p => (p.status || "active") !== "archived");
+    }
+
+    // Category filtering
+    if (category && category !== "all") {
+      const catClean = category.toLowerCase().trim();
+      list = list.filter(p => 
+        (p.category_id && p.category_id.toLowerCase() === catClean) ||
+        (p.category?.slug && p.category.slug.toLowerCase() === catClean) ||
+        (p.category?.id && p.category.id.toLowerCase() === catClean)
+      );
+    }
+
+    return list;
   }
 
   // Real Postgres mode
   try {
-    const res = await pool.query("SELECT * FROM products ORDER BY created_at DESC");
-    if (res.rows.length === 0) {
+    let query = "SELECT * FROM products";
+    const conditions = [];
+    const params = [];
+
+    if (status && status !== "all") {
+      params.push(status);
+      conditions.push(`status = $${params.length}`);
+    } else if (!includeArchived && status !== "all") {
+      conditions.push(`status != 'archived'`);
+    }
+
+    if (category && category !== "all") {
+      params.push(category);
+      conditions.push(`(category_id = $${params.length} OR slug = $${params.length})`);
+    }
+
+    if (conditions.length > 0) {
+      query += " WHERE " + conditions.join(" AND ");
+    }
+
+    query += " ORDER BY created_at DESC";
+
+    const res = await pool.query(query, params);
+    if (res.rows.length === 0 && !status && !category) {
       // Auto-seed Postgres if empty
       const seed = getSeedData();
       for (const p of seed.products) {
         const catId = p.category || p.category_id || "suits";
         await pool.query(
-          `INSERT INTO products (id, name, slug, price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
            ON CONFLICT (id) DO NOTHING`,
           [
             String(p.id),
             p.name,
             p.slug || p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
             p.price || 0,
+            p.discount_price || null,
             p.stock || 15,
             catId,
             p.sub_category || p.shortType || "Atelier Silhouette",
@@ -122,11 +167,15 @@ async function getAllProducts() {
             p.images?.[0] || "/placeholder.png",
             JSON.stringify(p.images || []),
             JSON.stringify(p.sizes || []),
-            JSON.stringify(p.size_stock || {})
+            JSON.stringify(p.size_stock || {}),
+            p.status || "active",
+            p.sku || `SKU-${p.id}`,
+            p.gender || "female",
+            p.fabric || ""
           ]
         );
       }
-      const seeded = await pool.query("SELECT * FROM products ORDER BY created_at DESC");
+      const seeded = await pool.query("SELECT * FROM products WHERE status != 'archived' ORDER BY created_at DESC");
       return seeded.rows;
     }
     return res.rows;
@@ -138,15 +187,34 @@ async function getAllProducts() {
 }
 
 async function getProductById(id) {
-  const products = await getAllProducts();
-  return products.find(p => String(p.id) === String(id) || p.slug === String(id));
+  if (!id) return null;
+  const cleanId = String(id).trim();
+  const products = await getAllProducts({ includeArchived: true });
+  return products.find(p => String(p.id) === cleanId || p.slug === cleanId || p.slug === cleanId.toLowerCase());
 }
 
 async function createProduct(productData) {
+  const newId = productData.id || `suko-${Date.now().toString(36)}`;
+  const slug = productData.slug || (
+    productData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + `-${newId.slice(-4)}`
+  );
+
+  const price = Number(productData.price) || 0;
+  const discountPrice = productData.discount_price ? Number(productData.discount_price) : null;
+  const stock = typeof productData.stock !== "undefined" ? Number(productData.stock) : 10;
+  const status = productData.status || "active";
+  const sizes = Array.isArray(productData.sizes) && productData.sizes.length > 0 
+    ? productData.sizes 
+    : ["XS", "S", "M", "L", "XL"];
+  const sizeStock = productData.size_stock || {};
+  const images = Array.isArray(productData.images) && productData.images.length > 0 
+    ? productData.images 
+    : (productData.image_url ? [productData.image_url] : ["/placeholder.png"]);
+  const imageUrl = productData.image_url || images[0] || "/placeholder.png";
+
   if (pool.isMock) {
     const store = ensureDevStoreProducts();
-    const newId = `suko-${Date.now().toString(36)}`;
-    const cat = (store.categories || []).find(c => c.id === productData.category_id) || {
+    const cat = (store.categories || []).find(c => c.id === productData.category_id || c.slug === productData.category_id) || {
       id: productData.category_id || "suits",
       name: productData.category_id || "Collection",
       slug: productData.category_id || "suits"
@@ -155,17 +223,22 @@ async function createProduct(productData) {
     const newProduct = {
       id: newId,
       name: productData.name,
-      slug: productData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + `-${newId.slice(-4)}`,
-      price: Number(productData.price) || 0,
-      stock: Number(productData.stock) || 10,
+      slug,
+      price,
+      discount_price: discountPrice,
+      stock,
       category_id: productData.category_id || cat.id,
       category: cat,
       sub_category: productData.sub_category || "Atelier Silhouette",
       description: productData.description || "",
-      image_url: productData.image_url || productData.images?.[0] || "/placeholder.png",
-      images: productData.images || [],
-      sizes: productData.sizes || ["38", "40", "42", "44", "46"],
-      size_stock: productData.size_stock || {},
+      image_url: imageUrl,
+      images,
+      sizes,
+      size_stock: sizeStock,
+      status,
+      sku: productData.sku || `SUKO-${newId.toUpperCase()}`,
+      gender: productData.gender || "female",
+      fabric: productData.fabric || "",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -176,25 +249,28 @@ async function createProduct(productData) {
   }
 
   // Real Postgres mode
-  const newId = `suko-${Date.now().toString(36)}`;
-  const slug = productData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + `-${newId.slice(-4)}`;
   const res = await pool.query(
-    `INSERT INTO products (id, name, slug, price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
      RETURNING *`,
     [
       newId,
       productData.name,
       slug,
-      Number(productData.price) || 0,
-      Number(productData.stock) || 10,
+      price,
+      discountPrice,
+      stock,
       productData.category_id || "suits",
       productData.sub_category || "Atelier Silhouette",
       productData.description || "",
-      productData.image_url || "/placeholder.png",
-      JSON.stringify(productData.images || []),
-      JSON.stringify(productData.sizes || []),
-      JSON.stringify(productData.size_stock || {})
+      imageUrl,
+      JSON.stringify(images),
+      JSON.stringify(sizes),
+      JSON.stringify(sizeStock),
+      status,
+      productData.sku || `SUKO-${newId.toUpperCase()}`,
+      productData.gender || "female",
+      productData.fabric || ""
     ]
   );
   return res.rows[0];
@@ -203,11 +279,13 @@ async function createProduct(productData) {
 async function updateProduct(id, updateData) {
   if (pool.isMock) {
     const store = ensureDevStoreProducts();
-    const idx = store.products.findIndex(p => String(p.id) === String(id));
+    const idx = store.products.findIndex(p => String(p.id) === String(id) || p.slug === String(id));
     if (idx === -1) return null;
 
     const current = store.products[idx];
-    const cat = (store.categories || []).find(c => c.id === (updateData.category_id || current.category_id)) || current.category;
+    const cat = updateData.category_id 
+      ? (store.categories || []).find(c => c.id === updateData.category_id || c.slug === updateData.category_id) || current.category
+      : current.category;
 
     const updated = {
       ...current,
@@ -215,7 +293,9 @@ async function updateProduct(id, updateData) {
       id: current.id,
       category: cat,
       price: typeof updateData.price !== "undefined" ? Number(updateData.price) : current.price,
+      discount_price: typeof updateData.discount_price !== "undefined" ? Number(updateData.discount_price) : current.discount_price,
       stock: typeof updateData.stock !== "undefined" ? Number(updateData.stock) : current.stock,
+      status: updateData.status || current.status || "active",
       updated_at: new Date().toISOString()
     };
 
@@ -234,8 +314,10 @@ async function updateProduct(id, updateData) {
          sub_category = COALESCE($5, sub_category),
          description = COALESCE($6, description),
          size_stock = COALESCE($7, size_stock),
+         status = COALESCE($8, status),
+         discount_price = COALESCE($9, discount_price),
          updated_at = now()
-     WHERE id = $8
+     WHERE id = $10 OR slug = $10
      RETURNING *`,
     [
       updateData.name,
@@ -245,24 +327,65 @@ async function updateProduct(id, updateData) {
       updateData.sub_category,
       updateData.description,
       updateData.size_stock ? JSON.stringify(updateData.size_stock) : null,
+      updateData.status,
+      updateData.discount_price ? Number(updateData.discount_price) : null,
       String(id)
     ]
   );
   return res.rows[0];
 }
 
-async function deleteProduct(id) {
+async function deleteProduct(id, options = {}) {
+  const { permanent = false } = options;
+  const cleanId = String(id).trim();
+
   if (pool.isMock) {
     const store = ensureDevStoreProducts();
-    const prevCount = store.products.length;
-    store.products = store.products.filter(p => String(p.id) !== String(id));
+    const product = store.products.find(p => String(p.id) === cleanId || p.slug === cleanId);
+    if (!product) return null;
+
+    // Check if garment has historical orders
+    const hasOrders = (store.order_items || []).some(
+      it => String(it.product_id) === String(product.id) || it.product_name === product.name
+    );
+
+    // If product has been purchased or permanent deletion is not explicitly requested: SAFE ARCHIVE
+    if (hasOrders || !permanent) {
+      product.status = "archived";
+      product.updated_at = new Date().toISOString();
+      fs.writeFileSync(DEV_STORE_FILE, JSON.stringify(store, null, 2), "utf-8");
+      return { 
+        success: true, 
+        archived: true, 
+        message: hasOrders 
+          ? "Garment safely archived (hidden from showroom, order history preserved)" 
+          : "Garment moved to archive" 
+      };
+    }
+
+    // Permanent hard delete only when unreferenced and explicitly requested
+    store.products = store.products.filter(p => String(p.id) !== String(product.id));
     fs.writeFileSync(DEV_STORE_FILE, JSON.stringify(store, null, 2), "utf-8");
-    return store.products.length < prevCount;
+    return { success: true, archived: false, message: "Garment permanently removed from database" };
   }
 
   // Real Postgres mode
-  const res = await pool.query("DELETE FROM products WHERE id = $1 RETURNING id", [String(id)]);
-  return res.rowCount > 0;
+  const checkOrders = await pool.query("SELECT 1 FROM order_items WHERE product_id = $1 LIMIT 1", [cleanId]);
+  const hasOrders = checkOrders.rows.length > 0;
+
+  if (hasOrders || !permanent) {
+    await pool.query("UPDATE products SET status = 'archived', updated_at = now() WHERE id = $1 OR slug = $1", [cleanId]);
+    return { 
+      success: true, 
+      archived: true, 
+      message: hasOrders 
+        ? "Garment safely archived (hidden from showroom, order history preserved)" 
+        : "Garment moved to archive" 
+    };
+  }
+
+  const res = await pool.query("DELETE FROM products WHERE id = $1 OR slug = $1 RETURNING id", [cleanId]);
+  return { success: res.rowCount > 0, archived: false, message: "Garment permanently removed from database" };
 }
 
 async function getAllCategories() {

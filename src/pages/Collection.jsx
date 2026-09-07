@@ -7,7 +7,6 @@ import SEO from "../components/SEO";
 import { useProducts } from "../context/ProductContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
-import { PRODUCTS as FALLBACK_PRODUCTS } from "../data/products";
 import { getCardImage } from "../utils/mediaUtils";
 
 // Category Tabs Definition for Collection Page
@@ -83,12 +82,9 @@ export const Collection = () => {
   const subCategoryParam = searchParams.get("subcat");
   const sortParam = searchParams.get("sort");
 
-  // Global Products Context (falling back to static catalog if DB is loading)
+  // Global Products Context (Database is single source of truth)
   const { products: contextProducts, loading: productsLoading } = useProducts();
-  const productsList = useMemo(() => {
-    if (contextProducts && contextProducts.length > 0) return contextProducts;
-    return FALLBACK_PRODUCTS;
-  }, [contextProducts]);
+  const productsList = useMemo(() => contextProducts || [], [contextProducts]);
 
   // Selected Filter States
   const [selectedCategory, setSelectedCategory] = useState("all");

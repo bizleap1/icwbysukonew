@@ -25,7 +25,8 @@ import {
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { useWishlist } from "../context/WishlistContext";
-import { formatINR, WHATSAPP_LINK, getProductBySlug, PRODUCTS } from "../data/products";
+import { useProducts } from "../context/ProductContext";
+import { formatINR, WHATSAPP_LINK } from "../data/products";
 import { apiClient } from "../config/api";
 import { getThumbImage } from "../utils/mediaUtils";
 import SEO from "../components/SEO";
@@ -38,6 +39,7 @@ const Checkout = () => {
   const { items, subtotal, updateQty, removeItem, clearCart } = useCart();
   const { addToWishlist, isInWishlist } = useWishlist();
   const { user, token, loading } = useAuth();
+  const { products, getProductBySlug } = useProducts();
   const navigate = useNavigate();
 
   const handleRemoveFromOrder = (item) => {
@@ -316,7 +318,7 @@ const Checkout = () => {
         coupon_code: appliedCoupon || undefined,
         cart_item_ids: cartItemIds.length > 0 ? cartItemIds : undefined,
         items: items.map((i) => {
-          const catalogProd = getProductBySlug(i.slug) || (PRODUCTS || []).find((p) => p.id === i.id || p.slug === i.slug);
+          const catalogProd = getProductBySlug(i.slug) || (products || []).find((p) => p.id === i.id || p.slug === i.slug);
           const price = Number(i.price) || Number(catalogProd?.price) || 0;
           const name = i.name || catalogProd?.name || "Atelier Garment";
           const image = i.image || (catalogProd?.images && catalogProd.images[0]) || "";

@@ -306,6 +306,21 @@ async function executeQuery(text, params = []) {
     return { rows: [], rowCount: 0 };
   }
 
+  // 14. Products: SELECT * FROM products ...
+  if (lower.includes("from products")) {
+    let list = Array.isArray(s.products) ? [...s.products] : [];
+    if (!lower.includes("status = 'archived'") && !lower.includes("include_archived")) {
+      list = list.filter(p => (p.status || "active") !== "archived");
+    }
+    return { rows: list, rowCount: list.length };
+  }
+
+  // 15. Categories: SELECT * FROM categories
+  if (lower.includes("from categories")) {
+    let list = Array.isArray(s.categories) ? [...s.categories] : [];
+    return { rows: list, rowCount: list.length };
+  }
+
   console.warn("[DevDB] Unhandled SQL in mock mode:", sql, params);
   return { rows: [], rowCount: 0 };
 }

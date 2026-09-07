@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Layers, ShieldCheck, CheckCircle, RefreshCw, Copy, Check,
   Menu, Bell, ArrowUpRight, TrendingUp, LogOut, MoreHorizontal
 } from "lucide-react";
-import { formatINR, PRODUCTS as DEFAULT_PRODUCTS, CATEGORIES as DEFAULT_CATEGORIES } from "../data/products";
+import { formatINR, CATEGORIES as DEFAULT_CATEGORIES } from "../data/products";
 import { useProducts } from "../context/ProductContext";
 import ImageCropperModal from "../components/ImageCropperModal";
 import { apiClient, API_BASE_URL } from "../config/api";
@@ -256,7 +256,7 @@ const Admin = () => {
 
   // Data States
   const [stats, setStats] = useState({ totalUsers: 0, totalProducts: 0, totalOrders: 0, totalRevenue: 0 });
-  const [products, setProducts] = useState(DEFAULT_PRODUCTS);
+  const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
@@ -796,9 +796,7 @@ const Admin = () => {
       if (prodRes.ok) {
         const pData = await prodRes.json();
         const pList = Array.isArray(pData) ? pData : (pData?.products || []);
-        if (pList.length > 0) {
-          setProducts(pList);
-        }
+        setProducts(pList);
       }
       if (ordRes.ok) setOrders(await ordRes.json());
       if (catRes.ok) {
@@ -902,7 +900,7 @@ const Admin = () => {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || data.message || "Failed to delete product");
-      toast.success("Product deleted successfully");
+      toast.success(data.message || "Product deleted successfully");
       fetchDashboardData();
       refreshGlobalProducts();
     } catch (err) {
