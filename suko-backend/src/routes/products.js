@@ -288,11 +288,29 @@ router.get("/:id/delete-info", requireAdmin, async (req, res) => {
   }
 });
 
-// DELETE /api/products/:id -- safe delete/archive garment (Admin)
+// POST /api/products/:id/restore -- restore archived garment back to active showroom (Admin)
+router.post("/:id/restore", requireAdmin, async (req, res) => {
+  try {
+    const updated = await productService.updateProduct(req.params.id, { status: "active" });
+    if (!updated) return res.status(404).json({ error: "Product not found" });
+
+    res.json({
+      success: true,
+      message: "Garment restored to active showroom",
+      product: updated
+    });
+  } catch (err) {
+    console.error("Restore product error:", err);
+    res.status(500).json({ error: "Failed to restore product" });
+  }
+});
+
+// DELETE /api/products/:id -- safe delete/archive or permanently purge garment (Admin)
 router.delete("/:id", requireAdmin, async (req, res) => {
   try {
     const permanent = req.query.permanent === "true";
-    const result = await productService.deleteProduct(req.params.id, { permanent });
+    const force = req.query.force === "true";
+    const result = await productService.deleteProduct(req.params.id, { permanent, force });
     if (!result) return res.status(404).json({ error: "Product not found" });
 
     res.json({

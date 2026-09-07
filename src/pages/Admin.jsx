@@ -6,7 +6,7 @@ import {
   Package, Users, ShoppingCart, DollarSign, Trash2, Edit2,
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown, Plus,
   Search, Download, AlertTriangle, Clock, X, Crop, Image as ImageIcon, Star, Eye, Tag, Mail, Send, MessageSquare, ShoppingBag,
-  LayoutDashboard, Layers, ShieldCheck, CheckCircle, RefreshCw, Copy, Check,
+  LayoutDashboard, Layers, ShieldCheck, CheckCircle, RefreshCw, Copy, Check, RotateCcw,
   Menu, Bell, ArrowUpRight, TrendingUp, LogOut, MoreHorizontal
 } from "lucide-react";
 import { formatINR, CATEGORIES as DEFAULT_CATEGORIES } from "../data/products";
@@ -920,22 +920,69 @@ const Admin = () => {
         const info = await res.json();
         setGarmentToDelete(prev => prev ? { ...prev, info, loading: false } : null);
       } else {
-        setGarmentToDelete(prev => prev ? { ...prev, info: { hasOrders: false, orderCount: 0, canPermanentlyDelete: true }, loading: false } : null);
+        setGarmentToDelete(prev => prev ? { 
+          ...prev, 
+          info: { 
+            hasOrders: false, 
+            orderCount: 0, 
+            canPermanentlyDelete: true,
+            isArchived: (targetProd.status || "").toLowerCase() === "archived"
+          }, 
+          loading: false 
+        } : null);
       }
     } catch (e) {
-      setGarmentToDelete(prev => prev ? { ...prev, info: { hasOrders: false, orderCount: 0, canPermanentlyDelete: true }, loading: false } : null);
+      setGarmentToDelete(prev => prev ? { 
+        ...prev, 
+        info: { 
+          hasOrders: false, 
+          orderCount: 0, 
+          canPermanentlyDelete: true,
+          isArchived: (targetProd.status || "").toLowerCase() === "archived"
+        }, 
+        loading: false 
+      } : null);
     }
   };
 
-  const executeDeleteGarment = async (permanent = false) => {
+  const handleRestoreProduct = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/products/${id}/restore`, {
+        method: "POST",
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || data.message || "Failed to restore garment");
+
+      toast.success(data.message || "Garment restored to active showroom");
+      if (garmentToDelete) {
+        closeModal("deleteGarmentModal");
+        setGarmentToDelete(null);
+      }
+      if (editingProduct && String(editingProduct.id) === String(id)) {
+        setEditingProduct(prev => prev ? { ...prev, status: "active" } : null);
+      }
+      fetchDashboardData();
+      refreshGlobalProducts();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const executeDeleteGarment = async (permanent = false, force = false) => {
     if (!garmentToDelete?.product) return;
     setGarmentToDelete(prev => ({ ...prev, submitting: true }));
 
     try {
       const pId = garmentToDelete.product.id;
-      const url = permanent 
-        ? `${API_BASE_URL}/api/products/${pId}?permanent=true`
-        : `${API_BASE_URL}/api/products/${pId}`;
+      let url = `${API_BASE_URL}/api/products/${pId}`;
+      const q = [];
+      if (permanent) q.push("permanent=true");
+      if (force) q.push("force=true");
+      if (q.length > 0) url += `?${q.join("&")}`;
 
       const res = await fetch(url, {
         method: "DELETE",
@@ -2803,9 +2850,20 @@ const Admin = () => {
                                 )}
                               </td>
 
-                              {/* Action: Inspect */}
+                              {/* Action: Inspect & Management */}
                               <td className="p-3.5 text-right whitespace-nowrap">
                                 <div className="flex items-center justify-end gap-1.5">
+                                  {p.status === "archived" && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRestoreProduct(p.id)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-[#C2922E]/40 hover:border-[#C2922E] bg-white hover:bg-[#FAF8F5] text-[#111113] hover:text-[#C2922E] rounded-[2px] text-[10px] uppercase tracking-[0.14em] font-mono font-medium transition-all cursor-pointer shadow-xs"
+                                      title="Restore Garment to Active Showroom"
+                                    >
+                                      <RotateCcw size={11} className="text-[#C2922E]" />
+                                      <span className="hidden sm:inline">Restore</span>
+                                    </button>
+                                  )}
                                   <button
                                     type="button"
                                     onClick={() => handleOpenEdit(p, false)}
@@ -2818,8 +2876,12 @@ const Admin = () => {
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteProduct(p.id)}
-                                    className="p-1.5 text-[#746F68] hover:text-rose-800 hover:bg-rose-50 border border-[#E5DDD1] rounded-[2px] transition-colors cursor-pointer"
-                                    title="Delete Garment"
+                                    className={`p-1.5 rounded-[2px] transition-colors cursor-pointer border ${
+                                      p.status === "archived"
+                                        ? "text-rose-700 hover:text-white hover:bg-rose-800 border-rose-200 hover:border-rose-800"
+                                        : "text-[#746F68] hover:text-rose-800 hover:bg-rose-50 border-[#E5DDD1]"
+                                    }`}
+                                    title={p.status === "archived" ? "Permanently Purge Garment from Archive" : "Delete Garment"}
                                   >
                                     <Trash2 size={13} />
                                   </button>
@@ -4397,14 +4459,29 @@ const Admin = () => {
                       <Edit2 size={13} className="text-[#C2922E] group-hover:text-white transition-colors" />
                       <span>Edit Garment Specs</span>
                     </button>
+                    {editingProduct.status === "archived" && (
+                      <button
+                        type="button"
+                        onClick={() => handleRestoreProduct(editingProduct.id)}
+                        className="py-2.5 px-3 border border-[#C2922E]/40 hover:border-[#C2922E] bg-white hover:bg-[#FAF8F5] text-[#111113] hover:text-[#C2922E] rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        title="Restore to Active Showroom"
+                      >
+                        <RotateCcw size={12} className="text-[#C2922E]" />
+                        <span>Restore</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
                         handleDeleteProduct(editingProduct.id);
                         closeEditingProduct();
                       }}
-                      className="p-2.5 text-[#746F68] hover:text-rose-800 hover:bg-rose-50 border border-[#E5DDD1] rounded-[2px] transition-colors cursor-pointer"
-                      title="Delete Garment"
+                      className={`p-2.5 rounded-[2px] transition-colors cursor-pointer border ${
+                        editingProduct.status === "archived"
+                          ? "text-rose-700 hover:text-white hover:bg-rose-800 border-rose-200 hover:border-rose-800"
+                          : "text-[#746F68] hover:text-rose-800 hover:bg-rose-50 border-[#E5DDD1]"
+                      }`}
+                      title={editingProduct.status === "archived" ? "Permanently Purge Garment from Archive" : "Delete Garment"}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -4829,7 +4906,9 @@ const Admin = () => {
                 <div className="flex items-center gap-2">
                   <ShieldCheck size={16} className="text-[#C2922E]" />
                   <span className="text-[10.5px] uppercase tracking-[0.16em] font-mono font-medium text-[#111113]">
-                    Atelier Integrity · Garment Lifecycle
+                    {garmentToDelete.product.status === "archived" || garmentToDelete.info?.isArchived
+                      ? "Atelier Archive · Permanent Removal & Restoration"
+                      : "Atelier Integrity · Garment Lifecycle"}
                   </span>
                 </div>
                 {!garmentToDelete.submitting && (
@@ -4887,6 +4966,35 @@ const Admin = () => {
                       Verifying client orders &amp; tax invoice dependencies...
                     </span>
                   </div>
+                ) : (garmentToDelete.product.status === "archived" || garmentToDelete.info?.isArchived) ? (
+                  /* ALREADY ARCHIVED ITEM: PERMANENT PURGE OR RESTORE */
+                  <div className="space-y-3">
+                    <div className="p-3.5 bg-stone-100/90 border border-stone-300 rounded-[2px] space-y-2">
+                      <div className="flex items-center gap-2 text-[#111113] font-medium text-xs">
+                        <AlertTriangle size={15} className="text-amber-700 shrink-0" />
+                        <span className="font-mono uppercase tracking-wider text-[11px]">
+                          {garmentToDelete.info?.hasOrders 
+                            ? `Archived Silhouette · ${garmentToDelete.info.orderCount} Order(s) Recorded`
+                            : "Archived Silhouette · 0 Orders Recorded"}
+                        </span>
+                      </div>
+                      <p className="text-[11.5px] text-stone-700 leading-relaxed">
+                        {garmentToDelete.info?.hasOrders ? (
+                          <>
+                            This archival silhouette was purchased in <strong>{garmentToDelete.info.orderCount} client order(s)</strong>.
+                            Customer financial receipts, tax invoices, and account order histories are <strong>permanently and safely preserved</strong> in client records.
+                          </>
+                        ) : (
+                          <>
+                            This garment is currently stored in the atelier archive with zero customer purchases.
+                          </>
+                        )}
+                      </p>
+                      <p className="text-[11px] text-[#746F68] leading-relaxed pt-0.5">
+                        Choose <strong>Permanently Delete</strong> to wipe this piece entirely from the database and clean up unreferenced photography, or <strong>Restore</strong> to reactivate it in the public showroom.
+                      </p>
+                    </div>
+                  </div>
                 ) : garmentToDelete.info?.hasOrders ? (
                   /* Has historical orders -> Protected Safe Archival */
                   <div className="space-y-3">
@@ -4897,7 +5005,7 @@ const Admin = () => {
                       </div>
                       <p className="text-[11.5px] text-stone-700 leading-relaxed">
                         This silhouette was purchased in <strong>{garmentToDelete.info.orderCount} client order(s)</strong>.
-                        To safeguard customer tax invoices, financial records, and order histories, this piece will be <strong>safely retired to the Private Archive</strong>.
+                        To safeguard customer tax invoices, financial records, and order histories, moving this piece to the <strong>Private Archive</strong> is recommended.
                       </p>
                       <ul className="text-[10.5px] text-stone-600 space-y-1 pt-1 list-disc list-inside font-mono">
                         <li>Immediately removed from public showroom &amp; storefront search.</li>
@@ -4947,16 +5055,52 @@ const Admin = () => {
                   Cancel
                 </button>
 
-                {garmentToDelete.info?.hasOrders ? (
-                  <button
-                    type="button"
-                    onClick={() => executeDeleteGarment(false)}
-                    disabled={garmentToDelete.submitting || garmentToDelete.loading}
-                    className="px-4 py-2 bg-[#111113] hover:bg-[#C2922E] text-white rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                  >
-                    {garmentToDelete.submitting ? "Archiving..." : "Move to Private Archive"}
-                  </button>
+                {(garmentToDelete.product.status === "archived" || garmentToDelete.info?.isArchived) ? (
+                  /* ACTIONS FOR ARCHIVED PIECES */
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreProduct(garmentToDelete.product.id)}
+                      disabled={garmentToDelete.submitting || garmentToDelete.loading}
+                      className="px-4 py-2 bg-[#111113] hover:bg-[#C2922E] text-white rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <RotateCcw size={12} className="text-[#C2922E]" />
+                      <span>Restore to Showroom</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => executeDeleteGarment(true, true)}
+                      disabled={garmentToDelete.submitting || garmentToDelete.loading}
+                      className="px-4 py-2 bg-rose-800 hover:bg-rose-900 text-white rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <Trash2 size={12} />
+                      <span>{garmentToDelete.submitting ? "Purging..." : "Permanently Delete from Archive"}</span>
+                    </button>
+                  </>
+                ) : garmentToDelete.info?.hasOrders ? (
+                  /* ACTIONS FOR ACTIVE/DRAFT WITH ORDERS */
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => executeDeleteGarment(false)}
+                      disabled={garmentToDelete.submitting || garmentToDelete.loading}
+                      className="px-4 py-2 bg-[#111113] hover:bg-[#C2922E] text-white rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                    >
+                      {garmentToDelete.submitting ? "Archiving..." : "Move to Private Archive"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => executeDeleteGarment(true, true)}
+                      disabled={garmentToDelete.submitting || garmentToDelete.loading}
+                      className="px-3 py-2 border border-rose-300 hover:border-rose-800 bg-white hover:bg-rose-50 text-rose-800 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                      title="Permanently remove from catalog while safeguarding invoice snapshots"
+                    >
+                      <Trash2 size={12} />
+                      <span>Permanently Purge</span>
+                    </button>
+                  </>
                 ) : (
+                  /* ACTIONS FOR ACTIVE/DRAFT WITH NO ORDERS */
                   <>
                     <button
                       type="button"
@@ -4968,7 +5112,7 @@ const Admin = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => executeDeleteGarment(true)}
+                      onClick={() => executeDeleteGarment(true, false)}
                       disabled={garmentToDelete.submitting || garmentToDelete.loading}
                       className="px-4 py-2 bg-rose-800 hover:bg-rose-900 text-white rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                     >

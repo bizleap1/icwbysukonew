@@ -335,23 +335,30 @@ async function updateProduct(id, updateData) {
   return res.rows[0];
 }
 
-function cleanupOrphanedProductImages(imagePaths, excludedProductId, allProducts) {
+function cleanupOrphanedProductImages(imagePaths, excludedProductId, allProducts, orderItems = []) {
   try {
     const uploadDir = path.join(__dirname, "..", "..", "uploads", "products");
     if (!fs.existsSync(uploadDir)) return;
 
-    const otherImages = new Set();
+    const referencedImages = new Set();
     (allProducts || []).forEach(p => {
       if (String(p.id) !== String(excludedProductId)) {
-        if (p.image_url) otherImages.add(p.image_url);
+        if (p.image_url) referencedImages.add(p.image_url);
         if (Array.isArray(p.images)) {
-          p.images.forEach(img => otherImages.add(img));
+          p.images.forEach(img => referencedImages.add(img));
         }
       }
     });
 
+    // Safeguard customer invoice receipts & order snapshots
+    (orderItems || []).forEach(item => {
+      if (item.product_image_url) {
+        referencedImages.add(item.product_image_url);
+      }
+    });
+
     (imagePaths || []).forEach(img => {
-      if (typeof img === "string" && img.includes("/uploads/products/") && !otherImages.has(img)) {
+      if (typeof img === "string" && img.includes("/uploads/products/") && !referencedImages.has(img)) {
         const filename = path.basename(img);
         const fullPath = path.join(uploadDir, filename);
         if (fs.existsSync(fullPath)) {
@@ -381,13 +388,15 @@ async function checkProductDeletionEligibility(id) {
       it => String(it.product_id) === String(product.id) || it.product_name === product.name
     );
     const orderCount = matchingOrderItems.length;
+    const isArchived = (product.status || "").toLowerCase() === "archived";
 
     return {
       exists: true,
       product,
       hasOrders: orderCount > 0,
       orderCount,
-      canPermanentlyDelete: orderCount === 0,
+      canPermanentlyDelete: true,
+      isArchived,
       currentStatus: product.status || "active"
     };
   }
@@ -402,19 +411,21 @@ async function checkProductDeletionEligibility(id) {
     [String(product.id), product.name]
   );
   const orderCount = parseInt(ordRes.rows[0].count, 10) || 0;
+  const isArchived = (product.status || "").toLowerCase() === "archived";
 
   return {
     exists: true,
     product,
     hasOrders: orderCount > 0,
     orderCount,
-    canPermanentlyDelete: orderCount === 0,
+    canPermanentlyDelete: true,
+    isArchived,
     currentStatus: product.status || "active"
   };
 }
 
 async function deleteProduct(id, options = {}) {
-  const { permanent = false } = options;
+  const { permanent = false, force = false } = options;
   const cleanId = String(id).trim();
 
   if (pool.isMock) {
@@ -426,9 +437,10 @@ async function deleteProduct(id, options = {}) {
     const hasOrders = (store.order_items || []).some(
       it => String(it.product_id) === String(product.id) || it.product_name === product.name
     );
+    const isArchived = (product.status || "").toLowerCase() === "archived";
 
-    // If product has been purchased OR permanent deletion is not explicitly requested: SAFE ARCHIVE
-    if (hasOrders || !permanent) {
+    // 1. If permanent deletion is NOT requested: SAFE ARCHIVE
+    if (!permanent) {
       product.status = "archived";
       product.updated_at = new Date().toISOString();
       fs.writeFileSync(DEV_STORE_FILE, JSON.stringify(store, null, 2), "utf-8");
@@ -442,20 +454,38 @@ async function deleteProduct(id, options = {}) {
       };
     }
 
-    // Permanent hard delete only when unreferenced in any order and explicitly requested
+    // 2. Permanent deletion requested:
+    // If active/draft product has historical orders and neither force nor archived was specified, move to archive first
+    if (hasOrders && !force && !isArchived) {
+      product.status = "archived";
+      product.updated_at = new Date().toISOString();
+      fs.writeFileSync(DEV_STORE_FILE, JSON.stringify(store, null, 2), "utf-8");
+      return { 
+        success: true, 
+        archived: true, 
+        hasOrders,
+        message: "Garment safely moved to archive because historical client orders exist. To permanently purge, confirm archive purge."
+      };
+    }
+
+    // 3. Permanent hard delete from catalog:
+    // Safe because order_items independently stores snapshot data (name, price_at_purchase, size, quantity, image)
     const allImages = [...(product.images || [])];
     if (product.image_url) allImages.push(product.image_url);
 
     store.products = store.products.filter(p => String(p.id) !== String(product.id));
     fs.writeFileSync(DEV_STORE_FILE, JSON.stringify(store, null, 2), "utf-8");
 
-    // Clean up orphaned images from storage
-    cleanupOrphanedProductImages(allImages, product.id, store.products);
+    // Clean up orphaned images from storage (preserving images used in remaining products or orders)
+    cleanupOrphanedProductImages(allImages, product.id, store.products, store.order_items);
 
     return { 
       success: true, 
       archived: false, 
-      message: "Garment and associated photo assets permanently removed from database" 
+      hasOrders,
+      message: hasOrders
+        ? "Garment permanently purged from archive (client tax invoices and order histories safely preserved)"
+        : "Garment and associated photo assets permanently removed from database"
     };
   }
 
@@ -464,10 +494,14 @@ async function deleteProduct(id, options = {}) {
   if (pRes.rows.length === 0) return null;
   const product = pRes.rows[0];
 
-  const checkOrders = await pool.query("SELECT 1 FROM order_items WHERE product_id = $1 OR product_name = $2 LIMIT 1", [String(product.id), product.name]);
+  const checkOrders = await pool.query(
+    "SELECT 1 FROM order_items WHERE product_id = $1 OR product_name = $2 LIMIT 1",
+    [String(product.id), product.name]
+  );
   const hasOrders = checkOrders.rows.length > 0;
+  const isArchived = (product.status || "").toLowerCase() === "archived";
 
-  if (hasOrders || !permanent) {
+  if (!permanent) {
     await pool.query("UPDATE products SET status = 'archived', updated_at = now() WHERE id = $1", [product.id]);
     return { 
       success: true, 
@@ -479,19 +513,33 @@ async function deleteProduct(id, options = {}) {
     };
   }
 
+  if (hasOrders && !force && !isArchived) {
+    await pool.query("UPDATE products SET status = 'archived', updated_at = now() WHERE id = $1", [product.id]);
+    return { 
+      success: true, 
+      archived: true, 
+      hasOrders,
+      message: "Garment safely moved to archive because historical client orders exist. To permanently purge, confirm archive purge."
+    };
+  }
+
   const allImages = Array.isArray(product.images) ? [...product.images] : [];
   if (product.image_url) allImages.push(product.image_url);
 
   const res = await pool.query("DELETE FROM products WHERE id = $1 RETURNING id", [product.id]);
 
-  // Clean up disk images
+  // Clean up disk images, preserving any referenced in order_items
   const allProdsRes = await pool.query("SELECT id, image_url, images FROM products");
-  cleanupOrphanedProductImages(allImages, product.id, allProdsRes.rows);
+  const ordItemsRes = await pool.query("SELECT product_image_url FROM order_items WHERE product_image_url IS NOT NULL");
+  cleanupOrphanedProductImages(allImages, product.id, allProdsRes.rows, ordItemsRes.rows);
 
   return { 
     success: res.rowCount > 0, 
     archived: false, 
-    message: "Garment and associated photo assets permanently removed from database" 
+    hasOrders,
+    message: hasOrders
+      ? "Garment permanently purged from archive (client tax invoices and order histories safely preserved)"
+      : "Garment and associated photo assets permanently removed from database"
   };
 }
 
