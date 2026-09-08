@@ -4221,65 +4221,73 @@ const Admin = () => {
                       </div>
                     </div>
 
-                    {/* Customer Overview Strip (Single Editorial Statistics Row) */}
-                    <div className="border border-[#E5DDD1] bg-[#FCFAF7] rounded-[2px] grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 divide-x-0 lg:divide-x divide-[#E5DDD1]">
-                      <div className="p-5 sm:p-6">
-                        <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#746F68] font-mono block mb-2">
-                          TOTAL PATRONS
+                    {/* Customer Overview Cards (4 Distinct Luxury Cards) */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+                      <div className="border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] p-5 sm:p-6 shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-2">
+                        <span className="font-serif text-3xl sm:text-4xl lg:text-[40px] font-normal text-[#111113] tracking-tight leading-none block">
+                          {String(uniqueClientsList.length).padStart(2, '0')}
                         </span>
-                        <span className="font-serif text-3xl sm:text-4xl font-light text-[#171717] tracking-tight block">
-                          {uniqueClientsList.length}
-                        </span>
-                        <p className="text-[11px] text-[#746F68] font-light mt-1 font-sans">
-                          Atelier client accounts on record
-                        </p>
+                        <div>
+                          <span className="text-[10px] uppercase tracking-[0.16em] text-[#746F68] font-mono block">
+                            Total Patrons
+                          </span>
+                          <p className="text-[11px] text-[#8C8275] font-sans font-light mt-0.5">
+                            Atelier client accounts
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="p-5 sm:p-6">
-                        <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#746F68] font-mono block mb-2">
-                          ORDERS COMPLETED
+                      <div className="border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] p-5 sm:p-6 shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-2">
+                        <span className="font-serif text-3xl sm:text-4xl lg:text-[40px] font-normal text-[#111113] tracking-tight leading-none block">
+                          {String(totalOrdersCompleted).padStart(2, '0')}
                         </span>
-                        <span className="font-serif text-3xl sm:text-4xl font-light text-[#171717] tracking-tight block">
-                          {totalOrdersCompleted}
-                        </span>
-                        <p className="text-[11px] text-[#746F68] font-light mt-1 font-sans">
-                          Fulfilled atelier commissions
-                        </p>
+                        <div>
+                          <span className="text-[10px] uppercase tracking-[0.16em] text-[#746F68] font-mono block">
+                            Orders Completed
+                          </span>
+                          <p className="text-[11px] text-[#8C8275] font-sans font-light mt-0.5">
+                            Fulfilled commissions
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="p-5 sm:p-6">
-                        <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#746F68] font-mono block mb-2">
-                          REVENUE GENERATED
-                        </span>
-                        <span className="font-serif text-3xl sm:text-4xl font-light text-[#171717] tracking-tight block">
+                      <div className="border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] p-5 sm:p-6 shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-2">
+                        <span className="font-serif text-3xl sm:text-4xl lg:text-[40px] font-normal text-[#111113] tracking-tight leading-none block truncate">
                           {formatINR(totalRevenueGenerated)}
                         </span>
-                        <p className="text-[11px] text-[#746F68] font-light mt-1 font-sans">
-                          Reconciled lifetime spend
-                        </p>
+                        <div>
+                          <span className="text-[10px] uppercase tracking-[0.16em] text-[#746F68] font-mono block">
+                            Revenue Generated
+                          </span>
+                          <p className="text-[11px] text-[#8C8275] font-sans font-light mt-0.5">
+                            Reconciled lifetime spend
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="p-5 sm:p-6">
-                        <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#746F68] font-mono block mb-2">
-                          ACTIVE CLIENTS
+                      <div className="border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] p-5 sm:p-6 shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-2">
+                        <span className="font-serif text-3xl sm:text-4xl lg:text-[40px] font-normal text-[#111113] tracking-tight leading-none block">
+                          {String(activeClientsCount).padStart(2, '0')}
                         </span>
-                        <span className="font-serif text-3xl sm:text-4xl font-light text-[#171717] tracking-tight block">
-                          {activeClientsCount}
-                        </span>
-                        <p className="text-[11px] text-[#746F68] font-light mt-1 font-sans">
-                          Patrons with acquired garments
-                        </p>
+                        <div>
+                          <span className="text-[10px] uppercase tracking-[0.16em] text-[#746F68] font-mono block">
+                            Active Clients
+                          </span>
+                          <p className="text-[11px] text-[#8C8275] font-sans font-light mt-0.5">
+                            Acquired garment patrons
+                          </p>
+                        </div>
                       </div>
                     </div>
 
                     {/* Search & Filter Row */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-                      {/* Filters as small text navigation, not pills */}
+                      {/* Filters with clear readable labels */}
                       <nav className="flex items-center gap-6 sm:gap-8 border-b border-[#E5DDD1] overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                         {[
-                          { id: "all", label: "All Clients", count: uniqueClientsList.length },
+                          { id: "all", label: "All Patrons", count: uniqueClientsList.length },
                           { id: "recent", label: "Recent Buyers", count: uniqueClientsList.filter(c => c.lastOrderDate).length },
-                          { id: "high_value", label: "High Value", count: uniqueClientsList.filter(c => c.totalSpent >= 25000).length },
+                          { id: "high_value", label: "High Value Clients", count: uniqueClientsList.filter(c => c.totalSpent >= 25000 || (c.totalSpent > 0 && c.orderCount >= 2)).length },
                           { id: "new", label: "New Patrons", count: uniqueClientsList.filter(c => c.orderCount <= 1).length },
                         ].map((tab) => {
                           const isActive = patronFilter === tab.id;
@@ -4295,7 +4303,9 @@ const Admin = () => {
                               }`}
                             >
                               <span>{tab.label}</span>
-                              <span className="ml-1 text-[10px] text-[#746F68]">({tab.count})</span>
+                              <span className={`ml-1.5 text-[10px] font-mono ${isActive ? "text-[#C2922E]" : "text-[#8C8275]"}`}>
+                                ({tab.count})
+                              </span>
                               {isActive && (
                                 <span className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#171717]" />
                               )}
@@ -4309,7 +4319,7 @@ const Admin = () => {
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#746F68] pointer-events-none" />
                         <input
                           type="text"
-                          placeholder="Search patron name..."
+                          placeholder="Search patron name, city..."
                           value={clientSearch}
                           onChange={(e) => setClientSearch(e.target.value)}
                           style={{ paddingLeft: "36px" }}
@@ -4328,135 +4338,190 @@ const Admin = () => {
                       </div>
                     </div>
 
-                    {/* Main Customer Registry — Desktop Table View */}
-                    <div className="hidden md:block border border-[#E5DDD1] bg-[#FCFAF7] rounded-[2px] overflow-hidden shadow-xs">
+                    {/* Main Customer Registry — Desktop Table View (Compact CRM Hierarchy) */}
+                    <div className="hidden md:block border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
                       <div className="overflow-x-auto">
                         <table className="w-full text-left font-body text-xs">
                           <thead className="bg-[#FAF8F5] text-[9.5px] uppercase tracking-[0.16em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
                             <tr>
-                              <th className="py-4 px-6 font-medium">CLIENT</th>
-                              <th className="py-4 px-6 font-medium">CONTACT</th>
-                              <th className="py-4 px-6 font-medium">ORDERS</th>
-                              <th className="py-4 px-6 font-medium">TOTAL SPEND</th>
-                              <th className="py-4 px-6 font-medium">LAST PURCHASE</th>
-                              <th className="py-4 px-6 font-medium text-right">ACTION</th>
+                              <th className="py-4 px-6 font-medium w-[34%]">CLIENT</th>
+                              <th className="py-4 px-5 font-medium w-[16%]">STATUS</th>
+                              <th className="py-4 px-5 font-medium w-[18%]">ORDERS &amp; SPEND</th>
+                              <th className="py-4 px-5 font-medium w-[18%]">LAST ACTIVITY</th>
+                              <th className="py-4 px-6 font-medium text-right w-[14%]">ACTION</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[#E5DDD1]/70 text-[#171717]">
-                            {filteredPatrons.map((client, idx) => (
-                              <tr
-                                key={client.email || idx}
-                                className="hover:bg-[#F5F0E8]/40 transition-colors group"
-                              >
-                                <td className="py-5 px-6">
-                                  <div>
-                                    <p className="font-serif text-[15px] font-medium text-[#171717] group-hover:text-[#C2922E] transition-colors leading-snug">
-                                      {client.name}
-                                    </p>
-                                    <p className="text-[10.5px] text-[#746F68] font-mono pt-0.5">
-                                      {client.city !== "—" ? client.city : "Atelier Patron"}
-                                    </p>
-                                  </div>
-                                </td>
+                            {filteredPatrons.map((client, idx) => {
+                              // Calculate client status tier
+                              let statusLabel = "New Patron";
+                              let statusStyle = "text-[#746F68] bg-[#FAF8F5] border-[#E5DDD1]";
+                              if (client.totalSpent >= 25000 || client.orderCount >= 3) {
+                                statusLabel = "VIP Patron";
+                                statusStyle = "text-[#7A5B15] bg-[#F7F0E1] border-[#DECBA6]";
+                              } else if (client.orderCount > 1) {
+                                statusLabel = "Returning Client";
+                                statusStyle = "text-[#171717] bg-[#EFE9DF] border-[#DDD5C7]";
+                              }
 
-                                <td className="py-5 px-6">
-                                  <div className="space-y-0.5">
-                                    <p className="text-xs font-mono text-[#171717]">{client.email || "—"}</p>
-                                    <p className="text-[11px] font-mono text-[#746F68]">{client.phone}</p>
-                                  </div>
-                                </td>
+                              const clientSince = client.joinedDate || client.created_at || (client.orders?.[client.orders.length - 1]?.date);
+                              const clientSinceFormatted = clientSince
+                                ? new Date(clientSince).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+                                : "Sep 2026";
 
-                                <td className="py-5 px-6">
-                                  <span className="font-mono text-xs text-[#171717]">
-                                    {String(client.orderCount).padStart(2, "0")} {client.orderCount === 1 ? "Order" : "Orders"}
-                                  </span>
-                                </td>
+                              return (
+                                <tr
+                                  key={client.email || idx}
+                                  className="hover:bg-[#F5F0E8]/40 transition-colors group"
+                                >
+                                  {/* 1. Client Identity */}
+                                  <td className="py-4 px-6">
+                                    <div className="space-y-0.5">
+                                      <p className="font-serif text-[15px] font-medium text-[#111113] group-hover:text-[#C2922E] transition-colors leading-snug">
+                                        {client.name}
+                                      </p>
+                                      <div className="flex items-center gap-1.5 text-xs text-[#746F68] font-sans">
+                                        <span>{client.city !== "—" ? client.city : "Atelier Client"}</span>
+                                        <span className="text-[#C5BDB2]">&middot;</span>
+                                        <span className="text-[10.5px] font-mono text-[#8C8275]">
+                                          Client since {clientSinceFormatted}
+                                        </span>
+                                      </div>
+                                      {(client.email || client.phone) && (
+                                        <p className="text-[10.5px] font-mono text-[#8C8275] pt-0.5 truncate max-w-xs">
+                                          {client.email || client.phone}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </td>
 
-                                <td className="py-5 px-6">
-                                  <span className="font-serif text-base font-normal text-[#171717]">
-                                    {formatINR(client.totalSpent)}
-                                  </span>
-                                </td>
+                                  {/* 2. Status Tier */}
+                                  <td className="py-4 px-5">
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-[2px] border text-[9.5px] font-mono uppercase tracking-[0.10em] font-medium ${statusStyle}`}>
+                                      {statusLabel}
+                                    </span>
+                                  </td>
 
-                                <td className="py-5 px-6 font-mono text-xs text-[#746F68]">
-                                  {client.lastOrderDate
-                                    ? new Date(client.lastOrderDate).toLocaleDateString("en-IN", {
-                                        day: "2-digit",
-                                        month: "long",
-                                        year: "numeric"
-                                      })
-                                    : "—"}
-                                </td>
+                                  {/* 3. Orders & Lifetime Value */}
+                                  <td className="py-4 px-5">
+                                    <div className="space-y-0.5">
+                                      <span className="font-serif text-base font-normal text-[#111113] block leading-tight">
+                                        {formatINR(client.totalSpent)}
+                                      </span>
+                                      <span className="text-[10.5px] font-mono text-[#746F68] block">
+                                        {String(client.orderCount).padStart(2, "0")} {client.orderCount === 1 ? "Commission" : "Commissions"}
+                                      </span>
+                                    </div>
+                                  </td>
 
-                                <td className="py-5 px-6 text-right">
-                                  <button
-                                    type="button"
-                                    onClick={() => openClientProfile(client)}
-                                    className="text-[10.5px] uppercase tracking-[0.16em] font-mono font-medium text-[#171717] hover:text-[#C2922E] transition-colors inline-flex items-center gap-1.5 cursor-pointer py-1"
-                                  >
-                                    VIEW PROFILE &rarr;
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
+                                  {/* 4. Last Activity */}
+                                  <td className="py-4 px-5">
+                                    <div className="space-y-0.5">
+                                      <span className="font-mono text-xs text-[#111113] block">
+                                        {client.lastOrderDate
+                                          ? new Date(client.lastOrderDate).toLocaleDateString("en-IN", {
+                                              day: "2-digit",
+                                              month: "short",
+                                              year: "numeric"
+                                            })
+                                          : "—"}
+                                      </span>
+                                      <span className="text-[11px] text-[#746F68] font-serif italic block truncate max-w-[170px]">
+                                        {client.purchasedGarments?.[0]?.name || (client.orderCount > 0 ? "Tailored Bespoke Piece" : "Inquiry / Registry")}
+                                      </span>
+                                    </div>
+                                  </td>
+
+                                  {/* 5. Action Button */}
+                                  <td className="py-4 px-6 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => openClientProfile(client)}
+                                      className="px-3.5 py-1.5 border border-[#E5DDD1] hover:border-[#C2922E] bg-[#FAF8F5] hover:bg-[#F4EFE6] text-[#111113] hover:text-[#C2922E] transition-all font-mono text-[10.5px] uppercase tracking-[0.14em] font-medium inline-flex items-center gap-1.5 cursor-pointer rounded-[2px] shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+                                    >
+                                      Open Client &rarr;
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
                     </div>
 
                     {/* Main Customer Registry — Mobile Compact Entries */}
-                    <div className="md:hidden divide-y divide-[#E5DDD1] bg-[#FCFAF7] border border-[#E5DDD1] rounded-[2px]">
-                      {filteredPatrons.map((client, idx) => (
-                        <div key={client.email || idx} className="p-5 space-y-3.5">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <h4 className="font-serif text-lg font-medium text-[#171717] leading-snug">
-                                {client.name}
-                              </h4>
-                              <p className="text-xs font-mono text-[#171717] pt-0.5">{client.email}</p>
-                              {client.phone !== "—" && (
-                                <p className="text-[11px] font-mono text-[#746F68]">{client.phone}</p>
-                              )}
-                            </div>
-                            <span className="text-[10px] font-mono uppercase tracking-wider text-[#C2922E] bg-[#FAF8F5] border border-[#E5DDD1] px-2 py-0.5 rounded-[1px] shrink-0">
-                              {client.city !== "—" ? client.city : "Atelier Client"}
-                            </span>
-                          </div>
+                    <div className="md:hidden divide-y divide-[#E5DDD1] bg-[#FCFAF7] border border-[#E5DDD1] rounded-[4px] shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                      {filteredPatrons.map((client, idx) => {
+                        let statusLabel = "New Patron";
+                        let statusStyle = "text-[#746F68] bg-[#FAF8F5] border-[#E5DDD1]";
+                        if (client.totalSpent >= 25000 || client.orderCount >= 3) {
+                          statusLabel = "VIP Patron";
+                          statusStyle = "text-[#7A5B15] bg-[#F7F0E1] border-[#DECBA6]";
+                        } else if (client.orderCount > 1) {
+                          statusLabel = "Returning Client";
+                          statusStyle = "text-[#171717] bg-[#EFE9DF] border-[#DDD5C7]";
+                        }
 
-                          <div className="grid grid-cols-3 gap-2 py-2.5 px-3 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] text-center">
-                            <div>
-                              <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block">ORDERS</span>
-                              <span className="font-mono text-xs font-medium text-[#171717] mt-0.5 block">
-                                {String(client.orderCount).padStart(2, '0')}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block">TOTAL SPEND</span>
-                              <span className="font-serif text-xs font-medium text-[#171717] mt-0.5 block">
-                                {formatINR(client.totalSpent)}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block">LAST PURCHASE</span>
-                              <span className="font-mono text-[10.5px] text-[#746F68] mt-0.5 block truncate">
-                                {client.lastOrderDate
-                                  ? new Date(client.lastOrderDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
-                                  : "—"}
-                              </span>
-                            </div>
-                          </div>
+                        const clientSince = client.joinedDate || client.created_at || (client.orders?.[client.orders.length - 1]?.date);
+                        const clientSinceFormatted = clientSince
+                          ? new Date(clientSince).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+                          : "Sep 2026";
 
-                          <div className="flex justify-end pt-1">
-                            <button
-                              type="button"
-                              onClick={() => openClientProfile(client)}
-                              className="text-[10.5px] uppercase tracking-[0.16em] font-mono font-medium text-[#171717] hover:text-[#C2922E] transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-                            >
-                              VIEW PROFILE &rarr;
-                            </button>
+                        return (
+                          <div key={client.email || idx} className="p-5 space-y-3.5">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <h4 className="font-serif text-lg font-medium text-[#111113] leading-snug">
+                                  {client.name}
+                                </h4>
+                                <p className="text-xs text-[#746F68] font-sans pt-0.5">
+                                  {client.city !== "—" ? client.city : "Atelier Client"} &middot; Client since {clientSinceFormatted}
+                                </p>
+                                {client.email && (
+                                  <p className="text-[11px] font-mono text-[#8C8275] pt-0.5">{client.email}</p>
+                                )}
+                              </div>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-[2px] border text-[9px] font-mono uppercase tracking-[0.08em] font-medium shrink-0 ${statusStyle}`}>
+                                {statusLabel}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 py-2.5 px-3 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] text-center">
+                              <div>
+                                <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block">COMMISSIONS</span>
+                                <span className="font-mono text-xs font-medium text-[#111113] mt-0.5 block">
+                                  {String(client.orderCount).padStart(2, '0')}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block">LIFETIME</span>
+                                <span className="font-serif text-xs font-medium text-[#111113] mt-0.5 block">
+                                  {formatINR(client.totalSpent)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block">LAST ORDER</span>
+                                <span className="font-mono text-[10.5px] text-[#746F68] mt-0.5 block truncate">
+                                  {client.lastOrderDate
+                                    ? new Date(client.lastOrderDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+                                    : "—"}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end pt-1">
+                              <button
+                                type="button"
+                                onClick={() => openClientProfile(client)}
+                                className="px-3.5 py-1.5 border border-[#E5DDD1] hover:border-[#C2922E] bg-[#FAF8F5] hover:bg-[#F4EFE6] text-[#111113] hover:text-[#C2922E] transition-all font-mono text-[10.5px] uppercase tracking-[0.14em] font-medium inline-flex items-center gap-1.5 cursor-pointer rounded-[2px]"
+                              >
+                                Open Client &rarr;
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     {/* Empty State */}
