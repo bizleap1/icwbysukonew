@@ -66,6 +66,17 @@ app.use(
 app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true, limit: "15mb" }));
 
+// Root health & ping handler (Render health checks & uptime monitors)
+app.all("/", (req, res) => {
+  res.status(200).json({
+    brand: "SUKO Atelier",
+    service: "SUKO Luxury E-Commerce & Atelier API",
+    status: "online",
+    version: "1.0.0",
+    health: "/health"
+  });
+});
+
 app.get("/health", async (req, res) => {
   try {
     await pool.query("SELECT 1");
