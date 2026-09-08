@@ -874,7 +874,24 @@ const Admin = () => {
   // Edit Product / Garment Detail Drawer State
   const [editingProduct, setEditingProduct] = useState(null);
   const [isDrawerInEditMode, setIsDrawerInEditMode] = useState(false);
-  const [editFormData, setEditFormData] = useState({ name: "", price: "", stock: "", category_id: "", sub_category: "", description: "", sizes: "", status: "active" });
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    price: "",
+    stock: "",
+    category_id: "",
+    sub_category: "",
+    color: "",
+    secondary_color: "",
+    fabric: "",
+    pattern: "Solid",
+    finish: "Matte",
+    silhouette: "",
+    fit: "Tailored",
+    occasion: "Business Formal",
+    description: "",
+    sizes: "",
+    status: "active"
+  });
   const [editSizeStockMap, setEditSizeStockMap] = useState({});
   const [editImage, setEditImage] = useState(null);
   const [updatingProduct, setUpdatingProduct] = useState(false);
@@ -898,6 +915,14 @@ const Admin = () => {
       price: p.price || "",
       category_id: p.category_id || "",
       sub_category: p.sub_category || "",
+      color: p.color || "",
+      secondary_color: p.secondary_color || "",
+      fabric: p.fabric || "",
+      pattern: p.pattern || "Solid",
+      finish: p.finish || "Matte",
+      silhouette: p.silhouette || "",
+      fit: p.fit || "Tailored",
+      occasion: p.occasion || "Business Formal",
       description: p.description || "",
       status: p.status || "active"
     });
@@ -927,6 +952,14 @@ const Admin = () => {
       if (editFormData.category_id) data.append("category_id", editFormData.category_id);
       if (editFormData.sub_category) data.append("sub_category", editFormData.sub_category);
       data.append("status", editFormData.status || "active");
+      data.append("color", editFormData.color || "");
+      data.append("secondary_color", editFormData.secondary_color || "");
+      data.append("fabric", editFormData.fabric || "");
+      data.append("pattern", editFormData.pattern || "Solid");
+      data.append("finish", editFormData.finish || "Matte");
+      data.append("silhouette", editFormData.silhouette || "");
+      data.append("fit", editFormData.fit || "Tailored");
+      data.append("occasion", editFormData.occasion || "Business Formal");
       data.append("size_stock", JSON.stringify(editSizeStockMap));
 
       const existingUrls = editGalleryImages.filter(g => g.url && !g.file).map(g => g.url);
@@ -3461,6 +3494,15 @@ const Admin = () => {
                                       {p.sub_category}
                                     </span>
                                   )}
+                                  {p.color && (
+                                    <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-mono text-[#111113] border border-[#E5DDD1] bg-white px-2 py-0.5 rounded-[2px]">
+                                      <span 
+                                        className="w-2 h-2 rounded-full border border-black/20 shrink-0" 
+                                        style={{ backgroundColor: getAtelierColorHex(p.color) }}
+                                      />
+                                      <span>{p.color}</span>
+                                    </span>
+                                  )}
                                 </div>
                               </td>
 
@@ -3505,6 +3547,15 @@ const Admin = () => {
                                       <span className="hidden sm:inline">Restore</span>
                                     </button>
                                   )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEdit(p, true)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-[#E5DDD1] hover:border-[#111113] bg-white hover:bg-[#FAF8F5] text-[#111113] rounded-[2px] text-[10px] uppercase tracking-[0.14em] font-mono font-medium transition-all cursor-pointer shadow-xs"
+                                    title="Edit Garment Specifications"
+                                  >
+                                    <Edit2 size={11} className="text-[#C2922E]" />
+                                    <span>Edit</span>
+                                  </button>
                                   <button
                                     type="button"
                                     onClick={() => handleOpenEdit(p, false)}
@@ -5858,6 +5909,58 @@ const Admin = () => {
                       </div>
                     </div>
 
+                    {/* Garment Color & Palette Inspection */}
+                    <div className="bg-white border border-[#E5DDD1] p-4 rounded-[2px] space-y-2.5">
+                      <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#C2922E] font-medium block">
+                        PALETTE &amp; MATERIAL COMPOSITION
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div className="flex items-center gap-2.5 border border-[#E5DDD1] p-2.5 rounded-[2px] bg-[#FAF8F5]">
+                          <span 
+                            className="w-5 h-5 rounded-full border border-black/20 shrink-0 shadow-2xs" 
+                            style={{ backgroundColor: getAtelierColorHex(editingProduct.color) }}
+                          />
+                          <div className="min-w-0">
+                            <span className="text-[8.5px] uppercase tracking-wider text-[#746F68] font-mono block">Primary Color</span>
+                            <span className="text-xs font-mono font-medium text-[#111113] truncate block">
+                              {editingProduct.color || "Standard Noir / Obsidian"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2.5 border border-[#E5DDD1] p-2.5 rounded-[2px] bg-[#FAF8F5]">
+                          <span 
+                            className="w-5 h-5 rounded-full border border-black/20 shrink-0 shadow-2xs" 
+                            style={{ backgroundColor: getAtelierColorHex(editingProduct.secondary_color, "#FAF8F5") }}
+                          />
+                          <div className="min-w-0">
+                            <span className="text-[8.5px] uppercase tracking-wider text-[#746F68] font-mono block">Accent Shade</span>
+                            <span className="text-xs font-mono font-medium text-[#111113] truncate block">
+                              {editingProduct.secondary_color || "Tone-on-Tone"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      {(editingProduct.fabric || editingProduct.fit || editingProduct.occasion) && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          {editingProduct.fabric && (
+                            <span className="text-[9.5px] font-mono text-[#746F68] bg-[#FAF8F5] border border-[#E5DDD1] px-2 py-0.5 rounded-[1px]">
+                              Fabric: {editingProduct.fabric}
+                            </span>
+                          )}
+                          {editingProduct.fit && (
+                            <span className="text-[9.5px] font-mono text-[#746F68] bg-[#FAF8F5] border border-[#E5DDD1] px-2 py-0.5 rounded-[1px]">
+                              Fit: {editingProduct.fit}
+                            </span>
+                          )}
+                          {editingProduct.occasion && (
+                            <span className="text-[9.5px] font-mono text-[#746F68] bg-[#FAF8F5] border border-[#E5DDD1] px-2 py-0.5 rounded-[1px]">
+                              Occasion: {editingProduct.occasion}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     {/* Size Allocation Map (Variants) */}
                     <div className="bg-white border border-[#E5DDD1] p-4 rounded-[2px] space-y-2.5">
                       <div className="flex items-center justify-between">
@@ -5955,6 +6058,261 @@ const Admin = () => {
                           <option value="draft">Draft (Private)</option>
                           <option value="archived">Archived (Retired)</option>
                         </select>
+                      </div>
+                    </div>
+
+                    {/* COLOR PALETTE SUITE (EDIT DRAWER) */}
+                    <div className="space-y-3 bg-[#FCFAF7] border border-[#E5DDD1] p-3.5 rounded-[2px]">
+                      <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#C2922E] font-medium block">
+                        GARMENT PALETTE SPECIFICATION
+                      </span>
+
+                      {/* Primary Color */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono flex items-center gap-1.5 font-medium">
+                            <span>Primary Color *</span>
+                          </label>
+                          <label 
+                            className="group inline-flex items-center gap-1.5 px-2 py-0.5 bg-white hover:bg-[#FAF8F5] border border-[#C2922E]/50 hover:border-[#111113] rounded-[2px] text-[9px] font-mono uppercase tracking-wider text-[#111113] cursor-pointer shadow-2xs transition-all"
+                            title="Click to open color wheel spectrum"
+                          >
+                            <span 
+                              className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0" 
+                              style={{ backgroundColor: getAtelierColorHex(editFormData.color) }}
+                            />
+                            <span>Color Wheel</span>
+                            <input
+                              type="color"
+                              value={getHexForColorPicker(editFormData.color)}
+                              onChange={(e) => {
+                                const hex = e.target.value;
+                                const nearest = findNearestColorName(hex);
+                                setEditFormData(prev => ({
+                                  ...prev,
+                                  color: nearest?.name ? `${nearest.name} (${hex})` : hex
+                                }));
+                              }}
+                              className="opacity-0 absolute w-0 h-0 pointer-events-none"
+                            />
+                          </label>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {/* Visual Swatch Box */}
+                          <label 
+                            className="relative w-9 h-8 rounded-[2px] border-2 border-white shadow-xs ring-1 ring-[#E5DDD1] shrink-0 cursor-pointer overflow-hidden flex items-center justify-center group"
+                            style={{ backgroundColor: getAtelierColorHex(editFormData.color) }}
+                            title="Click to choose custom shade from color spectrum"
+                          >
+                            <input
+                              type="color"
+                              value={getHexForColorPicker(editFormData.color)}
+                              onChange={(e) => {
+                                const hex = e.target.value;
+                                const nearest = findNearestColorName(hex);
+                                setEditFormData(prev => ({
+                                  ...prev,
+                                  color: nearest?.name ? `${nearest.name} (${hex})` : hex
+                                }));
+                              }}
+                              className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                            />
+                            <span className="opacity-0 group-hover:opacity-100 text-[7.5px] font-mono text-white bg-black/70 px-1 py-0.5 rounded-[1px] transition-opacity uppercase tracking-tighter">
+                              Pick
+                            </span>
+                          </label>
+
+                          {/* Input */}
+                          <div className="relative flex-1">
+                            <input
+                              type="text"
+                              value={editFormData.color || ""}
+                              onChange={(e) => setEditFormData({ ...editFormData, color: e.target.value })}
+                              placeholder="Type name (e.g. Navy, Bottle Green, Rani Pink, Sage, Red...) or Hex"
+                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-2.5 pr-16 py-1.5 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono placeholder:text-[#A8A29E]"
+                            />
+                            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                              {editFormData.color && (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditFormData(prev => ({ ...prev, color: "" }))}
+                                  className="text-[10px] text-[#A8A29E] hover:text-[#111113] font-mono px-1 transition-colors cursor-pointer"
+                                  title="Clear color"
+                                >
+                                  &times;
+                                </button>
+                              )}
+                              <span className="text-[8.5px] font-mono font-medium text-[#C2922E] bg-[#FAF8F5] px-1 py-0.5 border border-[#E5DDD1] rounded-[1px]">
+                                {getHexForColorPicker(editFormData.color)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Recognition Status */}
+                        {editFormData.color && (
+                          <div className="flex items-center justify-between text-[9px] font-mono text-[#746F68] bg-white border border-[#E5DDD1] px-2 py-0.5 rounded-[1px]">
+                            <span className="flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full border border-black/20" style={{ backgroundColor: getAtelierColorHex(editFormData.color) }}></span>
+                              <span className="text-[#111113] font-medium truncate max-w-[180px]">
+                                Active: {findNearestColorName(getHexForColorPicker(editFormData.color))?.name || editFormData.color}
+                              </span>
+                            </span>
+                            {findNearestColorName(getHexForColorPicker(editFormData.color))?.name && 
+                             editFormData.color.toLowerCase() !== findNearestColorName(getHexForColorPicker(editFormData.color))?.name.toLowerCase() && (
+                              <button
+                                type="button"
+                                onClick={() => setEditFormData(prev => ({ ...prev, color: findNearestColorName(getHexForColorPicker(editFormData.color))?.name }))}
+                                className="text-[#C2922E] hover:text-[#111113] underline font-medium cursor-pointer transition-colors"
+                              >
+                                Use &ldquo;{findNearestColorName(getHexForColorPicker(editFormData.color))?.name}&rdquo;
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Quick Palette Chips */}
+                        <div className="flex flex-wrap gap-1 pt-0.5">
+                          {ATELIER_PRIMARY_SWATCHES.slice(0, 12).map(({ name, hex }) => {
+                            const isSelected = editFormData.color?.toLowerCase() === name.toLowerCase();
+                            return (
+                              <button
+                                key={name}
+                                type="button"
+                                onClick={() => setEditFormData(prev => ({ ...prev, color: name }))}
+                                className={`inline-flex items-center gap-1 text-[8.5px] font-mono px-1.5 py-0.5 rounded-[1px] border transition-all cursor-pointer ${
+                                  isSelected
+                                    ? "bg-[#111113] text-white border-[#111113]"
+                                    : "bg-white text-[#57534E] border-[#E5DDD1] hover:border-[#111113]"
+                                }`}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full border border-black/20 shrink-0" style={{ backgroundColor: hex }} />
+                                <span>{name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Secondary / Accent Color */}
+                      <div className="space-y-2 pt-2 border-t border-[#E5DDD1]/70">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono flex items-center gap-1.5 font-medium">
+                            <span>Secondary / Accent Color</span>
+                          </label>
+                          <label 
+                            className="group inline-flex items-center gap-1.5 px-2 py-0.5 bg-white hover:bg-[#FAF8F5] border border-[#C2922E]/50 hover:border-[#111113] rounded-[2px] text-[9px] font-mono uppercase tracking-wider text-[#111113] cursor-pointer shadow-2xs transition-all"
+                            title="Click to open color wheel spectrum"
+                          >
+                            <span 
+                              className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0" 
+                              style={{ backgroundColor: getAtelierColorHex(editFormData.secondary_color, "#FAF8F5") }}
+                            />
+                            <span>Color Wheel</span>
+                            <input
+                              type="color"
+                              value={getHexForColorPicker(editFormData.secondary_color, "#FAF8F5")}
+                              onChange={(e) => {
+                                const hex = e.target.value;
+                                const nearest = findNearestColorName(hex);
+                                setEditFormData(prev => ({
+                                  ...prev,
+                                  secondary_color: nearest?.name ? `${nearest.name} (${hex})` : hex
+                                }));
+                              }}
+                              className="opacity-0 absolute w-0 h-0 pointer-events-none"
+                            />
+                          </label>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {/* Visual Swatch Box */}
+                          <label 
+                            className="relative w-9 h-8 rounded-[2px] border-2 border-white shadow-xs ring-1 ring-[#E5DDD1] shrink-0 cursor-pointer overflow-hidden flex items-center justify-center group"
+                            style={{ backgroundColor: getAtelierColorHex(editFormData.secondary_color, "#FAF8F5") }}
+                            title="Click to choose custom accent shade from color spectrum"
+                          >
+                            <input
+                              type="color"
+                              value={getHexForColorPicker(editFormData.secondary_color, "#FAF8F5")}
+                              onChange={(e) => {
+                                const hex = e.target.value;
+                                const nearest = findNearestColorName(hex);
+                                setEditFormData(prev => ({
+                                  ...prev,
+                                  secondary_color: nearest?.name ? `${nearest.name} (${hex})` : hex
+                                }));
+                              }}
+                              className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                            />
+                            <span className="opacity-0 group-hover:opacity-100 text-[7.5px] font-mono text-white bg-black/70 px-1 py-0.5 rounded-[1px] transition-opacity uppercase tracking-tighter">
+                              Pick
+                            </span>
+                          </label>
+
+                          {/* Input */}
+                          <div className="relative flex-1">
+                            <input
+                              type="text"
+                              value={editFormData.secondary_color || ""}
+                              onChange={(e) => setEditFormData({ ...editFormData, secondary_color: e.target.value })}
+                              placeholder="e.g. Ivory Detail, Gold Trim, Rose Gold, or Hex..."
+                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-2.5 pr-16 py-1.5 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono placeholder:text-[#A8A29E]"
+                            />
+                            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                              {editFormData.secondary_color && (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditFormData(prev => ({ ...prev, secondary_color: "" }))}
+                                  className="text-[10px] text-[#A8A29E] hover:text-[#111113] font-mono px-1 transition-colors cursor-pointer"
+                                  title="Clear color"
+                                >
+                                  &times;
+                                </button>
+                              )}
+                              <span className="text-[8.5px] font-mono font-medium text-[#C2922E] bg-[#FAF8F5] px-1 py-0.5 border border-[#E5DDD1] rounded-[1px]">
+                                {getHexForColorPicker(editFormData.secondary_color, "#FAF8F5")}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Quick Accent Chips */}
+                        <div className="flex flex-wrap gap-1 pt-0.5">
+                          {ATELIER_ACCENT_SWATCHES.map(({ name, hex }) => {
+                            const isSelected = editFormData.secondary_color?.toLowerCase() === name.toLowerCase();
+                            return (
+                              <button
+                                key={name}
+                                type="button"
+                                onClick={() => setEditFormData(prev => ({ ...prev, secondary_color: name }))}
+                                className={`inline-flex items-center gap-1 text-[8.5px] font-mono px-1.5 py-0.5 rounded-[1px] border transition-all cursor-pointer ${
+                                  isSelected
+                                    ? "bg-[#111113] text-white border-[#111113]"
+                                    : "bg-white text-[#57534E] border-[#E5DDD1] hover:border-[#111113]"
+                                }`}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full border border-black/20 shrink-0" style={{ backgroundColor: hex }} />
+                                <span>{name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Fabric & Material Composition */}
+                      <div className="pt-2 border-t border-[#E5DDD1]/70">
+                        <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                          Fabric &amp; Material Composition
+                        </label>
+                        <input
+                          type="text"
+                          value={editFormData.fabric || ""}
+                          onChange={(e) => setEditFormData({ ...editFormData, fabric: e.target.value })}
+                          placeholder="e.g. Italian Wool Blend, Mulberry Silk, Linen Cotton"
+                          className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-1.5 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
+                        />
                       </div>
                     </div>
 
