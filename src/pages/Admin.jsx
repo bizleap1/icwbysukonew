@@ -230,6 +230,9 @@ const Admin = () => {
   const profileDropdownRef = useRef(null);
   const [systemHealth, setSystemHealth] = useState(null);
   const [clientSearch, setClientSearch] = useState("");
+  const [usersList, setUsersList] = useState([]);
+  const [selectedClientProfile, setSelectedClientProfile] = useState(null);
+  const [patronFilter, setPatronFilter] = useState("all");
   const addFormRef = useRef(null);
 
   // Close profile dropdown when clicking outside
@@ -514,6 +517,9 @@ const Admin = () => {
   // Modal Execution & History Interceptors (Enables Browser Back Button for Modals)
   function executeModalClose(modalId) {
     switch (modalId) {
+      case "clientProfile":
+        setSelectedClientProfile(null);
+        break;
       case "zoomedScreenshot":
         setZoomedScreenshot(null);
         break;
@@ -557,6 +563,12 @@ const Admin = () => {
     }
     executeModalClose(modalId);
   };
+
+  const openClientProfile = (client) => {
+    setSelectedClientProfile(client);
+    pushModalState("clientProfile");
+  };
+  const closeClientProfile = () => closeModal("clientProfile");
 
   const openOrderDetails = (order) => {
     setSelectedOrderDetails(order);
@@ -790,13 +802,14 @@ const Admin = () => {
     try {
       const headers = { "Authorization": `Bearer ${token}` };
 
-      const [statsRes, prodRes, ordRes, catRes, couponRes, reviewRes] = await Promise.all([
+      const [statsRes, prodRes, ordRes, catRes, couponRes, reviewRes, usersRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/stats`, { headers }),
         fetch(`${API_BASE_URL}/api/products?includeArchived=true`, { headers }),
         fetch(`${API_BASE_URL}/api/orders/all`, { headers }),
         fetch(`${API_BASE_URL}/api/categories`, { headers }),
         fetch(`${API_BASE_URL}/api/coupons`, { headers }),
-        fetch(`${API_BASE_URL}/api/reviews/all`, { headers })
+        fetch(`${API_BASE_URL}/api/reviews/all`, { headers }),
+        fetch(`${API_BASE_URL}/api/auth/users`, { headers }).catch(() => null)
       ]);
 
       if (statsRes.ok) setStats(await statsRes.json());
@@ -814,6 +827,10 @@ const Admin = () => {
       }
       if (couponRes.ok) setCouponsList(await couponRes.json());
       if (reviewRes.ok) setAdminReviewsList(await reviewRes.json());
+      if (usersRes && usersRes.ok) {
+        const uData = await usersRes.json();
+        if (Array.isArray(uData)) setUsersList(uData);
+      }
     } catch (err) {
       console.error(err);
       toast.error("Failed to load dashboard data");
@@ -1378,33 +1395,131 @@ const Admin = () => {
     };
   });
 
-  // Real client directory derived from actual orders (Safeguard #5)
+  // Real client directory derived from registered patrons and actual atelier orders
   const clientMap = {};
+
+  // 1. Seed registered patrons
+  usersList.forEach(u => {
+    const email = (u.email || "").trim().toLowerCase();
+    if (!email) return;
+    clientMap[email] = {
+      id: u.id,
+      name: getUserDisplayName(u),
+      email: u.email,
+      phone: u.phone && u.phone.trim() ? u.phone.trim() : "—",
+      city: "—",
+      joinedDate: u.created_at || null,
+      totalSpent: 0,
+      orderCount: 0,
+      ordersCount: 0,
+      orders: [],
+      purchasedGarments: [],
+      lastOrderDate: null,
+      lastStatus: null,
+      isRegistered: true,
+    };
+  });
+
+  // 2. Aggregate actual orders & order_items
   orders.forEach(o => {
-    const email = o.email || o.user?.email || `client-${o.user_id || o.id}@client.suko`;
+    const email = (o.email || o.user?.email || `client-${o.user_id || o.id}@client.suko`).trim().toLowerCase();
     if (!clientMap[email]) {
       clientMap[email] = {
-        name: o.name || o.shipping_name || o.user?.name || "Client",
-        email: email,
+        id: o.user_id || o.id,
+        name: o.name || o.shipping_name || o.user?.name || "Valued Client",
+        email: o.email || o.user?.email || email,
         phone: o.phone || o.shipping_phone || o.user?.phone || "—",
-        city: o.city || o.shipping_city || "—",
+        city: o.city || o.shipping_city || o.address?.city || "—",
+        joinedDate: o.created_at || null,
         totalSpent: 0,
+        orderCount: 0,
         ordersCount: 0,
-        lastOrderDate: o.created_at,
-        lastStatus: o.status
+        orders: [],
+        purchasedGarments: [],
+        lastOrderDate: null,
+        lastStatus: null,
+        isRegistered: false,
       };
     }
-    clientMap[email].ordersCount += 1;
-    if (isFinanciallyPaid(o.status)) {
-      clientMap[email].totalSpent += (parseFloat(o.total) || 0);
+
+    const client = clientMap[email];
+
+    if ((!client.name || client.name === "Valued Client" || client.name === "Client") && (o.name || o.shipping_name || o.user?.name)) {
+      client.name = o.name || o.shipping_name || o.user?.name;
     }
-    if (new Date(o.created_at) > new Date(clientMap[email].lastOrderDate)) {
-      clientMap[email].lastOrderDate = o.created_at;
-      clientMap[email].lastStatus = o.status;
+    if ((!client.phone || client.phone === "—") && (o.phone || o.shipping_phone || o.user?.phone)) {
+      client.phone = o.phone || o.shipping_phone || o.user?.phone;
+    }
+    if ((!client.city || client.city === "—") && (o.city || o.shipping_city || o.address?.city)) {
+      client.city = o.city || o.shipping_city || o.address?.city;
+    }
+    if (!client.joinedDate || (o.created_at && new Date(o.created_at) < new Date(client.joinedDate))) {
+      client.joinedDate = o.created_at;
+    }
+
+    client.orderCount += 1;
+    client.ordersCount += 1;
+
+    const orderTotal = parseFloat(o.total) || 0;
+    if (isFinanciallyPaid(o.status)) {
+      client.totalSpent += orderTotal;
+    }
+
+    if (!client.lastOrderDate || new Date(o.created_at) > new Date(client.lastOrderDate)) {
+      client.lastOrderDate = o.created_at;
+      client.lastStatus = o.status;
+    }
+
+    // Atelier Order record
+    client.orders.push({
+      id: o.id,
+      orderNumber: `#SUKO-${1000 + o.id}`,
+      date: o.created_at,
+      status: o.status,
+      total: orderTotal,
+      items: o.items || [],
+      address: o.address || {
+        city: o.city || o.shipping_city,
+        state: o.state || o.shipping_state,
+        line1: o.line1 || o.shipping_line1,
+      }
+    });
+
+    // Archival Garments purchased
+    if (Array.isArray(o.items)) {
+      o.items.forEach(it => {
+        const prodName = it.product?.name || it.product_name || `Archival Garment #${it.product_id || it.id}`;
+        const prodImage = it.product?.image_url || null;
+        const prodPrice = Number(it.price_at_purchase) || Number(it.product?.price) || 0;
+        client.purchasedGarments.push({
+          orderId: o.id,
+          orderNumber: `#SUKO-${1000 + o.id}`,
+          name: prodName,
+          imageUrl: prodImage,
+          size: it.size || "Standard",
+          quantity: it.quantity || 1,
+          amount: prodPrice,
+          date: o.created_at,
+          category: it.product?.category?.name || "Atelier Silhouette"
+        });
+      });
     }
   });
 
-  const uniqueClientsList = Object.values(clientMap).sort((a, b) => new Date(b.lastOrderDate) - new Date(a.lastOrderDate));
+  // Sort internal orders & garments for each client
+  Object.values(clientMap).forEach(c => {
+    c.orders.sort((a, b) => new Date(b.date) - new Date(a.date));
+    c.purchasedGarments.sort((a, b) => new Date(b.date) - new Date(a.date));
+  });
+
+  const uniqueClientsList = Object.values(clientMap).sort((a, b) => {
+    if (a.lastOrderDate && b.lastOrderDate) {
+      return new Date(b.lastOrderDate) - new Date(a.lastOrderDate);
+    }
+    if (a.lastOrderDate) return -1;
+    if (b.lastOrderDate) return 1;
+    return new Date(b.joinedDate || 0) - new Date(a.joinedDate || 0);
+  });
 
   if (!user?.authenticated) return <Navigate to="/auth" />;
   if (user.role !== "admin") return <Navigate to="/" />;
@@ -4040,179 +4155,329 @@ const Admin = () => {
               )}
 
               {/* ============================================================= */}
-              {/* CLIENTS TAB (Registered Client Directory & Patron Profiles)    */}
+              {/* PRIVATE PATRON DIRECTORY (Client Relationships & Archive)      */}
               {/* ============================================================= */}
-              {activeTab === "customers" && (
-                <div className="space-y-8">
-                  {/* Section Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5DDD1] pb-5">
-                    <div>
-                      <span className="text-[10px] uppercase tracking-[0.14em] text-[#C2922E] font-mono block mb-1">
-                        — PATRON DIRECTORY
-                      </span>
-                      <h2 className="text-2xl font-quiche font-light text-[#171717]">
-                        Registered Clients ({uniqueClientsList.length})
-                      </h2>
-                      <p className="text-xs text-[#746F68] font-light mt-1">
-                        Client accounts on record, placed orders, and lifetime atelier spend.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmailForm({ target: "all", recipientEmail: "", subject: "", message: "" });
-                        setActiveTab("broadcast");
-                      }}
-                      className="bg-[#171717] hover:bg-[#C2922E] text-white px-5 py-2.5 rounded-full text-[10px] uppercase tracking-[0.14em] font-medium transition-all shadow-xs flex items-center gap-2 cursor-pointer self-start sm:self-auto"
-                    >
-                      <Mail size={13} /> Client Broadcast
-                    </button>
-                  </div>
+              {activeTab === "customers" && (() => {
+                const filteredPatrons = uniqueClientsList.filter((c) => {
+                  if (clientSearch.trim()) {
+                    const q = clientSearch.toLowerCase().trim();
+                    const matchName = (c.name || "").toLowerCase().includes(q);
+                    const matchEmail = (c.email || "").toLowerCase().includes(q);
+                    const matchPhone = (c.phone || "").toLowerCase().includes(q);
+                    const matchCity = (c.city || "").toLowerCase().includes(q);
+                    if (!matchName && !matchEmail && !matchPhone && !matchCity) return false;
+                  }
 
-                  {/* Client Metrics Summary Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="p-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-2xl">
-                      <span className="text-[10px] uppercase tracking-[0.12em] text-[#746F68] font-mono block mb-1">
-                        Registered Clients
-                      </span>
-                      <span className="font-quiche text-3xl font-light text-[#171717]">
-                        {uniqueClientsList.length}
-                      </span>
-                      <p className="text-[11px] text-[#746F68] font-light mt-1">Total patron accounts on record</p>
+                  if (patronFilter === "recent") {
+                    if (!c.lastOrderDate) return false;
+                    const days = (Date.now() - new Date(c.lastOrderDate).getTime()) / (1000 * 60 * 60 * 24);
+                    return days <= 60 || c.orderCount > 0;
+                  }
+                  if (patronFilter === "high_value") {
+                    return c.totalSpent >= 25000 || (c.totalSpent > 0 && c.orderCount >= 2);
+                  }
+                  if (patronFilter === "new") {
+                    const joined = c.joinedDate ? new Date(c.joinedDate).getTime() : 0;
+                    const daysSinceJoined = joined ? (Date.now() - joined) / (1000 * 60 * 60 * 24) : 999;
+                    return daysSinceJoined <= 30 || c.orderCount <= 1;
+                  }
+                  return true;
+                });
+
+                const totalOrdersCompleted = orders.filter(o => isFinanciallyPaid(o.status)).length;
+                const totalRevenueGenerated = uniqueClientsList.reduce((acc, c) => acc + c.totalSpent, 0);
+                const activeClientsCount = uniqueClientsList.filter(c => c.orderCount > 0).length;
+
+                return (
+                  <div className="space-y-8 animate-in fade-in duration-200">
+                    {/* Header Section */}
+                    <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-[#E5DDD1] pb-6">
+                      <div className="space-y-1">
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-[#746F68] font-mono block">
+                          PRIVATE PATRON DIRECTORY
+                        </span>
+                        <h2 className="text-3xl sm:text-4xl font-serif font-light text-[#171717] tracking-tight">
+                          Client Relationships &amp; Purchase History
+                        </h2>
+                        <p className="text-xs text-[#746F68] font-light max-w-2xl font-sans pt-0.5">
+                          A refined record of SUKO Atelier patrons and their garment journey.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 self-start sm:self-auto shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEmailForm({ target: "all", recipientEmail: "", subject: "", message: "" });
+                            setActiveTab("broadcast");
+                          }}
+                          className="inline-flex items-center gap-2 px-4 py-2 border border-[#E5DDD1] hover:border-[#171717] bg-[#FCFAF7] hover:bg-[#FAF8F5] text-[#171717] text-[10.5px] uppercase tracking-[0.16em] font-mono transition-colors cursor-pointer rounded-[2px]"
+                        >
+                          <Mail size={12} className="text-[#C2922E]" /> Concierge Dispatch
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="p-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-2xl">
-                      <span className="text-[10px] uppercase tracking-[0.12em] text-[#746F68] font-mono block mb-1">
-                        Paying Clients
-                      </span>
-                      <span className="font-quiche text-3xl font-light text-[#171717]">
-                        {uniqueClientsList.filter(c => c.orderCount > 0).length}
-                      </span>
-                      <p className="text-[11px] text-[#746F68] font-light mt-1">Clients with verified orders</p>
+                    {/* Customer Overview Strip (Single Editorial Statistics Row) */}
+                    <div className="border border-[#E5DDD1] bg-[#FCFAF7] rounded-[2px] grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 divide-x-0 lg:divide-x divide-[#E5DDD1]">
+                      <div className="p-5 sm:p-6">
+                        <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#746F68] font-mono block mb-2">
+                          TOTAL PATRONS
+                        </span>
+                        <span className="font-serif text-3xl sm:text-4xl font-light text-[#171717] tracking-tight block">
+                          {uniqueClientsList.length}
+                        </span>
+                        <p className="text-[11px] text-[#746F68] font-light mt-1 font-sans">
+                          Atelier client accounts on record
+                        </p>
+                      </div>
+
+                      <div className="p-5 sm:p-6">
+                        <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#746F68] font-mono block mb-2">
+                          ORDERS COMPLETED
+                        </span>
+                        <span className="font-serif text-3xl sm:text-4xl font-light text-[#171717] tracking-tight block">
+                          {totalOrdersCompleted}
+                        </span>
+                        <p className="text-[11px] text-[#746F68] font-light mt-1 font-sans">
+                          Fulfilled atelier commissions
+                        </p>
+                      </div>
+
+                      <div className="p-5 sm:p-6">
+                        <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#746F68] font-mono block mb-2">
+                          REVENUE GENERATED
+                        </span>
+                        <span className="font-serif text-3xl sm:text-4xl font-light text-[#171717] tracking-tight block">
+                          {formatINR(totalRevenueGenerated)}
+                        </span>
+                        <p className="text-[11px] text-[#746F68] font-light mt-1 font-sans">
+                          Reconciled lifetime spend
+                        </p>
+                      </div>
+
+                      <div className="p-5 sm:p-6">
+                        <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#746F68] font-mono block mb-2">
+                          ACTIVE CLIENTS
+                        </span>
+                        <span className="font-serif text-3xl sm:text-4xl font-light text-[#171717] tracking-tight block">
+                          {activeClientsCount}
+                        </span>
+                        <p className="text-[11px] text-[#746F68] font-light mt-1 font-sans">
+                          Patrons with acquired garments
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="p-5 bg-[#FCFAF7] border border-[#E5DDD1] rounded-2xl">
-                      <span className="text-[10px] uppercase tracking-[0.12em] text-[#746F68] font-mono block mb-1">
-                        Total Paid Volume
-                      </span>
-                      <span className="font-quiche text-3xl font-light text-[#171717]">
-                        {formatINR(uniqueClientsList.reduce((acc, c) => acc + c.totalSpent, 0))}
-                      </span>
-                      <p className="text-[11px] text-[#746F68] font-light mt-1">Reconciled patron spend</p>
-                    </div>
-                  </div>
+                    {/* Search & Filter Row */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+                      {/* Filters as small text navigation, not pills */}
+                      <nav className="flex items-center gap-6 sm:gap-8 border-b border-[#E5DDD1] overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                        {[
+                          { id: "all", label: "All Clients", count: uniqueClientsList.length },
+                          { id: "recent", label: "Recent Buyers", count: uniqueClientsList.filter(c => c.lastOrderDate).length },
+                          { id: "high_value", label: "High Value", count: uniqueClientsList.filter(c => c.totalSpent >= 25000).length },
+                          { id: "new", label: "New Patrons", count: uniqueClientsList.filter(c => c.orderCount <= 1).length },
+                        ].map((tab) => {
+                          const isActive = patronFilter === tab.id;
+                          return (
+                            <button
+                              key={tab.id}
+                              type="button"
+                              onClick={() => setPatronFilter(tab.id)}
+                              className={`relative pb-2.5 text-[11px] uppercase tracking-[0.14em] font-mono transition-colors cursor-pointer whitespace-nowrap ${
+                                isActive
+                                  ? "text-[#171717] font-medium"
+                                  : "text-[#746F68] hover:text-[#171717] font-normal"
+                              }`}
+                            >
+                              <span>{tab.label}</span>
+                              <span className="ml-1 text-[10px] text-[#746F68]">({tab.count})</span>
+                              {isActive && (
+                                <span className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#171717]" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </nav>
 
-                  {/* Search & Filter Bar */}
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#FCFAF7] border border-[#E5DDD1] p-3 sm:p-4 rounded-xl">
-                    <div className="relative flex-1">
-                      <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#746F68]" />
-                      <input
-                        type="text"
-                        placeholder="Search clients by name, email, phone or city..."
-                        value={clientSearch}
-                        onChange={(e) => setClientSearch(e.target.value)}
-                        className="w-full bg-white border border-[#E5DDD1] rounded-lg pl-9 pr-4 py-2 text-xs text-[#171717] outline-none focus:border-[#C2922E]"
-                      />
+                      {/* Minimal Search Input */}
+                      <div className="relative w-full sm:w-72">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#746F68] pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Search patron name..."
+                          value={clientSearch}
+                          onChange={(e) => setClientSearch(e.target.value)}
+                          style={{ paddingLeft: "36px" }}
+                          className="w-full bg-[#FCFAF7] border border-[#E5DDD1] rounded-[2px] pr-8 py-2 text-xs text-[#171717] placeholder:text-[#746F68]/70 outline-none focus:border-[#C2922E] font-sans transition-colors"
+                        />
+                        {clientSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setClientSearch("")}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#746F68] hover:text-[#171717] p-0.5 cursor-pointer"
+                            title="Clear search"
+                          >
+                            <X size={12} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    {clientSearch && (
-                      <button
-                        type="button"
-                        onClick={() => setClientSearch("")}
-                        className="text-[10.5px] uppercase tracking-wider text-[#746F68] hover:text-[#171717] font-mono px-2 py-1"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
 
-                  {/* Client Directory Table */}
-                  <div className="border border-[#E5DDD1] bg-[#FCFAF7] rounded-2xl overflow-hidden shadow-xs">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left font-body text-xs">
-                        <thead className="bg-[#FAF8F5] text-[9.5px] uppercase tracking-[0.12em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
-                          <tr>
-                            <th className="p-4 font-medium">Patron Name</th>
-                            <th className="p-4 font-medium">Contact Details</th>
-                            <th className="p-4 font-medium">Location</th>
-                            <th className="p-4 font-medium">Orders Placed</th>
-                            <th className="p-4 font-medium">Lifetime Spend</th>
-                            <th className="p-4 font-medium">Last Order Date</th>
-                            <th className="p-4 font-medium text-right">Concierge Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#E5DDD1]/60 text-[#171717]">
-                          {uniqueClientsList
-                            .filter((c) => {
-                              if (!clientSearch) return true;
-                              const q = clientSearch.toLowerCase();
-                              return (
-                                c.name.toLowerCase().includes(q) ||
-                                c.email.toLowerCase().includes(q) ||
-                                c.phone.toLowerCase().includes(q) ||
-                                c.city.toLowerCase().includes(q)
-                              );
-                            })
-                            .map((client, idx) => (
-                              <tr key={idx} className="hover:bg-white transition-colors">
-                                <td className="p-4">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-[#EFE5D2] text-[#C2922E] flex items-center justify-center font-serif text-xs font-bold shrink-0">
-                                      {client.name.charAt(0).toUpperCase() || "C"}
-                                    </div>
-                                    <div>
-                                      <p className="font-medium text-[#171717]">{client.name}</p>
-                                      <p className="text-[10px] text-[#746F68] font-mono">Patron #{idx + 1}</p>
-                                    </div>
+                    {/* Main Customer Registry — Desktop Table View */}
+                    <div className="hidden md:block border border-[#E5DDD1] bg-[#FCFAF7] rounded-[2px] overflow-hidden shadow-xs">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left font-body text-xs">
+                          <thead className="bg-[#FAF8F5] text-[9.5px] uppercase tracking-[0.16em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
+                            <tr>
+                              <th className="py-4 px-6 font-medium">CLIENT</th>
+                              <th className="py-4 px-6 font-medium">CONTACT</th>
+                              <th className="py-4 px-6 font-medium">ORDERS</th>
+                              <th className="py-4 px-6 font-medium">TOTAL SPEND</th>
+                              <th className="py-4 px-6 font-medium">LAST PURCHASE</th>
+                              <th className="py-4 px-6 font-medium text-right">ACTION</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#E5DDD1]/70 text-[#171717]">
+                            {filteredPatrons.map((client, idx) => (
+                              <tr
+                                key={client.email || idx}
+                                className="hover:bg-[#F5F0E8]/40 transition-colors group"
+                              >
+                                <td className="py-5 px-6">
+                                  <div>
+                                    <p className="font-serif text-[15px] font-medium text-[#171717] group-hover:text-[#C2922E] transition-colors leading-snug">
+                                      {client.name}
+                                    </p>
+                                    <p className="text-[10.5px] text-[#746F68] font-mono pt-0.5">
+                                      {client.city !== "—" ? client.city : "Atelier Patron"}
+                                    </p>
                                   </div>
                                 </td>
-                                <td className="p-4">
-                                  <p className="text-xs text-[#171717]">{client.email || "—"}</p>
-                                  <p className="text-[11px] text-[#746F68] font-mono">{client.phone}</p>
+
+                                <td className="py-5 px-6">
+                                  <div className="space-y-0.5">
+                                    <p className="text-xs font-mono text-[#171717]">{client.email || "—"}</p>
+                                    <p className="text-[11px] font-mono text-[#746F68]">{client.phone}</p>
+                                  </div>
                                 </td>
-                                <td className="p-4 font-mono text-[11px] text-[#746F68]">
-                                  {client.city}
-                                </td>
-                                <td className="p-4 font-mono text-xs">
-                                  <span className="px-2 py-0.5 rounded bg-white border border-[#E5DDD1] font-semibold">
-                                    {client.orderCount} {client.orderCount === 1 ? "order" : "orders"}
+
+                                <td className="py-5 px-6">
+                                  <span className="font-mono text-xs text-[#171717]">
+                                    {String(client.orderCount).padStart(2, "0")} {client.orderCount === 1 ? "Order" : "Orders"}
                                   </span>
                                 </td>
-                                <td className="p-4 font-mono font-bold text-xs text-[#171717]">
-                                  {formatINR(client.totalSpent)}
+
+                                <td className="py-5 px-6">
+                                  <span className="font-serif text-base font-normal text-[#171717]">
+                                    {formatINR(client.totalSpent)}
+                                  </span>
                                 </td>
-                                <td className="p-4 font-mono text-[11px] text-[#746F68]">
+
+                                <td className="py-5 px-6 font-mono text-xs text-[#746F68]">
                                   {client.lastOrderDate
-                                    ? new Date(client.lastOrderDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+                                    ? new Date(client.lastOrderDate).toLocaleDateString("en-IN", {
+                                        day: "2-digit",
+                                        month: "long",
+                                        year: "numeric"
+                                      })
                                     : "—"}
                                 </td>
-                                <td className="p-4 text-right">
+
+                                <td className="py-5 px-6 text-right">
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      setEmailForm({ target: "single", recipientEmail: client.email, subject: "", message: "" });
-                                      setActiveTab("broadcast");
-                                    }}
-                                    className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] font-medium text-[#171717] hover:text-[#C2922E] border border-[#E5DDD1] hover:border-[#C2922E] px-2.5 py-1.5 rounded-lg bg-white transition-colors cursor-pointer"
-                                    title="Send direct email"
+                                    onClick={() => openClientProfile(client)}
+                                    className="text-[10.5px] uppercase tracking-[0.16em] font-mono font-medium text-[#171717] hover:text-[#C2922E] transition-colors inline-flex items-center gap-1.5 cursor-pointer py-1"
                                   >
-                                    <Mail size={12} /> Contact
+                                    VIEW PROFILE &rarr;
                                   </button>
                                 </td>
                               </tr>
                             ))}
-                          {uniqueClientsList.length === 0 && (
-                            <tr>
-                              <td colSpan="7" className="p-8 text-center text-[#746F68] font-light">
-                                No registered clients found.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
+
+                    {/* Main Customer Registry — Mobile Compact Entries */}
+                    <div className="md:hidden divide-y divide-[#E5DDD1] bg-[#FCFAF7] border border-[#E5DDD1] rounded-[2px]">
+                      {filteredPatrons.map((client, idx) => (
+                        <div key={client.email || idx} className="p-5 space-y-3.5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <h4 className="font-serif text-lg font-medium text-[#171717] leading-snug">
+                                {client.name}
+                              </h4>
+                              <p className="text-xs font-mono text-[#171717] pt-0.5">{client.email}</p>
+                              {client.phone !== "—" && (
+                                <p className="text-[11px] font-mono text-[#746F68]">{client.phone}</p>
+                              )}
+                            </div>
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-[#C2922E] bg-[#FAF8F5] border border-[#E5DDD1] px-2 py-0.5 rounded-[1px] shrink-0">
+                              {client.city !== "—" ? client.city : "Atelier Client"}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 py-2.5 px-3 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] text-center">
+                            <div>
+                              <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block">ORDERS</span>
+                              <span className="font-mono text-xs font-medium text-[#171717] mt-0.5 block">
+                                {String(client.orderCount).padStart(2, '0')}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block">TOTAL SPEND</span>
+                              <span className="font-serif text-xs font-medium text-[#171717] mt-0.5 block">
+                                {formatINR(client.totalSpent)}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block">LAST PURCHASE</span>
+                              <span className="font-mono text-[10.5px] text-[#746F68] mt-0.5 block truncate">
+                                {client.lastOrderDate
+                                  ? new Date(client.lastOrderDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+                                  : "—"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end pt-1">
+                            <button
+                              type="button"
+                              onClick={() => openClientProfile(client)}
+                              className="text-[10.5px] uppercase tracking-[0.16em] font-mono font-medium text-[#171717] hover:text-[#C2922E] transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                            >
+                              VIEW PROFILE &rarr;
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Empty State */}
+                    {filteredPatrons.length === 0 && (
+                      <div className="p-12 sm:p-16 text-center border border-[#E5DDD1] bg-[#FCFAF7] rounded-[2px] space-y-2">
+                        <p className="font-serif text-xl sm:text-2xl font-light text-[#171717]">
+                          No patron records available yet.
+                        </p>
+                        <p className="text-xs text-[#746F68] font-light max-w-md mx-auto font-sans">
+                          Customer history will appear after completed atelier orders.
+                        </p>
+                        {clientSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setClientSearch("")}
+                            className="mt-3 text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#C2922E] hover:underline inline-block cursor-pointer"
+                          >
+                            Reset patron search
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
             </div>
           )}
@@ -5120,6 +5385,254 @@ const Admin = () => {
                     </button>
                   </>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CUSTOMER PROFILE DRAWER (PRIVATE PATRON PROFILE & ARCHIVE) */}
+        {selectedClientProfile && (
+          <div
+            className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+            onClick={closeClientProfile}
+          >
+            <div
+              className="bg-[#FAF8F5] border-l border-[#E5DDD1] w-full max-w-full sm:max-w-xl h-full shadow-2xl flex flex-col text-[#171717] animate-in slide-in-from-right duration-250 ease-out overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* FIXED / STICKY DRAWER HEADER */}
+              <div className="shrink-0 px-6 py-5 border-b border-[#E5DDD1] bg-[#FAF8F5] flex items-center justify-between sticky top-0 z-20">
+                <div>
+                  <span className="text-[9.5px] uppercase tracking-[0.2em] text-[#746F68] font-mono block mb-1">
+                    CLIENT PROFILE
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl font-serif font-light text-[#171717] tracking-tight leading-snug">
+                    {selectedClientProfile.name}
+                  </h2>
+                  <p className="text-[11px] font-mono text-[#746F68] mt-0.5">
+                    {selectedClientProfile.email}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeClientProfile}
+                  className="p-1.5 text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF] rounded-[2px] border border-[#E5DDD1] transition-colors cursor-pointer"
+                  title="Close Drawer (Esc)"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* SCROLLABLE DRAWER BODY */}
+              <div className="overflow-y-auto suko-scrollbar p-6 space-y-7 flex-1 font-body text-xs text-[#171717]">
+                
+                {/* Spending Summary */}
+                <div className="p-6 bg-[#FCFAF7] border border-[#E5DDD1] rounded-[2px] space-y-1">
+                  <span className="font-serif text-3xl sm:text-4xl font-light text-[#171717] tracking-tight block">
+                    {formatINR(selectedClientProfile.totalSpent)}
+                  </span>
+                  <span className="text-[10px] uppercase tracking-[0.16em] text-[#746F68] font-mono block pt-1">
+                    Lifetime Atelier Spend
+                  </span>
+                  <div className="flex items-center gap-4 pt-3 mt-3 border-t border-[#E5DDD1]/70 font-mono text-[11px] text-[#746F68]">
+                    <span>
+                      {String(selectedClientProfile.orderCount).padStart(2, '0')} Total {selectedClientProfile.orderCount === 1 ? "Order" : "Orders"}
+                    </span>
+                    <span>&middot;</span>
+                    <span>
+                      {selectedClientProfile.purchasedGarments.length} {selectedClientProfile.purchasedGarments.length === 1 ? "Garment Acquired" : "Garments Acquired"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Personal Details */}
+                <div className="space-y-3">
+                  <div className="flex items-baseline justify-between border-b border-[#E5DDD1] pb-2">
+                    <span className="text-[10px] uppercase tracking-[0.16em] font-mono text-[#171717] font-medium">
+                      Personal Details
+                    </span>
+                    <span className="text-[10px] font-mono text-[#746F68]">
+                      {selectedClientProfile.isRegistered ? "Registered Account" : "Order Guest Profile"}
+                    </span>
+                  </div>
+                  <div className="bg-[#FCFAF7] border border-[#E5DDD1] rounded-[2px] divide-y divide-[#E5DDD1]/70">
+                    <div className="py-3 px-4 flex items-center justify-between">
+                      <span className="text-[10.5px] uppercase tracking-wider text-[#746F68] font-mono">Name</span>
+                      <span className="font-medium text-[#171717] text-xs font-sans">{selectedClientProfile.name}</span>
+                    </div>
+                    <div className="py-3 px-4 flex items-center justify-between">
+                      <span className="text-[10.5px] uppercase tracking-wider text-[#746F68] font-mono">Email</span>
+                      <span className="font-mono text-xs text-[#171717]">{selectedClientProfile.email}</span>
+                    </div>
+                    <div className="py-3 px-4 flex items-center justify-between">
+                      <span className="text-[10.5px] uppercase tracking-wider text-[#746F68] font-mono">Phone</span>
+                      <span className="font-mono text-xs text-[#171717]">{selectedClientProfile.phone}</span>
+                    </div>
+                    <div className="py-3 px-4 flex items-center justify-between">
+                      <span className="text-[10.5px] uppercase tracking-wider text-[#746F68] font-mono">City</span>
+                      <span className="font-mono text-xs text-[#171717]">{selectedClientProfile.city}</span>
+                    </div>
+                    <div className="py-3 px-4 flex items-center justify-between">
+                      <span className="text-[10.5px] uppercase tracking-wider text-[#746F68] font-mono">Joined Date</span>
+                      <span className="font-mono text-xs text-[#171717]">
+                        {selectedClientProfile.joinedDate
+                          ? new Date(selectedClientProfile.joinedDate).toLocaleDateString("en-IN", {
+                              day: "2-digit",
+                              month: "long",
+                              year: "numeric"
+                            })
+                          : "—"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Atelier History */}
+                <div className="space-y-3">
+                  <div className="flex items-baseline justify-between border-b border-[#E5DDD1] pb-2">
+                    <span className="text-[10px] uppercase tracking-[0.16em] font-mono text-[#171717] font-medium">
+                      Atelier History
+                    </span>
+                    <span className="text-[10px] font-mono text-[#746F68]">
+                      {selectedClientProfile.orders.length} {selectedClientProfile.orders.length === 1 ? "Commission" : "Commissions"}
+                    </span>
+                  </div>
+
+                  {selectedClientProfile.orders.length > 0 ? (
+                    <div className="space-y-3">
+                      {selectedClientProfile.orders.map((ord) => (
+                        <div
+                          key={ord.id}
+                          className="bg-[#FCFAF7] border border-[#E5DDD1] rounded-[2px] p-4 space-y-2.5"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <span className="font-mono text-xs font-semibold text-[#171717]">
+                                {ord.orderNumber}
+                              </span>
+                              <p className="text-[10.5px] font-mono text-[#746F68]">
+                                {formatDateTime(ord.date)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-serif text-sm font-medium text-[#171717] block">
+                                {formatINR(ord.total)}
+                              </span>
+                              <div className="mt-1">
+                                {renderStatusIndicator(ord.status)}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Items in this order */}
+                          {Array.isArray(ord.items) && ord.items.length > 0 && (
+                            <div className="pt-2 border-t border-[#E5DDD1]/70 space-y-1.5">
+                              {ord.items.map((item, itIdx) => (
+                                <div key={itIdx} className="flex items-center justify-between text-[11px]">
+                                  <span className="font-sans text-[#171717]">
+                                    {item.product?.name || item.product_name || `Garment #${item.product_id || item.id}`}
+                                    {item.size ? ` (Size ${item.size})` : ""}
+                                  </span>
+                                  <span className="font-mono text-[#746F68]">
+                                    {formatINR(item.price_at_purchase || item.product?.price || 0)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-6 bg-[#FCFAF7] border border-[#E5DDD1] rounded-[2px] text-center">
+                      <p className="text-xs text-[#746F68] font-sans">
+                        No atelier commissions recorded yet. Orders will be cataloged upon checkout.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Purchased Garments */}
+                <div className="space-y-3">
+                  <div className="flex items-baseline justify-between border-b border-[#E5DDD1] pb-2">
+                    <span className="text-[10px] uppercase tracking-[0.16em] font-mono text-[#171717] font-medium">
+                      Purchased Garments
+                    </span>
+                    <span className="text-[10px] font-mono text-[#746F68]">
+                      {selectedClientProfile.purchasedGarments.length} Pieces
+                    </span>
+                  </div>
+
+                  {selectedClientProfile.purchasedGarments.length > 0 ? (
+                    <div className="space-y-2.5">
+                      {selectedClientProfile.purchasedGarments.map((garment, gIdx) => (
+                        <div
+                          key={gIdx}
+                          className="bg-[#FCFAF7] border border-[#E5DDD1] rounded-[2px] p-3 flex items-center gap-3.5"
+                        >
+                          <div className="w-14 h-16 bg-white border border-[#E5DDD1] rounded-[1px] overflow-hidden shrink-0 flex items-center justify-center">
+                            {garment.imageUrl ? (
+                              <img
+                                src={garment.imageUrl}
+                                alt={garment.name}
+                                className="w-full h-full object-contain p-1"
+                              />
+                            ) : (
+                              <span className="text-[9px] font-mono text-[#746F68]">Archival</span>
+                            )}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <h5 className="font-serif text-[13.5px] font-medium text-[#171717] truncate">
+                              {garment.name}
+                            </h5>
+                            <p className="text-[10.5px] font-mono text-[#746F68] mt-0.5">
+                              {garment.orderNumber} &middot; {new Date(garment.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                            </p>
+                            <p className="text-[10px] font-mono text-[#746F68]">
+                              Size: {garment.size} &middot; Qty: {garment.quantity}
+                            </p>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <span className="font-serif text-sm font-medium text-[#171717] block">
+                              {formatINR(garment.amount)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-6 bg-[#FCFAF7] border border-[#E5DDD1] rounded-[2px] text-center">
+                      <p className="text-xs text-[#746F68] font-sans">
+                        No bespoke garments cataloged for this patron.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+              {/* FIXED DRAWER FOOTER ACTIONS */}
+              <div className="shrink-0 px-6 py-4 bg-[#F7F3ED] border-t border-[#E5DDD1] flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmailForm({ target: "single", recipientEmail: selectedClientProfile.email, subject: "", message: "" });
+                    closeClientProfile();
+                    setActiveTab("broadcast");
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#171717] hover:bg-[#C2922E] text-white text-[10.5px] uppercase tracking-[0.16em] font-mono transition-colors cursor-pointer rounded-[2px]"
+                >
+                  <Mail size={12} /> Contact via Concierge
+                </button>
+                <button
+                  type="button"
+                  onClick={closeClientProfile}
+                  className="px-4 py-2 border border-[#E5DDD1] hover:bg-[#EFE9DF] text-[#746F68] hover:text-[#171717] text-[10.5px] uppercase tracking-[0.14em] font-mono transition-colors cursor-pointer rounded-[2px]"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>

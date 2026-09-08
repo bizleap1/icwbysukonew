@@ -1,7 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const { pool } = require("../db");
-const { signToken, requireAuth } = require("../auth");
+const { signToken, requireAuth, requireAdmin } = require("../auth");
 const { authLimiter } = require("../middleware/rateLimiter");
 const { validateLogin, validateRegister, validateResetPassword } = require("../middleware/validate");
 const { 
@@ -286,6 +286,19 @@ router.get("/profile", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("Profile fetch error:", err);
     res.status(500).json({ error: "Failed to load profile." });
+  }
+});
+
+// GET /api/auth/users -- admin: list registered patrons
+router.get("/users", requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id, name, email, phone, role, created_at FROM users WHERE role = 'customer' ORDER BY created_at DESC"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("List users error:", err);
+    res.status(500).json({ error: "Failed to load registered patrons." });
   }
 });
 
