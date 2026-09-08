@@ -4344,11 +4344,11 @@ const Admin = () => {
                         <table className="w-full text-left font-body text-xs">
                           <thead className="bg-[#FAF8F5] text-[9.5px] uppercase tracking-[0.16em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
                             <tr>
-                              <th className="py-4 px-6 font-medium w-[34%]">CLIENT</th>
-                              <th className="py-4 px-5 font-medium w-[16%]">STATUS</th>
-                              <th className="py-4 px-5 font-medium w-[18%]">ORDERS &amp; SPEND</th>
-                              <th className="py-4 px-5 font-medium w-[18%]">LAST ACTIVITY</th>
-                              <th className="py-4 px-6 font-medium text-right w-[14%]">ACTION</th>
+                              <th className="py-4 px-6 font-medium min-w-[220px]">CLIENT</th>
+                              <th className="py-4 px-5 font-medium whitespace-nowrap">STATUS</th>
+                              <th className="py-4 px-5 font-medium whitespace-nowrap">ORDERS &amp; SPEND</th>
+                              <th className="py-4 px-5 font-medium whitespace-nowrap">LAST ACTIVITY</th>
+                              <th className="py-4 px-6 font-medium text-right whitespace-nowrap">ACTION</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[#E5DDD1]/70 text-[#171717]">
@@ -4396,14 +4396,14 @@ const Admin = () => {
                                   </td>
 
                                   {/* 2. Status Tier */}
-                                  <td className="py-4 px-5">
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-[2px] border text-[9.5px] font-mono uppercase tracking-[0.10em] font-medium ${statusStyle}`}>
+                                  <td className="py-4 px-5 whitespace-nowrap">
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-[2px] border text-[9.5px] font-mono uppercase tracking-[0.10em] font-medium whitespace-nowrap ${statusStyle}`}>
                                       {statusLabel}
                                     </span>
                                   </td>
 
                                   {/* 3. Orders & Lifetime Value */}
-                                  <td className="py-4 px-5">
+                                  <td className="py-4 px-5 whitespace-nowrap">
                                     <div className="space-y-0.5">
                                       <span className="font-serif text-base font-normal text-[#111113] block leading-tight">
                                         {formatINR(client.totalSpent)}
@@ -4415,7 +4415,7 @@ const Admin = () => {
                                   </td>
 
                                   {/* 4. Last Activity */}
-                                  <td className="py-4 px-5">
+                                  <td className="py-4 px-5 whitespace-nowrap">
                                     <div className="space-y-0.5">
                                       <span className="font-mono text-xs text-[#111113] block">
                                         {client.lastOrderDate
@@ -4433,11 +4433,11 @@ const Admin = () => {
                                   </td>
 
                                   {/* 5. Action Button */}
-                                  <td className="py-4 px-6 text-right">
+                                  <td className="py-4 px-6 text-right whitespace-nowrap">
                                     <button
                                       type="button"
                                       onClick={() => openClientProfile(client)}
-                                      className="px-3.5 py-1.5 border border-[#E5DDD1] hover:border-[#C2922E] bg-[#FAF8F5] hover:bg-[#F4EFE6] text-[#111113] hover:text-[#C2922E] transition-all font-mono text-[10.5px] uppercase tracking-[0.14em] font-medium inline-flex items-center gap-1.5 cursor-pointer rounded-[2px] shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+                                      className="whitespace-nowrap px-3.5 py-1.5 border border-[#E5DDD1] hover:border-[#C2922E] bg-[#FAF8F5] hover:bg-[#F4EFE6] text-[#111113] hover:text-[#C2922E] transition-all font-mono text-[10.5px] uppercase tracking-[0.14em] font-medium inline-flex items-center gap-1.5 cursor-pointer rounded-[2px] shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
                                     >
                                       Open Client &rarr;
                                     </button>
@@ -4482,26 +4482,26 @@ const Admin = () => {
                                   <p className="text-[11px] font-mono text-[#8C8275] pt-0.5">{client.email}</p>
                                 )}
                               </div>
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-[2px] border text-[9px] font-mono uppercase tracking-[0.08em] font-medium shrink-0 ${statusStyle}`}>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-[2px] border text-[9px] font-mono uppercase tracking-[0.08em] font-medium shrink-0 whitespace-nowrap ${statusStyle}`}>
                                 {statusLabel}
                               </span>
                             </div>
 
                             <div className="grid grid-cols-3 gap-2 py-2.5 px-3 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] text-center">
                               <div>
-                                <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block">COMMISSIONS</span>
+                                <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block whitespace-nowrap">COMMISSIONS</span>
                                 <span className="font-mono text-xs font-medium text-[#111113] mt-0.5 block">
                                   {String(client.orderCount).padStart(2, '0')}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block">LIFETIME</span>
+                                <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block whitespace-nowrap">LIFETIME</span>
                                 <span className="font-serif text-xs font-medium text-[#111113] mt-0.5 block">
                                   {formatINR(client.totalSpent)}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block">LAST ORDER</span>
+                                <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block whitespace-nowrap">LAST ORDER</span>
                                 <span className="font-mono text-[10.5px] text-[#746F68] mt-0.5 block truncate">
                                   {client.lastOrderDate
                                     ? new Date(client.lastOrderDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
@@ -4514,7 +4514,7 @@ const Admin = () => {
                               <button
                                 type="button"
                                 onClick={() => openClientProfile(client)}
-                                className="px-3.5 py-1.5 border border-[#E5DDD1] hover:border-[#C2922E] bg-[#FAF8F5] hover:bg-[#F4EFE6] text-[#111113] hover:text-[#C2922E] transition-all font-mono text-[10.5px] uppercase tracking-[0.14em] font-medium inline-flex items-center gap-1.5 cursor-pointer rounded-[2px]"
+                                className="whitespace-nowrap px-3.5 py-1.5 border border-[#E5DDD1] hover:border-[#C2922E] bg-[#FAF8F5] hover:bg-[#F4EFE6] text-[#111113] hover:text-[#C2922E] transition-all font-mono text-[10.5px] uppercase tracking-[0.14em] font-medium inline-flex items-center gap-1.5 cursor-pointer rounded-[2px]"
                               >
                                 Open Client &rarr;
                               </button>
