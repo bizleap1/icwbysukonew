@@ -13,6 +13,8 @@ const categoriesRoutes = require("./routes/categories");
 const couponsRoutes = require("./routes/coupons");
 const reviewsRoutes = require("./routes/reviews");
 const cartRoutes = require("./routes/cart");
+const broadcastsRoutes = require("./routes/broadcasts");
+const settingsRoutes = require("./routes/settings");
 
 const { securityHeaders, requestLogger } = require("./middleware/security");
 const { apiLimiter } = require("./middleware/rateLimiter");
@@ -88,6 +90,9 @@ app.use("/api/categories", categoriesRoutes);
 app.use("/api/coupons", couponsRoutes);
 app.use("/api/reviews", reviewsRoutes);
 app.use("/api/cart", cartRoutes);
+app.use("/api/broadcasts", broadcastsRoutes);
+app.use("/api/admin/send-email", broadcastsRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // 404 fallback
 app.use((req, res) => {

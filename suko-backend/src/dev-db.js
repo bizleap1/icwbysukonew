@@ -28,6 +28,33 @@ function getInitialData() {
     ],
     orders: [],
     order_items: [],
+    brand_settings: [
+      {
+        id: 1,
+        business_name: "SUKO Atelier",
+        tagline: "Contemporary Indian Corporate Wear",
+        logo_url: "/logo.png",
+        gst_number: "",
+        address: "Atelier Flagship, Mumbai, Maharashtra, India",
+        support_email: "indiancorporatewearbysuko@gmail.com",
+        support_phone: "+91 98765 43210",
+        website_url: "https://www.indiancorporatewear.com",
+        instagram_url: "https://www.instagram.com/icwbysuko?igsi=MXR4a2hwdWJmOW9lZw%3D%3D&utm_source=qr",
+        instagram_handle: "@icwbysuko",
+        invoice_prefix: "INV-2026-",
+        next_invoice_number: 1001,
+        payment_details: {
+          bank_name: "",
+          account_name: "",
+          account_number: "",
+          ifsc_code: "",
+          upi_id: ""
+        },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ],
+    order_documents: []
   };
 }
 

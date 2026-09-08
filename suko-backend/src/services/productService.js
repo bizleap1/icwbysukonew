@@ -104,6 +104,50 @@ function ensureDevStoreProducts() {
   }
 }
 
+function ensureProductSizeStock(p) {
+  if (!p) return p;
+  let sizeStock = p.size_stock;
+  if (typeof sizeStock === "string") {
+    try {
+      sizeStock = JSON.parse(sizeStock);
+    } catch (e) {
+      sizeStock = null;
+    }
+  }
+
+  if (!sizeStock || typeof sizeStock !== "object" || Object.keys(sizeStock).length === 0) {
+    let sizes = p.sizes;
+    if (typeof sizes === "string") {
+      try {
+        sizes = JSON.parse(sizes);
+      } catch (e) {
+        sizes = null;
+      }
+    }
+    const sizesList = Array.isArray(sizes) && sizes.length > 0 ? sizes : ["XS", "S", "M", "L", "XL"];
+    const totalStock = typeof p.stock !== "undefined" ? Number(p.stock) : 15;
+    const base = Math.max(1, Math.floor(totalStock / sizesList.length));
+    let rem = totalStock - (base * sizesList.length);
+    sizeStock = {};
+    sizesList.forEach(s => {
+      sizeStock[s] = base + (rem > 0 ? 1 : 0);
+      if (rem > 0) rem--;
+    });
+
+    if (!pool.isMock && p.id) {
+      pool.query(
+        "UPDATE products SET size_stock = $1 WHERE id = $2 AND (size_stock IS NULL OR size_stock = '{}'::jsonb)",
+        [JSON.stringify(sizeStock), String(p.id)]
+      ).catch(() => {});
+    }
+  }
+
+  return {
+    ...p,
+    size_stock: sizeStock
+  };
+}
+
 async function getAllProducts(options = {}) {
   const { status, category, includeArchived = false } = options;
 
@@ -129,7 +173,7 @@ async function getAllProducts(options = {}) {
       );
     }
 
-    return list;
+    return list.map(ensureProductSizeStock);
   }
 
   // Real Postgres mode
@@ -160,9 +204,9 @@ async function getAllProducts(options = {}) {
     if (res.rows.length === 0 && !status && !category) {
       await seedCatalog(false);
       const seeded = await pool.query("SELECT * FROM products WHERE status != 'archived' ORDER BY created_at DESC");
-      return seeded.rows;
+      return seeded.rows.map(ensureProductSizeStock);
     }
-    return res.rows;
+    return res.rows.map(ensureProductSizeStock);
   } catch (err) {
     console.error("[ProductService] Postgres query error:", err.message);
     if (err.code === "42P01") {
@@ -171,13 +215,13 @@ async function getAllProducts(options = {}) {
         const { initDatabase } = require("../db");
         await initDatabase();
         const retryRes = await pool.query(query, params);
-        return retryRes.rows;
+        return retryRes.rows.map(ensureProductSizeStock);
       } catch (retryErr) {
         console.error("[ProductService] Auto-initialization retry failed:", retryErr.message);
       }
     }
     const store = ensureDevStoreProducts();
-    return store.products || [];
+    return (store.products || []).map(ensureProductSizeStock);
   }
 }
 

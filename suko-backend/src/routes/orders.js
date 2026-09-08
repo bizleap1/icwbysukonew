@@ -5,7 +5,20 @@ const crypto = require("crypto");
 const { pool } = require("../db");
 const { requireAuth, requireAdmin } = require("../auth");
 const { validateCreateOrder } = require("../middleware/validate");
-const { sendOrderInvoiceEmail } = require("../services/emailService");
+const {
+  sendOrderInvoiceEmail,
+  sendOrderConfirmationEmail,
+  sendPaymentReceiptEmail,
+  sendShippingUpdateEmail
+} = require("../services/emailService");
+const {
+  renderDocumentHtml,
+  generateDocumentPdf
+} = require("../services/documentService");
+const {
+  getOrderDocuments,
+  allocateInvoiceNumber
+} = require("../services/brandSettingsService");
 
 const router = express.Router();
 
@@ -29,9 +42,12 @@ function formatOrder(orderRow, itemRows, userRow) {
     transaction_id: orderRow.transaction_id || null,
     utr: orderRow.transaction_id || null,
     payment_screenshot_url: orderRow.payment_screenshot_url || null,
+    invoice_number: orderRow.invoice_number || null,
     created_at: orderRow.created_at,
     updated_at: orderRow.updated_at,
     cancel_reason: orderRow.cancel_reason,
+    coupon_code: orderRow.coupon_code || null,
+    discount: Number(orderRow.discount) || 0,
     address: {
       name: orderRow.name,
       phone: orderRow.phone,
@@ -104,18 +120,84 @@ async function getOrderWithItems(orderId) {
 router.post("/", requireAuth, validateCreateOrder, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { items, name, phone, line1, city, state, pincode } = req.body;
+    const { items, name, phone, line1, city, state, pincode, coupon_code } = req.body;
 
-    const total = items.reduce(
+    const subtotal = items.reduce(
       (sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 1),
       0
     );
 
+    let discount = 0;
+    let appliedCode = null;
+
+    if (coupon_code && typeof coupon_code === "string") {
+      const cleanCode = coupon_code.trim().toUpperCase();
+      if (pool.isMock) {
+        const storePath = path.join(__dirname, "..", "data", "dev-store.json");
+        if (fs.existsSync(storePath)) {
+          try {
+            const store = JSON.parse(fs.readFileSync(storePath, "utf-8"));
+            const coup = (store.coupons || []).find(c => c.code.toUpperCase() === cleanCode && c.is_active !== false);
+            if (coup) {
+              const minVal = Number(coup.min_order_value) || 0;
+              const isNotExpired = !coup.expiry_date || new Date(coup.expiry_date).getTime() >= Date.now();
+              const limitNotReached = !coup.usage_limit || (Number(coup.used_count) || 0) < Number(coup.usage_limit);
+              if (subtotal >= minVal && isNotExpired && limitNotReached) {
+                const type = coup.discount_type || (coup.discount_flat ? "flat" : "percentage");
+                const val = Number(coup.discount_value || coup.discount_percent || coup.discount_flat || 0);
+                if (type === "percentage") {
+                  discount = Math.round((subtotal * val) / 100);
+                  if (coup.max_discount && discount > Number(coup.max_discount)) {
+                    discount = Number(coup.max_discount);
+                  }
+                } else {
+                  discount = Math.min(subtotal, val);
+                }
+                coup.used_count = (Number(coup.used_count) || 0) + 1;
+                fs.writeFileSync(storePath, JSON.stringify(store, null, 2), "utf-8");
+                appliedCode = cleanCode;
+              }
+            }
+          } catch (e) {}
+        }
+      } else {
+        const coupRes = await client.query(
+          "SELECT * FROM coupons WHERE UPPER(code) = $1 AND is_active = true",
+          [cleanCode]
+        );
+        const coup = coupRes.rows[0];
+        if (coup) {
+          const minVal = Number(coup.min_order_value) || 0;
+          const isNotExpired = !coup.expiry_date || new Date(coup.expiry_date).getTime() >= Date.now();
+          const limitNotReached = !coup.usage_limit || (Number(coup.used_count) || 0) < Number(coup.usage_limit);
+          if (subtotal >= minVal && isNotExpired && limitNotReached) {
+            const type = coup.discount_type || (coup.discount_flat ? "flat" : "percentage");
+            const val = Number(coup.discount_value || coup.discount_percent || coup.discount_flat || 0);
+            if (type === "percentage") {
+              discount = Math.round((subtotal * val) / 100);
+              if (coup.max_discount && discount > Number(coup.max_discount)) {
+                discount = Number(coup.max_discount);
+              }
+            } else {
+              discount = Math.min(subtotal, val);
+            }
+            await client.query(
+              "UPDATE coupons SET used_count = COALESCE(used_count, 0) + 1 WHERE id = $1",
+              [coup.id]
+            );
+            appliedCode = cleanCode;
+          }
+        }
+      }
+    }
+
+    const total = Math.max(0, subtotal - discount);
+
     await client.query("BEGIN");
 
     const orderRes = await client.query(
-      `INSERT INTO orders (user_id, status, total, payment_method, name, phone, email, line1, city, state, pincode)
-       VALUES ($1, 'pending_payment', $2, 'upi_qr', $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO orders (user_id, status, total, payment_method, name, phone, email, line1, city, state, pincode, coupon_code, discount)
+       VALUES ($1, 'pending_payment', $2, 'upi_qr', $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
       [
         req.user.userId,
@@ -127,6 +209,8 @@ router.post("/", requireAuth, validateCreateOrder, async (req, res) => {
         city || "",
         state || "",
         pincode || "",
+        appliedCode,
+        discount
       ]
     );
     const order = orderRes.rows[0];
@@ -151,6 +235,13 @@ router.post("/", requireAuth, validateCreateOrder, async (req, res) => {
     await client.query("COMMIT");
 
     const fullOrder = await getOrderWithItems(order.id);
+
+    // Asynchronously dispatch instant luxury order confirmation email
+    if (fullOrder) {
+      sendOrderConfirmationEmail(fullOrder).catch((e) => {
+        console.warn("⚠️  [EmailService] Order confirmation email dispatch failed:", e.message);
+      });
+    }
 
     res.status(201).json(fullOrder);
   } catch (err) {
@@ -416,6 +507,18 @@ router.patch("/:id/status", requireAdmin, async (req, res) => {
     );
     if (result.rows.length === 0) return res.status(404).json({ error: "Order not found." });
 
+    // Asynchronously dispatch branded shipping/status email
+    if (status === "processing" || status === "completed") {
+      getOrderWithItems(orderId).then((fullOrder) => {
+        if (fullOrder) {
+          const label = status === "processing" ? "In Atelier Handcrafting" : "Dispatched & In Transit";
+          sendShippingUpdateEmail(fullOrder, label).catch((mErr) => {
+            console.warn("⚠️  [EmailService] Shipping update email failed:", mErr.message);
+          });
+        }
+      }).catch(console.error);
+    }
+
     res.json({ order: result.rows[0] });
   } catch (err) {
     console.error("Update status error:", err);
@@ -481,6 +584,122 @@ router.delete("/:id", requireAdmin, async (req, res) => {
   } catch (err) {
     console.error("Delete order error:", err);
     res.status(500).json({ error: "Failed to delete order." });
+  }
+});
+// GET /api/orders/:id/document -- render printable HTML document (invoice, receipt, packing_slip)
+router.get("/:id/document", requireAuth, async (req, res) => {
+  try {
+    const orderId = parseInt(req.params.id, 10);
+    const raw = await pool.query("SELECT user_id FROM orders WHERE id = $1", [orderId]);
+    if (raw.rows.length === 0) return res.status(404).json({ error: "Order not found." });
+
+    const isOwner = raw.rows[0].user_id === req.user.userId;
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "Not authorized to view this document." });
+    }
+
+    const order = await getOrderWithItems(orderId);
+    if (!order) return res.status(404).json({ error: "Order not found." });
+
+    // Allocate sequential invoice number if not yet assigned
+    if (!order.invoice_number) {
+      order.invoice_number = await allocateInvoiceNumber(orderId);
+    }
+
+    const docType = (req.query.type || "invoice").toLowerCase();
+    const html = await renderDocumentHtml({ order, type: docType });
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
+  } catch (err) {
+    console.error("Render document error:", err);
+    res.status(500).json({ error: "Failed to generate document." });
+  }
+});
+
+// GET /api/orders/:id/pdf -- download binary vector PDF document
+router.get("/:id/pdf", requireAuth, async (req, res) => {
+  try {
+    const orderId = parseInt(req.params.id, 10);
+    const raw = await pool.query("SELECT user_id FROM orders WHERE id = $1", [orderId]);
+    if (raw.rows.length === 0) return res.status(404).json({ error: "Order not found." });
+
+    const isOwner = raw.rows[0].user_id === req.user.userId;
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "Not authorized to download this document." });
+    }
+
+    const order = await getOrderWithItems(orderId);
+    if (!order) return res.status(404).json({ error: "Order not found." });
+
+    if (!order.invoice_number) {
+      order.invoice_number = await allocateInvoiceNumber(orderId);
+    }
+
+    const docType = (req.query.type || "invoice").toLowerCase();
+    const pdfBuffer = await generateDocumentPdf({ order, type: docType });
+
+    const docLabel = docType === "packing_slip" ? "PackingSlip" : (docType === "receipt" ? "Receipt" : "Invoice");
+    const filename = `SUKO-${docLabel}-${order.invoice_number || orderId}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Length", pdfBuffer.length);
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error("Generate PDF error:", err);
+    res.status(500).json({ error: "Failed to generate PDF document." });
+  }
+});
+
+// POST /api/orders/:id/send-invoice -- admin triggers sending luxury invoice email with PDF attachment
+router.post("/:id/send-invoice", requireAdmin, async (req, res) => {
+  try {
+    const orderId = parseInt(req.params.id, 10);
+    const order = await getOrderWithItems(orderId);
+    if (!order) return res.status(404).json({ error: "Order not found." });
+
+    const recipientOverride = {
+      email: req.body.email || undefined,
+      name: req.body.name || undefined
+    };
+
+    const result = await sendOrderInvoiceEmail(order, recipientOverride);
+    if (!result.success && !result.devMode) {
+      return res.status(500).json({ error: result.error || "Failed to dispatch invoice email." });
+    }
+
+    res.json({
+      success: true,
+      message: `Invoice email successfully sent${result.invoiceNumber ? ` (#${result.invoiceNumber})` : ""}.`,
+      invoiceNumber: result.invoiceNumber
+    });
+  } catch (err) {
+    console.error("Send invoice email error:", err);
+    res.status(500).json({ error: "Failed to send invoice email." });
+  }
+});
+
+// GET /api/orders/:id/documents -- retrieve document history (invoices, receipts, PDFs)
+router.get("/:id/documents", requireAuth, async (req, res) => {
+  try {
+    const orderId = parseInt(req.params.id, 10);
+    const raw = await pool.query("SELECT user_id FROM orders WHERE id = $1", [orderId]);
+    if (raw.rows.length === 0) return res.status(404).json({ error: "Order not found." });
+
+    const isOwner = raw.rows[0].user_id === req.user.userId;
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "Not authorized to view document history." });
+    }
+
+    const docs = await getOrderDocuments(orderId);
+    res.json(docs);
+  } catch (err) {
+    console.error("Fetch order documents error:", err);
+    res.status(500).json({ error: "Failed to load document history." });
   }
 });
 

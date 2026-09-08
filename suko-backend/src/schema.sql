@@ -119,12 +119,29 @@ ON CONFLICT (email) DO NOTHING;
 CREATE TABLE IF NOT EXISTS coupons (
   id SERIAL PRIMARY KEY,
   code VARCHAR(50) UNIQUE NOT NULL,
+  discount_type VARCHAR(20) DEFAULT 'percentage',
+  discount_value NUMERIC(10,2),
   discount_percent NUMERIC(5,2),
   discount_flat NUMERIC(10,2),
   min_order_value NUMERIC(10,2) DEFAULT 0,
+  max_discount NUMERIC(10,2),
+  usage_limit INTEGER,
+  used_count INTEGER DEFAULT 0,
+  expiry_date TIMESTAMPTZ,
   is_active BOOLEAN DEFAULT true,
+  status VARCHAR(20) DEFAULT 'active',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE coupons ADD COLUMN IF NOT EXISTS discount_type VARCHAR(20) DEFAULT 'percentage';
+ALTER TABLE coupons ADD COLUMN IF NOT EXISTS discount_value NUMERIC(10,2);
+ALTER TABLE coupons ADD COLUMN IF NOT EXISTS max_discount NUMERIC(10,2);
+ALTER TABLE coupons ADD COLUMN IF NOT EXISTS usage_limit INTEGER;
+ALTER TABLE coupons ADD COLUMN IF NOT EXISTS used_count INTEGER DEFAULT 0;
+ALTER TABLE coupons ADD COLUMN IF NOT EXISTS expiry_date TIMESTAMPTZ;
+ALTER TABLE coupons ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS coupon_code VARCHAR(50);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount NUMERIC(10,2) DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS reviews (
   id SERIAL PRIMARY KEY,
@@ -133,8 +150,13 @@ CREATE TABLE IF NOT EXISTS reviews (
   user_name VARCHAR(255),
   rating INTEGER NOT NULL DEFAULT 5,
   comment TEXT,
+  status VARCHAR(30) NOT NULL DEFAULT 'pending',
+  images JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS status VARCHAR(30) NOT NULL DEFAULT 'pending';
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
 
 CREATE TABLE IF NOT EXISTS cart_items (
   id SERIAL PRIMARY KEY,
@@ -148,3 +170,78 @@ CREATE TABLE IF NOT EXISTS cart_items (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS broadcasts (
+  id SERIAL PRIMARY KEY,
+  subject VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  audience_type VARCHAR(50) DEFAULT 'all',
+  target VARCHAR(50) DEFAULT 'all',
+  channel VARCHAR(20) DEFAULT 'email',
+  recipient_email VARCHAR(255),
+  recipient_count INTEGER DEFAULT 0,
+  delivered_count INTEGER DEFAULT 0,
+  failed_count INTEGER DEFAULT 0,
+  sent_by VARCHAR(100) DEFAULT 'SUKO Concierge',
+  status VARCHAR(20) DEFAULT 'delivered',
+  template_used VARCHAR(100),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_broadcasts_created_at ON broadcasts(created_at DESC);
+
+-- Invoice & Brand Settings
+CREATE TABLE IF NOT EXISTS brand_settings (
+  id SERIAL PRIMARY KEY,
+  business_name VARCHAR(255) DEFAULT 'SUKO Atelier',
+  tagline VARCHAR(255) DEFAULT 'Contemporary Indian Corporate Wear',
+  logo_url TEXT DEFAULT '/logo.png',
+  gst_number VARCHAR(100) DEFAULT '',
+  address TEXT DEFAULT 'Atelier Flagship, Mumbai, Maharashtra, India',
+  support_email VARCHAR(255) DEFAULT 'indiancorporatewearbysuko@gmail.com',
+  support_phone VARCHAR(100) DEFAULT '+91 98765 43210',
+  website_url VARCHAR(255) DEFAULT 'https://www.indiancorporatewear.com',
+  instagram_url VARCHAR(255) DEFAULT 'https://www.instagram.com/icwbysuko?igsi=MXR4a2hwdWJmOW9lZw%3D%3D&utm_source=qr',
+  instagram_handle VARCHAR(100) DEFAULT '@icwbysuko',
+  invoice_prefix VARCHAR(50) DEFAULT 'INV-2026-',
+  next_invoice_number INTEGER DEFAULT 1001,
+  payment_details JSONB DEFAULT '{"bank_name":"","account_name":"","account_number":"","ifsc_code":"","upi_id":""}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+INSERT INTO brand_settings (id, business_name, tagline, logo_url, gst_number, address, support_email, support_phone, website_url, instagram_url, instagram_handle, invoice_prefix, next_invoice_number, payment_details)
+VALUES (
+  1,
+  'SUKO Atelier',
+  'Contemporary Indian Corporate Wear',
+  '/logo.png',
+  '',
+  'Atelier Flagship, Mumbai, Maharashtra, India',
+  'indiancorporatewearbysuko@gmail.com',
+  '+91 98765 43210',
+  'https://www.indiancorporatewear.com',
+  'https://www.instagram.com/icwbysuko?igsi=MXR4a2hwdWJmOW9lZw%3D%3D&utm_source=qr',
+  '@icwbysuko',
+  'INV-2026-',
+  1001,
+  '{"bank_name":"","account_name":"","account_number":"","ifsc_code":"","upi_id":""}'::jsonb
+)
+ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(100);
+
+-- Document History Tracking (Invoices, Receipts, Packing Slips, Order Confirmations)
+CREATE TABLE IF NOT EXISTS order_documents (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+  document_type VARCHAR(50) NOT NULL,
+  document_number VARCHAR(100) NOT NULL,
+  pdf_url TEXT,
+  sent_to_email VARCHAR(255),
+  sent_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_order_documents_order_id ON order_documents(order_id);
+CREATE INDEX IF NOT EXISTS idx_order_documents_doc_number ON order_documents(document_number);

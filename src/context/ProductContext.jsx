@@ -41,23 +41,39 @@ export const ProductProvider = ({ children }) => {
           const catId = bp.category_id || bp.category?.slug || bp.category?.id || (bp.category && typeof bp.category === 'string' ? bp.category : 'suits');
           const catName = bp.category?.name || bp.categoryName || (catId.charAt(0).toUpperCase() + catId.slice(1));
 
-          return {
-            id: String(bp.id),
-            backendId: bp.id,
-            name: bp.name,
-            slug: bp.slug || bp.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
-            price: Number(bp.price) || 0,
-            discount_price: bp.discount_price ? Number(bp.discount_price) : null,
-            description: bp.description || '',
-            category: catId,
-            categoryName: catName,
-            category_id: catId,
-            sub_category: bp.sub_category || bp.shortType || bp.setType || 'Atelier Silhouette',
-            images: imagesList,
-            image_url: bp.image_url || imagesList[0] || '/placeholder.png',
-            stock: typeof bp.stock !== 'undefined' ? Number(bp.stock) : 10,
-            sizes: Array.isArray(bp.sizes) && bp.sizes.length > 0 ? bp.sizes : ['XS', 'S', 'M', 'L', 'XL'],
-            size_stock: bp.size_stock || {},
+            const rawSizes = Array.isArray(bp.sizes) && bp.sizes.length > 0 ? bp.sizes : ['XS', 'S', 'M', 'L', 'XL'];
+            let parsedSizeStock = bp.size_stock;
+            if (typeof parsedSizeStock === 'string') {
+              try { parsedSizeStock = JSON.parse(parsedSizeStock); } catch (e) { parsedSizeStock = {}; }
+            }
+            if (!parsedSizeStock || typeof parsedSizeStock !== 'object' || Object.keys(parsedSizeStock).length === 0) {
+              const tot = typeof bp.stock !== 'undefined' ? Number(bp.stock) : 15;
+              const baseQty = Math.max(1, Math.floor(tot / rawSizes.length));
+              let remainder = tot - (baseQty * rawSizes.length);
+              parsedSizeStock = {};
+              rawSizes.forEach(sz => {
+                parsedSizeStock[sz] = baseQty + (remainder > 0 ? 1 : 0);
+                if (remainder > 0) remainder--;
+              });
+            }
+
+            return {
+              id: String(bp.id),
+              backendId: bp.id,
+              name: bp.name,
+              slug: bp.slug || bp.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
+              price: Number(bp.price) || 0,
+              discount_price: bp.discount_price ? Number(bp.discount_price) : null,
+              description: bp.description || '',
+              category: catId,
+              categoryName: catName,
+              category_id: catId,
+              sub_category: bp.sub_category || bp.shortType || bp.setType || 'Atelier Silhouette',
+              images: imagesList,
+              image_url: bp.image_url || imagesList[0] || '/placeholder.png',
+              stock: typeof bp.stock !== 'undefined' ? Number(bp.stock) : 10,
+              sizes: rawSizes,
+              size_stock: parsedSizeStock,
             status: bp.status || 'active',
             sku: bp.sku || `SUKO-${String(bp.id).toUpperCase()}`,
             gender: bp.gender || 'female',
