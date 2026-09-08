@@ -83,8 +83,28 @@ export const Collection = () => {
   const sortParam = searchParams.get("sort");
 
   // Global Products Context (Database is single source of truth)
-  const { products: contextProducts, loading: productsLoading } = useProducts();
+  const { products: contextProducts, categories: contextCategories, loading: productsLoading } = useProducts();
   const productsList = useMemo(() => contextProducts || [], [contextProducts]);
+
+  // Dynamically resolve category tabs from database categories
+  const dynamicCategories = useMemo(() => {
+    const list = [{ id: "all", label: "ALL PIECES" }];
+    if (Array.isArray(contextCategories) && contextCategories.length > 0) {
+      contextCategories.forEach(cat => {
+        const slug = cat.slug || cat.id;
+        list.push({
+          id: slug,
+          label: (cat.name || slug).toUpperCase(),
+          subcategories: cat.subcategories || (slug === "separates" ? ["Blazers", "Jackets", "Vests", "Tunics", "Trousers", "Skirts"] : [])
+        });
+      });
+    } else {
+      COLLECTION_CATEGORIES.forEach(c => {
+        if (c.id !== "all") list.push(c);
+      });
+    }
+    return list;
+  }, [contextCategories]);
 
   // Selected Filter States
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -171,27 +191,27 @@ export const Collection = () => {
       if (selectedCategory !== "all") {
         const cat = (p.category || "").toLowerCase();
         const catName = (p.categoryName || "").toLowerCase();
-        const setType = (p.setType || "").toLowerCase();
+        const pCatId = String(p.category_id || p.category?.id || p.category?.slug || "").toLowerCase();
         const selCat = selectedCategory.toLowerCase();
 
         if (selCat === "suits") {
-          const isSuit = cat === "suits" || catName.includes("power suit");
+          const isSuit = cat === "suits" || catName.includes("power suit") || pCatId === "suits";
           if (!isSuit) return false;
         } else if (selCat === "coords" || selCat === "coord" || selCat === "co-ords") {
-          const isCoord = cat === "coords" || cat === "waistcoats" || catName.includes("co-ord") || catName.includes("vests & co-ords");
+          const isCoord = cat === "coords" || cat === "waistcoats" || catName.includes("co-ord") || catName.includes("vests & co-ords") || pCatId === "coords";
           if (!isCoord) return false;
         } else if (selCat === "signatures" || selCat === "signature") {
-          const isSignature = p.badge?.toLowerCase().includes("signature") || (p.price && p.price >= 76000);
+          const isSignature = p.badge?.toLowerCase().includes("signature") || (p.price && p.price >= 76000) || pCatId === "signatures";
           if (!isSignature) return false;
         } else if (selCat === "separates" || selCat === "blazers" || selCat === "blazers-vests" || selCat === "tailored-separates") {
           // Strictly standalone Tailored Separates
-          const isSeparate = cat === "separates" || catName === "tailored separates";
+          const isSeparate = cat === "separates" || catName === "tailored separates" || pCatId === "separates";
           if (!isSeparate) return false;
 
           // Subcategory check (Trousers, Skirts)
           if (selectedSubCategory && selectedSubCategory !== "all") {
             const sub = selectedSubCategory.toLowerCase();
-            const pSub = (p.subCategory || "").toLowerCase();
+            const pSub = (p.subCategory || p.sub_category || "").toLowerCase();
 
             if (sub === "pants" || sub === "pant" || sub === "trousers" || sub === "trouser") {
               if (!pSub.includes("trouser") && !pSub.includes("pant")) return false;
@@ -199,6 +219,10 @@ export const Collection = () => {
               if (!pSub.includes("skirt")) return false;
             }
           }
+        } else {
+          // Dynamic category match for any custom collection added via Admin
+          const isMatch = pCatId === selCat || cat === selCat || catName === selCat || catName.includes(selCat) || pCatId.replace(/[^a-z0-9]/g, '') === selCat.replace(/[^a-z0-9]/g, '');
+          if (!isMatch) return false;
         }
       }
 
@@ -359,7 +383,7 @@ export const Collection = () => {
 
             {/* Center: Category Navigation Links */}
             <div className="flex items-center justify-center gap-6 overflow-x-auto hide-scrollbar whitespace-nowrap">
-              {COLLECTION_CATEGORIES.map((cat) => {
+              {dynamicCategories.map((cat) => {
                 const isActive = selectedCategory === cat.id;
                 const isLongTab = cat.id === "signatures";
                 const hasSub = cat.subcategories && cat.subcategories.length > 0;
@@ -567,7 +591,7 @@ export const Collection = () => {
             ref={mobileCategoryStripRef}
             className="h-[48px] sm:h-[52px] flex items-center overflow-x-auto hide-scrollbar whitespace-nowrap px-4 sm:px-5 gap-6 sm:gap-7"
           >
-            {COLLECTION_CATEGORIES.map((cat) => {
+            {dynamicCategories.map((cat) => {
               const isActive = selectedCategory === cat.id;
               return (
                 <button
@@ -890,7 +914,7 @@ export const Collection = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {COLLECTION_CATEGORIES.map((cat) => {
+                  {dynamicCategories.map((cat) => {
                     const isSelected = selectedCategory === cat.id;
                     return (
                       <button

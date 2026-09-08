@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ChevronDown, ChevronRight, SlidersHorizontal, ArrowUpDown, Check } from "lucide-react";
-import { CATEGORIES, SIZES, COLOURS } from "../../data/products";
+import { CATEGORIES as FALLBACK_CATEGORIES, SIZES, COLOURS } from "../../data/products";
+import { useProducts } from "../../context/ProductContext";
 
 export const StickyFilterBar = ({
   selectedCategory,
@@ -20,6 +21,8 @@ export const StickyFilterBar = ({
   totalResults
 }) => {
   const [openSubmenu, setOpenSubmenu] = useState(null);
+  const { categories: contextCategories } = useProducts();
+  const activeCategories = (contextCategories && contextCategories.length > 0) ? contextCategories : FALLBACK_CATEGORIES;
 
   const sortLabels = {
     "newest": "Newest",
@@ -29,7 +32,7 @@ export const StickyFilterBar = ({
 
   const getCategoryLabel = () => {
     if (selectedCategory === "all") return "All Categories";
-    const found = CATEGORIES.find(c => c.slug === selectedCategory);
+    const found = activeCategories.find(c => (c.slug || c.id) === selectedCategory);
     if (found) {
       if (selectedCategory === "separates" && selectedSubCategory && selectedSubCategory !== "all") {
         const subName = selectedSubCategory.charAt(0).toUpperCase() + selectedSubCategory.slice(1);
@@ -95,21 +98,22 @@ export const StickyFilterBar = ({
                     <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]" />
                   )}
                 </button>
-                {CATEGORIES.map((cat) => {
-                  const isSelected = selectedCategory === cat.slug;
+                {activeCategories.map((cat) => {
+                  const catSlug = cat.slug || cat.id;
+                  const isSelected = selectedCategory === catSlug;
                   const hasSub = cat.subcategories && cat.subcategories.length > 0;
 
                   if (hasSub) {
-                    const isSubmenuOpen = openSubmenu === cat.slug;
+                    const isSubmenuOpen = openSubmenu === catSlug;
                     return (
                       <div 
-                        key={cat.id || cat.slug} 
+                        key={cat.id || catSlug} 
                         className="relative group/sub"
-                        onMouseEnter={() => setOpenSubmenu(cat.slug)}
+                        onMouseEnter={() => setOpenSubmenu(catSlug)}
                       >
                         <div
                           onClick={() => {
-                            setSelectedCategory(cat.slug);
+                            setSelectedCategory(catSlug);
                             if (setSelectedSubCategory) setSelectedSubCategory("all");
                             setOpenDropdown(null);
                             setOpenSubmenu(null);
@@ -140,13 +144,13 @@ export const StickyFilterBar = ({
                         {isSubmenuOpen && (
                           <div 
                             className="absolute left-full top-0 ml-1 w-52 bg-[#FAF8F5] border border-[#E8E4DC] shadow-[0_12px_36px_rgba(18,18,21,0.12)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150"
-                            onMouseEnter={() => setOpenSubmenu(cat.slug)}
+                            onMouseEnter={() => setOpenSubmenu(catSlug)}
                           >
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedCategory(cat.slug);
+                                setSelectedCategory(catSlug);
                                 if (setSelectedSubCategory) setSelectedSubCategory("all");
                                 setOpenDropdown(null);
                                 setOpenSubmenu(null);
@@ -173,7 +177,7 @@ export const StickyFilterBar = ({
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedCategory(cat.slug);
+                                    setSelectedCategory(catSlug);
                                     if (setSelectedSubCategory) setSelectedSubCategory(sub.toLowerCase());
                                     setOpenDropdown(null);
                                     setOpenSubmenu(null);
@@ -199,11 +203,11 @@ export const StickyFilterBar = ({
 
                   return (
                     <button
-                      key={cat.id || cat.slug}
+                      key={cat.id || catSlug}
                       type="button"
                       onMouseEnter={() => setOpenSubmenu(null)}
                       onClick={() => {
-                        setSelectedCategory(cat.slug);
+                        setSelectedCategory(catSlug);
                         if (setSelectedSubCategory) setSelectedSubCategory("all");
                         setOpenDropdown(null);
                         setOpenSubmenu(null);

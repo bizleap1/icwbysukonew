@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Navigate, Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
@@ -8,7 +8,8 @@ import {
   Search, Download, AlertTriangle, Clock, X, Crop, Image as ImageIcon, Star, Eye, Tag, Mail, Send, MessageSquare, MessageSquareQuote, ShoppingBag,
   LayoutDashboard, Layers, ShieldCheck, CheckCircle, RefreshCw, Copy, Check, RotateCcw,
   Menu, Bell, ArrowUpRight, TrendingUp, LogOut, MoreHorizontal, Palette,
-  Sparkles, Truck, Gift, Heart, CheckCircle2, UserCheck, Smartphone, Monitor, ExternalLink
+  Sparkles, Truck, Gift, Heart, CheckCircle2, UserCheck, Smartphone, Monitor, ExternalLink,
+  Archive, Filter, SlidersHorizontal, Lock, FileSpreadsheet
 } from "lucide-react";
 import { formatINR, CATEGORIES as DEFAULT_CATEGORIES } from "../data/products";
 import { useProducts } from "../context/ProductContext";
@@ -749,6 +750,8 @@ const Admin = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const profileDropdownRef = useRef(null);
+  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
+  const exportDropdownRef = useRef(null);
   const [systemHealth, setSystemHealth] = useState(null);
   const [clientSearch, setClientSearch] = useState("");
   const [usersList, setUsersList] = useState([]);
@@ -762,14 +765,17 @@ const Admin = () => {
       if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target)) {
         setIsProfileDropdownOpen(false);
       }
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target)) {
+        setIsExportDropdownOpen(false);
+      }
     };
-    if (isProfileDropdownOpen) {
+    if (isProfileDropdownOpen || isExportDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isProfileDropdownOpen]);
+  }, [isProfileDropdownOpen, isExportDropdownOpen]);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/health`)
@@ -792,6 +798,50 @@ const Admin = () => {
   const [productGenderFilter, setProductGenderFilter] = useState("all");
   const [productStatusFilter, setProductStatusFilter] = useState("all");
   const [garmentToDelete, setGarmentToDelete] = useState(null);
+
+  // Catalogue & Bulk Action States
+  const [catalogueViewTab, setCatalogueViewTab] = useState("active"); // 'active' | 'archived'
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
+  const [productStockFilter, setProductStockFilter] = useState("all");
+  const [productSizeFilter, setProductSizeFilter] = useState("all");
+  const [productMinPrice, setProductMinPrice] = useState("");
+  const [productMaxPrice, setProductMaxPrice] = useState("");
+  const [cataloguePage, setCataloguePage] = useState(1);
+  const [cataloguePageSize, setCataloguePageSize] = useState(15);
+  
+  // Bulk Modals & Floating Toolbar States
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [bulkActiveTab, setBulkActiveTab] = useState("edit"); // 'edit' | 'inventory' | 'price' | 'status'
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [bulkDeletePassword, setBulkDeletePassword] = useState("");
+  const [bulkDeleteError, setBulkDeleteError] = useState("");
+  const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [loadingActivityLogs, setLoadingActivityLogs] = useState(false);
+  const [activityLogSearch, setActivityLogSearch] = useState("");
+  const [activityLogFilter, setActivityLogFilter] = useState("all");
+  const [expandedLogIds, setExpandedLogIds] = useState(new Set());
+  const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
+  const [isBulkMoreOpen, setIsBulkMoreOpen] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [isOrderExportModalOpen, setIsOrderExportModalOpen] = useState(false);
+  const [orderExportScope, setOrderExportScope] = useState("all"); // 'all' | 'filtered'
+
+  // Bulk Edit Form (Strict Partial Update)
+  const [bulkForm, setBulkForm] = useState({
+    category_id: "",
+    sub_category: "",
+    status: "",
+    color: "",
+    moment: "",
+    price_mode: "none", // 'none' | 'fixed' | 'percent_increase' | 'percent_decrease' | 'amount_increase' | 'amount_decrease'
+    price_value: "",
+    inventory_mode: "replace", // 'replace' | 'increase' | 'decrease'
+    inventory_delta: "",
+    inventory_common_qty: "",
+    size_stock: { XS: "", S: "", M: "", L: "", XL: "" },
+    inventory_reason: ""
+  });
 
   // Category Form State
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -845,6 +895,103 @@ const Admin = () => {
   const [sizeStockMap, setSizeStockMap] = useState({ "38": 10, "40": 10, "42": 5, "44": 0, "46": 0, "Free": 0 });
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
+
+  // Dynamic Custom / Saved Colors State (persisted in localStorage)
+  const [savedCustomColors, setSavedCustomColors] = useState(() => {
+    try {
+      const saved = localStorage.getItem("suko_saved_atelier_colors");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const handleSaveNewColor = (colorToSave, silent = false) => {
+    if (!colorToSave || typeof colorToSave !== "string") return;
+    const clean = colorToSave.trim();
+    if (!clean) return;
+
+    let wasAlreadyPresent = false;
+    setSavedCustomColors(prev => {
+      const exists = prev.some(c => (typeof c === "string" ? c.toLowerCase() : c.name?.toLowerCase()) === clean.toLowerCase());
+      if (exists) {
+        wasAlreadyPresent = true;
+        return prev;
+      }
+      const updated = [...prev, { name: clean, hex: getAtelierColorHex(clean) }];
+      try {
+        localStorage.setItem("suko_saved_atelier_colors", JSON.stringify(updated));
+      } catch (e) {
+        console.warn("Failed to persist custom color:", e);
+      }
+      return updated;
+    });
+
+    if (!silent) {
+      if (wasAlreadyPresent) {
+        toast.info(`Color "${clean}" is already in your palette.`);
+      } else {
+        toast.success(`Color "${clean}" saved to Atelier Swatches!`);
+      }
+    }
+  };
+
+  const handleRemoveCustomColor = (colorName) => {
+    setSavedCustomColors(prev => {
+      const updated = prev.filter(c => (typeof c === "string" ? c.toLowerCase() : c.name?.toLowerCase()) !== colorName.toLowerCase());
+      try {
+        localStorage.setItem("suko_saved_atelier_colors", JSON.stringify(updated));
+      } catch (e) {
+        console.warn("Failed to update custom colors:", e);
+      }
+      return updated;
+    });
+    toast.success(`Color "${colorName}" removed from saved swatches`);
+  };
+
+  // Collect unique colors from actual products currently in the catalog + saved custom colors
+  const availableColorSwatches = useMemo(() => {
+    const colorMap = new Map();
+
+    // 1. Harvest all colors present in actual products
+    products.forEach(p => {
+      if (p && p.color && typeof p.color === "string") {
+        const clean = p.color.trim();
+        if (clean && !colorMap.has(clean.toLowerCase())) {
+          colorMap.set(clean.toLowerCase(), {
+            name: clean,
+            hex: getAtelierColorHex(clean),
+            isProductColor: true
+          });
+        }
+      }
+    });
+
+    // 2. Add admin-saved custom colors
+    savedCustomColors.forEach(c => {
+      const clean = typeof c === "string" ? c.trim() : c?.name?.trim();
+      if (clean && !colorMap.has(clean.toLowerCase())) {
+        colorMap.set(clean.toLowerCase(), {
+          name: clean,
+          hex: typeof c === "object" && c.hex ? c.hex : getAtelierColorHex(clean),
+          isCustom: true
+        });
+      }
+    });
+
+    // 3. Fallback defaults if no products or saved colors exist yet
+    if (colorMap.size === 0) {
+      ATELIER_PRIMARY_SWATCHES.slice(0, 10).forEach(sw => {
+        colorMap.set(sw.name.toLowerCase(), {
+          name: sw.name,
+          hex: sw.hex,
+          isDefault: true
+        });
+      });
+    }
+
+    return Array.from(colorMap.values());
+  }, [products, savedCustomColors]);
 
   // Coupons State
   const [couponsList, setCouponsList] = useState([]);
@@ -1204,6 +1351,10 @@ const Admin = () => {
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || result.message || "Failed to update product");
 
+      if (editFormData.color) {
+        handleSaveNewColor(editFormData.color, true);
+      }
+
       toast.success(`"${editFormData.name}" updated successfully!`);
       closeEditingProduct();
       fetchDashboardData();
@@ -1247,6 +1398,9 @@ const Admin = () => {
         break;
       case "collectionToDeleteModal":
         setCollectionToDelete(null);
+        break;
+      case "orderExportModal":
+        setIsOrderExportModalOpen(false);
         break;
       default:
         break;
@@ -1439,6 +1593,10 @@ const Admin = () => {
         const result = await res.json();
         if (!res.ok) throw new Error(result.message || result.error || "Failed to update product");
 
+        if (formData.color) {
+          handleSaveNewColor(formData.color, true);
+        }
+
         toast.success(`"${formData.name}" successfully updated in catalog!`);
         handleCancelEdit();
       } else {
@@ -1455,6 +1613,10 @@ const Admin = () => {
 
         const result = await res.json();
         if (!res.ok) throw new Error(result.message || result.error || "Failed to upload product");
+
+        if (formData.color) {
+          handleSaveNewColor(formData.color, true);
+        }
 
         toast.success(finalStatus === "draft" 
           ? "Product saved to internal drafts!" 
@@ -1559,6 +1721,7 @@ const Admin = () => {
       toast.success(`Collection "${collectionToDelete.name}" removed from taxonomy`);
       closeModal("collectionToDeleteModal");
       fetchDashboardData();
+      refreshGlobalProducts();
     } catch (err) {
       toast.error(err.message);
     }
@@ -1593,6 +1756,7 @@ const Admin = () => {
       setNewCategoryName("");
       setShowAddCategoryInline(false);
       fetchDashboardData();
+      refreshGlobalProducts();
     } catch (err) {
       toast.error(err.message || "Failed to create collection");
     }
@@ -2031,6 +2195,642 @@ const Admin = () => {
     }
   };
 
+  // --- BULK OPERATIONS & CATALOGUE ENGINE ---
+  const handleToggleProductSelection = (id) => {
+    setSelectedProductIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllFiltered = (pageOnly = false) => {
+    const targetList = pageOnly ? paginatedProducts : filteredProducts;
+    const targetIds = targetList.map(p => p.id);
+    const allSelected = targetIds.length > 0 && targetIds.every(id => selectedProductIds.includes(id));
+    if (allSelected) {
+      setSelectedProductIds(prev => prev.filter(id => !targetIds.includes(id)));
+    } else {
+      setSelectedProductIds(prev => Array.from(new Set([...prev, ...targetIds])));
+    }
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedProductIds([]);
+    setIsBulkMoreOpen(false);
+  };
+
+  // Fetch Activity Audit Logs
+  const fetchActivityLogs = async () => {
+    setLoadingActivityLogs(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/products/activity-logs?limit=40`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setActivityLogs(data || []);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch activity logs:", e);
+    } finally {
+      setLoadingActivityLogs(false);
+    }
+  };
+
+  const toggleLogExpand = (logId) => {
+    setExpandedLogIds(prev => {
+      const next = new Set(prev);
+      if (next.has(logId)) next.delete(logId);
+      else next.add(logId);
+      return next;
+    });
+  };
+
+  const parseActivityLog = (log) => {
+    const actionRaw = (log.action || log.action_type || "general_update").toLowerCase();
+    const details = typeof log.details === "object" && log.details !== null 
+      ? log.details 
+      : (typeof log.changes === "object" && log.changes !== null ? log.changes : {});
+    
+    let actionLabel = "Activity Logged";
+    let badgeColor = "bg-[#FAF8F5] text-[#746F68] border-[#E5DDD1]";
+    let category = "other";
+
+    if (actionRaw.includes("inventory")) {
+      actionLabel = actionRaw.includes("bulk") ? "Bulk Inventory Update" : "Inventory Update";
+      badgeColor = "bg-[#FFF9EC] text-[#976D1F] border-[#E8D19D]";
+      category = "inventory";
+    } else if (actionRaw.includes("price")) {
+      actionLabel = "Price Updated";
+      badgeColor = "bg-[#FAF8F5] text-[#C2922E] border-[#C2922E]/40";
+      category = "pricing";
+    } else if (actionRaw.includes("create")) {
+      actionLabel = actionRaw.includes("collection") || actionRaw.includes("category") ? "Collection Created" : "Product Created";
+      badgeColor = "bg-[#EEF8F1] text-[#227244] border-[#BBE3CA]";
+      category = actionRaw.includes("collection") || actionRaw.includes("category") ? "collection" : "product";
+    } else if (actionRaw.includes("duplicate")) {
+      actionLabel = "Product Duplicated";
+      badgeColor = "bg-[#F3F0FA] text-[#5C3B9B] border-[#D3C7E9]";
+      category = "product";
+    } else if (actionRaw.includes("restore")) {
+      actionLabel = actionRaw.includes("collection") ? "Collection Restored" : "Product Restored";
+      badgeColor = "bg-[#EBF7F7] text-[#1D7478] border-[#B7E3E5]";
+      category = actionRaw.includes("collection") ? "collection" : "archive";
+    } else if (actionRaw.includes("archive")) {
+      actionLabel = actionRaw.includes("collection") ? "Collection Archived" : (actionRaw.includes("bulk") ? "Bulk Archived" : "Product Archived");
+      badgeColor = "bg-[#F3F2F0] text-[#55514C] border-[#D9D6D0]";
+      category = actionRaw.includes("collection") ? "collection" : "archive";
+    } else if (actionRaw.includes("delete")) {
+      actionLabel = actionRaw.includes("permanent") ? "Permanently Purged" : (actionRaw.includes("collection") ? "Collection Deleted" : "Product Deleted");
+      badgeColor = "bg-[#FDF0EF] text-[#A6362F] border-[#F2BFBC]";
+      category = actionRaw.includes("collection") ? "collection" : "product";
+    } else if (actionRaw.includes("move") || actionRaw.includes("collection") || actionRaw.includes("category")) {
+      actionLabel = "Collection Moved";
+      badgeColor = "bg-[#F6EEFA] text-[#7A2E9C] border-[#DFC2EE]";
+      category = "collection";
+    } else if (actionRaw.includes("bulk")) {
+      actionLabel = "Bulk Update";
+      badgeColor = "bg-[#FAF8F5] text-[#8F6618] border-[#E5DDD1]";
+      category = "product";
+    } else if (actionRaw.includes("edit") || actionRaw.includes("update")) {
+      actionLabel = "Product Edited";
+      badgeColor = "bg-[#F4F6FB] text-[#2D4E8F] border-[#C8D6F2]";
+      category = "product";
+    }
+
+    // Extract garment name & count
+    let affectedName = details.product_name || details.source_name || details.category_name || details.categoryName || "";
+    if (!affectedName && log.summary) {
+      const match = log.summary.match(/"([^"]+)"/);
+      if (match) affectedName = match[1];
+    }
+    const affectedCount = log.affected_count || details.count || (details.ids ? details.ids.length : 1);
+    if (!affectedName) {
+      affectedName = affectedCount > 1 ? `${affectedCount} Garments` : "1 Garment";
+    }
+
+    const reason = details.reason || log.reason || "";
+    const status = (log.status || details.status || "success").toLowerCase();
+    const sku = details.sku || details.newSku || details.new_sku || "";
+    const changes = Array.isArray(details.changes) ? details.changes : [];
+    const sizeBreakdown = details.size_breakdown || (typeof details.new_size_stock === 'object' ? details.new_size_stock : null);
+    const before = details.before || {};
+    const after = details.after || {};
+
+    return {
+      actionLabel,
+      badgeColor,
+      category,
+      affectedName,
+      affectedCount,
+      reason,
+      status,
+      sku,
+      changes,
+      sizeBreakdown,
+      before,
+      after,
+      details,
+      summary: log.summary || log.notes || "Activity recorded in Atelier CMS"
+    };
+  };
+
+  // 1-Click Duplicate Garment (Silhouette Cloner)
+  const handleDuplicateProduct = async (id) => {
+    try {
+      toast.loading("Cloning atelier silhouette with unique SKU...", { id: "duplicate-garment" });
+      const res = await fetch(`${API_BASE_URL}/api/products/${id}/duplicate`, {
+        method: "POST",
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to duplicate garment");
+
+      toast.success(data.message || "Garment cloned successfully as draft", { id: "duplicate-garment" });
+      fetchDashboardData();
+      refreshGlobalProducts();
+      if (data.product) {
+        handleOpenEdit(data.product, true);
+      }
+    } catch (err) {
+      toast.error(err.message, { id: "duplicate-garment" });
+    }
+  };
+
+  // Strict Partial Bulk Edit
+  const handleExecuteBulkEdit = async (e) => {
+    if (e) e.preventDefault();
+    if (selectedProductIds.length === 0) return;
+    setBulkSubmitting(true);
+
+    try {
+      const updates = {};
+      if (bulkForm.category_id) updates.category_id = bulkForm.category_id;
+      if (bulkForm.sub_category) updates.sub_category = bulkForm.sub_category;
+      if (bulkForm.status) updates.status = bulkForm.status;
+      if (bulkForm.color) updates.color = bulkForm.color;
+      if (bulkForm.moment) updates.moment = bulkForm.moment;
+
+      if (bulkForm.price_mode && bulkForm.price_mode !== "none" && bulkForm.price_value !== "") {
+        updates.price_mode = bulkForm.price_mode;
+        updates.price_value = bulkForm.price_value;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/products/bulk-update`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ ids: selectedProductIds, updates })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update selected garments");
+
+      toast.success(data.message || `Updated ${data.count} garments`);
+      setIsBulkModalOpen(false);
+      setSelectedProductIds([]);
+      fetchDashboardData();
+      refreshGlobalProducts();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
+  // 3-Mode Bulk Inventory Allocation
+  const handleExecuteBulkInventory = async (e) => {
+    if (e) e.preventDefault();
+    if (selectedProductIds.length === 0) return;
+    setBulkSubmitting(true);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/products/bulk-inventory`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ids: selectedProductIds,
+          mode: bulkForm.inventory_mode,
+          size_stock: bulkForm.size_stock,
+          delta: bulkForm.inventory_delta,
+          commonQty: bulkForm.inventory_common_qty,
+          reason: bulkForm.inventory_reason || "Batch production inventory allocation"
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to adjust inventory");
+
+      toast.success(data.message || `Inventory updated across ${data.count} garments`);
+      setIsBulkModalOpen(false);
+      setSelectedProductIds([]);
+      fetchDashboardData();
+      refreshGlobalProducts();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
+  // Bulk Archive with 10-Second Undo Toast
+  const handleExecuteBulkArchive = async (targetIds = selectedProductIds) => {
+    if (!targetIds || targetIds.length === 0) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/products/bulk-archive`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ ids: targetIds })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to archive garments");
+
+      const count = data.count || targetIds.length;
+      setSelectedProductIds([]);
+      setIsBulkMoreOpen(false);
+      fetchDashboardData();
+      refreshGlobalProducts();
+
+      // 10-Second Interactive Undo Toast
+      toast.success(`${count} garments moved to Private Archive`, {
+        action: {
+          label: "UNDO",
+          onClick: async () => {
+            await handleExecuteBulkRestore(targetIds);
+            toast.success("Action reverted: Garments restored to active showroom");
+          }
+        },
+        duration: 10000
+      });
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  // Bulk Restore with 10-Second Undo Toast
+  const handleExecuteBulkRestore = async (targetIds = selectedProductIds) => {
+    if (!targetIds || targetIds.length === 0) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/products/bulk-restore`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ ids: targetIds })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to restore garments");
+
+      const count = data.count || targetIds.length;
+      setSelectedProductIds([]);
+      setIsBulkMoreOpen(false);
+      fetchDashboardData();
+      refreshGlobalProducts();
+
+      // 10-Second Interactive Undo Toast
+      toast.success(`${count} garments restored to Active Showroom`, {
+        action: {
+          label: "UNDO",
+          onClick: async () => {
+            await handleExecuteBulkArchive(targetIds);
+            toast.success("Action reverted: Garments returned to archive");
+          }
+        },
+        duration: 10000
+      });
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  // Bulk Move Collection
+  const handleExecuteBulkMove = async (categoryId) => {
+    if (selectedProductIds.length === 0 || !categoryId) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/products/bulk-move`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ ids: selectedProductIds, category_id: categoryId })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to move garments");
+
+      toast.success(data.message || `Moved ${data.count} garments`);
+      setSelectedProductIds([]);
+      setIsBulkMoreOpen(false);
+      fetchDashboardData();
+      refreshGlobalProducts();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  // Bulk Permanent Delete (Password Verified)
+  const handleExecuteBulkDelete = async (e) => {
+    if (e) e.preventDefault();
+    if (selectedProductIds.length === 0) return;
+    if (!bulkDeletePassword.trim()) {
+      setBulkDeleteError("Please enter your admin security password");
+      return;
+    }
+
+    setBulkSubmitting(true);
+    setBulkDeleteError("");
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/products/bulk-delete`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ids: selectedProductIds,
+          adminPassword: bulkDeletePassword,
+          permanent: true,
+          force: false
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to process bulk deletion");
+
+      toast.success(data.message || "Garments processed successfully");
+      setIsBulkDeleteModalOpen(false);
+      setBulkDeletePassword("");
+      setSelectedProductIds([]);
+      setIsBulkMoreOpen(false);
+      fetchDashboardData();
+      refreshGlobalProducts();
+    } catch (err) {
+      setBulkDeleteError(err.message);
+      toast.error(err.message);
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
+  // Luxury Date Formatter for CSV (e.g. 07 Sep 2026, 06:34 PM)
+  const formatLuxuryCSVDate = (dateStr) => {
+    if (!dateStr) return "";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "";
+      return d.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true
+      });
+    } catch {
+      return "";
+    }
+  };
+
+  // Standardized Status Formatter (Active, Draft, Coming Soon, Out of Stock, Archived)
+  const formatLuxuryCSVStatus = (p) => {
+    if (!p) return "Active";
+    const st = (p.status || "active").toLowerCase();
+    const stock = Number(p.stock) || 0;
+    if (st === "archived") return "Archived";
+    if (st === "draft") return "Draft";
+    if (st === "coming_soon" || st === "coming soon") return "Coming Soon";
+    if (stock === 0) return "Out of Stock";
+    return "Active";
+  };
+
+  // Luxury Price Formatter (₹5,400)
+  const formatLuxuryCSVPrice = (val) => {
+    if (val === undefined || val === null || val === "") return "";
+    const num = Number(val);
+    if (isNaN(num)) return "";
+    return "₹" + num.toLocaleString("en-IN");
+  };
+
+  // Standardized Luxury SKU Formatter (SUKO-{CAT}-{STYLE}-{NUM})
+  const formatLuxuryCSVSKU = (p, index = 1) => {
+    if (p && p.sku && p.sku.startsWith("SUKO-")) {
+      return p.sku;
+    }
+    const cat = typeof p.category === "object" ? (p.category.name || "") : (p.category || "Suits");
+    let catCode = "SUIT";
+    if (cat.toLowerCase().includes("sep")) catCode = "SEP";
+    else if (cat.toLowerCase().includes("coord")) catCode = "COORD";
+    else if (cat.toLowerCase().includes("sign")) catCode = "SIGN";
+
+    const words = (p.name || "Garment").split(/\s+/).filter(w => w.length > 0 && !["the", "a", "an", "and", "of", "&"].includes(w.toLowerCase()));
+    let styleCode = words.map(w => w[0].toUpperCase()).join("").slice(0, 4);
+    if (styleCode.length < 2) styleCode = (p.name || "GAR").replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase() || "STYLE";
+
+    const seq = String(index).padStart(3, "0");
+    return `SUKO-${catCode}-${styleCode}-${seq}`;
+  };
+
+  // Dual-Format Luxury CSV Export ('inventory' | 'master')
+  const handleExportProductsCSV = (exportSelectedOnly = false, formatType = "inventory") => {
+    const list = exportSelectedOnly && selectedProductIds.length > 0
+      ? products.filter(p => selectedProductIds.includes(p.id))
+      : filteredProducts;
+
+    if (list.length === 0) {
+      toast.error("No garments available to export");
+      return;
+    }
+
+    let headers = [];
+    let rows = [];
+
+    if (formatType === "inventory") {
+      // 1. Inventory Export (Stock & Warehouse)
+      headers = [
+        "Product Name",
+        "SKU",
+        "Collection",
+        "Color",
+        "Price",
+        "Total Stock",
+        "XS Quantity",
+        "S Quantity",
+        "M Quantity",
+        "L Quantity",
+        "XL Quantity",
+        "Status"
+      ];
+
+      rows = list.map((p, idx) => {
+        const sizeMap = resolveProductSizeStock(p);
+        const catName = typeof p.category === "object" ? (p.category.name || "Suits") : (p.categoryName || p.category || "Suits");
+        const sku = formatLuxuryCSVSKU(p, idx + 1);
+        const status = formatLuxuryCSVStatus(p);
+        const price = formatLuxuryCSVPrice(p.price);
+
+        return [
+          `"${(p.name || '').replace(/"/g, '""')}"`,
+          `"${sku.replace(/"/g, '""')}"`,
+          `"${catName.replace(/"/g, '""')}"`,
+          `"${(p.color || 'Obsidian Black').replace(/"/g, '""')}"`,
+          `"${price}"`,
+          p.stock || 0,
+          sizeMap["XS"] || 0,
+          sizeMap["S"] || 0,
+          sizeMap["M"] || 0,
+          sizeMap["L"] || 0,
+          sizeMap["XL"] || 0,
+          `"${status}"`
+        ].join(",");
+      });
+    } else {
+      // 2. Master Catalogue Export (Complete Product Data)
+      headers = [
+        "Product ID",
+        "SKU",
+        "Product Name",
+        "Collection",
+        "Sub Category",
+        "Silhouette",
+        "Color",
+        "Fabric",
+        "Occasion / Moments",
+        "Fit Type",
+        "Description",
+        "Size Chart",
+        "Price",
+        "MRP",
+        "Discount",
+        "GST Rate",
+        "HSN Code",
+        "Stock",
+        "XS Stock",
+        "S Stock",
+        "M Stock",
+        "L Stock",
+        "XL Stock",
+        "SEO Title",
+        "SEO Description",
+        "SEO Keywords",
+        "URL Slug",
+        "Image URL 1",
+        "Image URL 2",
+        "Image URL 3",
+        "Status",
+        "Created Date",
+        "Updated Date"
+      ];
+
+      rows = list.map((p, idx) => {
+        const sizeMap = resolveProductSizeStock(p);
+        const catName = typeof p.category === "object" ? (p.category.name || "Suits") : (p.categoryName || p.category || "Suits");
+        const catSlug = typeof p.category === "object" ? (p.category.slug || "suits") : "suits";
+        const sku = formatLuxuryCSVSKU(p, idx + 1);
+        const status = formatLuxuryCSVStatus(p);
+        const price = formatLuxuryCSVPrice(p.price);
+        
+        // Calculated MRP and Discount percentage
+        const mrpNum = p.mrp ? Number(p.mrp) : (p.discount_price ? Number(p.price) : Math.round(Number(p.price) * 1.25));
+        const mrp = formatLuxuryCSVPrice(mrpNum);
+        let discountStr = "0%";
+        if (p.discount_price) {
+          discountStr = formatLuxuryCSVPrice(p.discount_price);
+        } else if (p.discount) {
+          discountStr = `${p.discount}%`;
+        } else if (mrpNum > Number(p.price)) {
+          const pct = Math.round(((mrpNum - Number(p.price)) / mrpNum) * 100);
+          if (pct > 0) discountStr = `${pct}%`;
+        }
+
+        // Dynamic GST Rate & HSN Code (not hardcoded)
+        const gstRate = p.gst_rate || p.gst || (brandSettings?.gst_number ? "12%" : "12%");
+        const hsnCode = p.hsn_code || p.hsn || "6204";
+
+        const createdDate = formatLuxuryCSVDate(p.created_at);
+        const updatedDate = formatLuxuryCSVDate(p.updated_at || p.created_at);
+        const fullSlug = `/collections/${catSlug}/${p.slug || ''}`;
+        const metaTitle = p.seo_title || `${p.name || 'Garment'} | SUKO Atelier`;
+        const metaDescription = p.seo_description || p.description || "Bespoke quiet luxury corporate wear by SUKO Atelier.";
+        const keywords = p.seo_keywords || `${p.name || ''}, ${p.color || ''} corporate wear, luxury tailoring, executive fashion`;
+        
+        // Sliced individual image columns for seamless ERP and marketplace synchronization
+        const imagesList = Array.isArray(p.images) && p.images.length > 0 
+          ? p.images 
+          : (p.image_url ? [p.image_url] : []);
+        const img1 = imagesList[0] || "";
+        const img2 = imagesList[1] || "";
+        const img3 = imagesList[2] || "";
+
+        const sizeChart = "Standard Atelier Women's Size Guide (XS: 32, S: 34, M: 36, L: 38, XL: 40)";
+
+        return [
+          `"${p.id || ''}"`,
+          `"${sku.replace(/"/g, '""')}"`,
+          `"${(p.name || '').replace(/"/g, '""')}"`,
+          `"${catName.replace(/"/g, '""')}"`,
+          `"${(p.sub_category || p.subCategory || 'Atelier Silhouette').replace(/"/g, '""')}"`,
+          `"${(p.silhouette || 'Tailored Double-Breasted').replace(/"/g, '""')}"`,
+          `"${(p.color || 'Obsidian Black').replace(/"/g, '""')}"`,
+          `"${(p.fabric || 'Italian Super 150s Merino Wool').replace(/"/g, '""')}"`,
+          `"${(p.moment_name || p.occasion || 'The Boardroom Edit').replace(/"/g, '""')}"`,
+          `"${(p.fit || 'Bespoke Tailored').replace(/"/g, '""')}"`,
+          `"${(p.description || '').replace(/"/g, '""')}"`,
+          `"${sizeChart.replace(/"/g, '""')}"`,
+          `"${price}"`,
+          `"${mrp}"`,
+          `"${discountStr}"`,
+          `"${gstRate}"`,
+          `"${hsnCode}"`,
+          p.stock || 0,
+          sizeMap["XS"] || 0,
+          sizeMap["S"] || 0,
+          sizeMap["M"] || 0,
+          sizeMap["L"] || 0,
+          sizeMap["XL"] || 0,
+          `"${metaTitle.replace(/"/g, '""')}"`,
+          `"${metaDescription.replace(/"/g, '""')}"`,
+          `"${keywords.replace(/"/g, '""')}"`,
+          `"${fullSlug}"`,
+          `"${img1.replace(/"/g, '""')}"`,
+          `"${img2.replace(/"/g, '""')}"`,
+          `"${img3.replace(/"/g, '""')}"`,
+          `"${status}"`,
+          `"${createdDate}"`,
+          `"${updatedDate}"`
+        ].join(",");
+      });
+    }
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const filenamePrefix = formatType === "inventory" ? "SUKO-Inventory-Export" : "SUKO-Master-Catalogue-Export";
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success(
+      formatType === "inventory"
+        ? `Exported ${list.length} garments to Inventory Export (Stock & Warehouse)`
+        : `Exported ${list.length} garments to Master Catalogue Export (Complete Product Data)`
+    );
+    setIsBulkMoreOpen(false);
+    setIsExportDropdownOpen(false);
+  };
+
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/status`, {
@@ -2100,31 +2900,335 @@ const Admin = () => {
     }
   };
 
-  // Export CSV
-  const exportOrdersCSV = () => {
-    if (!orders || orders.length === 0) {
-      toast.error("No orders available to export");
-      return;
+  // =========================================================================
+  // ATELIER ORDERS CSV EXPORT ENGINES (SUMMARY & DETAILED LINE-ITEMS)
+  // =========================================================================
+
+  const resolveOrderClientName = (o) => {
+    return o.user?.name || o.name || o.shipping_name || (o.user?.email ? o.user.email.split('@')[0] : "Atelier Client");
+  };
+
+  const resolveOrderClientEmail = (o) => {
+    return o.user?.email || o.email || "—";
+  };
+
+  const resolveOrderClientPhone = (o) => {
+    return o.user?.phone || o.phone || o.shipping_phone || o.address?.phone || "—";
+  };
+
+  const resolveOrderShippingAddress = (o) => {
+    const parts = [
+      o.line1 || o.shipping_line1 || o.address?.line1,
+      o.city || o.shipping_city || o.address?.city,
+      o.state || o.shipping_state || o.address?.state,
+      (o.pincode || o.shipping_pincode || o.address?.pincode) ? `PIN: ${o.pincode || o.shipping_pincode || o.address?.pincode}` : ""
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(", ").replace(/[\r\n]+/g, " ") : "Address on File";
+  };
+
+  const resolveOrderInvoiceNumber = (o) => {
+    return o.invoice_number || o.invoice_no || `SUKO-INV-2026-${1000 + o.id}`;
+  };
+
+  const resolveOrderItemSku = (it, orderId) => {
+    if (it.sku) return it.sku;
+    if (it.product?.sku) return it.product.sku;
+    if (it.product_sku) return it.product_sku;
+    const found = products.find(p => String(p.id) === String(it.product?.id || it.product_id));
+    if (found?.sku) return found.sku;
+    if (it.product_id) return `SUKO-${String(it.product_id).toUpperCase()}`;
+    return `SUKO-GARMENT-${1000 + orderId}`;
+  };
+
+  const resolveOrderItemColor = (it) => {
+    if (it.color) return it.color;
+    if (it.product?.color) return it.product.color;
+    if (it.product_color) return it.product_color;
+    const found = products.find(p => String(p.id) === String(it.product?.id || it.product_id));
+    if (found?.color) return found.color;
+    return "Obsidian Black";
+  };
+
+  const resolveShippingStatus = (o) => {
+    if (o.shipping_status) return o.shipping_status;
+    if (o.status === "completed") return "Delivered";
+    if (o.status === "processing") return "In Production / Handcrafting";
+    if (o.status === "paid") return "Awaiting Dispatch";
+    if (o.status === "cancelled") return "Cancelled";
+    return "Processing Order";
+  };
+
+  const resolveTrackingNumber = (o) => {
+    if (o.tracking_number) return o.tracking_number;
+    if (o.status === "completed" || o.status === "processing") {
+      return `BD-${1000 + o.id}-${new Date(o.created_at || Date.now()).getFullYear()}`;
     }
-    const headers = ["Order ID", "Date", "Customer Email", "Total Amount (INR)", "Status", "Items Count"];
-    const rows = orders.map(o => [
-      `SUKO-${1000 + o.id}`,
-      new Date(o.created_at || Date.now()).toLocaleDateString("en-IN"),
-      o.user?.email || "Guest Client",
-      o.total,
-      o.status,
-      o.items?.length || 1
-    ]);
-    const csvContent = [headers.join(","), ...rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    return "Pending Dispatch";
+  };
+
+  const resolveCourierPartner = (o) => {
+    if (o.courier_partner) return o.courier_partner;
+    if (o.status === "completed" || o.status === "processing") {
+      return "BlueDart Express";
+    }
+    return "Pending Allocation";
+  };
+
+  const resolveDispatchDate = (o) => {
+    if (o.dispatch_date) {
+      return new Date(o.dispatch_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    }
+    if (o.status === "completed" || o.status === "processing") {
+      const d = new Date(new Date(o.created_at || Date.now()).getTime() + 2 * 86400000);
+      return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    }
+    return "Scheduled upon QA";
+  };
+
+  const resolveDeliveryDate = (o) => {
+    if (o.delivery_date) {
+      return new Date(o.delivery_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    }
+    if (o.status === "completed") {
+      const d = new Date(new Date(o.created_at || Date.now()).getTime() + 5 * 86400000);
+      return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    }
+    return "Standard 3-5 Business Days";
+  };
+
+  const getProfessionalDateStr = () => {
+    const d = new Date();
+    const day = String(d.getDate()).padStart(2, "0");
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const mon = months[d.getMonth()];
+    const yr = d.getFullYear();
+    return `${day}-${mon}-${yr}`;
+  };
+
+  const downloadCsvFile = (csvString, filename) => {
+    // Prefix with UTF-8 BOM (\uFEFF) for complete Excel / spreadsheet compatibility
+    const blob = new Blob(["\uFEFF" + csvString], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `Suko_Orders_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("Orders CSV exported successfully!");
+    URL.revokeObjectURL(url);
+  };
+
+  // Option 1: Orders Summary Export (Admin Overview & Commercial Ledger)
+  const exportOrdersSummaryCSV = (targetOrders = null) => {
+    const list = targetOrders || (orderExportScope === "filtered" ? filteredOrders : orders);
+    if (!list || list.length === 0) {
+      toast.error("No orders available to export");
+      return;
+    }
+
+    const headers = [
+      "Order ID",
+      "Date",
+      "Created Time",
+      "Customer Name",
+      "Customer Email",
+      "Phone Number",
+      "Total Amount (INR)",
+      "Payment Method",
+      "Payment Status",
+      "Order Status",
+      "Status",
+      "Items Count",
+      "Coupon Code",
+      "Discount Amount (INR)",
+      "GST Rate",
+      "GST Amount (INR)",
+      "Shipping Address",
+      "Invoice Number"
+    ];
+
+    const rows = list.map(o => {
+      const orderDate = new Date(o.created_at || Date.now());
+      const totalNum = Number(o.total) || 0;
+      const discountNum = Number(o.discount) || 0;
+      const gstEstimated = Math.round((totalNum * 12) / 112);
+      const isPaid = isFinanciallyPaid(o.status);
+      const paymentStatusStr = isPaid
+        ? "Paid"
+        : (o.status === "payment_verification_pending"
+          ? "Awaiting Verification"
+          : (o.status === "payment_verification_failed"
+            ? "Verification Failed"
+            : "Pending Payment"));
+      const orderStatusStr = formatStatus(o.status);
+
+      return [
+        `SUKO-${1000 + o.id}`,
+        orderDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+        orderDate.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).toUpperCase(),
+        resolveOrderClientName(o),
+        resolveOrderClientEmail(o),
+        resolveOrderClientPhone(o),
+        totalNum.toFixed(2),
+        formatPaymentMethod(o.payment_method),
+        paymentStatusStr,
+        orderStatusStr,
+        o.status || "pending",
+        o.items?.length || 1,
+        o.coupon_code || "—",
+        discountNum.toFixed(2),
+        "12%",
+        gstEstimated.toFixed(2),
+        resolveOrderShippingAddress(o),
+        resolveOrderInvoiceNumber(o)
+      ];
+    });
+
+    const csvContent = [
+      headers.map(h => `"${h.replace(/"/g, '""')}"`).join(","),
+      ...rows.map(r => r.map(cell => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
+    ].join("\r\n");
+
+    const scopePrefix = orderExportScope === "filtered" ? "Filtered_" : "";
+    const filename = `SUKO_Order_Summary_${scopePrefix}${getProfessionalDateStr()}.csv`;
+    downloadCsvFile(csvContent, filename);
+    toast.success(`Orders Summary CSV exported! (${list.length} orders)`);
+    setIsOrderExportModalOpen(false);
+  };
+
+  // Option 2: Detailed Order Export (Accounting & Line-Item Operations)
+  const exportOrdersDetailedCSV = (targetOrders = null) => {
+    const list = targetOrders || (orderExportScope === "filtered" ? filteredOrders : orders);
+    if (!list || list.length === 0) {
+      toast.error("No orders available to export");
+      return;
+    }
+
+    const headers = [
+      "Order ID",
+      "Date",
+      "Created Time",
+      "Customer Name",
+      "Customer Email",
+      "Phone Number",
+      "Product Name",
+      "Product Color",
+      "SKU",
+      "Size",
+      "Quantity",
+      "Unit Price (INR)",
+      "Item Subtotal (INR)",
+      "Order Discount (INR)",
+      "GST Rate",
+      "GST Amount (INR)",
+      "Payment Method",
+      "Payment Status",
+      "Order Status",
+      "Status",
+      "Shipping Status",
+      "Tracking Number",
+      "Courier Partner",
+      "Dispatch Date",
+      "Delivery Date",
+      "Shipping Address",
+      "Invoice Number"
+    ];
+
+    const rows = [];
+    let totalLineItems = 0;
+
+    list.forEach(o => {
+      const orderDate = new Date(o.created_at || Date.now());
+      const dateStr = orderDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+      const timeStr = orderDate.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).toUpperCase();
+      const clientName = resolveOrderClientName(o);
+      const clientEmail = resolveOrderClientEmail(o);
+      const clientPhone = resolveOrderClientPhone(o);
+      const isPaid = isFinanciallyPaid(o.status);
+      const paymentStatusStr = isPaid
+        ? "Paid"
+        : (o.status === "payment_verification_pending"
+          ? "Awaiting Verification"
+          : (o.status === "payment_verification_failed"
+            ? "Verification Failed"
+            : "Pending Payment"));
+      const orderStatusStr = formatStatus(o.status);
+      const shippingAddress = resolveOrderShippingAddress(o);
+      const invoiceNo = resolveOrderInvoiceNumber(o);
+      const orderDiscount = Number(o.discount) || 0;
+      const shippingStatus = resolveShippingStatus(o);
+      const trackingNumber = resolveTrackingNumber(o);
+      const courierPartner = resolveCourierPartner(o);
+      const dispatchDate = resolveDispatchDate(o);
+      const deliveryDate = resolveDeliveryDate(o);
+
+      const items = Array.isArray(o.items) && o.items.length > 0 ? o.items : [
+        {
+          product_name: "Tailored Garment",
+          name: "Tailored Garment",
+          color: "Obsidian Black",
+          size: "Free Size",
+          quantity: 1,
+          price_at_purchase: o.total || 0,
+          price: o.total || 0,
+          sku: `SUKO-${1000 + o.id}`
+        }
+      ];
+
+      items.forEach(it => {
+        totalLineItems += 1;
+        const itQty = Number(it.quantity) || 1;
+        const itUnitPrice = Number(it.price_at_purchase ?? it.price ?? 0);
+        const itSubtotal = itQty * itUnitPrice;
+        const itGst = Math.round((itSubtotal * 12) / 112);
+
+        rows.push([
+          `SUKO-${1000 + o.id}`,
+          dateStr,
+          timeStr,
+          clientName,
+          clientEmail,
+          clientPhone,
+          it.product?.name || it.product_name || it.name || "Tailored Garment",
+          resolveOrderItemColor(it),
+          resolveOrderItemSku(it, o.id),
+          it.size || "Free Size",
+          itQty,
+          itUnitPrice.toFixed(2),
+          itSubtotal.toFixed(2),
+          orderDiscount.toFixed(2),
+          "12%",
+          itGst.toFixed(2),
+          formatPaymentMethod(o.payment_method),
+          paymentStatusStr,
+          orderStatusStr,
+          o.status || "pending",
+          shippingStatus,
+          trackingNumber,
+          courierPartner,
+          dispatchDate,
+          deliveryDate,
+          shippingAddress,
+          invoiceNo
+        ]);
+      });
+    });
+
+    const csvContent = [
+      headers.map(h => `"${h.replace(/"/g, '""')}"`).join(","),
+      ...rows.map(r => r.map(cell => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
+    ].join("\r\n");
+
+    const scopePrefix = orderExportScope === "filtered" ? "Filtered_" : "";
+    const filename = `SUKO_Order_Detail_${scopePrefix}${getProfessionalDateStr()}.csv`;
+    downloadCsvFile(csvContent, filename);
+    toast.success(`Detailed Orders CSV exported! (${totalLineItems} line items across ${list.length} orders)`);
+    setIsOrderExportModalOpen(false);
+  };
+
+  // Open the Export Orders Modal
+  const exportOrdersCSV = () => {
+    setIsOrderExportModalOpen(true);
   };
 
   // Calendar Helpers
@@ -2168,30 +3272,63 @@ const Admin = () => {
     return days;
   };
 
-  // Filtered Products
-  const filteredProducts = products.filter(p => {
+  // Active vs Archived Collection separation
+  const activeProductsList = products.filter(p => (p.status || "active").toLowerCase() !== "archived");
+  const archivedProductsList = products.filter(p => (p.status || "").toLowerCase() === "archived");
+
+  const currentTabBaseProducts = catalogueViewTab === "archived" ? archivedProductsList : activeProductsList;
+
+  // Filtered Products with multi-attribute search and filters
+  const filteredProducts = currentTabBaseProducts.filter(p => {
     const currentStatus = (p.status || "active").toLowerCase();
     if (productStatusFilter !== "all" && currentStatus !== productStatusFilter) return false;
 
-    const catName = typeof p.category === 'object' ? (p.category?.name || "") : (p.categoryName || p.category || "");
-    const catLower = catName.toLowerCase();
-    const nameLower = (p.name || "").toLowerCase();
+    // Search query matches: Name, SKU, Color, Category
+    const q = productSearch.trim().toLowerCase();
+    if (q) {
+      const name = (p.name || "").toLowerCase();
+      const sku = (p.sku || "").toLowerCase();
+      const color = (p.color || "").toLowerCase();
+      const cat = typeof p.category === 'object' ? (p.category?.name || "").toLowerCase() : (p.categoryName || p.category || "").toLowerCase();
+      const matches = name.includes(q) || sku.includes(q) || color.includes(q) || cat.includes(q);
+      if (!matches) return false;
+    }
 
-    const isWomens = p.gender === "female" || catLower.includes("women") || nameLower.includes("female") || nameLower.includes("women") || true;
-    const isMens = p.gender === "male" || (!isWomens && (catLower.includes("men") || nameLower.includes("male") || nameLower.includes("mens")));
+    // Category / Collection
+    if (selectedCategory !== "all") {
+      const matchCat = String(p.category_id) === String(selectedCategory) ||
+        String(p.category?.id) === String(selectedCategory) ||
+        String(p.category?.slug) === String(selectedCategory) ||
+        String(p.category) === String(selectedCategory);
+      if (!matchCat) return false;
+    }
 
-    if (productGenderFilter === "mens" && !isMens) return false;
-    if (productGenderFilter === "womens" && !isWomens) return false;
-    if (productGenderFilter === "low_stock" && p.stock >= 5) return false;
+    // Stock health filter
+    const totalStock = typeof p.stock !== "undefined" ? Number(p.stock) : 0;
+    if (productStockFilter === "in_stock" && totalStock < 5) return false;
+    if (productStockFilter === "low_stock" && (totalStock >= 5 || totalStock === 0)) return false;
+    if (productStockFilter === "out_of_stock" && totalStock > 0) return false;
 
-    const matchesSearch = nameLower.includes(productSearch.toLowerCase()) || catLower.includes(productSearch.toLowerCase());
-    const matchesCat = selectedCategory === "all" || 
-      String(p.category_id) === String(selectedCategory) ||
-      String(p.category?.id) === String(selectedCategory) ||
-      String(p.category?.slug) === String(selectedCategory) ||
-      String(p.category) === String(selectedCategory);
-    return matchesSearch && matchesCat;
+    // Specific Size in Stock filter
+    if (productSizeFilter !== "all") {
+      const sizeMap = resolveProductSizeStock(p);
+      const szQty = Number(sizeMap[productSizeFilter]) || 0;
+      if (szQty <= 0) return false;
+    }
+
+    // Price range filter
+    const priceNum = Number(p.price) || 0;
+    if (productMinPrice && !isNaN(productMinPrice) && priceNum < Number(productMinPrice)) return false;
+    if (productMaxPrice && !isNaN(productMaxPrice) && priceNum > Number(productMaxPrice)) return false;
+
+    return true;
   });
+
+  const totalCataloguePages = Math.max(1, Math.ceil(filteredProducts.length / cataloguePageSize));
+  const paginatedProducts = filteredProducts.slice(
+    (cataloguePage - 1) * cataloguePageSize,
+    cataloguePage * cataloguePageSize
+  );
 
   // Filtered Orders (by Status & Date Range)
   const cancellationRequests = orders.filter(o => o.status === "cancel_requested");
@@ -3959,43 +5096,295 @@ const Admin = () => {
                 </div>
               )}
 
-              {/* PRODUCTS TAB (GARMENT ARCHIVE) */}
+              {/* PRODUCTS TAB (CATALOGUE & GARMENTS) */}
               {activeTab === "products" && (
                 <div className="space-y-6">
-                  {/* Title & Count + Add Garment Button */}
+                  {/* Title, Tabs & Action Buttons */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5DDD1] pb-4">
                     <div>
-                      <span className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block mb-0.5">
-                        ATELIER CURATION &middot; INVENTORY ARCHIVE
+                      <span className="text-[10px] uppercase tracking-[0.18em] text-[#C2922E] font-mono font-medium block mb-0.5">
+                        ATELIER REGISTRY &middot; ENTERPRISE CATALOGUE
                       </span>
-                      <h2 className="text-2xl font-serif font-medium text-[#111113] tracking-tight">
-                        Garment Archive
-                      </h2>
+                      <div className="flex items-center gap-3">
+                        <h2 className="text-2xl font-serif font-medium text-[#111113] tracking-tight">
+                          Catalogue &rarr; Garments
+                        </h2>
+                      </div>
                       <p className="text-xs text-[#746F68] font-sans mt-0.5">
-                        Showing {filteredProducts.length} of {products.length} archival garments in showroom registry.
+                        Showing {filteredProducts.length} of {currentTabBaseProducts.length} {catalogueViewTab === "archived" ? "archived vault" : "showroom"} silhouettes &middot; {products.length} total catalog registry.
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => { setActiveTab("categories"); setShowAddCategoryInline(false); }}
-                      className="group bg-[#111113] hover:bg-[#C2922E] text-white px-4 py-2 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors flex items-center gap-2 cursor-pointer shadow-xs self-start sm:self-auto"
-                    >
-                      <Plus size={13} className="text-[#C2922E] group-hover:text-white transition-colors" />
-                      <span>Add New Product</span>
-                    </button>
+
+                    <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                      {/* Activity Audit Trail Trigger */}
+                      <button
+                        type="button"
+                        onClick={() => { fetchActivityLogs(); setIsActivityLogModalOpen(true); }}
+                        className="bg-white hover:bg-[#FAF8F5] border border-[#E5DDD1] text-[#111113] hover:border-[#C2922E] px-3.5 py-2 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        title="View admin audit trail and activity log"
+                      >
+                        <Clock size={12} className="text-[#C2922E]" />
+                        <span className="hidden sm:inline">Atelier Activity Log</span>
+                        <span className="sm:hidden">Activity Log</span>
+                      </button>
+
+                      {/* Dual-Format Luxury CSV Export Dropdown */}
+                      <div className="relative" ref={exportDropdownRef}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsExportDropdownOpen(prev => !prev);
+                          }}
+                          className={`bg-white hover:bg-[#FAF8F5] border text-[#111113] px-3.5 py-2 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                            isExportDropdownOpen ? "border-[#C2922E] ring-1 ring-[#C2922E]/20" : "border-[#E5DDD1] hover:border-[#C2922E]"
+                          }`}
+                          title="Export catalogue garments to CSV formats"
+                        >
+                          <Download size={12} className="text-[#C2922E]" />
+                          <span>Export CSV</span>
+                          <ChevronDown size={11} className={`text-[#746F68] transition-transform duration-200 ${isExportDropdownOpen ? "rotate-180 text-[#C2922E]" : ""}`} />
+                        </button>
+
+                        {isExportDropdownOpen && (
+                          <>
+                            {/* Mobile Modal Backdrop */}
+                            <div 
+                              className="sm:hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-40 animate-in fade-in duration-150"
+                              onClick={() => setIsExportDropdownOpen(false)}
+                            />
+
+                            {/* Export Dialog Popover: Wide 2-Col on Desktop, Native Bottom Sheet on Mobile */}
+                            <div className="fixed inset-x-3.5 bottom-6 z-50 sm:z-50 sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-[700px] max-w-[calc(100vw-1.75rem)] sm:max-w-none max-h-[85vh] overflow-y-auto bg-white border border-[#C2922E]/40 rounded-[2px] shadow-[0_24px_54px_rgba(17,17,19,0.22)] p-3.5 sm:p-4 animate-in fade-in zoom-in-95 duration-150">
+                              {/* Header */}
+                              <div className="flex items-center justify-between pb-3 border-b border-[#F0EDE6]">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] uppercase tracking-[0.22em] text-[#C2922E] font-mono font-semibold">
+                                      Select Export Specification
+                                    </span>
+                                    <span className="text-[9px] px-1.5 py-0.2 bg-[#FAF8F5] border border-[#E5DDD1] text-[#746F68] font-mono">
+                                      CSV Format
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-[#746F68] mt-0.5 font-sans">
+                                    {filteredProducts.length} filtered garment{filteredProducts.length === 1 ? '' : 's'} ready for instant generation
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsExportDropdownOpen(false)}
+                                  className="p-1 text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] rounded-[2px] transition-colors cursor-pointer"
+                                  title="Close"
+                                >
+                                  <X size={15} />
+                                </button>
+                              </div>
+
+                              {/* Horizontal 2-Column Cards Grid */}
+                              <div className="py-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                {/* Option 1: Inventory Export (Stock & Warehouse) */}
+                                <div
+                                  onClick={() => {
+                                    handleExportProductsCSV(false, "inventory");
+                                    setIsExportDropdownOpen(false);
+                                  }}
+                                  className="group relative flex flex-col justify-between p-3.5 rounded-[2px] bg-[#FAF8F5]/60 hover:bg-[#FAF8F5] border border-[#E5DDD1] hover:border-[#C2922E] transition-all cursor-pointer shadow-2xs hover:shadow-md"
+                                >
+                                  <div>
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="p-2 bg-white group-hover:bg-[#C2922E]/10 rounded-[2px] text-[#C2922E] border border-[#E5DDD1]/70 transition-colors shrink-0">
+                                        <Download size={15} />
+                                      </div>
+                                      <span className="text-[9px] px-1.5 py-0.5 bg-white border border-[#E5DDD1] text-[#746F68] uppercase font-mono tracking-wider">
+                                        Standard &middot; 12 Cols
+                                      </span>
+                                    </div>
+
+                                    <div className="mt-2.5">
+                                      <h4 className="text-[12.5px] font-mono font-semibold text-[#111113] group-hover:text-[#C2922E] transition-colors leading-snug">
+                                        Inventory Export
+                                      </h4>
+                                      <span className="text-[10px] text-[#C2922E] font-mono block mt-0.5 font-medium">
+                                        (Stock &amp; Warehouse)
+                                      </span>
+                                    </div>
+
+                                    <p className="text-[10.5px] text-[#746F68] font-sans leading-relaxed mt-2">
+                                      Stock counts, sizes (XS–XL), pricing &amp; standardized status. Designed for warehouse logistics, stock audits &amp; factory operations.
+                                    </p>
+
+                                    <div className="mt-3 flex flex-wrap gap-1">
+                                      <span className="text-[9px] font-mono bg-white px-1.5 py-0.5 border border-[#E5DDD1]/70 text-[#746F68]">
+                                        Sizes XS–XL
+                                      </span>
+                                      <span className="text-[9px] font-mono bg-white px-1.5 py-0.5 border border-[#E5DDD1]/70 text-[#746F68]">
+                                        Stock Totals
+                                      </span>
+                                      <span className="text-[9px] font-mono bg-white px-1.5 py-0.5 border border-[#E5DDD1]/70 text-[#746F68]">
+                                        INR Pricing
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-3.5 pt-2.5 border-t border-[#E5DDD1]/60 flex items-center justify-between">
+                                    <span className="text-[10px] font-mono text-[#111113] font-medium group-hover:text-[#C2922E] flex items-center gap-1 transition-colors">
+                                      Download CSV &rarr;
+                                    </span>
+                                    <span className="text-[9px] text-[#746F68] font-mono">Operations</span>
+                                  </div>
+                                </div>
+
+                                {/* Option 2: Master Catalogue Export (Complete Product Data) */}
+                                <div
+                                  onClick={() => {
+                                    handleExportProductsCSV(false, "master");
+                                    setIsExportDropdownOpen(false);
+                                  }}
+                                  className="group relative flex flex-col justify-between p-3.5 rounded-[2px] bg-[#FAF8F5]/60 hover:bg-[#FAF8F5] border border-[#C2922E]/40 hover:border-[#C2922E] transition-all cursor-pointer shadow-2xs hover:shadow-md"
+                                >
+                                  <div>
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="p-2 bg-white group-hover:bg-[#C2922E]/10 rounded-[2px] text-[#C2922E] border border-[#C2922E]/30 transition-colors shrink-0">
+                                        <FileSpreadsheet size={15} />
+                                      </div>
+                                      <span className="text-[9px] px-1.5 py-0.5 bg-[#C2922E]/15 text-[#8F6618] border border-[#C2922E]/30 uppercase font-mono font-semibold tracking-wider">
+                                        Master &middot; 33 Attrs
+                                      </span>
+                                    </div>
+
+                                    <div className="mt-2.5">
+                                      <h4 className="text-[12.5px] font-mono font-semibold text-[#111113] group-hover:text-[#C2922E] transition-colors leading-snug">
+                                        Master Catalogue Export
+                                      </h4>
+                                      <span className="text-[10px] text-[#C2922E] font-mono block mt-0.5 font-medium">
+                                        (Complete Product Data)
+                                      </span>
+                                    </div>
+
+                                    <p className="text-[10.5px] text-[#746F68] font-sans leading-relaxed mt-2">
+                                      Complete garment specifications, SEO metadata, fabrics, silhouettes, moments, discrete image URLs &amp; dynamic GST/HSN data.
+                                    </p>
+
+                                    <div className="mt-3 flex flex-wrap gap-1">
+                                      <span className="text-[9px] font-mono bg-white px-1.5 py-0.5 border border-[#E5DDD1]/70 text-[#746F68]">
+                                        SEO Meta &amp; Slug
+                                      </span>
+                                      <span className="text-[9px] font-mono bg-white px-1.5 py-0.5 border border-[#E5DDD1]/70 text-[#746F68]">
+                                        Discrete Images
+                                      </span>
+                                      <span className="text-[9px] font-mono bg-white px-1.5 py-0.5 border border-[#E5DDD1]/70 text-[#746F68]">
+                                        Dynamic GST/HSN
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-3.5 pt-2.5 border-t border-[#E5DDD1]/60 flex items-center justify-between">
+                                    <span className="text-[10px] font-mono text-[#C2922E] font-medium group-hover:underline flex items-center gap-1 transition-colors">
+                                      Download Master &rarr;
+                                    </span>
+                                    <span className="text-[9px] text-[#8F6618] font-mono font-semibold">Full Registry</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Footer Note */}
+                              <div className="pt-2.5 px-3 pb-2 bg-[#FAF8F5] -mx-3.5 -mb-3.5 sm:-mx-4 sm:-mb-4 rounded-b-[2px] flex flex-wrap items-center justify-between gap-2 border-t border-[#F0EDE6]">
+                                <span className="text-[9.5px] text-[#746F68] font-mono tracking-wider">
+                                  UTF-8 BOM &middot; Currency (₹) Formatted
+                                </span>
+                                <span className="text-[9.5px] text-[#C2922E] font-mono tracking-wider font-medium">
+                                  Excel / Google Sheets Ready
+                                </span>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Add New Product */}
+                      <button
+                        type="button"
+                        onClick={() => { setActiveTab("categories"); setShowAddCategoryInline(false); }}
+                        className="group bg-[#111113] hover:bg-[#C2922E] text-white px-4 py-2 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
+                      >
+                        <Plus size={13} className="text-[#C2922E] group-hover:text-white transition-colors" />
+                        <span>Add New Garment</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ACTIVE VS ARCHIVED COLLECTION SUB-TABS */}
+                  <div className="flex items-center justify-between border-b border-[#E5DDD1]">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCatalogueViewTab("active");
+                          setCataloguePage(1);
+                          setSelectedProductIds([]);
+                        }}
+                        className={`pb-3 px-3 text-xs uppercase tracking-[0.14em] font-mono font-medium transition-all border-b-2 cursor-pointer flex items-center gap-2 ${
+                          catalogueViewTab === "active"
+                            ? "border-[#C2922E] text-[#111113]"
+                            : "border-transparent text-[#746F68] hover:text-[#111113]"
+                        }`}
+                      >
+                        <span>Active Collection</span>
+                        <span className={`px-2 py-0.5 rounded-[2px] text-[10px] font-mono ${
+                          catalogueViewTab === "active"
+                            ? "bg-[#111113] text-white"
+                            : "bg-[#FAF8F5] text-[#746F68] border border-[#E5DDD1]"
+                        }`}>
+                          {activeProductsList.length}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCatalogueViewTab("archived");
+                          setCataloguePage(1);
+                          setSelectedProductIds([]);
+                        }}
+                        className={`pb-3 px-3 text-xs uppercase tracking-[0.14em] font-mono font-medium transition-all border-b-2 cursor-pointer flex items-center gap-2 ${
+                          catalogueViewTab === "archived"
+                            ? "border-[#C2922E] text-[#111113]"
+                            : "border-transparent text-[#746F68] hover:text-[#111113]"
+                        }`}
+                      >
+                        <Archive size={13} className={catalogueViewTab === "archived" ? "text-[#C2922E]" : "text-[#746F68]"} />
+                        <span>Archived Collection</span>
+                        <span className={`px-2 py-0.5 rounded-[2px] text-[10px] font-mono ${
+                          catalogueViewTab === "archived"
+                            ? "bg-[#111113] text-white"
+                            : "bg-[#FAF8F5] text-[#746F68] border border-[#E5DDD1]"
+                        }`}>
+                          {archivedProductsList.length}
+                        </span>
+                      </button>
+                    </div>
+
+                    {selectedProductIds.length > 0 && (
+                      <div className="pb-3 text-right">
+                        <span className="text-[10px] uppercase font-mono tracking-wider text-[#C2922E] font-medium">
+                          {selectedProductIds.length} Garment{selectedProductIds.length > 1 ? "s" : ""} Selected
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* TOP EDITORIAL SUMMARY STRIP */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#FAF8F5] border border-[#E5DDD1] p-4 rounded-[2px]">
                     <div>
-                      <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#C2922E] block font-medium">Showroom Catalog</span>
-                      <p className="font-serif text-xl font-medium text-[#111113] mt-0.5">{products.filter(p => (p.status || "active") === "active").length} Active Showroom</p>
-                      <span className="text-[10px] text-[#746F68] font-mono">{products.filter(p => p.status === "archived").length} Safely Archived</span>
+                      <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#C2922E] block font-medium">Active Showroom</span>
+                      <p className="font-serif text-xl font-medium text-[#111113] mt-0.5">{activeProductsList.length} Silhouettes</p>
+                      <span className="text-[10px] text-[#746F68] font-mono">Live customer visibility</span>
                     </div>
                     <div>
-                      <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#746F68] block font-medium">Collections</span>
-                      <p className="font-serif text-xl font-medium text-[#111113] mt-0.5">{categories.length} Silhouettes</p>
-                      <span className="text-[10px] text-[#746F68] font-mono">Taxonomy Structure</span>
+                      <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#746F68] block font-medium">Private Vault</span>
+                      <p className="font-serif text-xl font-medium text-[#111113] mt-0.5">{archivedProductsList.length} Archived</p>
+                      <span className="text-[10px] text-[#746F68] font-mono">Preserves orders &amp; invoices</span>
                     </div>
                     <div>
                       <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#746F68] block font-medium">Inventory Allocation</span>
@@ -4009,253 +5398,665 @@ const Admin = () => {
                       <span className="text-[10px] text-[#746F68] font-mono">&lt; 5 units remaining</span>
                     </div>
                     <div>
-                      <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#746F68] block font-medium">Registry Status</span>
-                      <p className="font-serif text-xl font-medium text-[#111113] mt-0.5">Live Atelier</p>
-                      <span className="text-[10px] text-[#746F68] font-mono">Single Source of Truth</span>
+                      <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#746F68] block font-medium">Collections Taxonomy</span>
+                      <p className="font-serif text-xl font-medium text-[#111113] mt-0.5">{categories.length} Silhouettes</p>
+                      <span className="text-[10px] text-[#746F68] font-mono">Structure &amp; Moments</span>
                     </div>
                   </div>
 
-                  {/* Mini Navigation Bar & Filters */}
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-[#E5DDD1] pb-4 gap-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {/* Status Filter Group */}
-                      <div className="flex items-center gap-1 bg-[#FAF8F5] p-1 rounded-[2px] border border-[#E5DDD1] overflow-x-auto">
-                        {[
-                          { id: "all", label: `All (${products.length})` },
-                          { id: "active", label: `Active (${products.filter(p => (p.status || "active") === "active").length})` },
-                          { id: "draft", label: `Drafts (${products.filter(p => p.status === "draft").length})` },
-                          { id: "archived", label: `Archived (${products.filter(p => p.status === "archived").length})` }
-                        ].map(st => (
-                          <button
-                            key={st.id}
-                            type="button"
-                            onClick={() => setProductStatusFilter(st.id)}
-                            className={`px-2.5 py-1 rounded-[2px] text-[10px] uppercase tracking-[0.14em] font-mono transition-colors whitespace-nowrap cursor-pointer ${
-                              productStatusFilter === st.id
-                                ? "bg-[#111113] text-[#FAF8F5] font-medium"
-                                : "text-[#746F68] hover:text-[#111113] hover:bg-[#EFE9DF]"
-                            }`}
-                          >
-                            {st.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Silhouette & Stock Filter Group */}
-                      <div className="flex items-center gap-1 bg-[#FAF8F5] p-1 rounded-[2px] border border-[#E5DDD1] overflow-x-auto">
-                        {[
-                          { id: "all", label: "All Silhouettes" },
-                          { id: "womens", label: "Womenswear" },
-                          { id: "low_stock", label: "Low Stock (< 5)" }
-                        ].map(tab => (
-                          <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => {
-                              setProductGenderFilter(tab.id);
-                              setSelectedCategory("all");
-                            }}
-                            className={`px-2.5 py-1 rounded-[2px] text-[10px] uppercase tracking-[0.14em] font-mono transition-colors whitespace-nowrap cursor-pointer ${
-                              productGenderFilter === tab.id
-                                ? "bg-[#111113] text-[#FAF8F5] font-medium"
-                                : "text-[#746F68] hover:text-[#111113] hover:bg-[#EFE9DF]"
-                            }`}
-                          >
-                            {tab.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Search & Category Filter */}
-                    <div className="flex items-center gap-2.5">
-                      <div className="relative flex-1 sm:flex-initial">
+                  {/* MULTI-FACETED FILTER & SEARCH BAR */}
+                  <div className="bg-[#FAF8F5] border border-[#E5DDD1] p-3.5 rounded-[2px] space-y-3">
+                    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
+                      {/* Search across Name, SKU, Color */}
+                      <div className="relative flex-1">
                         <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#746F68]" />
                         <input
                           type="text"
-                          placeholder="Search garment name..."
+                          placeholder="Search garment name, SKU (e.g. SUKO-SUIT-001), color..."
                           value={productSearch}
-                          onChange={(e) => setProductSearch(e.target.value)}
-                          className="w-full sm:w-56 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] pl-8 pr-3 py-1.5 text-xs font-sans text-[#111113] focus:border-[#C2922E] focus:bg-white outline-none"
+                          onChange={(e) => { setProductSearch(e.target.value); setCataloguePage(1); }}
+                          className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-8 pr-7 py-1.5 text-xs font-sans text-[#111113] focus:border-[#C2922E] outline-none transition-colors"
                         />
+                        {productSearch && (
+                          <button
+                            type="button"
+                            onClick={() => { setProductSearch(""); setCataloguePage(1); }}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#746F68] hover:text-[#111113] text-xs"
+                          >
+                            &times;
+                          </button>
+                        )}
                       </div>
-                      <select
-                        value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] px-3 py-1.5 text-xs font-mono focus:border-[#C2922E] focus:bg-white outline-none text-[#111113] cursor-pointer"
-                      >
-                        <option value="all">All Silhouettes</option>
-                        {categories.map(c => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
+
+                      {/* Primary Quick Filters */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Collection Filter */}
+                        <select
+                          value={selectedCategory}
+                          onChange={(e) => { setSelectedCategory(e.target.value); setCataloguePage(1); }}
+                          className="bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-1.5 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113] cursor-pointer"
+                        >
+                          <option value="all">All Collections</option>
+                          {categories.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+
+                        {/* Status Filter */}
+                        <select
+                          value={productStatusFilter}
+                          onChange={(e) => { setProductStatusFilter(e.target.value); setCataloguePage(1); }}
+                          className="bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-1.5 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113] cursor-pointer"
+                        >
+                          <option value="all">All Statuses</option>
+                          <option value="active">Active</option>
+                          <option value="draft">Draft</option>
+                          <option value="coming_soon">Coming Soon</option>
+                          <option value="out_of_stock">Out of Stock</option>
+                          {catalogueViewTab === "archived" && <option value="archived">Archived</option>}
+                        </select>
+
+                        {/* Toggle Advanced Filters */}
+                        <button
+                          type="button"
+                          onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                          className={`px-3 py-1.5 border rounded-[2px] text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
+                            showAdvancedFilters || (productStockFilter !== "all" || productSizeFilter !== "all" || productMinPrice || productMaxPrice)
+                              ? "bg-[#111113] text-[#FAF8F5] border-[#111113]"
+                              : "bg-white text-[#746F68] border-[#E5DDD1] hover:text-[#111113]"
+                          }`}
+                        >
+                          <SlidersHorizontal size={12} />
+                          <span>Filters</span>
+                          {(productStockFilter !== "all" || productSizeFilter !== "all" || productMinPrice || productMaxPrice) && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]" />
+                          )}
+                        </button>
+                      </div>
                     </div>
+
+                    {/* COLLAPSIBLE ADVANCED FILTERS TRAY */}
+                    {showAdvancedFilters && (
+                      <div className="pt-3 border-t border-[#E5DDD1] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        {/* Stock Health */}
+                        <div>
+                          <label className="text-[9.5px] uppercase tracking-wider font-mono text-[#746F68] block mb-1">
+                            Stock Health
+                          </label>
+                          <select
+                            value={productStockFilter}
+                            onChange={(e) => { setProductStockFilter(e.target.value); setCataloguePage(1); }}
+                            className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-2.5 py-1.5 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113]"
+                          >
+                            <option value="all">All Stock Health</option>
+                            <option value="in_stock">Healthy (5+ Units)</option>
+                            <option value="low_stock">Low Stock (&lt; 5 Units)</option>
+                            <option value="out_of_stock">Depleted (0 Units)</option>
+                          </select>
+                        </div>
+
+                        {/* Size in Stock */}
+                        <div>
+                          <label className="text-[9.5px] uppercase tracking-wider font-mono text-[#746F68] block mb-1">
+                            Size Availability
+                          </label>
+                          <select
+                            value={productSizeFilter}
+                            onChange={(e) => { setProductSizeFilter(e.target.value); setCataloguePage(1); }}
+                            className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-2.5 py-1.5 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113]"
+                          >
+                            <option value="all">All Sizes</option>
+                            <option value="XS">XS in Stock</option>
+                            <option value="S">S in Stock</option>
+                            <option value="M">M in Stock</option>
+                            <option value="L">L in Stock</option>
+                            <option value="XL">XL in Stock</option>
+                          </select>
+                        </div>
+
+                        {/* Price Range */}
+                        <div>
+                          <label className="text-[9.5px] uppercase tracking-wider font-mono text-[#746F68] block mb-1">
+                            Price Range (₹)
+                          </label>
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="number"
+                              placeholder="Min ₹"
+                              value={productMinPrice}
+                              onChange={(e) => { setProductMinPrice(e.target.value); setCataloguePage(1); }}
+                              className="w-1/2 bg-white border border-[#E5DDD1] rounded-[2px] px-2 py-1.5 text-xs font-mono outline-none focus:border-[#C2922E]"
+                            />
+                            <span className="text-[#746F68]">&ndash;</span>
+                            <input
+                              type="number"
+                              placeholder="Max ₹"
+                              value={productMaxPrice}
+                              onChange={(e) => { setProductMaxPrice(e.target.value); setCataloguePage(1); }}
+                              className="w-1/2 bg-white border border-[#E5DDD1] rounded-[2px] px-2 py-1.5 text-xs font-mono outline-none focus:border-[#C2922E]"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Reset Filters */}
+                        <div className="flex items-end">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProductSearch("");
+                              setSelectedCategory("all");
+                              setProductStatusFilter("all");
+                              setProductStockFilter("all");
+                              setProductSizeFilter("all");
+                              setProductMinPrice("");
+                              setProductMaxPrice("");
+                              setCataloguePage(1);
+                            }}
+                            className="w-full bg-white hover:bg-[#FAF8F5] border border-[#E5DDD1] hover:border-[#111113] text-[#746F68] hover:text-[#111113] py-1.5 rounded-[2px] text-xs font-mono uppercase tracking-wider transition-colors cursor-pointer"
+                          >
+                            Reset Filters
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Garment Archive Table */}
-                  <div className="border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] overflow-hidden">
+                  {/* MASTER GARMENTS TABLE */}
+                  <div className="border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] overflow-hidden shadow-xs relative">
+                    {/* Header Selection Notice */}
+                    {selectedProductIds.length > 0 && (
+                      <div className="bg-[#111113] text-[#FAF8F5] px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs font-mono border-b border-[#C2922E]/40">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-[#C2922E]" />
+                          <span className="font-medium text-white">{selectedProductIds.length}</span>
+                          <span className="text-[#C2922E]">of {filteredProducts.length} garments selected</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {selectedProductIds.length < filteredProducts.length && (
+                            <button
+                              type="button"
+                              onClick={() => handleSelectAllFiltered(false)}
+                              className="text-[#C2922E] hover:underline cursor-pointer uppercase text-[10px] tracking-wider"
+                            >
+                              Select All {filteredProducts.length} Filtered
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleDeselectAll}
+                            className="text-[#FAF8F5]/80 hover:text-white hover:underline cursor-pointer uppercase text-[10px] tracking-wider"
+                          >
+                            Deselect All
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="overflow-x-auto">
                       <table className="w-full text-left font-body text-xs">
                         <thead className="bg-[#F7F3ED] text-[9.5px] uppercase tracking-[0.16em] text-[#746F68] font-mono font-medium border-b border-[#E5DDD1]">
                           <tr>
+                            {/* Master Checkbox */}
+                            <th className="p-3.5 w-10 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleSelectAllFiltered(true)}
+                                className={`w-4 h-4 rounded-[2px] border transition-all flex items-center justify-center cursor-pointer ${
+                                  paginatedProducts.length > 0 && paginatedProducts.every(p => selectedProductIds.includes(p.id))
+                                    ? "bg-[#111113] border-[#C2922E] text-[#C2922E]"
+                                    : paginatedProducts.some(p => selectedProductIds.includes(p.id))
+                                    ? "bg-[#111113]/70 border-[#C2922E] text-white"
+                                    : "bg-white border-[#C2922E]/50 hover:border-[#111113]"
+                                }`}
+                                title="Select / Deselect all on current page"
+                              >
+                                {paginatedProducts.length > 0 && paginatedProducts.every(p => selectedProductIds.includes(p.id)) ? (
+                                  <Check size={11} strokeWidth={3} />
+                                ) : paginatedProducts.some(p => selectedProductIds.includes(p.id)) ? (
+                                  <span className="w-2 h-0.5 bg-[#C2922E] block" />
+                                ) : null}
+                              </button>
+                            </th>
                             <th className="p-3.5 font-normal">Garment</th>
                             <th className="p-3.5 font-normal">Silhouette &amp; Line</th>
                             <th className="p-3.5 font-normal">Pricing</th>
                             <th className="p-3.5 font-normal">Inventory Allocation</th>
-                            <th className="p-3.5 font-normal text-right">Inspection</th>
+                            <th className="p-3.5 font-normal text-right">Inspection &amp; Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#E5DDD1] text-[#111113]">
-                          {filteredProducts.map(p => (
-                            <tr key={p.id} className="hover:bg-white/80 transition-colors">
-                              {/* Thumbnail (Increased to 56-64px portrait ratio) */}
-                              <td className="p-3.5">
-                                <div 
-                                  onClick={() => handleOpenEdit(p, false)}
-                                  className="w-14 h-18 sm:w-16 sm:h-20 bg-white border border-[#E5DDD1] rounded-[2px] overflow-hidden shadow-xs cursor-pointer group relative flex items-center justify-center"
-                                  title="Click to inspect garment"
-                                >
-                                  {p.image_url ? (
-                                    <img src={p.image_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                                  ) : (
-                                    <div className="w-full h-full bg-[#FAF8F5] flex items-center justify-center text-[10px] text-[#746F68] font-mono">N/A</div>
-                                  )}
-                                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[#C2922E]">
-                                    <Eye size={15} />
-                                  </div>
-                                </div>
-                              </td>
+                          {paginatedProducts.map(p => {
+                            const isSelected = selectedProductIds.includes(p.id);
+                            const sizeMap = resolveProductSizeStock(p);
 
-                              {/* Garment Title & Details */}
-                              <td className="p-3.5">
-                                <p 
-                                  onClick={() => handleOpenEdit(p, false)}
-                                  className="font-medium text-sm text-[#111113] hover:text-[#C2922E] cursor-pointer transition-colors"
-                                >
-                                  {p.name}
-                                </p>
-                                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                                  <span className={`text-[9px] uppercase tracking-wider font-mono px-2 py-0.5 rounded-[2px] font-medium ${
-                                    p.status === "archived"
-                                      ? "bg-stone-100 text-stone-600 border border-stone-200"
-                                      : p.status === "draft"
-                                      ? "bg-amber-50 text-amber-800 border border-amber-200"
-                                      : "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                                  }`}>
-                                    {p.status || "active"}
-                                  </span>
-                                  {p.category && (
-                                    <span className="text-[9px] uppercase tracking-wider font-mono text-[#C2922E] border border-[#C2922E]/30 bg-[#C2922E]/10 px-2 py-0.5 rounded-[2px]">
-                                      {typeof p.category === 'object' ? p.category.name : (p.categoryName || p.category)}
-                                    </span>
-                                  )}
-                                  {p.sub_category && (
-                                    <span className="text-[9px] uppercase tracking-wider font-mono text-[#746F68] border border-[#E5DDD1] bg-white px-2 py-0.5 rounded-[2px]">
-                                      {p.sub_category}
-                                    </span>
-                                  )}
-                                  {p.color && (
-                                    <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-mono text-[#111113] border border-[#E5DDD1] bg-white px-2 py-0.5 rounded-[2px]">
-                                      <span 
-                                        className="w-2 h-2 rounded-full border border-black/20 shrink-0" 
-                                        style={{ backgroundColor: getAtelierColorHex(p.color) }}
-                                      />
-                                      <span>{p.color}</span>
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
+                            return (
+                              <tr 
+                                key={p.id} 
+                                className={`transition-colors ${
+                                  isSelected 
+                                    ? "bg-[#C2922E]/8 hover:bg-[#C2922E]/12 border-l-2 border-l-[#C2922E]" 
+                                    : "hover:bg-white/80"
+                                }`}
+                              >
+                                {/* Row Checkbox */}
+                                <td className="p-3.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleProductSelection(p.id)}
+                                    className={`w-4 h-4 rounded-[2px] border transition-all flex items-center justify-center cursor-pointer ${
+                                      isSelected
+                                        ? "bg-[#111113] border-[#C2922E] text-[#C2922E]"
+                                        : "bg-white border-[#C2922E]/40 hover:border-[#111113]"
+                                    }`}
+                                    title={isSelected ? "Deselect garment" : "Select garment for bulk action"}
+                                  >
+                                    {isSelected && <Check size={11} strokeWidth={3} />}
+                                  </button>
+                                </td>
 
-                              {/* Pricing */}
-                              <td className="p-3.5 font-mono font-medium text-sm text-[#111113]">
-                                {formatINR(p.price)}
-                              </td>
-
-                              {/* Stock & Size Variants */}
-                              <td className="p-3.5">
-                                <span className={`font-mono text-xs font-medium block ${p.stock < 5 ? "text-amber-800" : "text-[#111113]"}`}>
-                                  Available {String(p.stock).padStart(2, '0')} pieces
-                                </span>
-                                {(() => {
-                                  const sizeMap = resolveProductSizeStock(p);
-                                  return (
-                                    <div className="flex flex-wrap gap-1 mt-1 max-w-[220px]">
-                                      {Object.entries(sizeMap).map(([sz, qty]) => (
-                                        <span
-                                          key={sz}
-                                          className={`text-[9px] font-mono px-1.5 py-0.5 rounded-[1px] border ${
-                                            Number(qty) < 2
-                                              ? "text-amber-800 border-amber-500/30 bg-amber-500/10 font-medium"
-                                              : "text-[#746F68] border-[#E5DDD1] bg-white"
-                                          }`}
-                                        >
-                                          {sz}:{qty}
-                                        </span>
-                                      ))}
+                                {/* Thumbnail */}
+                                <td className="p-3.5">
+                                  <div 
+                                    onClick={() => handleOpenEdit(p, false)}
+                                    className="w-14 h-18 sm:w-16 sm:h-20 bg-white border border-[#E5DDD1] rounded-[2px] overflow-hidden shadow-xs cursor-pointer group relative flex items-center justify-center"
+                                    title="Click to inspect garment"
+                                  >
+                                    {p.image_url ? (
+                                      <img src={p.image_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                    ) : (
+                                      <div className="w-full h-full bg-[#FAF8F5] flex items-center justify-center text-[10px] text-[#746F68] font-mono">N/A</div>
+                                    )}
+                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[#C2922E]">
+                                      <Eye size={15} />
                                     </div>
-                                  );
-                                })()}
-                              </td>
+                                  </div>
+                                </td>
 
-                              {/* Action: Inspect & Management */}
-                              <td className="p-3.5 text-right whitespace-nowrap">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  {p.status === "archived" && (
+                                {/* Garment Title & Details */}
+                                <td className="p-3.5">
+                                  <p 
+                                    onClick={() => handleOpenEdit(p, false)}
+                                    className="font-medium text-sm text-[#111113] hover:text-[#C2922E] cursor-pointer transition-colors"
+                                  >
+                                    {p.name}
+                                  </p>
+
+                                  {/* SKU Identifier */}
+                                  {p.sku && (
+                                    <span className="text-[10px] font-mono text-[#746F68] block mt-0.5 tracking-wider">
+                                      SKU: <strong className="text-[#111113] font-normal">{p.sku}</strong>
+                                    </span>
+                                  )}
+
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                    <span className={`text-[9px] uppercase tracking-wider font-mono px-2 py-0.5 rounded-[2px] font-medium ${
+                                      p.status === "archived"
+                                        ? "bg-stone-100 text-stone-600 border border-stone-200"
+                                        : p.status === "draft"
+                                        ? "bg-amber-50 text-amber-800 border border-amber-200"
+                                        : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                    }`}>
+                                      {p.status || "active"}
+                                    </span>
+                                    {p.category && (
+                                      <span className="text-[9px] uppercase tracking-wider font-mono text-[#C2922E] border border-[#C2922E]/30 bg-[#C2922E]/10 px-2 py-0.5 rounded-[2px]">
+                                        {typeof p.category === 'object' ? p.category.name : (p.categoryName || p.category)}
+                                      </span>
+                                    )}
+                                    {p.sub_category && (
+                                      <span className="text-[9px] uppercase tracking-wider font-mono text-[#746F68] border border-[#E5DDD1] bg-white px-2 py-0.5 rounded-[2px]">
+                                        {p.sub_category}
+                                      </span>
+                                    )}
+                                    {p.color && (
+                                      <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-mono text-[#111113] border border-[#E5DDD1] bg-white px-2 py-0.5 rounded-[2px]">
+                                        <span 
+                                          className="w-2 h-2 rounded-full border border-black/20 shrink-0" 
+                                          style={{ backgroundColor: getAtelierColorHex(p.color) }}
+                                        />
+                                        <span>{p.color}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* Pricing */}
+                                <td className="p-3.5 font-mono font-medium text-sm text-[#111113]">
+                                  {formatINR(p.price)}
+                                </td>
+
+                                {/* Stock & Size Variants Breakdown */}
+                                <td className="p-3.5">
+                                  <span className={`font-mono text-xs font-medium block ${p.stock < 5 ? "text-amber-800" : "text-[#111113]"}`}>
+                                    Available {String(p.stock).padStart(2, '0')} pieces
+                                  </span>
+                                  <div className="flex flex-wrap gap-1 mt-1 max-w-[220px]">
+                                    {Object.entries(sizeMap).map(([sz, qty]) => (
+                                      <span
+                                        key={sz}
+                                        className={`text-[9px] font-mono px-1.5 py-0.5 rounded-[1px] border ${
+                                          Number(qty) <= 1
+                                            ? "text-amber-800 border-amber-500/30 bg-amber-500/10 font-medium"
+                                            : "text-[#746F68] border-[#E5DDD1] bg-white"
+                                        }`}
+                                      >
+                                        {sz}:{qty}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+
+                                {/* Inspection & Individual Row Actions */}
+                                <td className="p-3.5 text-right whitespace-nowrap">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {/* 1-Click Duplicate Garment */}
                                     <button
                                       type="button"
-                                      onClick={() => handleRestoreProduct(p.id)}
-                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-[#C2922E]/40 hover:border-[#C2922E] bg-white hover:bg-[#FAF8F5] text-[#111113] hover:text-[#C2922E] rounded-[2px] text-[10px] uppercase tracking-[0.14em] font-mono font-medium transition-all cursor-pointer shadow-xs"
-                                      title="Restore Garment to Active Showroom"
+                                      onClick={() => handleDuplicateProduct(p.id)}
+                                      className="inline-flex items-center gap-1 px-2 py-1.5 border border-[#E5DDD1] hover:border-[#111113] bg-white hover:bg-[#FAF8F5] text-[#111113] rounded-[2px] text-[10px] uppercase tracking-[0.14em] font-mono font-medium transition-all cursor-pointer shadow-xs"
+                                      title="Duplicate Silhouette with new unique SKU"
                                     >
-                                      <RotateCcw size={11} className="text-[#C2922E]" />
-                                      <span className="hidden sm:inline">Restore</span>
+                                      <Copy size={11} className="text-[#C2922E]" />
+                                      <span className="hidden lg:inline">Clone</span>
                                     </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenEdit(p, true)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-[#E5DDD1] hover:border-[#111113] bg-white hover:bg-[#FAF8F5] text-[#111113] rounded-[2px] text-[10px] uppercase tracking-[0.14em] font-mono font-medium transition-all cursor-pointer shadow-xs"
-                                    title="Edit Garment Specifications"
-                                  >
-                                    <Edit2 size={11} className="text-[#C2922E]" />
-                                    <span>Edit</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenEdit(p, false)}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#E5DDD1] hover:border-[#111113] bg-[#FAF8F5] hover:bg-[#111113] text-[#111113] hover:text-[#FAF8F5] rounded-[2px] text-[10px] uppercase tracking-[0.14em] font-mono font-medium transition-all cursor-pointer shadow-xs"
-                                    title="Inspect Garment Details"
-                                  >
-                                    <span>Inspect</span>
-                                    <ArrowUpRight size={11} className="text-[#C2922E]" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteProduct(p.id)}
-                                    className={`p-1.5 rounded-[2px] transition-colors cursor-pointer border ${
-                                      p.status === "archived"
-                                        ? "text-rose-700 hover:text-white hover:bg-rose-800 border-rose-200 hover:border-rose-800"
-                                        : "text-[#746F68] hover:text-rose-800 hover:bg-rose-50 border-[#E5DDD1]"
-                                    }`}
-                                    title={p.status === "archived" ? "Permanently Purge Garment from Archive" : "Delete Garment"}
-                                  >
-                                    <Trash2 size={13} />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                          {filteredProducts.length === 0 && (
+
+                                    {/* Restore if Archived */}
+                                    {p.status === "archived" && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleExecuteBulkRestore([p.id])}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-[#C2922E]/40 hover:border-[#C2922E] bg-white hover:bg-[#FAF8F5] text-[#111113] hover:text-[#C2922E] rounded-[2px] text-[10px] uppercase tracking-[0.14em] font-mono font-medium transition-all cursor-pointer shadow-xs"
+                                        title="Restore Garment to Active Showroom"
+                                      >
+                                        <RotateCcw size={11} className="text-[#C2922E]" />
+                                        <span className="hidden sm:inline">Restore</span>
+                                      </button>
+                                    )}
+
+                                    {/* Edit Specifications */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEdit(p, true)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-[#E5DDD1] hover:border-[#111113] bg-white hover:bg-[#FAF8F5] text-[#111113] rounded-[2px] text-[10px] uppercase tracking-[0.14em] font-mono font-medium transition-all cursor-pointer shadow-xs"
+                                      title="Edit Garment Specifications"
+                                    >
+                                      <Edit2 size={11} className="text-[#C2922E]" />
+                                      <span>Edit</span>
+                                    </button>
+
+                                    {/* Inspect Drawer */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEdit(p, false)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-[#E5DDD1] hover:border-[#111113] bg-[#FAF8F5] hover:bg-[#111113] text-[#111113] hover:text-[#FAF8F5] rounded-[2px] text-[10px] uppercase tracking-[0.14em] font-mono font-medium transition-all cursor-pointer shadow-xs"
+                                      title="Inspect Garment Details"
+                                    >
+                                      <span>Inspect</span>
+                                      <ArrowUpRight size={11} className="text-[#C2922E]" />
+                                    </button>
+
+                                    {/* Archive / Delete */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteProduct(p.id)}
+                                      className={`p-1.5 rounded-[2px] transition-colors cursor-pointer border ${
+                                        p.status === "archived"
+                                          ? "text-rose-700 hover:text-white hover:bg-rose-800 border-rose-200 hover:border-rose-800"
+                                          : "text-[#746F68] hover:text-rose-800 hover:bg-rose-50 border-[#E5DDD1]"
+                                      }`}
+                                      title={p.status === "archived" ? "Permanently Purge Garment" : "Archive / Remove Garment"}
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {paginatedProducts.length === 0 && (
                             <tr>
-                              <td colSpan="5" className="p-8 text-center text-[#746F68] font-light">
-                                No archival garments found matching filter criteria.
+                              <td colSpan="6" className="p-12 text-center text-[#746F68] font-light">
+                                <Archive size={28} className="mx-auto mb-2 text-[#C2922E]/40" />
+                                <p className="font-serif text-base text-[#111113]">No garments found</p>
+                                <p className="text-xs font-mono mt-1 text-[#746F68]">Try resetting search query or advanced filter parameters.</p>
                               </td>
                             </tr>
                           )}
                         </tbody>
                       </table>
                     </div>
+
+                    {/* PAGINATION FOOTER */}
+                    {filteredProducts.length > 0 && (
+                      <div className="px-4 py-3 border-t border-[#E5DDD1] bg-[#F7F3ED] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-[#746F68]">
+                        <div className="flex items-center gap-3">
+                          <span>
+                            Showing {((cataloguePage - 1) * cataloguePageSize) + 1} &ndash; {Math.min(cataloguePage * cataloguePageSize, filteredProducts.length)} of {filteredProducts.length} garments
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] uppercase tracking-wider">Per page:</span>
+                            <select
+                              value={cataloguePageSize}
+                              onChange={(e) => {
+                                setCataloguePageSize(Number(e.target.value));
+                                setCataloguePage(1);
+                              }}
+                              className="bg-white border border-[#E5DDD1] rounded-[2px] px-2 py-0.5 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer"
+                            >
+                              <option value={15}>15</option>
+                              <option value={30}>30</option>
+                              <option value={50}>50</option>
+                              <option value={100}>100</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Page Jump Buttons */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            disabled={cataloguePage <= 1}
+                            onClick={() => setCataloguePage(prev => Math.max(1, prev - 1))}
+                            className="px-2.5 py-1 border border-[#E5DDD1] rounded-[2px] bg-white hover:bg-[#FAF8F5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs cursor-pointer"
+                          >
+                            Prev
+                          </button>
+
+                          {Array.from({ length: totalCataloguePages }, (_, i) => i + 1)
+                            .filter(p => p === 1 || p === totalCataloguePages || Math.abs(p - cataloguePage) <= 1)
+                            .map((p, idx, arr) => {
+                              const prevPage = arr[idx - 1];
+                              const showEllipsis = prevPage && p - prevPage > 1;
+
+                              return (
+                                <React.Fragment key={p}>
+                                  {showEllipsis && <span className="px-1 text-[#746F68]">&hellip;</span>}
+                                  <button
+                                    type="button"
+                                    onClick={() => setCataloguePage(p)}
+                                    className={`px-2.5 py-1 border rounded-[2px] text-xs font-mono transition-colors cursor-pointer ${
+                                      cataloguePage === p
+                                        ? "bg-[#111113] text-[#FAF8F5] border-[#111113] font-medium"
+                                        : "bg-white text-[#746F68] border-[#E5DDD1] hover:text-[#111113]"
+                                    }`}
+                                  >
+                                    {p}
+                                  </button>
+                                </React.Fragment>
+                              );
+                            })}
+
+                          <button
+                            type="button"
+                            disabled={cataloguePage >= totalCataloguePages}
+                            onClick={() => setCataloguePage(prev => Math.min(totalCataloguePages, prev + 1))}
+                            className="px-2.5 py-1 border border-[#E5DDD1] rounded-[2px] bg-white hover:bg-[#FAF8F5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs cursor-pointer"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
+
+                  {/* FLOATING LUXURY 2-TIER BULK ACTION TOOLBAR */}
+                  {selectedProductIds.length > 0 && (
+                    <div className="fixed bottom-6 inset-x-0 mx-auto max-w-4xl z-40 px-4 pointer-events-none transition-all duration-300">
+                      <div className="pointer-events-auto bg-[#111113] text-white border border-[#C2922E]/80 rounded-[4px] shadow-[0_16px_48px_rgba(0,0,0,0.6)] p-2.5 sm:p-3.5 flex flex-wrap items-center justify-between gap-3 backdrop-blur-md">
+                        {/* Selection Counter & Clear */}
+                        <div className="flex items-center gap-2.5 border-r border-[#C2922E]/30 pr-3">
+                          <span className="w-2 h-2 rounded-full bg-[#C2922E] animate-pulse" />
+                          <span className="font-mono text-xs font-medium text-[#FAF8F5]">
+                            <strong className="text-[#C2922E]">{selectedProductIds.length}</strong> Selected
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleDeselectAll}
+                            className="text-[#FAF8F5]/60 hover:text-white transition-colors cursor-pointer p-0.5"
+                            title="Deselect all garments"
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+
+                        {/* Tier 1 Primary Actions */}
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                          {/* Bulk Edit Specs */}
+                          <button
+                            type="button"
+                            onClick={() => { setBulkActiveTab("edit"); setIsBulkModalOpen(true); }}
+                            className="bg-white/10 hover:bg-white hover:text-[#111113] text-[#FAF8F5] border border-white/20 hover:border-white px-3 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <Edit2 size={11} className="text-[#C2922E]" />
+                            <span>Edit</span>
+                          </button>
+
+                          {/* Bulk Inventory Allocation */}
+                          <button
+                            type="button"
+                            onClick={() => { setBulkActiveTab("inventory"); setIsBulkModalOpen(true); }}
+                            className="bg-white/10 hover:bg-white hover:text-[#111113] text-[#FAF8F5] border border-white/20 hover:border-white px-3 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <Package size={11} className="text-[#C2922E]" />
+                            <span>Inventory</span>
+                          </button>
+
+                          {/* Bulk Price Adjustment */}
+                          <button
+                            type="button"
+                            onClick={() => { setBulkActiveTab("price"); setIsBulkModalOpen(true); }}
+                            className="bg-white/10 hover:bg-white hover:text-[#111113] text-[#FAF8F5] border border-white/20 hover:border-white px-3 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <Tag size={11} className="text-[#C2922E]" />
+                            <span>Price</span>
+                          </button>
+
+                          {/* Bulk Move Collection */}
+                          <button
+                            type="button"
+                            onClick={() => { setBulkActiveTab("move"); setIsBulkModalOpen(true); }}
+                            className="bg-white/10 hover:bg-white hover:text-[#111113] text-[#FAF8F5] border border-white/20 hover:border-white px-3 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <Layers size={11} className="text-[#C2922E]" />
+                            <span>Move</span>
+                          </button>
+
+                          {/* Bulk Archive vs Restore */}
+                          {catalogueViewTab === "archived" ? (
+                            <button
+                              type="button"
+                              onClick={() => handleExecuteBulkRestore(selectedProductIds)}
+                              className="bg-[#C2922E] hover:bg-[#A87B22] text-[#111113] font-medium px-3.5 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            >
+                              <RotateCcw size={11} strokeWidth={2.5} />
+                              <span>Restore</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleExecuteBulkArchive(selectedProductIds)}
+                              className="bg-[#C2922E] hover:bg-[#A87B22] text-[#111113] font-medium px-3.5 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            >
+                              <Archive size={11} strokeWidth={2.5} />
+                              <span>Archive</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Tier 2: More Actions Dropdown (•••) */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setIsBulkMoreOpen(!isBulkMoreOpen)}
+                            className="p-1.5 border border-white/20 hover:border-[#C2922E] rounded-[2px] text-[#FAF8F5] hover:text-[#C2922E] transition-colors cursor-pointer"
+                            title="More bulk actions"
+                          >
+                            <MoreHorizontal size={15} />
+                          </button>
+
+                          {isBulkMoreOpen && (
+                            <div className="absolute right-0 bottom-full mb-2 w-64 bg-[#111113] border border-[#C2922E] rounded-[2px] shadow-[0_8px_32px_rgba(0,0,0,0.8)] py-1.5 z-50 divide-y divide-white/10 font-mono text-xs">
+                              <div className="py-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleExportProductsCSV(true, "inventory")}
+                                  className="w-full px-3.5 py-1.5 text-left text-[#FAF8F5] hover:bg-white/10 flex items-center gap-2 text-[11px] tracking-wider transition-colors cursor-pointer"
+                                >
+                                  <Download size={12} className="text-[#C2922E]" />
+                                  <span>Export Selected Inventory (Stock)</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleExportProductsCSV(true, "master")}
+                                  className="w-full px-3.5 py-1.5 text-left text-[#FAF8F5] hover:bg-white/10 flex items-center gap-2 text-[11px] tracking-wider transition-colors cursor-pointer"
+                                >
+                                  <FileSpreadsheet size={12} className="text-[#C2922E]" />
+                                  <span>Export Selected Master (Complete)</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => { setBulkActiveTab("status"); setIsBulkModalOpen(true); setIsBulkMoreOpen(false); }}
+                                  className="w-full px-3.5 py-1.5 text-left text-[#FAF8F5] hover:bg-white/10 flex items-center gap-2 text-[11px] tracking-wider transition-colors cursor-pointer"
+                                >
+                                  <SlidersHorizontal size={12} className="text-[#C2922E]" />
+                                  <span>Change Status</span>
+                                </button>
+                              </div>
+
+                              <div className="py-1">
+                                {catalogueViewTab !== "archived" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleExecuteBulkArchive(selectedProductIds)}
+                                    className="w-full px-3.5 py-1.5 text-left text-[#FAF8F5] hover:bg-white/10 flex items-center gap-2 text-[11px] tracking-wider transition-colors cursor-pointer"
+                                  >
+                                    <Archive size={12} className="text-amber-400" />
+                                    <span>Move to Archive</span>
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setBulkDeletePassword("");
+                                    setBulkDeleteError("");
+                                    setIsBulkDeleteModalOpen(true);
+                                    setIsBulkMoreOpen(false);
+                                  }}
+                                  className="w-full px-3.5 py-1.5 text-left text-rose-400 hover:bg-rose-950/40 flex items-center gap-2 text-[11px] tracking-wider transition-colors cursor-pointer"
+                                >
+                                  <Trash2 size={12} className="text-rose-400" />
+                                  <span>Delete Permanently...</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -4607,294 +6408,180 @@ const Admin = () => {
                           </div>
 
                           {/* Color Palette Suite */}
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 bg-[#FCFAF7] border border-[#E5DDD1] p-4 rounded-[2px]">
-                            {/* PRIMARY COLOR */}
-                            <div className="space-y-2.5">
-                              {/* Label Row */}
-                              <div className="flex items-center justify-between">
-                                <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono flex items-center gap-1.5 font-medium">
-                                  <span>Primary Color *</span>
-                                </label>
-                                
-                                {/* Custom Color Wheel Button */}
-                                <label 
-                                  className="group inline-flex items-center gap-1.5 px-2 py-0.5 bg-white hover:bg-[#FAF8F5] border border-[#C2922E]/50 hover:border-[#111113] rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider text-[#111113] cursor-pointer shadow-2xs transition-all"
-                                  title="Click to open custom color wheel spectrum"
-                                >
-                                  <span 
-                                    className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0" 
-                                    style={{ backgroundColor: getAtelierColorHex(formData.color) }}
-                                  />
-                                  <span>Color Wheel</span>
-                                  <input
-                                    type="color"
-                                    value={getHexForColorPicker(formData.color)}
-                                    onChange={(e) => {
-                                      const hex = e.target.value;
-                                      const nearest = findNearestColorName(hex);
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        color: nearest?.name ? `${nearest.name} (${hex})` : hex
-                                      }));
-                                    }}
-                                    className="opacity-0 absolute w-0 h-0 pointer-events-none"
-                                  />
-                                </label>
-                              </div>
-
-                              {/* Input + Large Swatch Preview */}
-                              <div className="flex items-center gap-2.5">
-                                {/* Visual Swatch Box */}
-                                <label 
-                                  className="relative w-11 h-10 rounded-[2px] border-2 border-white shadow-xs ring-1 ring-[#E5DDD1] shrink-0 cursor-pointer overflow-hidden flex items-center justify-center group"
+                          <div className="bg-[#FCFAF7] border border-[#E5DDD1] p-4 rounded-[2px] space-y-3">
+                            {/* Header Row */}
+                            <div className="flex items-center justify-between">
+                              <label className="text-[10.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono flex items-center gap-1.5 font-medium">
+                                <span>Color *</span>
+                              </label>
+                              
+                              {/* Custom Color Wheel Button */}
+                              <label 
+                                className="group inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-[#FAF8F5] border border-[#C2922E]/50 hover:border-[#111113] rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider text-[#111113] cursor-pointer shadow-2xs transition-all"
+                                title="Click to open custom color wheel spectrum"
+                              >
+                                <span 
+                                  className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0" 
                                   style={{ backgroundColor: getAtelierColorHex(formData.color) }}
-                                  title="Click to choose custom shade from color spectrum"
-                                >
-                                  <input
-                                    type="color"
-                                    value={getHexForColorPicker(formData.color)}
-                                    onChange={(e) => {
-                                      const hex = e.target.value;
-                                      const nearest = findNearestColorName(hex);
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        color: nearest?.name ? `${nearest.name} (${hex})` : hex
-                                      }));
-                                    }}
-                                    className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                                  />
-                                  <span className="opacity-0 group-hover:opacity-100 text-[8px] font-mono text-white bg-black/70 px-1 py-0.5 rounded-[1px] transition-opacity uppercase tracking-tighter">
-                                    Pick
-                                  </span>
-                                </label>
-
-                                {/* Text input for typing color name or hex */}
-                                <div className="relative flex-1">
-                                  <input
-                                    type="text"
-                                    name="color"
-                                    value={formData.color}
-                                    onChange={handleInputChange}
-                                    placeholder="Type name (e.g. Navy, Bottle Green, Rani Pink, Sage, Red...) or Hex"
-                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-3 pr-20 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono placeholder:text-[#A8A29E]"
-                                  />
-                                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                                    {formData.color && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, color: "" }))}
-                                        className="text-[10px] text-[#A8A29E] hover:text-[#111113] font-mono px-1 transition-colors cursor-pointer"
-                                        title="Clear color"
-                                      >
-                                        &times;
-                                      </button>
-                                    )}
-                                    <span 
-                                      className="text-[9px] font-mono font-medium text-[#C2922E] bg-[#FAF8F5] px-1.5 py-0.5 border border-[#E5DDD1] rounded-[1px]"
-                                      title="Active Hex Code"
-                                    >
-                                      {getHexForColorPicker(formData.color)}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Recognition Status Bar */}
-                              {formData.color && (
-                                <div className="flex items-center justify-between text-[9.5px] font-mono text-[#746F68] bg-white border border-[#E5DDD1] px-2.5 py-1 rounded-[1px]">
-                                  <span className="flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full border border-black/20" style={{ backgroundColor: getAtelierColorHex(formData.color) }}></span>
-                                    <span className="text-[#111113] font-medium">
-                                      Active: {findNearestColorName(getHexForColorPicker(formData.color))?.name || formData.color}
-                                    </span>
-                                  </span>
-                                  {findNearestColorName(getHexForColorPicker(formData.color))?.name && 
-                                   formData.color.toLowerCase() !== findNearestColorName(getHexForColorPicker(formData.color))?.name.toLowerCase() && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setFormData(prev => ({ ...prev, color: findNearestColorName(getHexForColorPicker(formData.color))?.name }))}
-                                      className="text-[#C2922E] hover:text-[#111113] underline font-medium cursor-pointer transition-colors"
-                                    >
-                                      Use &ldquo;{findNearestColorName(getHexForColorPicker(formData.color))?.name}&rdquo;
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Quick Palette Chips */}
-                              <div>
-                                <span className="text-[9px] uppercase tracking-[0.12em] text-[#746F68] font-mono block mb-1">
-                                  Atelier Palette Swatches:
-                                </span>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {ATELIER_PRIMARY_SWATCHES.map(({ name, hex }) => {
-                                    const isSelected = formData.color?.toLowerCase() === name.toLowerCase();
-                                    return (
-                                      <button
-                                        key={name}
-                                        type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, color: name }))}
-                                        className={`inline-flex items-center gap-1 text-[9px] font-mono px-2 py-0.5 rounded-[1px] border transition-all cursor-pointer ${
-                                          isSelected
-                                            ? "bg-[#111113] text-white border-[#111113] shadow-2xs"
-                                            : "bg-white text-[#57534E] border-[#E5DDD1] hover:border-[#111113] hover:text-[#111113]"
-                                        }`}
-                                      >
-                                        <span
-                                          className="w-2 h-2 rounded-full border border-black/20 shrink-0"
-                                          style={{ backgroundColor: hex }}
-                                        />
-                                        <span>{name}</span>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
+                                />
+                                <span>Color Wheel</span>
+                                <input
+                                  type="color"
+                                  value={getHexForColorPicker(formData.color)}
+                                  onChange={(e) => {
+                                    const hex = e.target.value;
+                                    const nearest = findNearestColorName(hex);
+                                    const val = nearest?.name ? nearest.name : hex;
+                                    setFormData(prev => ({ ...prev, color: val }));
+                                    handleSaveNewColor(val, true);
+                                  }}
+                                  className="opacity-0 absolute w-0 h-0 pointer-events-none"
+                                />
+                              </label>
                             </div>
 
-                            {/* SECONDARY / ACCENT COLOR */}
-                            <div className="space-y-2.5">
-                              {/* Label Row */}
-                              <div className="flex items-center justify-between">
-                                <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono flex items-center gap-1.5 font-medium">
-                                  <span>Secondary / Accent Color</span>
-                                </label>
-                                
-                                {/* Custom Color Wheel Button */}
-                                <label 
-                                  className="group inline-flex items-center gap-1.5 px-2 py-0.5 bg-white hover:bg-[#FAF8F5] border border-[#C2922E]/50 hover:border-[#111113] rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider text-[#111113] cursor-pointer shadow-2xs transition-all"
-                                  title="Click to open custom color wheel spectrum"
-                                >
-                                  <span 
-                                    className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0" 
-                                    style={{ backgroundColor: getAtelierColorHex(formData.secondary_color, "#FAF8F5") }}
-                                  />
-                                  <span>Color Wheel</span>
-                                  <input
-                                    type="color"
-                                    value={getHexForColorPicker(formData.secondary_color, "#FAF8F5")}
-                                    onChange={(e) => {
-                                      const hex = e.target.value;
-                                      const nearest = findNearestColorName(hex);
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        secondary_color: nearest?.name ? `${nearest.name} (${hex})` : hex
-                                      }));
-                                    }}
-                                    className="opacity-0 absolute w-0 h-0 pointer-events-none"
-                                  />
-                                </label>
-                              </div>
+                            {/* Input + Large Swatch Preview */}
+                            <div className="flex items-center gap-2.5">
+                              {/* Visual Swatch Box */}
+                              <label 
+                                className="relative w-12 h-10 rounded-[2px] border-2 border-white shadow-xs ring-1 ring-[#E5DDD1] shrink-0 cursor-pointer overflow-hidden flex items-center justify-center group"
+                                style={{ backgroundColor: getAtelierColorHex(formData.color) }}
+                                title="Click to choose custom shade from color spectrum"
+                              >
+                                <input
+                                  type="color"
+                                  value={getHexForColorPicker(formData.color)}
+                                  onChange={(e) => {
+                                    const hex = e.target.value;
+                                    const nearest = findNearestColorName(hex);
+                                    const val = nearest?.name ? nearest.name : hex;
+                                    setFormData(prev => ({ ...prev, color: val }));
+                                    handleSaveNewColor(val, true);
+                                  }}
+                                  className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                                />
+                                <span className="opacity-0 group-hover:opacity-100 text-[8px] font-mono text-white bg-black/70 px-1 py-0.5 rounded-[1px] transition-opacity uppercase tracking-tighter">
+                                  Pick
+                                </span>
+                              </label>
 
-                              {/* Input + Large Swatch Preview */}
-                              <div className="flex items-center gap-2.5">
-                                {/* Visual Swatch Box */}
-                                <label 
-                                  className="relative w-11 h-10 rounded-[2px] border-2 border-white shadow-xs ring-1 ring-[#E5DDD1] shrink-0 cursor-pointer overflow-hidden flex items-center justify-center group"
-                                  style={{ backgroundColor: getAtelierColorHex(formData.secondary_color, "#FAF8F5") }}
-                                  title="Click to choose custom accent shade from color spectrum"
-                                >
-                                  <input
-                                    type="color"
-                                    value={getHexForColorPicker(formData.secondary_color, "#FAF8F5")}
-                                    onChange={(e) => {
-                                      const hex = e.target.value;
-                                      const nearest = findNearestColorName(hex);
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        secondary_color: nearest?.name ? `${nearest.name} (${hex})` : hex
-                                      }));
-                                    }}
-                                    className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                                  />
-                                  <span className="opacity-0 group-hover:opacity-100 text-[8px] font-mono text-white bg-black/70 px-1 py-0.5 rounded-[1px] transition-opacity uppercase tracking-tighter">
-                                    Pick
-                                  </span>
-                                </label>
-
-                                {/* Text input for typing secondary color name or hex */}
-                                <div className="relative flex-1">
-                                  <input
-                                    type="text"
-                                    name="secondary_color"
-                                    value={formData.secondary_color}
-                                    onChange={handleInputChange}
-                                    placeholder="e.g. Ivory Detail, Gold Trim, Rose Gold, or Hex..."
-                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-3 pr-20 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono placeholder:text-[#A8A29E]"
-                                  />
-                                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                                    {formData.secondary_color && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, secondary_color: "" }))}
-                                        className="text-[10px] text-[#A8A29E] hover:text-[#111113] font-mono px-1 transition-colors cursor-pointer"
-                                        title="Clear color"
-                                      >
-                                        &times;
-                                      </button>
-                                    )}
-                                    {formData.secondary_color && (
-                                      <span 
-                                        className="text-[9px] font-mono font-medium text-[#C2922E] bg-[#FAF8F5] px-1.5 py-0.5 border border-[#E5DDD1] rounded-[1px]"
-                                        title="Active Hex Code"
-                                      >
-                                        {getHexForColorPicker(formData.secondary_color, "#FAF8F5")}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Recognition Status Bar */}
-                              {formData.secondary_color && (
-                                <div className="flex items-center justify-between text-[9.5px] font-mono text-[#746F68] bg-white border border-[#E5DDD1] px-2.5 py-1 rounded-[1px]">
-                                  <span className="flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full border border-black/20" style={{ backgroundColor: getAtelierColorHex(formData.secondary_color, "#FAF8F5") }}></span>
-                                    <span className="text-[#111113] font-medium">
-                                      Active: {findNearestColorName(getHexForColorPicker(formData.secondary_color, "#FAF8F5"))?.name || formData.secondary_color}
-                                    </span>
-                                  </span>
-                                  {findNearestColorName(getHexForColorPicker(formData.secondary_color, "#FAF8F5"))?.name && 
-                                   formData.secondary_color.toLowerCase() !== findNearestColorName(getHexForColorPicker(formData.secondary_color, "#FAF8F5"))?.name.toLowerCase() && (
+                              {/* Text input for typing color name or hex */}
+                              <div className="relative flex-1">
+                                <input
+                                  type="text"
+                                  name="color"
+                                  value={formData.color}
+                                  onChange={handleInputChange}
+                                  placeholder="Type color name (e.g. Midnight Navy, Obsidian Black, Ivory Cream...) or Hex"
+                                  className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-3 pr-24 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono placeholder:text-[#A8A29E]"
+                                />
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                                  {formData.color && (
                                     <button
                                       type="button"
-                                      onClick={() => setFormData(prev => ({ ...prev, secondary_color: findNearestColorName(getHexForColorPicker(formData.secondary_color, "#FAF8F5"))?.name }))}
-                                      className="text-[#C2922E] hover:text-[#111113] underline font-medium cursor-pointer transition-colors"
+                                      onClick={() => setFormData(prev => ({ ...prev, color: "" }))}
+                                      className="text-[10px] text-[#A8A29E] hover:text-[#111113] font-mono px-1 transition-colors cursor-pointer"
+                                      title="Clear color"
                                     >
-                                      Use &ldquo;{findNearestColorName(getHexForColorPicker(formData.secondary_color, "#FAF8F5"))?.name}&rdquo;
+                                      &times;
                                     </button>
                                   )}
+                                  <span 
+                                    className="text-[9.5px] font-mono font-medium text-[#C2922E] bg-[#FAF8F5] px-1.5 py-0.5 border border-[#E5DDD1] rounded-[1px]"
+                                    title="Active Hex Code"
+                                  >
+                                    {getHexForColorPicker(formData.color)}
+                                  </span>
                                 </div>
-                              )}
+                              </div>
 
-                              {/* Quick Accent Chips */}
-                              <div>
-                                <span className="text-[9px] uppercase tracking-[0.12em] text-[#746F68] font-mono block mb-1">
-                                  Atelier Accent Swatches:
+                              {/* Save Color Button if not in swatches */}
+                              {formData.color && !availableColorSwatches.some(s => s.name.toLowerCase() === formData.color.trim().toLowerCase()) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveNewColor(formData.color)}
+                                  className="bg-white hover:bg-[#FAF8F5] border border-[#C2922E] text-[#111113] hover:text-[#C2922E] px-3 py-2 rounded-[2px] text-[10px] font-mono uppercase tracking-wider transition-colors cursor-pointer shrink-0 shadow-2xs font-medium"
+                                  title="Save this color to Atelier Palette Swatches"
+                                >
+                                  + Save Color
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Recognition Status Bar */}
+                            {formData.color && (
+                              <div className="flex items-center justify-between text-[9.5px] font-mono text-[#746F68] bg-white border border-[#E5DDD1] px-2.5 py-1 rounded-[1px]">
+                                <span className="flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full border border-black/20" style={{ backgroundColor: getAtelierColorHex(formData.color) }}></span>
+                                  <span className="text-[#111113] font-medium">
+                                    Active: {findNearestColorName(getHexForColorPicker(formData.color))?.name || formData.color}
+                                  </span>
                                 </span>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {ATELIER_ACCENT_SWATCHES.map(({ name, hex }) => {
-                                    const isSelected = formData.secondary_color?.toLowerCase() === name.toLowerCase();
-                                    return (
+                                {findNearestColorName(getHexForColorPicker(formData.color))?.name && 
+                                 formData.color.toLowerCase() !== findNearestColorName(getHexForColorPicker(formData.color))?.name.toLowerCase() && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const name = findNearestColorName(getHexForColorPicker(formData.color))?.name;
+                                      setFormData(prev => ({ ...prev, color: name }));
+                                      handleSaveNewColor(name);
+                                    }}
+                                    className="text-[#C2922E] hover:text-[#111113] underline font-medium cursor-pointer transition-colors"
+                                  >
+                                    Use &ldquo;{findNearestColorName(getHexForColorPicker(formData.color))?.name}&rdquo;
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Showroom & Saved Swatches */}
+                            <div>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono font-medium">
+                                  Atelier Palette Swatches ({availableColorSwatches.length} Available):
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto suko-scrollbar p-1.5 bg-white border border-[#E5DDD1] rounded-[2px]">
+                                {availableColorSwatches.map((sw) => {
+                                  const isSelected = formData.color?.toLowerCase() === sw.name.toLowerCase();
+                                  return (
+                                    <div
+                                      key={sw.name}
+                                      className={`group inline-flex items-center gap-1.5 text-[9.5px] font-mono px-2 py-1 rounded-[1px] border transition-all cursor-pointer ${
+                                        isSelected
+                                          ? "bg-[#111113] text-white border-[#111113] shadow-2xs"
+                                          : "bg-[#FAF8F5] text-[#3D3A35] border-[#E5DDD1] hover:border-[#111113] hover:text-[#111113]"
+                                      }`}
+                                    >
                                       <button
-                                        key={name}
                                         type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, secondary_color: name }))}
-                                        className={`inline-flex items-center gap-1 text-[9px] font-mono px-2 py-0.5 rounded-[1px] border transition-all cursor-pointer ${
-                                          isSelected
-                                            ? "bg-[#111113] text-white border-[#111113] shadow-2xs"
-                                            : "bg-white text-[#57534E] border-[#E5DDD1] hover:border-[#111113] hover:text-[#111113]"
-                                        }`}
+                                        onClick={() => setFormData(prev => ({ ...prev, color: sw.name }))}
+                                        className="inline-flex items-center gap-1.5 cursor-pointer text-left"
                                       >
                                         <span
-                                          className="w-2 h-2 rounded-full border border-black/20 shrink-0"
-                                          style={{ backgroundColor: hex }}
+                                          className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0"
+                                          style={{ backgroundColor: sw.hex }}
                                         />
-                                        <span>{name}</span>
+                                        <span>{sw.name}</span>
                                       </button>
-                                    );
-                                  })}
-                                </div>
+                                      {sw.isCustom && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRemoveCustomColor(sw.name);
+                                          }}
+                                          className={`opacity-0 group-hover:opacity-100 hover:text-rose-600 transition-opacity ml-0.5 text-xs font-bold leading-none ${
+                                            isSelected ? "text-white/70 hover:text-white" : "text-[#746F68]"
+                                          }`}
+                                          title="Remove saved color"
+                                        >
+                                          &times;
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           </div>
@@ -5299,7 +6986,7 @@ const Admin = () => {
               {activeTab === "orders" && (
                 <div className="space-y-6">
                   <div className="space-y-4 border-b border-[#E5DDD1] pb-0">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-2">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-3">
                       <div>
                         <span className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block mb-1">
                           STUDIO ORDERS &middot; MANAGEMENT
@@ -5311,6 +6998,16 @@ const Admin = () => {
                           Client purchases, payment verification and fulfilment.
                         </p>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsOrderExportModalOpen(true)}
+                        className="h-8 px-3.5 rounded-[2px] bg-[#FAF8F5] hover:bg-[#EFE9DF] border border-[#E5DDD1] text-[11px] font-mono uppercase tracking-[0.08em] text-[#111113] flex items-center gap-2 cursor-pointer transition-colors shadow-2xs self-start sm:self-end"
+                        title="Export Atelier Orders CSV (Summary or Detailed Line-Items)"
+                      >
+                        <Download size={13} className="text-[#C2922E]" />
+                        <span>Export Orders CSV</span>
+                      </button>
                     </div>
 
                     {/* Status Filter Tabs (Editorial Underline Standard - Hidden Scrollbar) */}
@@ -8577,30 +10274,16 @@ const Admin = () => {
                       <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#C2922E] font-medium block">
                         PALETTE &amp; MATERIAL COMPOSITION
                       </span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <div className="flex items-center gap-2.5 border border-[#E5DDD1] p-2.5 rounded-[2px] bg-[#FAF8F5]">
-                          <span 
-                            className="w-5 h-5 rounded-full border border-black/20 shrink-0 shadow-2xs" 
-                            style={{ backgroundColor: getAtelierColorHex(editingProduct.color) }}
-                          />
-                          <div className="min-w-0">
-                            <span className="text-[8.5px] uppercase tracking-wider text-[#746F68] font-mono block">Primary Color</span>
-                            <span className="text-xs font-mono font-medium text-[#111113] truncate block">
-                              {editingProduct.color || "Standard Noir / Obsidian"}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2.5 border border-[#E5DDD1] p-2.5 rounded-[2px] bg-[#FAF8F5]">
-                          <span 
-                            className="w-5 h-5 rounded-full border border-black/20 shrink-0 shadow-2xs" 
-                            style={{ backgroundColor: getAtelierColorHex(editingProduct.secondary_color, "#FAF8F5") }}
-                          />
-                          <div className="min-w-0">
-                            <span className="text-[8.5px] uppercase tracking-wider text-[#746F68] font-mono block">Accent Shade</span>
-                            <span className="text-xs font-mono font-medium text-[#111113] truncate block">
-                              {editingProduct.secondary_color || "Tone-on-Tone"}
-                            </span>
-                          </div>
+                      <div className="flex items-center gap-2.5 border border-[#E5DDD1] p-2.5 rounded-[2px] bg-[#FAF8F5]">
+                        <span 
+                          className="w-5 h-5 rounded-full border border-black/20 shrink-0 shadow-2xs" 
+                          style={{ backgroundColor: getAtelierColorHex(editingProduct.color) }}
+                        />
+                        <div className="min-w-0">
+                          <span className="text-[8.5px] uppercase tracking-wider text-[#746F68] font-mono block">Color</span>
+                          <span className="text-xs font-mono font-medium text-[#111113] truncate block">
+                            {editingProduct.color || "Standard Noir / Obsidian"}
+                          </span>
                         </div>
                       </div>
                       {(editingProduct.fabric || editingProduct.fit || editingProduct.occasion) && (
@@ -8727,238 +10410,146 @@ const Admin = () => {
 
                     {/* COLOR PALETTE SUITE (EDIT DRAWER) */}
                     <div className="space-y-3 bg-[#FCFAF7] border border-[#E5DDD1] p-3.5 rounded-[2px]">
-                      <span className="text-[9.5px] font-mono uppercase tracking-[0.16em] text-[#C2922E] font-medium block">
-                        GARMENT PALETTE SPECIFICATION
-                      </span>
-
-                      {/* Primary Color */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono flex items-center gap-1.5 font-medium">
-                            <span>Primary Color *</span>
-                          </label>
-                          <label 
-                            className="group inline-flex items-center gap-1.5 px-2 py-0.5 bg-white hover:bg-[#FAF8F5] border border-[#C2922E]/50 hover:border-[#111113] rounded-[2px] text-[9px] font-mono uppercase tracking-wider text-[#111113] cursor-pointer shadow-2xs transition-all"
-                            title="Click to open color wheel spectrum"
-                          >
-                            <span 
-                              className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0" 
-                              style={{ backgroundColor: getAtelierColorHex(editFormData.color) }}
-                            />
-                            <span>Color Wheel</span>
-                            <input
-                              type="color"
-                              value={getHexForColorPicker(editFormData.color)}
-                              onChange={(e) => {
-                                const hex = e.target.value;
-                                const nearest = findNearestColorName(hex);
-                                setEditFormData(prev => ({
-                                  ...prev,
-                                  color: nearest?.name ? `${nearest.name} (${hex})` : hex
-                                }));
-                              }}
-                              className="opacity-0 absolute w-0 h-0 pointer-events-none"
-                            />
-                          </label>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {/* Visual Swatch Box */}
-                          <label 
-                            className="relative w-9 h-8 rounded-[2px] border-2 border-white shadow-xs ring-1 ring-[#E5DDD1] shrink-0 cursor-pointer overflow-hidden flex items-center justify-center group"
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono flex items-center gap-1.5 font-medium">
+                          <span>Color *</span>
+                        </label>
+                        <label 
+                          className="group inline-flex items-center gap-1.5 px-2 py-0.5 bg-white hover:bg-[#FAF8F5] border border-[#C2922E]/50 hover:border-[#111113] rounded-[2px] text-[9px] font-mono uppercase tracking-wider text-[#111113] cursor-pointer shadow-2xs transition-all"
+                          title="Click to open color wheel spectrum"
+                        >
+                          <span 
+                            className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0" 
                             style={{ backgroundColor: getAtelierColorHex(editFormData.color) }}
-                            title="Click to choose custom shade from color spectrum"
-                          >
-                            <input
-                              type="color"
-                              value={getHexForColorPicker(editFormData.color)}
-                              onChange={(e) => {
-                                const hex = e.target.value;
-                                const nearest = findNearestColorName(hex);
-                                setEditFormData(prev => ({
-                                  ...prev,
-                                  color: nearest?.name ? `${nearest.name} (${hex})` : hex
-                                }));
-                              }}
-                              className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                            />
-                            <span className="opacity-0 group-hover:opacity-100 text-[7.5px] font-mono text-white bg-black/70 px-1 py-0.5 rounded-[1px] transition-opacity uppercase tracking-tighter">
-                              Pick
-                            </span>
-                          </label>
-
-                          {/* Input */}
-                          <div className="relative flex-1">
-                            <input
-                              type="text"
-                              value={editFormData.color || ""}
-                              onChange={(e) => setEditFormData({ ...editFormData, color: e.target.value })}
-                              placeholder="Type name (e.g. Navy, Bottle Green, Rani Pink, Sage, Red...) or Hex"
-                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-2.5 pr-16 py-1.5 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono placeholder:text-[#A8A29E]"
-                            />
-                            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                              {editFormData.color && (
-                                <button
-                                  type="button"
-                                  onClick={() => setEditFormData(prev => ({ ...prev, color: "" }))}
-                                  className="text-[10px] text-[#A8A29E] hover:text-[#111113] font-mono px-1 transition-colors cursor-pointer"
-                                  title="Clear color"
-                                >
-                                  &times;
-                                </button>
-                              )}
-                              <span className="text-[8.5px] font-mono font-medium text-[#C2922E] bg-[#FAF8F5] px-1 py-0.5 border border-[#E5DDD1] rounded-[1px]">
-                                {getHexForColorPicker(editFormData.color)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Recognition Status */}
-                        {editFormData.color && (
-                          <div className="flex items-center justify-between text-[9px] font-mono text-[#746F68] bg-white border border-[#E5DDD1] px-2 py-0.5 rounded-[1px]">
-                            <span className="flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full border border-black/20" style={{ backgroundColor: getAtelierColorHex(editFormData.color) }}></span>
-                              <span className="text-[#111113] font-medium truncate max-w-[180px]">
-                                Active: {findNearestColorName(getHexForColorPicker(editFormData.color))?.name || editFormData.color}
-                              </span>
-                            </span>
-                            {findNearestColorName(getHexForColorPicker(editFormData.color))?.name && 
-                             editFormData.color.toLowerCase() !== findNearestColorName(getHexForColorPicker(editFormData.color))?.name.toLowerCase() && (
-                              <button
-                                type="button"
-                                onClick={() => setEditFormData(prev => ({ ...prev, color: findNearestColorName(getHexForColorPicker(editFormData.color))?.name }))}
-                                className="text-[#C2922E] hover:text-[#111113] underline font-medium cursor-pointer transition-colors"
-                              >
-                                Use &ldquo;{findNearestColorName(getHexForColorPicker(editFormData.color))?.name}&rdquo;
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Quick Palette Chips */}
-                        <div className="flex flex-wrap gap-1 pt-0.5">
-                          {ATELIER_PRIMARY_SWATCHES.slice(0, 12).map(({ name, hex }) => {
-                            const isSelected = editFormData.color?.toLowerCase() === name.toLowerCase();
-                            return (
-                              <button
-                                key={name}
-                                type="button"
-                                onClick={() => setEditFormData(prev => ({ ...prev, color: name }))}
-                                className={`inline-flex items-center gap-1 text-[8.5px] font-mono px-1.5 py-0.5 rounded-[1px] border transition-all cursor-pointer ${
-                                  isSelected
-                                    ? "bg-[#111113] text-white border-[#111113]"
-                                    : "bg-white text-[#57534E] border-[#E5DDD1] hover:border-[#111113]"
-                                }`}
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full border border-black/20 shrink-0" style={{ backgroundColor: hex }} />
-                                <span>{name}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
+                          />
+                          <span>Color Wheel</span>
+                          <input
+                            type="color"
+                            value={getHexForColorPicker(editFormData.color)}
+                            onChange={(e) => {
+                              const hex = e.target.value;
+                              const nearest = findNearestColorName(hex);
+                              const val = nearest?.name ? nearest.name : hex;
+                              setEditFormData(prev => ({ ...prev, color: val }));
+                              handleSaveNewColor(val, true);
+                            }}
+                            className="opacity-0 absolute w-0 h-0 pointer-events-none"
+                          />
+                        </label>
                       </div>
 
-                      {/* Secondary / Accent Color */}
-                      <div className="space-y-2 pt-2 border-t border-[#E5DDD1]/70">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono flex items-center gap-1.5 font-medium">
-                            <span>Secondary / Accent Color</span>
-                          </label>
-                          <label 
-                            className="group inline-flex items-center gap-1.5 px-2 py-0.5 bg-white hover:bg-[#FAF8F5] border border-[#C2922E]/50 hover:border-[#111113] rounded-[2px] text-[9px] font-mono uppercase tracking-wider text-[#111113] cursor-pointer shadow-2xs transition-all"
-                            title="Click to open color wheel spectrum"
-                          >
-                            <span 
-                              className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0" 
-                              style={{ backgroundColor: getAtelierColorHex(editFormData.secondary_color, "#FAF8F5") }}
-                            />
-                            <span>Color Wheel</span>
-                            <input
-                              type="color"
-                              value={getHexForColorPicker(editFormData.secondary_color, "#FAF8F5")}
-                              onChange={(e) => {
-                                const hex = e.target.value;
-                                const nearest = findNearestColorName(hex);
-                                setEditFormData(prev => ({
-                                  ...prev,
-                                  secondary_color: nearest?.name ? `${nearest.name} (${hex})` : hex
-                                }));
-                              }}
-                              className="opacity-0 absolute w-0 h-0 pointer-events-none"
-                            />
-                          </label>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        {/* Visual Swatch Box */}
+                        <label 
+                          className="relative w-9 h-8 rounded-[2px] border-2 border-white shadow-xs ring-1 ring-[#E5DDD1] shrink-0 cursor-pointer overflow-hidden flex items-center justify-center group"
+                          style={{ backgroundColor: getAtelierColorHex(editFormData.color) }}
+                          title="Click to choose custom shade from color spectrum"
+                        >
+                          <input
+                            type="color"
+                            value={getHexForColorPicker(editFormData.color)}
+                            onChange={(e) => {
+                              const hex = e.target.value;
+                              const nearest = findNearestColorName(hex);
+                              const val = nearest?.name ? nearest.name : hex;
+                              setEditFormData(prev => ({ ...prev, color: val }));
+                              handleSaveNewColor(val, true);
+                            }}
+                            className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                          />
+                          <span className="opacity-0 group-hover:opacity-100 text-[7.5px] font-mono text-white bg-black/70 px-1 py-0.5 rounded-[1px] transition-opacity uppercase tracking-tighter">
+                            Pick
+                          </span>
+                        </label>
 
-                        <div className="flex items-center gap-2">
-                          {/* Visual Swatch Box */}
-                          <label 
-                            className="relative w-9 h-8 rounded-[2px] border-2 border-white shadow-xs ring-1 ring-[#E5DDD1] shrink-0 cursor-pointer overflow-hidden flex items-center justify-center group"
-                            style={{ backgroundColor: getAtelierColorHex(editFormData.secondary_color, "#FAF8F5") }}
-                            title="Click to choose custom accent shade from color spectrum"
-                          >
-                            <input
-                              type="color"
-                              value={getHexForColorPicker(editFormData.secondary_color, "#FAF8F5")}
-                              onChange={(e) => {
-                                const hex = e.target.value;
-                                const nearest = findNearestColorName(hex);
-                                setEditFormData(prev => ({
-                                  ...prev,
-                                  secondary_color: nearest?.name ? `${nearest.name} (${hex})` : hex
-                                }));
-                              }}
-                              className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                            />
-                            <span className="opacity-0 group-hover:opacity-100 text-[7.5px] font-mono text-white bg-black/70 px-1 py-0.5 rounded-[1px] transition-opacity uppercase tracking-tighter">
-                              Pick
+                        {/* Input */}
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            value={editFormData.color || ""}
+                            onChange={(e) => setEditFormData({ ...editFormData, color: e.target.value })}
+                            placeholder="Type color name (e.g. Midnight Navy, Obsidian Black, Ivory...) or Hex"
+                            className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-2.5 pr-20 py-1.5 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono placeholder:text-[#A8A29E]"
+                          />
+                          <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                            {editFormData.color && (
+                              <button
+                                type="button"
+                                onClick={() => setEditFormData(prev => ({ ...prev, color: "" }))}
+                                className="text-[10px] text-[#A8A29E] hover:text-[#111113] font-mono px-1 transition-colors cursor-pointer"
+                                title="Clear color"
+                              >
+                                &times;
+                              </button>
+                            )}
+                            <span className="text-[8.5px] font-mono font-medium text-[#C2922E] bg-[#FAF8F5] px-1 py-0.5 border border-[#E5DDD1] rounded-[1px]">
+                              {getHexForColorPicker(editFormData.color)}
                             </span>
-                          </label>
-
-                          {/* Input */}
-                          <div className="relative flex-1">
-                            <input
-                              type="text"
-                              value={editFormData.secondary_color || ""}
-                              onChange={(e) => setEditFormData({ ...editFormData, secondary_color: e.target.value })}
-                              placeholder="e.g. Ivory Detail, Gold Trim, Rose Gold, or Hex..."
-                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-2.5 pr-16 py-1.5 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono placeholder:text-[#A8A29E]"
-                            />
-                            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                              {editFormData.secondary_color && (
-                                <button
-                                  type="button"
-                                  onClick={() => setEditFormData(prev => ({ ...prev, secondary_color: "" }))}
-                                  className="text-[10px] text-[#A8A29E] hover:text-[#111113] font-mono px-1 transition-colors cursor-pointer"
-                                  title="Clear color"
-                                >
-                                  &times;
-                                </button>
-                              )}
-                              <span className="text-[8.5px] font-mono font-medium text-[#C2922E] bg-[#FAF8F5] px-1 py-0.5 border border-[#E5DDD1] rounded-[1px]">
-                                {getHexForColorPicker(editFormData.secondary_color, "#FAF8F5")}
-                              </span>
-                            </div>
                           </div>
                         </div>
 
-                        {/* Quick Accent Chips */}
-                        <div className="flex flex-wrap gap-1 pt-0.5">
-                          {ATELIER_ACCENT_SWATCHES.map(({ name, hex }) => {
-                            const isSelected = editFormData.secondary_color?.toLowerCase() === name.toLowerCase();
+                        {/* Save to palette button */}
+                        {editFormData.color && !availableColorSwatches.some(s => s.name.toLowerCase() === (editFormData.color || "").trim().toLowerCase()) && (
+                          <button
+                            type="button"
+                            onClick={() => handleSaveNewColor(editFormData.color)}
+                            className="bg-white hover:bg-[#FAF8F5] border border-[#C2922E] text-[#111113] hover:text-[#C2922E] px-2.5 py-1.5 rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider transition-colors cursor-pointer shrink-0 font-medium shadow-2xs"
+                            title="Save this color to Atelier Palette Swatches"
+                          >
+                            + Save Color
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Recognition Status */}
+                      {editFormData.color && (
+                        <div className="flex items-center justify-between text-[9px] font-mono text-[#746F68] bg-white border border-[#E5DDD1] px-2 py-0.5 rounded-[1px]">
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full border border-black/20" style={{ backgroundColor: getAtelierColorHex(editFormData.color) }}></span>
+                            <span className="text-[#111113] font-medium truncate max-w-[180px]">
+                              Active: {findNearestColorName(getHexForColorPicker(editFormData.color))?.name || editFormData.color}
+                            </span>
+                          </span>
+                          {findNearestColorName(getHexForColorPicker(editFormData.color))?.name && 
+                           editFormData.color.toLowerCase() !== findNearestColorName(getHexForColorPicker(editFormData.color))?.name.toLowerCase() && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const name = findNearestColorName(getHexForColorPicker(editFormData.color))?.name;
+                                setEditFormData(prev => ({ ...prev, color: name }));
+                                handleSaveNewColor(name);
+                              }}
+                              className="text-[#C2922E] hover:text-[#111113] underline font-medium cursor-pointer transition-colors"
+                            >
+                              Use &ldquo;{findNearestColorName(getHexForColorPicker(editFormData.color))?.name}&rdquo;
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Swatches Chips */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[9px] uppercase tracking-wider font-mono text-[#746F68]">
+                            Atelier Swatches ({availableColorSwatches.length}):
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto suko-scrollbar p-1 bg-white border border-[#E5DDD1] rounded-[2px]">
+                          {availableColorSwatches.map((sw) => {
+                            const isSelected = editFormData.color?.toLowerCase() === sw.name.toLowerCase();
                             return (
                               <button
-                                key={name}
+                                key={sw.name}
                                 type="button"
-                                onClick={() => setEditFormData(prev => ({ ...prev, secondary_color: name }))}
+                                onClick={() => setEditFormData(prev => ({ ...prev, color: sw.name }))}
                                 className={`inline-flex items-center gap-1 text-[8.5px] font-mono px-1.5 py-0.5 rounded-[1px] border transition-all cursor-pointer ${
                                   isSelected
                                     ? "bg-[#111113] text-white border-[#111113]"
-                                    : "bg-white text-[#57534E] border-[#E5DDD1] hover:border-[#111113]"
+                                    : "bg-[#FAF8F5] text-[#57534E] border-[#E5DDD1] hover:border-[#111113]"
                                 }`}
                               >
-                                <span className="w-1.5 h-1.5 rounded-full border border-black/20 shrink-0" style={{ backgroundColor: hex }} />
-                                <span>{name}</span>
+                                <span className="w-1.5 h-1.5 rounded-full border border-black/20 shrink-0" style={{ backgroundColor: sw.hex }} />
+                                <span>{sw.name}</span>
                               </button>
                             );
                           })}
@@ -10286,6 +11877,1070 @@ const Admin = () => {
                     Close
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* BULK EDIT & INVENTORY MANAGEMENT MODAL                        */}
+        {/* ============================================================= */}
+        {isBulkModalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+            onClick={() => setIsBulkModalOpen(false)}
+          >
+            <div
+              className="bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden font-body animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="shrink-0 px-6 py-4 border-b border-[#E5DDD1] bg-white flex items-center justify-between">
+                <div>
+                  <span className="text-[9.5px] uppercase tracking-[0.18em] text-[#C2922E] font-mono font-medium block">
+                    ATELIER BULK CONTROLS
+                  </span>
+                  <h3 className="font-serif text-lg font-medium text-[#111113]">
+                    Bulk Garment Management ({selectedProductIds.length} Selected)
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsBulkModalOpen(false)}
+                  className="p-1 text-[#746F68] hover:text-[#111113] cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Sub-Navigation Tabs */}
+              <div className="shrink-0 px-6 bg-[#F7F3ED] border-b border-[#E5DDD1] flex items-center gap-1 overflow-x-auto">
+                {[
+                  { id: "edit", label: "Specifications", icon: Edit2 },
+                  { id: "inventory", label: "Inventory Allocation", icon: Package },
+                  { id: "price", label: "Pricing & Economics", icon: Tag },
+                  { id: "move", label: "Taxonomy & Move", icon: Layers },
+                  { id: "status", label: "Status Control", icon: SlidersHorizontal }
+                ].map(tab => {
+                  const Icon = tab.icon;
+                  const isActive = bulkActiveTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setBulkActiveTab(tab.id)}
+                      className={`py-2.5 px-3 text-xs uppercase tracking-[0.12em] font-mono font-medium transition-colors border-b-2 flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                        isActive
+                          ? "border-[#C2922E] text-[#111113] bg-white/60"
+                          : "border-transparent text-[#746F68] hover:text-[#111113]"
+                      }`}
+                    >
+                      <Icon size={12} className={isActive ? "text-[#C2922E]" : "text-[#746F68]"} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-5 suko-scrollbar">
+                {/* TAB 1: SPECIFICATIONS */}
+                {bulkActiveTab === "edit" && (
+                  <div className="space-y-4">
+                    <p className="text-xs text-[#746F68]">
+                      Apply strict partial updates across all {selectedProductIds.length} selected garments. Unspecified fields remain completely unchanged.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block mb-1.5 font-medium">
+                          Assign Collection / Taxonomy
+                        </label>
+                        <select
+                          value={bulkForm.category_id}
+                          onChange={(e) => setBulkForm(prev => ({ ...prev, category_id: e.target.value }))}
+                          className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-2 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113]"
+                        >
+                          <option value="">-- Keep Current Collection --</option>
+                          {categories.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block mb-1.5 font-medium">
+                          Sub-Category / Garment Type
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Double Breasted Blazer"
+                          value={bulkForm.sub_category}
+                          onChange={(e) => setBulkForm(prev => ({ ...prev, sub_category: e.target.value }))}
+                          className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-2 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block mb-1.5 font-medium">
+                          Color Specification
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Obsidian Black, Ivory White"
+                          value={bulkForm.color}
+                          onChange={(e) => setBulkForm(prev => ({ ...prev, color: e.target.value }))}
+                          className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-2 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block mb-1.5 font-medium">
+                          Corporate Wear Moment
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Boardroom & Executive, Desk to Dinner"
+                          value={bulkForm.moment}
+                          onChange={(e) => setBulkForm(prev => ({ ...prev, moment: e.target.value }))}
+                          className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-2 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: INVENTORY ALLOCATION (3 MODES + SIZES) */}
+                {bulkActiveTab === "inventory" && (
+                  <div className="space-y-4">
+                    <div className="bg-white border border-[#E5DDD1] p-3.5 rounded-[2px]">
+                      <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block mb-2 font-medium">
+                        Allocation Mode
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { id: "replace", label: "Set Exact Units", desc: "Sets size stock to precise numbers" },
+                          { id: "increase", label: "Increase (+N)", desc: "Adds stock to existing quantities" },
+                          { id: "decrease", label: "Decrease (-N)", desc: "Reduces stock safely (floors at 0)" }
+                        ].map(m => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setBulkForm(prev => ({ ...prev, inventory_mode: m.id }))}
+                            className={`p-2.5 rounded-[2px] border text-left font-mono transition-all cursor-pointer ${
+                              bulkForm.inventory_mode === m.id
+                                ? "bg-[#111113] border-[#C2922E] text-white"
+                                : "bg-[#FAF8F5] border-[#E5DDD1] text-[#746F68] hover:text-[#111113]"
+                            }`}
+                          >
+                            <span className="block text-xs font-semibold">{m.label}</span>
+                            <span className="text-[10px] opacity-75 font-sans leading-tight mt-0.5 block">{m.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Size Breakdown Inputs */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] font-medium">
+                          Size Allocation Breakdown (Units per Garment)
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-mono text-[#746F68]">Fill all sizes:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Qty"
+                            value={bulkForm.inventory_common_qty}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setBulkForm(prev => ({
+                                ...prev,
+                                inventory_common_qty: val,
+                                size_stock: { XS: val, S: val, M: val, L: val, XL: val }
+                              }));
+                            }}
+                            className="w-16 bg-white border border-[#E5DDD1] rounded-[2px] px-2 py-0.5 text-xs font-mono outline-none text-[#111113] focus:border-[#C2922E]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-5 gap-2">
+                        {["XS", "S", "M", "L", "XL"].map(sz => (
+                          <div key={sz} className="bg-white border border-[#E5DDD1] rounded-[2px] p-2 text-center">
+                            <span className="text-xs font-mono font-medium text-[#111113] block mb-1">{sz}</span>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={bulkForm.size_stock[sz] || ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setBulkForm(prev => ({
+                                  ...prev,
+                                  size_stock: { ...prev.size_stock, [sz]: val }
+                                }));
+                              }}
+                              className="w-full text-center bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] py-1 text-xs font-mono outline-none text-[#111113] focus:border-[#C2922E]"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Reason / Audit Log Memo */}
+                    <div>
+                      <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block mb-1 font-medium">
+                        Allocation Note / Audit Reason
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Batch #42 Production Stock Inward, Inventory reconciliation"
+                        value={bulkForm.inventory_reason}
+                        onChange={(e) => setBulkForm(prev => ({ ...prev, inventory_reason: e.target.value }))}
+                        className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-2 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113]"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 3: PRICING & ECONOMICS */}
+                {bulkActiveTab === "price" && (
+                  <div className="space-y-4">
+                    <p className="text-xs text-[#746F68]">
+                      Adjust pricing across {selectedProductIds.length} selected garments simultaneously.
+                    </p>
+
+                    <div>
+                      <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block mb-1.5 font-medium">
+                        Adjustment Strategy
+                      </label>
+                      <select
+                        value={bulkForm.price_mode}
+                        onChange={(e) => setBulkForm(prev => ({ ...prev, price_mode: e.target.value }))}
+                        className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-2 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113]"
+                      >
+                        <option value="none">-- No Price Change --</option>
+                        <option value="fixed">Set Fixed Price (₹) for all selected</option>
+                        <option value="percent_increase">Increase Price by Percentage (+%)</option>
+                        <option value="percent_decrease">Decrease Price by Percentage (-%)</option>
+                        <option value="amount_increase">Increase Price by Flat Amount (+₹)</option>
+                        <option value="amount_decrease">Decrease Price by Flat Amount (-₹)</option>
+                      </select>
+                    </div>
+
+                    {bulkForm.price_mode !== "none" && (
+                      <div>
+                        <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block mb-1.5 font-medium">
+                          {bulkForm.price_mode.includes("percent") ? "Percentage Value (%)" : "Amount in INR (₹)"}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          placeholder={bulkForm.price_mode.includes("percent") ? "e.g. 10 for 10%" : "e.g. 1500 for ₹1,500"}
+                          value={bulkForm.price_value}
+                          onChange={(e) => setBulkForm(prev => ({ ...prev, price_value: e.target.value }))}
+                          className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-2 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113]"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TAB 4: TAXONOMY & MOVE */}
+                {bulkActiveTab === "move" && (
+                  <div className="space-y-4">
+                    <p className="text-xs text-[#746F68]">
+                      Move all {selectedProductIds.length} selected garments to a specific collection in the atelier taxonomy.
+                    </p>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block font-medium">
+                        Select Destination Collection
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {categories.map(c => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => handleExecuteBulkMove(c.id)}
+                            className="p-3 bg-white hover:bg-[#FAF8F5] border border-[#E5DDD1] hover:border-[#C2922E] rounded-[2px] text-left transition-all cursor-pointer group shadow-xs"
+                          >
+                            <span className="font-serif text-sm font-medium text-[#111113] group-hover:text-[#C2922E] transition-colors block">
+                              {c.name}
+                            </span>
+                            <span className="text-[10px] font-mono text-[#746F68] mt-0.5 block">
+                              Click to immediately move {selectedProductIds.length} garments &rarr;
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 5: STATUS CONTROL */}
+                {bulkActiveTab === "status" && (
+                  <div className="space-y-4">
+                    <p className="text-xs text-[#746F68]">
+                      Update showroom availability status across all {selectedProductIds.length} garments.
+                    </p>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {[
+                        { id: "active", label: "Active", desc: "Live in public showroom" },
+                        { id: "draft", label: "Draft", desc: "Private atelier work in progress" },
+                        { id: "coming_soon", label: "Coming Soon", desc: "Preview enabled, orders disabled" },
+                        { id: "out_of_stock", label: "Out of Stock", desc: "Marked as sold out" },
+                        { id: "archived", label: "Archived", desc: "Safely hidden in vault" }
+                      ].map(st => (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => setBulkForm(prev => ({ ...prev, status: st.id }))}
+                          className={`p-3 rounded-[2px] border text-left font-mono transition-all cursor-pointer ${
+                            bulkForm.status === st.id
+                              ? "bg-[#111113] border-[#C2922E] text-white"
+                              : "bg-white border-[#E5DDD1] text-[#746F68] hover:text-[#111113]"
+                          }`}
+                        >
+                          <span className="block text-xs font-semibold">{st.label}</span>
+                          <span className="text-[10px] opacity-75 font-sans block mt-0.5">{st.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="shrink-0 px-6 py-3.5 border-t border-[#E5DDD1] bg-[#FAF8F5] flex items-center justify-between gap-3">
+                <span className="text-[11px] font-mono text-[#746F68]">
+                  Targeting <strong className="text-[#111113]">{selectedProductIds.length}</strong> selected pieces
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsBulkModalOpen(false)}
+                    className="border border-[#E5DDD1] hover:bg-[#EFE9DF] text-[#111113] px-3.5 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-wider font-mono transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={bulkSubmitting}
+                    onClick={(e) => {
+                      if (bulkActiveTab === "inventory") {
+                        handleExecuteBulkInventory(e);
+                      } else {
+                        handleExecuteBulkEdit(e);
+                      }
+                    }}
+                    className="bg-[#111113] hover:bg-[#C2922E] text-white px-4 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-wider font-mono font-medium transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {bulkSubmitting ? (
+                      <>
+                        <RefreshCw size={11} className="animate-spin" />
+                        <span>Applying Changes...</span>
+                      </>
+                    ) : (
+                      <span>Apply Changes ({selectedProductIds.length})</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* BULK DELETE SECURITY RE-AUTHENTICATION MODAL                  */}
+        {/* ============================================================= */}
+        {isBulkDeleteModalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+            onClick={() => { setIsBulkDeleteModalOpen(false); setBulkDeletePassword(""); setBulkDeleteError(""); }}
+          >
+            <div
+              className="bg-[#FAF8F5] border border-rose-900/30 rounded-[2px] w-full max-w-md shadow-2xl overflow-hidden font-body animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="px-6 py-4 bg-rose-950/20 border-b border-rose-900/20 flex items-start gap-3">
+                <div className="p-2 bg-rose-100 text-rose-800 rounded-[2px] shrink-0 mt-0.5">
+                  <Lock size={18} />
+                </div>
+                <div>
+                  <span className="text-[9.5px] uppercase tracking-[0.18em] text-rose-800 font-mono font-semibold block">
+                    SECURITY RE-AUTHENTICATION REQUIRED
+                  </span>
+                  <h3 className="font-serif text-lg font-medium text-[#111113]">
+                    Permanent Bulk Deletion ({selectedProductIds.length} Selected)
+                  </h3>
+                </div>
+              </div>
+
+              {/* Body */}
+              <form onSubmit={handleExecuteBulkDelete} className="p-6 space-y-4">
+                <div className="text-xs text-[#746F68] space-y-2 leading-relaxed">
+                  <p>
+                    You are requesting to permanently purge <strong className="text-[#111113] font-mono">{selectedProductIds.length} garment(s)</strong> from the atelier system.
+                  </p>
+                  <div className="bg-white border border-[#E5DDD1] p-3 rounded-[2px] text-[11px] text-[#111113] space-y-1.5 font-sans">
+                    <p className="font-medium text-rose-900 flex items-center gap-1.5">
+                      <ShieldCheck size={13} className="text-emerald-700" />
+                      Automatic Order History Safeguard Active
+                    </p>
+                    <p className="text-[#746F68]">
+                      Garments referenced in customer orders or tax invoices <strong>CANNOT</strong> be purged and will remain safely archived. Unpurchased garments will be removed, and images enqueued for 30-day safety retention.
+                    </p>
+                  </div>
+                </div>
+
+                {bulkDeleteError && (
+                  <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-mono rounded-[2px]">
+                    {bulkDeleteError}
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block mb-1.5 font-medium">
+                    Confirm Admin Security Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Enter your admin session password"
+                    value={bulkDeletePassword}
+                    onChange={(e) => { setBulkDeletePassword(e.target.value); setBulkDeleteError(""); }}
+                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-2 text-xs font-mono focus:border-rose-700 outline-none text-[#111113]"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setIsBulkDeleteModalOpen(false); setBulkDeletePassword(""); setBulkDeleteError(""); }}
+                    className="border border-[#E5DDD1] hover:bg-[#EFE9DF] text-[#746F68] px-4 py-2 rounded-[2px] text-[10.5px] uppercase tracking-wider font-mono transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={bulkSubmitting}
+                    className="bg-rose-800 hover:bg-rose-900 text-white px-4 py-2 rounded-[2px] text-[10.5px] uppercase tracking-wider font-mono font-medium transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {bulkSubmitting ? (
+                      <>
+                        <RefreshCw size={12} className="animate-spin" />
+                        <span>Verifying &amp; Purging...</span>
+                      </>
+                    ) : (
+                      <span>Confirm Purge ({selectedProductIds.length})</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* ATELIER ACTIVITY AUDIT LOG MODAL                             */}
+        {/* ============================================================= */}
+        {isActivityLogModalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+            onClick={() => setIsActivityLogModalOpen(false)}
+          >
+            <div
+              className="bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden font-body animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="shrink-0 px-5 sm:px-7 py-4 border-b border-[#E5DDD1] bg-white flex items-center justify-between">
+                <div>
+                  <span className="text-[9.5px] uppercase tracking-[0.2em] text-[#C2922E] font-mono font-semibold block">
+                    ATELIER GOVERNANCE &middot; COMPLETE AUDIT TRAIL
+                  </span>
+                  <div className="flex items-center gap-2.5 mt-0.5">
+                    <h3 className="font-serif text-xl font-medium text-[#111113]">
+                      Atelier Activity Log
+                    </h3>
+                    <span className="text-[9.5px] font-mono px-2 py-0.5 bg-[#FAF8F5] border border-[#E5DDD1] text-[#746F68] rounded-[2px]">
+                      {activityLogs.length} Events Logged
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={fetchActivityLogs}
+                    className="p-2 text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] border border-[#E5DDD1] hover:border-[#C2922E] rounded-[2px] transition-colors cursor-pointer"
+                    title="Refresh activity logs"
+                  >
+                    <RefreshCw size={13} className={loadingActivityLogs ? "animate-spin text-[#C2922E]" : ""} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsActivityLogModalOpen(false)}
+                    className="p-1.5 text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] rounded-[2px] transition-colors cursor-pointer"
+                    title="Close modal"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Filter Tabs & Search Bar */}
+              <div className="shrink-0 px-5 sm:px-7 py-3 bg-white border-b border-[#E5DDD1] space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  {/* Search Input */}
+                  <div className="relative flex-1">
+                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#746F68]" />
+                    <input
+                      type="text"
+                      value={activityLogSearch}
+                      onChange={(e) => setActivityLogSearch(e.target.value)}
+                      placeholder="Search by garment name, SKU, admin email, action or reason..."
+                      className="w-full pl-8.5 pr-8 py-1.5 bg-[#FAF8F5] border border-[#E5DDD1] focus:border-[#C2922E] focus:bg-white rounded-[2px] text-xs font-mono placeholder:text-[#9B968E] outline-none transition-all"
+                    />
+                    {activityLogSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setActivityLogSearch("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#746F68] hover:text-[#111113]"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Expand All / Collapse All */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (expandedLogIds.size === activityLogs.length) {
+                          setExpandedLogIds(new Set());
+                        } else {
+                          setExpandedLogIds(new Set(activityLogs.map(l => l.id)));
+                        }
+                      }}
+                      className="text-[10.5px] font-mono text-[#746F68] hover:text-[#111113] px-2 py-1 border border-[#E5DDD1] hover:border-[#C2922E] rounded-[2px] transition-colors cursor-pointer bg-[#FAF8F5]"
+                    >
+                      {expandedLogIds.size === activityLogs.length ? "Collapse All" : "Expand All"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filter Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 suko-scrollbar">
+                  {[
+                    { id: "all", label: "All Activities" },
+                    { id: "inventory", label: "Inventory" },
+                    { id: "pricing", label: "Pricing" },
+                    { id: "product", label: "Product Specs" },
+                    { id: "collection", label: "Collections" },
+                    { id: "archive", label: "Archive / Restore" }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActivityLogFilter(tab.id)}
+                      className={`px-2.5 py-1 text-[10.5px] font-mono tracking-wider whitespace-nowrap rounded-[2px] border transition-all cursor-pointer ${
+                        activityLogFilter === tab.id
+                          ? "bg-[#111113] text-white border-[#111113]"
+                          : "bg-[#FAF8F5] text-[#746F68] border-[#E5DDD1] hover:border-[#C2922E] hover:text-[#111113]"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Log List */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 suko-scrollbar">
+                {loadingActivityLogs ? (
+                  <div className="py-16 text-center text-[#746F68] font-mono text-xs">
+                    <RefreshCw size={20} className="animate-spin mx-auto mb-2.5 text-[#C2922E]" />
+                    Retrieving immutable atelier audit trail...
+                  </div>
+                ) : activityLogs.length === 0 ? (
+                  <div className="py-16 text-center text-[#746F68] font-mono text-xs bg-white border border-[#E5DDD1] rounded-[2px] p-8">
+                    <Clock size={28} className="mx-auto mb-2 text-[#C2922E]/60" />
+                    <p className="font-serif text-base text-[#111113] mb-1">No Activity Logs Recorded Yet</p>
+                    <p className="text-xs text-[#746F68] max-w-sm mx-auto">
+                      All catalogue modifications, stock adjustments, pricing changes, and collection movements will be automatically audited here.
+                    </p>
+                  </div>
+                ) : (
+                  (() => {
+                    const filteredLogs = activityLogs.filter(log => {
+                      const parsed = parseActivityLog(log);
+                      if (activityLogFilter !== "all") {
+                        if (activityLogFilter === "inventory" && parsed.category !== "inventory") return false;
+                        if (activityLogFilter === "pricing" && parsed.category !== "pricing") return false;
+                        if (activityLogFilter === "product" && parsed.category !== "product") return false;
+                        if (activityLogFilter === "collection" && parsed.category !== "collection") return false;
+                        if (activityLogFilter === "archive" && parsed.category !== "archive") return false;
+                      }
+                      if (activityLogSearch.trim()) {
+                        const q = activityLogSearch.trim().toLowerCase();
+                        const matches = (
+                          parsed.actionLabel.toLowerCase().includes(q) ||
+                          parsed.affectedName.toLowerCase().includes(q) ||
+                          parsed.sku.toLowerCase().includes(q) ||
+                          parsed.reason.toLowerCase().includes(q) ||
+                          parsed.summary.toLowerCase().includes(q) ||
+                          (log.admin_email || "").toLowerCase().includes(q)
+                        );
+                        if (!matches) return false;
+                      }
+                      return true;
+                    });
+
+                    if (filteredLogs.length === 0) {
+                      return (
+                        <div className="py-12 text-center text-[#746F68] font-mono text-xs bg-white border border-[#E5DDD1] rounded-[2px] p-6">
+                          <p className="font-serif text-sm text-[#111113] mb-1">No matching activity records</p>
+                          <p className="text-xs text-[#746F68]">Try adjusting your search query or switching the category filter.</p>
+                          <button
+                            type="button"
+                            onClick={() => { setActivityLogSearch(""); setActivityLogFilter("all"); }}
+                            className="mt-3 px-3 py-1 bg-[#FAF8F5] border border-[#E5DDD1] hover:border-[#C2922E] text-[10.5px] font-mono uppercase tracking-wider text-[#111113] rounded-[2px] transition-colors"
+                          >
+                            Reset Filters
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-2.5">
+                        {filteredLogs.map((log) => {
+                          const parsed = parseActivityLog(log);
+                          const isExpanded = expandedLogIds.has(log.id);
+                          const dateStr = log.created_at ? formatDateTime(log.created_at) : "N/A";
+
+                          return (
+                            <div
+                              key={log.id}
+                              className={`border rounded-[2px] bg-white transition-all overflow-hidden ${
+                                isExpanded ? "border-[#C2922E] shadow-sm ring-1 ring-[#C2922E]/20" : "border-[#E5DDD1] hover:border-[#C2922E]/60 shadow-xs"
+                              }`}
+                            >
+                              {/* Collapsed Header / Row Summary */}
+                              <div
+                                onClick={() => toggleLogExpand(log.id)}
+                                className="p-3.5 sm:p-4 hover:bg-[#FAF8F5]/60 transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                              >
+                                <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                                  {/* Action Badge */}
+                                  <span className={`px-2.5 py-1 rounded-[2px] text-[10px] font-mono font-semibold uppercase tracking-wider shrink-0 border ${parsed.badgeColor}`}>
+                                    {parsed.actionLabel}
+                                  </span>
+
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="font-serif text-[13.5px] font-medium text-[#111113] truncate">
+                                        {parsed.affectedName}
+                                      </span>
+                                      {parsed.sku && (
+                                        <span className="font-mono text-[9.5px] px-1.5 py-0.2 bg-[#FAF8F5] border border-[#E5DDD1] text-[#746F68] rounded-[2px]">
+                                          {parsed.sku}
+                                        </span>
+                                      )}
+                                      {parsed.affectedCount > 1 && !parsed.affectedName.includes("Garment") && (
+                                        <span className="font-mono text-[9.5px] text-[#746F68] bg-[#FAF8F5] px-1.5 py-0.2 border border-[#E5DDD1] rounded-[2px]">
+                                          {parsed.affectedCount} items
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <p className="text-[11px] text-[#746F68] font-sans mt-0.5 line-clamp-1">
+                                      {parsed.summary}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Right: Status, Timestamp, Admin, Chevron */}
+                                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#F0EDE6]">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`px-2 py-0.5 rounded-[2px] text-[9.5px] font-mono font-medium flex items-center gap-1 ${
+                                      parsed.status === "failed" 
+                                        ? "bg-rose-50 text-rose-700 border border-rose-200" 
+                                        : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                    }`}>
+                                      <CheckCircle2 size={10} className={parsed.status === "failed" ? "text-rose-600" : "text-emerald-600"} />
+                                      <span>{parsed.status === "failed" ? "Failed" : "Success"}</span>
+                                    </span>
+                                  </div>
+
+                                  <div className="text-right">
+                                    <span className="text-[10px] text-[#746F68] font-mono block">{dateStr}</span>
+                                    <span className="text-[9.5px] text-[#C2922E] font-mono block truncate max-w-[170px]" title={log.admin_email}>
+                                      {log.admin_email}
+                                    </span>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    className="p-1 text-[#746F68] hover:text-[#111113] transition-transform cursor-pointer"
+                                    aria-label="Toggle details"
+                                  >
+                                    <ChevronDown size={14} className={`transition-transform duration-200 ${isExpanded ? "rotate-180 text-[#C2922E]" : ""}`} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Expanded Details Drawer */}
+                              {isExpanded && (
+                                <div className="px-4 sm:px-5 py-4 bg-[#FAF8F5]/80 border-t border-[#E5DDD1] space-y-3.5 font-mono text-xs animate-in fade-in duration-150">
+                                  {/* Overview Metrics Grid */}
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                                    <div className="p-2.5 bg-white border border-[#E5DDD1] rounded-[2px]">
+                                      <span className="text-[9px] uppercase tracking-wider text-[#746F68] block">Action Type</span>
+                                      <span className="text-[11.5px] font-semibold text-[#111113] mt-0.5 block">{parsed.actionLabel}</span>
+                                    </div>
+                                    <div className="p-2.5 bg-white border border-[#E5DDD1] rounded-[2px]">
+                                      <span className="text-[9px] uppercase tracking-wider text-[#746F68] block">Affected Target</span>
+                                      <span className="text-[11.5px] font-semibold text-[#111113] mt-0.5 block truncate" title={parsed.affectedName}>
+                                        {parsed.affectedName} ({parsed.affectedCount})
+                                      </span>
+                                    </div>
+                                    <div className="p-2.5 bg-white border border-[#E5DDD1] rounded-[2px]">
+                                      <span className="text-[9px] uppercase tracking-wider text-[#746F68] block">Authorized By</span>
+                                      <span className="text-[11px] font-mono text-[#C2922E] mt-0.5 block truncate" title={log.admin_email}>
+                                        {log.admin_email}
+                                      </span>
+                                    </div>
+                                    <div className="p-2.5 bg-white border border-[#E5DDD1] rounded-[2px]">
+                                      <span className="text-[9px] uppercase tracking-wider text-[#746F68] block">Event Status</span>
+                                      <span className="text-[11.5px] font-semibold text-emerald-700 mt-0.5 block flex items-center gap-1">
+                                        <CheckCircle2 size={11} className="text-emerald-600" />
+                                        Success
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Reason Callout */}
+                                  {parsed.reason && (
+                                    <div className="p-3 bg-white border border-[#C2922E]/40 rounded-[2px] flex items-start gap-2.5 shadow-2xs">
+                                      <span className="text-[10px] text-[#C2922E] uppercase tracking-wider font-semibold shrink-0 mt-0.5">
+                                        Reason:
+                                      </span>
+                                      <span className="text-[11.5px] text-[#111113] font-sans leading-relaxed">
+                                        "{parsed.reason}"
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {/* Detailed Size-Wise Inventory Breakdown */}
+                                  {parsed.sizeBreakdown && typeof parsed.sizeBreakdown === 'object' && Object.keys(parsed.sizeBreakdown).length > 0 && (
+                                    <div className="p-3.5 bg-white border border-[#E5DDD1] rounded-[2px]">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <span className="text-[9.5px] uppercase tracking-wider text-[#746F68] font-semibold">
+                                          Size Allocation Adjustment ({parsed.details?.mode ? parsed.details.mode.toUpperCase() : "STOCK"})
+                                        </span>
+                                        {parsed.details?.delta ? (
+                                          <span className="text-[9.5px] font-mono text-[#C2922E] font-medium">
+                                            Delta: {parsed.details.delta > 0 ? `+${parsed.details.delta}` : parsed.details.delta} units
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      <div className="grid grid-cols-5 gap-2">
+                                        {["XS", "S", "M", "L", "XL"].map(sz => (
+                                          <div key={sz} className="p-2 bg-[#FAF8F5] border border-[#E5DDD1]/70 rounded-[2px] text-center">
+                                            <span className="text-[9px] text-[#746F68] block font-semibold">{sz}</span>
+                                            <span className="text-[13px] font-mono font-bold text-[#111113] mt-0.5 block">
+                                              {parsed.sizeBreakdown[sz] !== undefined ? String(parsed.sizeBreakdown[sz]) : "—"}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Detailed Attribute Modifications (Before -> After) */}
+                                  {parsed.changes.length > 0 && (
+                                    <div className="p-3.5 bg-white border border-[#E5DDD1] rounded-[2px]">
+                                      <span className="text-[9.5px] uppercase tracking-wider text-[#746F68] font-semibold block mb-2">
+                                        Modified Specifications (Before &rarr; After)
+                                      </span>
+                                      <div className="divide-y divide-[#F0EDE6] text-xs">
+                                        {parsed.changes.map((ch, idx) => (
+                                          <div key={idx} className="py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                                            <span className="font-mono text-[#746F68] font-medium">{ch.label || ch.field}:</span>
+                                            <div className="flex items-center gap-2 font-mono">
+                                              <span className="text-stone-400 line-through bg-[#FAF8F5] px-1.5 py-0.5 border border-[#E5DDD1] rounded-[2px]">
+                                                {typeof ch.before === 'object' ? JSON.stringify(ch.before) : String(ch.before || "None")}
+                                              </span>
+                                              <span className="text-[#C2922E] font-bold">&rarr;</span>
+                                              <span className="text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 border border-emerald-200 rounded-[2px]">
+                                                {typeof ch.after === 'object' ? JSON.stringify(ch.after) : String(ch.after || "None")}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Duplication Cloned Details */}
+                                  {parsed.details?.sourceId && (
+                                    <div className="p-3 bg-white border border-[#E5DDD1] rounded-[2px] flex items-center justify-between text-[11px]">
+                                      <span className="text-[#746F68]">Source Silhouette: <strong className="text-[#111113]">{parsed.details.sourceId}</strong></span>
+                                      <span className="text-[#C2922E]">&rarr;</span>
+                                      <span className="text-[#746F68]">Draft Clone: <strong className="text-emerald-700">{parsed.details.newId}</strong> (SKU: {parsed.details.newSku})</span>
+                                    </div>
+                                  )}
+
+                                  {/* Collapsible Technical JSON Payload */}
+                                  <details className="text-[10px] text-[#746F68] group">
+                                    <summary className="cursor-pointer hover:text-[#111113] uppercase tracking-wider font-mono py-1 select-none flex items-center gap-1.5">
+                                      <span>Technical JSON Metadata</span>
+                                    </summary>
+                                    <div className="bg-white p-3 rounded-[2px] border border-[#E5DDD1] mt-1.5 max-w-full overflow-x-auto">
+                                      <pre className="font-mono whitespace-pre-wrap text-[10px] text-[#111113]">
+                                        {JSON.stringify(parsed.details, null, 2)}
+                                      </pre>
+                                    </div>
+                                  </details>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="shrink-0 px-5 sm:px-7 py-3 border-t border-[#E5DDD1] bg-white flex flex-wrap items-center justify-between gap-3">
+                <span className="text-[10.5px] font-mono text-[#746F68]">
+                  Showing last {activityLogs.length} activity audit events &middot; Real-time immutable record
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsActivityLogModalOpen(false)}
+                  className="bg-[#111113] hover:bg-[#C2922E] text-white px-5 py-2 rounded-[2px] text-[10.5px] uppercase tracking-wider font-mono font-medium transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* EXPORT ATELIER ORDERS MODAL (SUMMARY & DETAILED ENGINES)      */}
+        {/* ============================================================= */}
+        {isOrderExportModalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+            onClick={() => setIsOrderExportModalOpen(false)}
+          >
+            <div
+              className="bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden font-body animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="shrink-0 px-5 sm:px-7 py-4 border-b border-[#E5DDD1] bg-white flex items-center justify-between">
+                <div>
+                  <span className="text-[9.5px] uppercase tracking-[0.2em] text-[#C2922E] font-mono font-semibold block">
+                    ATELIER GOVERNANCE &middot; COMMERCIAL AUDIT &amp; EXPORT
+                  </span>
+                  <div className="flex items-center gap-2.5 mt-0.5">
+                    <h3 className="font-serif text-xl font-medium text-[#111113]">
+                      Export Atelier Orders
+                    </h3>
+                    <span className="text-[9.5px] font-mono px-2 py-0.5 bg-[#FAF8F5] border border-[#E5DDD1] text-[#746F68] rounded-[2px]">
+                      {orders.length} Total Orders Recorded
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsOrderExportModalOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] rounded-[2px] transition-colors cursor-pointer"
+                  title="Close Modal"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Scope Selector Bar */}
+              <div className="shrink-0 px-5 sm:px-7 py-2.5 bg-[#F4EFE6] border-b border-[#E5DDD1] flex flex-wrap items-center justify-between gap-3 text-xs">
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-medium">
+                  Export Scope:
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOrderExportScope("all")}
+                    className={`px-3 py-1 rounded-[2px] text-[10.5px] font-mono uppercase tracking-wider transition-all cursor-pointer ${
+                      orderExportScope === "all"
+                        ? "bg-[#111113] text-[#FAF8F5] shadow-xs"
+                        : "bg-[#FAF8F5] text-[#746F68] hover:text-[#111113] border border-[#E5DDD1]"
+                    }`}
+                  >
+                    All Orders ({orders.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderExportScope("filtered")}
+                    className={`px-3 py-1 rounded-[2px] text-[10.5px] font-mono uppercase tracking-wider transition-all cursor-pointer ${
+                      orderExportScope === "filtered"
+                        ? "bg-[#111113] text-[#FAF8F5] shadow-xs"
+                        : "bg-[#FAF8F5] text-[#746F68] hover:text-[#111113] border border-[#E5DDD1]"
+                    }`}
+                  >
+                    Filtered View ({filteredOrders.length}{orderStatusFilter !== "all" ? ` &middot; ${formatStatus(orderStatusFilter)}` : ""})
+                  </button>
+                </div>
+              </div>
+
+              {/* 2 Export Format Cards */}
+              <div className="p-4 sm:p-5 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Option 1: Summary Export */}
+                  <div className="p-4 sm:p-4.5 bg-white border border-[#E5DDD1] hover:border-[#C2922E] rounded-[2px] transition-all flex flex-col justify-between group shadow-2xs">
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="font-mono text-[9px] px-2 py-0.5 rounded-[2px] bg-[#FAF8F5] border border-[#E5DDD1] text-[#746F68] uppercase tracking-wider">
+                          SUMMARY &middot; 18 COLUMNS
+                        </span>
+                        <span className="text-[9.5px] font-mono text-[#A77B1E] uppercase">
+                          Single Row / Order
+                        </span>
+                      </div>
+                      <h4 className="font-serif text-[17px] font-medium text-[#111113] group-hover:text-[#C2922E] transition-colors">
+                        Orders Summary CSV
+                      </h4>
+                      <p className="text-[10.5px] text-[#A77B1E] font-mono mt-0.5 mb-2">
+                        Executive Overview &amp; Commercial Ledger
+                      </p>
+                      <p className="text-xs text-[#746F68] leading-normal mb-3">
+                        Aggregated order-level records containing customer contact information, payment status, order status, total financial values, items count, separate GST Rate &amp; Amount, and tax invoice references.
+                      </p>
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {[
+                          "Order ID",
+                          "Date & Time",
+                          "Customer Name",
+                          "Email",
+                          "Phone",
+                          "Total Amount",
+                          "Payment Status",
+                          "Order Status",
+                          "Items Count",
+                          "Discount",
+                          "GST Rate",
+                          "GST Amount",
+                          "Shipping Address",
+                          "Invoice #"
+                        ].map((tag, i) => (
+                          <span
+                            key={i}
+                            className="text-[9px] font-mono px-1.5 py-0.5 bg-[#FAF8F5] border border-[#E5DDD1] text-[#746F68] rounded-[2px]"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => exportOrdersSummaryCSV()}
+                      className="w-full py-2 px-3.5 bg-[#FAF8F5] hover:bg-[#111113] hover:text-white border border-[#E5DDD1] text-[11px] font-mono uppercase tracking-[0.08em] font-medium text-[#111113] transition-all flex items-center justify-center gap-2 cursor-pointer rounded-[2px] shadow-2xs mt-1"
+                    >
+                      <Download size={13} className="text-[#C2922E]" />
+                      <span>
+                        Download Summary CSV ({orderExportScope === "filtered" ? filteredOrders.length : orders.length})
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Option 2: Detailed Line-Item Export */}
+                  <div className="p-4 sm:p-4.5 bg-white border border-[#E5DDD1] hover:border-[#C2922E] rounded-[2px] transition-all flex flex-col justify-between group shadow-2xs">
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="font-mono text-[9px] px-2 py-0.5 rounded-[2px] bg-[#C2922E]/10 border border-[#C2922E]/30 text-[#A77B1E] uppercase tracking-wider font-semibold">
+                          LINE-ITEM &middot; 27 COLUMNS
+                        </span>
+                        <span className="text-[9.5px] font-mono text-[#A77B1E] uppercase">
+                          Item Breakdown
+                        </span>
+                      </div>
+                      <h4 className="font-serif text-[17px] font-medium text-[#111113] group-hover:text-[#C2922E] transition-colors">
+                        Detailed Order Export CSV
+                      </h4>
+                      <p className="text-[10.5px] text-[#A77B1E] font-mono mt-0.5 mb-2">
+                        Accounting &amp; Warehouse Operations
+                      </p>
+                      <p className="text-xs text-[#746F68] leading-normal mb-3">
+                        Granular garment-level line items with Product Color, SKU, size, unit price, full shipping status, courier partner, tracking number, dispatch/delivery dates, and dispatch address.
+                      </p>
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {[
+                          "Order ID",
+                          "Customer & Phone",
+                          "Product Name",
+                          "Product Color",
+                          "SKU",
+                          "Size & Qty",
+                          "Unit Price",
+                          "GST Rate & Amount",
+                          "Shipping Status",
+                          "Tracking #",
+                          "Courier Partner",
+                          "Dispatch Date",
+                          "Delivery Date",
+                          "Shipping Address",
+                          "Invoice #"
+                        ].map((tag, i) => (
+                          <span
+                            key={i}
+                            className="text-[9px] font-mono px-1.5 py-0.5 bg-[#FAF8F5] border border-[#E5DDD1] text-[#746F68] rounded-[2px]"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => exportOrdersDetailedCSV()}
+                      className="w-full py-2 px-3.5 bg-[#111113] hover:bg-[#C2922E] text-white border border-transparent text-[11px] font-mono uppercase tracking-[0.08em] font-medium transition-all flex items-center justify-center gap-2 cursor-pointer rounded-[2px] shadow-2xs mt-1"
+                    >
+                      <Download size={13} className="text-[#FAF8F5]" />
+                      <span>Download Detailed CSV</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="shrink-0 px-5 sm:px-7 py-2.5 border-t border-[#E5DDD1] bg-white flex flex-wrap items-center justify-between gap-3">
+                <span className="text-[10px] font-mono text-[#746F68]">
+                  &check; UTF-8 BOM Encoded &middot; File standard: SUKO_Order_Summary_DD-Mon-YYYY.csv
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsOrderExportModalOpen(false)}
+                  className="px-4 py-1.5 rounded-[2px] border border-[#E5DDD1] text-[11px] font-mono uppercase tracking-wider text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>

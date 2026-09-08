@@ -2,7 +2,8 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Check } from "lucide-react";
-import { CATEGORIES, SIZES, COLOURS } from "../../data/products";
+import { CATEGORIES as FALLBACK_CATEGORIES, SIZES, COLOURS } from "../../data/products";
+import { useProducts } from "../../context/ProductContext";
 
 export const FilterDrawer = ({
   isOpen,
@@ -18,6 +19,8 @@ export const FilterDrawer = ({
   onClearAll,
   resultsCount
 }) => {
+  const { categories: contextCategories } = useProducts();
+  const activeCategories = (contextCategories && contextCategories.length > 0) ? contextCategories : FALLBACK_CATEGORIES;
   if (typeof document === "undefined") return null;
 
   return createPortal(
@@ -92,23 +95,26 @@ export const FilterDrawer = ({
                   >
                     All Pieces
                   </button>
-                  {CATEGORIES.map((cat) => (
-                    <button
-                      key={cat.id || cat.slug}
-                      type="button"
-                      onClick={() => {
-                        setSelectedCategory(cat.slug);
-                        if (setSelectedSubCategory) setSelectedSubCategory("all");
-                      }}
-                      className={`px-3.5 py-2 text-xs uppercase tracking-wider border transition-all cursor-pointer ${
-                        selectedCategory === cat.slug
-                          ? "bg-[#111113] text-white border-[#111113]"
-                          : "bg-[#F3EFE6] text-[#555560] border-[#E8E4DC] hover:border-[#111113]"
-                      }`}
-                    >
-                      {cat.name}
-                    </button>
-                  ))}
+                  {activeCategories.map((cat) => {
+                    const catSlug = cat.slug || cat.id;
+                    return (
+                      <button
+                        key={cat.id || catSlug}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory(catSlug);
+                          if (setSelectedSubCategory) setSelectedSubCategory("all");
+                        }}
+                        className={`px-3.5 py-2 text-xs uppercase tracking-wider border transition-all cursor-pointer ${
+                          selectedCategory === catSlug
+                            ? "bg-[#111113] text-white border-[#111113]"
+                            : "bg-[#F3EFE6] text-[#555560] border-[#E8E4DC] hover:border-[#111113]"
+                        }`}
+                      >
+                        {cat.name}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* Tailored Separates Subcategory Pills */}

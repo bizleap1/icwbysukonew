@@ -38,6 +38,12 @@ CREATE TABLE IF NOT EXISTS products (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Idempotent column additions for categories
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT false;
+
 -- Idempotent column additions for products
 ALTER TABLE products ADD COLUMN IF NOT EXISTS fabric VARCHAR(255);
 ALTER TABLE products ADD COLUMN IF NOT EXISTS color VARCHAR(100);
@@ -50,12 +56,19 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS occasion VARCHAR(100);
 ALTER TABLE products ADD COLUMN IF NOT EXISTS moment VARCHAR(100);
 ALTER TABLE products ADD COLUMN IF NOT EXISTS moments JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS moment_name VARCHAR(255);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_title VARCHAR(255);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_description TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_keywords TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_schema JSONB DEFAULT '{}'::jsonb;
 
 CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
+CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku);
 CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_products_status ON products(status);
 CREATE INDEX IF NOT EXISTS idx_products_color ON products(color);
 CREATE INDEX IF NOT EXISTS idx_products_moment ON products(moment);
+CREATE INDEX IF NOT EXISTS idx_categories_sort_order ON categories(sort_order);
+CREATE INDEX IF NOT EXISTS idx_categories_is_archived ON categories(is_archived);
 
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
@@ -90,6 +103,13 @@ CREATE TABLE IF NOT EXISTS orders (
 -- Idempotent column additions for existing installations
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS transaction_id VARCHAR(100);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_screenshot_url TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number VARCHAR(100);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_partner VARCHAR(100);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS dispatch_date TIMESTAMPTZ;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_date TIMESTAMPTZ;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_status VARCHAR(50);
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS sku VARCHAR(100);
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS color VARCHAR(100);
 
 CREATE TABLE IF NOT EXISTS order_items (
   id SERIAL PRIMARY KEY,
@@ -249,3 +269,52 @@ CREATE TABLE IF NOT EXISTS order_documents (
 
 CREATE INDEX IF NOT EXISTS idx_order_documents_order_id ON order_documents(order_id);
 CREATE INDEX IF NOT EXISTS idx_order_documents_doc_number ON order_documents(document_number);
+
+-- Inventory Movement History (Enterprise Fashion Batch Tracking)
+CREATE TABLE IF NOT EXISTS inventory_movements (
+  id SERIAL PRIMARY KEY,
+  product_id VARCHAR(100) NOT NULL,
+  product_name VARCHAR(255),
+  product_sku VARCHAR(100),
+  previous_stock INTEGER NOT NULL,
+  new_stock INTEGER NOT NULL,
+  previous_size_stock JSONB DEFAULT '{}'::jsonb,
+  new_size_stock JSONB DEFAULT '{}'::jsonb,
+  adjustment_type VARCHAR(50) NOT NULL,
+  delta INTEGER NOT NULL DEFAULT 0,
+  admin_email VARCHAR(255),
+  reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_product ON inventory_movements(product_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_created ON inventory_movements(created_at DESC);
+
+-- Admin Activity Audit Logs
+CREATE TABLE IF NOT EXISTS admin_activity_logs (
+  id SERIAL PRIMARY KEY,
+  admin_email VARCHAR(255) NOT NULL,
+  action VARCHAR(100) NOT NULL,
+  target_entity VARCHAR(50) DEFAULT 'products',
+  affected_count INTEGER DEFAULT 1,
+  details JSONB DEFAULT '{}'::jsonb,
+  summary TEXT NOT NULL,
+  status VARCHAR(20) DEFAULT 'success',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE admin_activity_logs ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'success';
+
+CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_created ON admin_activity_logs(created_at DESC);
+
+-- 30-Day Image Retention Deletion Queue
+CREATE TABLE IF NOT EXISTS image_deletion_queue (
+  id SERIAL PRIMARY KEY,
+  image_url TEXT NOT NULL,
+  product_id VARCHAR(100),
+  scheduled_purge_at TIMESTAMPTZ NOT NULL,
+  is_purged BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_image_deletion_queue_purge ON image_deletion_queue(scheduled_purge_at) WHERE is_purged = false;

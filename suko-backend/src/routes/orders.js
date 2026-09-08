@@ -78,19 +78,32 @@ function formatOrder(orderRow, itemRows, userRow) {
           phone: orderRow.phone,
           addresses: [{ phone: orderRow.phone }],
         },
-    items: itemRows.map((it) => ({
-      id: it.id,
-      quantity: it.quantity,
-      size: it.size,
-      price_at_purchase: Number(it.price_at_purchase),
-      product: {
-        id: it.product_id,
-        name: it.product_name,
-        image_url: it.product_image_url,
-        price: Number(it.price_at_purchase),
-        category: { name: it.category_name || "Atelier" },
-      },
-    })),
+    tracking_number: orderRow.tracking_number || null,
+    courier_partner: orderRow.courier_partner || (orderRow.status === "completed" || orderRow.status === "processing" ? "BlueDart Express" : null),
+    dispatch_date: orderRow.dispatch_date || null,
+    delivery_date: orderRow.delivery_date || null,
+    shipping_status: orderRow.shipping_status || (orderRow.status === "completed" ? "Delivered" : (orderRow.status === "processing" ? "Handcrafted & Dispatched" : (orderRow.status === "paid" ? "Awaiting Dispatch" : "Processing Order"))),
+    items: itemRows.map((it) => {
+      const resolvedSku = it.product_sku || it.sku || (it.product_id ? `SUKO-${it.product_id}` : "SUKO-GARMENT");
+      const resolvedColor = it.color || it.product_color || "Obsidian Black";
+      return {
+        id: it.id,
+        quantity: it.quantity,
+        size: it.size,
+        sku: resolvedSku,
+        color: resolvedColor,
+        price_at_purchase: Number(it.price_at_purchase),
+        product: {
+          id: it.product_id,
+          name: it.product_name,
+          sku: resolvedSku,
+          color: resolvedColor,
+          image_url: it.product_image_url,
+          price: Number(it.price_at_purchase),
+          category: { name: it.category_name || "Atelier" },
+        },
+      };
+    }),
   };
 }
 
@@ -99,10 +112,22 @@ async function getOrderWithItems(orderId) {
   const order = orderRes.rows[0];
   if (!order) return null;
 
-  const itemsRes = await pool.query(
-    "SELECT * FROM order_items WHERE order_id = $1 ORDER BY id ASC",
-    [orderId]
-  );
+  let itemsRes;
+  try {
+    itemsRes = await pool.query(
+      `SELECT oi.*, p.sku AS product_sku, p.color AS product_color 
+       FROM order_items oi 
+       LEFT JOIN products p ON p.id::text = oi.product_id::text 
+       WHERE oi.order_id = $1 
+       ORDER BY oi.id ASC`,
+      [orderId]
+    );
+  } catch (err) {
+    itemsRes = await pool.query(
+      "SELECT * FROM order_items WHERE order_id = $1 ORDER BY id ASC",
+      [orderId]
+    );
+  }
 
   let user = null;
   if (order.user_id) {

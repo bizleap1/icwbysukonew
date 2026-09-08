@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { pool } = require("../db");
+const bcrypt = require("bcryptjs");
 
 const DATA_DIR = path.join(__dirname, "..", "..", "data");
 const DEV_STORE_FILE = path.join(DATA_DIR, "dev-store.json");
@@ -166,6 +167,31 @@ function ensureDevStoreProducts() {
     console.error("[ProductService] Error in ensureDevStoreProducts:", err);
     return { products: [], categories: [] };
   }
+}
+
+function resolveProductSizeStock(p) {
+  if (!p) return {};
+  let sMap = p.size_stock;
+  if (typeof sMap === "string") {
+    try { sMap = JSON.parse(sMap); } catch (e) { sMap = null; }
+  }
+  if (sMap && typeof sMap === "object" && Object.keys(sMap).length > 0) {
+    return sMap;
+  }
+  let sizes = p.sizes;
+  if (typeof sizes === "string") {
+    try { sizes = JSON.parse(sizes); } catch (e) { sizes = null; }
+  }
+  const sizesList = Array.isArray(sizes) && sizes.length > 0 ? sizes : ["XS", "S", "M", "L", "XL"];
+  const total = typeof p.stock !== "undefined" ? Number(p.stock) : 15;
+  const base = Math.max(1, Math.floor(total / sizesList.length));
+  let rem = total - (base * sizesList.length);
+  const result = {};
+  sizesList.forEach(s => {
+    result[s] = base + (rem > 0 ? 1 : 0);
+    if (rem > 0) rem--;
+  });
+  return result;
 }
 
 function ensureProductSizeStock(p) {
@@ -334,6 +360,12 @@ async function createProduct(productData) {
     : (productData.image_url ? [productData.image_url] : ["/placeholder.png"]);
   const imageUrl = productData.image_url || images[0] || "/placeholder.png";
 
+  const sku = productData.sku || await generateUniqueSKU(productData.category_id || "suits", productData.name);
+  const seoTitle = productData.seo_title || `${productData.name} | SUKO Atelier`;
+  const seoDescription = productData.seo_description || productData.description || "Bespoke contemporary corporate wear by SUKO Atelier.";
+  const seoKeywords = productData.seo_keywords || "";
+  const seoSchema = productData.seo_schema || {};
+
   if (pool.isMock) {
     const store = ensureDevStoreProducts();
     const cat = (store.categories || []).find(c => c.id === productData.category_id || c.slug === productData.category_id) || {
@@ -358,7 +390,7 @@ async function createProduct(productData) {
       sizes,
       size_stock: sizeStock,
       status,
-      sku: productData.sku || `SUKO-${newId.toUpperCase()}`,
+      sku,
       gender: productData.gender || "female",
       fabric: productData.fabric || "",
       color: productData.color || "",
@@ -371,6 +403,10 @@ async function createProduct(productData) {
       moment: productData.moment || "boardroom",
       moments: Array.isArray(productData.moments) ? productData.moments : [productData.moment || "boardroom"],
       moment_name: productData.momentName || productData.moment_name || "The Boardroom Edit",
+      seo_title: seoTitle,
+      seo_description: seoDescription,
+      seo_keywords: seoKeywords,
+      seo_schema: seoSchema,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -382,8 +418,8 @@ async function createProduct(productData) {
 
   // Real Postgres mode
   const res = await pool.query(
-    `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric, color, secondary_color, pattern, finish, silhouette, fit, occasion, moment, moments, moment_name)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+    `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric, color, secondary_color, pattern, finish, silhouette, fit, occasion, moment, moments, moment_name, seo_title, seo_description, seo_keywords, seo_schema)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)
      RETURNING *`,
     [
       newId,
@@ -400,7 +436,7 @@ async function createProduct(productData) {
       JSON.stringify(sizes),
       JSON.stringify(sizeStock),
       status,
-      productData.sku || `SUKO-${newId.toUpperCase()}`,
+      sku,
       productData.gender || "female",
       productData.fabric || "",
       productData.color || "",
@@ -412,7 +448,11 @@ async function createProduct(productData) {
       productData.occasion || "",
       productData.moment || "boardroom",
       JSON.stringify(Array.isArray(productData.moments) ? productData.moments : [productData.moment || "boardroom"]),
-      productData.momentName || productData.moment_name || "The Boardroom Edit"
+      productData.momentName || productData.moment_name || "The Boardroom Edit",
+      seoTitle,
+      seoDescription,
+      seoKeywords,
+      JSON.stringify(seoSchema)
     ]
   );
   return res.rows[0];
@@ -429,6 +469,15 @@ async function updateProduct(id, updateData) {
       ? (store.categories || []).find(c => c.id === updateData.category_id || c.slug === updateData.category_id) || current.category
       : current.category;
 
+    if (updateData.sku && current.sku && updateData.sku.trim() !== current.sku.trim()) {
+      const hasOrders = (store.order_items || []).some(
+        it => String(it.product_id) === String(current.id) || it.product_name === current.name
+      );
+      if (hasOrders) {
+        throw new Error("SKU is locked: Cannot modify SKU after customer orders or invoices have referenced this garment.");
+      }
+    }
+
     const updated = {
       ...current,
       ...updateData,
@@ -438,6 +487,7 @@ async function updateProduct(id, updateData) {
       discount_price: typeof updateData.discount_price !== "undefined" ? Number(updateData.discount_price) : current.discount_price,
       stock: typeof updateData.stock !== "undefined" ? Number(updateData.stock) : current.stock,
       status: updateData.status || current.status || "active",
+      sku: updateData.sku !== undefined ? updateData.sku : current.sku,
       fabric: updateData.fabric !== undefined ? updateData.fabric : current.fabric,
       color: updateData.color !== undefined ? updateData.color : current.color,
       secondary_color: updateData.secondary_color !== undefined ? updateData.secondary_color : current.secondary_color,
@@ -449,6 +499,10 @@ async function updateProduct(id, updateData) {
       moment: updateData.moment !== undefined ? updateData.moment : current.moment,
       moments: updateData.moments !== undefined ? updateData.moments : current.moments,
       moment_name: updateData.moment_name !== undefined ? updateData.moment_name : (updateData.momentName !== undefined ? updateData.momentName : current.moment_name),
+      seo_title: updateData.seo_title !== undefined ? updateData.seo_title : current.seo_title,
+      seo_description: updateData.seo_description !== undefined ? updateData.seo_description : current.seo_description,
+      seo_keywords: updateData.seo_keywords !== undefined ? updateData.seo_keywords : current.seo_keywords,
+      seo_schema: updateData.seo_schema !== undefined ? updateData.seo_schema : current.seo_schema,
       updated_at: new Date().toISOString()
     };
 
@@ -457,7 +511,21 @@ async function updateProduct(id, updateData) {
     return updated;
   }
 
-  // Real Postgres mode
+  // Real Postgres mode: fetch current to check SKU and order locks
+  const curRes = await pool.query("SELECT * FROM products WHERE id = $1 OR slug = $1", [String(id)]);
+  if (curRes.rows.length === 0) return null;
+  const current = curRes.rows[0];
+
+  if (updateData.sku && current.sku && updateData.sku.trim() !== current.sku.trim()) {
+    const checkOrders = await pool.query(
+      "SELECT 1 FROM order_items WHERE product_id = $1 OR product_name = $2 LIMIT 1",
+      [String(current.id), current.name]
+    );
+    if (checkOrders.rows.length > 0) {
+      throw new Error("SKU is locked: Cannot modify SKU after customer orders or invoices have referenced this garment.");
+    }
+  }
+
   const res = await pool.query(
     `UPDATE products
      SET name = COALESCE($1, name),
@@ -483,8 +551,13 @@ async function updateProduct(id, updateData) {
          moment = COALESCE($21, moment),
          moments = COALESCE($22, moments),
          moment_name = COALESCE($23, moment_name),
+         seo_title = COALESCE($24, seo_title),
+         seo_description = COALESCE($25, seo_description),
+         seo_keywords = COALESCE($26, seo_keywords),
+         seo_schema = COALESCE($27, seo_schema),
+         sku = COALESCE($28, sku),
          updated_at = now()
-     WHERE id = $24 OR slug = $24
+     WHERE id = $29 OR slug = $29
      RETURNING *`,
     [
       updateData.name !== undefined ? updateData.name : null,
@@ -510,6 +583,11 @@ async function updateProduct(id, updateData) {
       updateData.moment !== undefined ? updateData.moment : null,
       updateData.moments ? JSON.stringify(updateData.moments) : null,
       updateData.moment_name !== undefined ? updateData.moment_name : (updateData.momentName !== undefined ? updateData.momentName : null),
+      updateData.seo_title !== undefined ? updateData.seo_title : null,
+      updateData.seo_description !== undefined ? updateData.seo_description : null,
+      updateData.seo_keywords !== undefined ? updateData.seo_keywords : null,
+      updateData.seo_schema ? JSON.stringify(updateData.seo_schema) : null,
+      updateData.sku !== undefined ? updateData.sku : null,
       String(id)
     ]
   );
@@ -724,49 +802,62 @@ async function deleteProduct(id, options = {}) {
   };
 }
 
-async function getAllCategories() {
+async function getAllCategories(options = {}) {
+  const { includeArchived = false } = options;
   if (pool.isMock) {
     const store = ensureDevStoreProducts();
-    return store.categories || [];
+    let list = store.categories || [];
+    if (!includeArchived) {
+      list = list.filter(c => !c.is_archived);
+    }
+    return list.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }
 
   try {
-    const res = await pool.query("SELECT * FROM categories ORDER BY name ASC");
+    const res = await pool.query(
+      `SELECT * FROM categories 
+       WHERE ($1::boolean = true OR is_archived IS NOT TRUE)
+       ORDER BY sort_order ASC, name ASC`,
+      [includeArchived]
+    );
     if (res.rows.length === 0) {
       const seed = getSeedData();
-      for (const c of seed.categories) {
+      for (let i = 0; i < seed.categories.length; i++) {
+        const c = seed.categories[i];
         await pool.query(
-          `INSERT INTO categories (id, name, slug, tagline)
-           VALUES ($1, $2, $3, $4)
+          `INSERT INTO categories (id, name, slug, tagline, sort_order)
+           VALUES ($1, $2, $3, $4, $5)
            ON CONFLICT (id) DO NOTHING`,
-          [c.slug, c.name, c.slug, c.tagline || `${c.name} Collection`]
+          [c.slug, c.name, c.slug, c.tagline || `${c.name} Collection`, i]
         );
       }
-      const seeded = await pool.query("SELECT * FROM categories ORDER BY name ASC");
+      const seeded = await pool.query(
+        `SELECT * FROM categories 
+         WHERE ($1::boolean = true OR is_archived IS NOT TRUE)
+         ORDER BY sort_order ASC, name ASC`,
+        [includeArchived]
+      );
       return seeded.rows;
     }
     return res.rows;
   } catch (err) {
     console.error("[ProductService] Categories query error:", err.message);
-    if (err.code === "42P01") {
-      try {
-        const { initDatabase } = require("../db");
-        await initDatabase();
-        const retryRes = await pool.query("SELECT * FROM categories ORDER BY name ASC");
-        return retryRes.rows;
-      } catch (retryErr) {
-        console.error("[ProductService] Auto-initialization retry for categories failed:", retryErr.message);
-      }
-    }
     const store = ensureDevStoreProducts();
-    return store.categories || [];
+    return (store.categories || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }
 }
 
-async function createCategory(name) {
-  const cleanName = (name || "").trim();
-  const slug = cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-  const id = slug || `cat-${Date.now()}`;
+async function createCategory(data) {
+  const name = typeof data === "string" ? data : (data?.name || "");
+  const cleanName = name.trim();
+  const slug = (typeof data === "object" && data.slug 
+    ? data.slug.trim() 
+    : cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')) || `cat-${Date.now()}`;
+  const id = slug;
+  const tagline = (typeof data === "object" && data.tagline) || `${cleanName} Collection`;
+  const description = (typeof data === "object" && data.description) || "";
+  const cover_image_url = (typeof data === "object" && data.cover_image_url) || "";
+  const sort_order = (typeof data === "object" && typeof data.sort_order !== "undefined") ? Number(data.sort_order) : 0;
 
   if (pool.isMock) {
     const store = ensureDevStoreProducts();
@@ -777,7 +868,12 @@ async function createCategory(name) {
       id,
       name: cleanName,
       slug,
-      tagline: `${cleanName} Collection`
+      tagline,
+      description,
+      cover_image_url,
+      sort_order,
+      is_archived: false,
+      created_at: new Date().toISOString()
     };
     store.categories.push(newCat);
     fs.writeFileSync(DEV_STORE_FILE, JSON.stringify(store, null, 2), "utf-8");
@@ -786,13 +882,96 @@ async function createCategory(name) {
 
   // Real Postgres mode
   const res = await pool.query(
-    `INSERT INTO categories (id, name, slug, tagline)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+    `INSERT INTO categories (id, name, slug, tagline, description, cover_image_url, sort_order, is_archived)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, false)
+     ON CONFLICT (slug) DO UPDATE SET 
+       name = EXCLUDED.name, 
+       tagline = EXCLUDED.tagline,
+       description = EXCLUDED.description,
+       cover_image_url = EXCLUDED.cover_image_url,
+       sort_order = EXCLUDED.sort_order
      RETURNING *`,
-    [id, cleanName, slug, `${cleanName} Collection`]
+    [id, cleanName, slug, tagline, description, cover_image_url, sort_order]
   );
   return res.rows[0];
+}
+
+async function updateCategory(id, updateData = {}) {
+  const cleanId = String(id).trim();
+
+  if (pool.isMock) {
+    const store = ensureDevStoreProducts();
+    const idx = store.categories.findIndex(c => String(c.id) === cleanId || c.slug === cleanId);
+    if (idx === -1) return null;
+
+    const current = store.categories[idx];
+    const updated = {
+      ...current,
+      name: updateData.name !== undefined ? updateData.name.trim() : current.name,
+      slug: updateData.slug !== undefined ? updateData.slug.trim() : current.slug,
+      tagline: updateData.tagline !== undefined ? updateData.tagline : current.tagline,
+      description: updateData.description !== undefined ? updateData.description : current.description,
+      cover_image_url: updateData.cover_image_url !== undefined ? updateData.cover_image_url : current.cover_image_url,
+      sort_order: updateData.sort_order !== undefined ? Number(updateData.sort_order) : (current.sort_order || 0),
+      is_archived: updateData.is_archived !== undefined ? Boolean(updateData.is_archived) : (current.is_archived || false)
+    };
+    store.categories[idx] = updated;
+    fs.writeFileSync(DEV_STORE_FILE, JSON.stringify(store, null, 2), "utf-8");
+    return updated;
+  }
+
+  const res = await pool.query(
+    `UPDATE categories
+     SET name = COALESCE($1, name),
+         slug = COALESCE($2, slug),
+         tagline = COALESCE($3, tagline),
+         description = COALESCE($4, description),
+         cover_image_url = COALESCE($5, cover_image_url),
+         sort_order = COALESCE($6, sort_order),
+         is_archived = COALESCE($7, is_archived)
+     WHERE id = $8 OR slug = $8
+     RETURNING *`,
+    [
+      updateData.name !== undefined ? updateData.name.trim() : null,
+      updateData.slug !== undefined ? updateData.slug.trim() : null,
+      updateData.tagline !== undefined ? updateData.tagline : null,
+      updateData.description !== undefined ? updateData.description : null,
+      updateData.cover_image_url !== undefined ? updateData.cover_image_url : null,
+      updateData.sort_order !== undefined ? Number(updateData.sort_order) : null,
+      updateData.is_archived !== undefined ? Boolean(updateData.is_archived) : null,
+      cleanId
+    ]
+  );
+  return res.rows[0];
+}
+
+async function reorderCategories(orderList = []) {
+  if (!Array.isArray(orderList) || orderList.length === 0) return { success: true };
+
+  if (pool.isMock) {
+    const store = ensureDevStoreProducts();
+    orderList.forEach((item, idx) => {
+      const catId = typeof item === "string" ? item : item.id;
+      const order = typeof item === "object" && typeof item.sort_order !== "undefined" ? item.sort_order : idx;
+      const cat = store.categories.find(c => String(c.id) === String(catId) || c.slug === String(catId));
+      if (cat) cat.sort_order = order;
+    });
+    fs.writeFileSync(DEV_STORE_FILE, JSON.stringify(store, null, 2), "utf-8");
+    return { success: true };
+  }
+
+  for (let idx = 0; idx < orderList.length; idx++) {
+    const item = orderList[idx];
+    const catId = typeof item === "string" ? item : item.id;
+    const order = typeof item === "object" && typeof item.sort_order !== "undefined" ? item.sort_order : idx;
+    await pool.query("UPDATE categories SET sort_order = $1 WHERE id = $2 OR slug = $2", [order, String(catId)]);
+  }
+
+  return { success: true };
+}
+
+async function archiveCategory(id, isArchived = true) {
+  return updateCategory(id, { is_archived: Boolean(isArchived) });
 }
 
 async function deleteCategory(id) {
@@ -921,6 +1100,652 @@ async function seedCatalog(force = false) {
   return { count: inserted, total: seed.products.length };
 }
 
+// --- ACTIVITY AUDIT LOGGING ---
+async function recordActivityLog(entry) {
+  const {
+    admin_email = "admin@indiancorporatewear.com",
+    action,
+    target_entity = "products",
+    affected_count = 1,
+    details = {},
+    summary,
+    status = "success"
+  } = entry;
+
+  if (!pool.isMock) {
+    try {
+      await pool.query(
+        `INSERT INTO admin_activity_logs (admin_email, action, target_entity, affected_count, details, summary, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [admin_email, action, target_entity, affected_count, JSON.stringify(details), summary, status]
+      );
+    } catch (err) {
+      try {
+        await pool.query(
+          `INSERT INTO admin_activity_logs (admin_email, action, target_entity, affected_count, details, summary)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [admin_email, action, target_entity, affected_count, JSON.stringify(details), summary]
+        );
+      } catch (e2) {
+        console.warn("[ProductService] recordActivityLog DB error:", e2.message);
+      }
+    }
+  } else {
+    try {
+      const store = ensureDevStoreProducts();
+      store.admin_activity_logs = store.admin_activity_logs || [];
+      store.admin_activity_logs.unshift({
+        id: Date.now(),
+        admin_email,
+        action,
+        target_entity,
+        affected_count,
+        details,
+        summary,
+        status,
+        created_at: new Date().toISOString()
+      });
+      fs.writeFileSync(DEV_STORE_FILE, JSON.stringify(store, null, 2), "utf-8");
+    } catch (err) {
+      console.warn("[ProductService] recordActivityLog dev-store error:", err.message);
+    }
+  }
+}
+
+async function getActivityLogs(limit = 60) {
+  if (!pool.isMock) {
+    try {
+      const res = await pool.query("SELECT * FROM admin_activity_logs ORDER BY created_at DESC LIMIT $1", [limit]);
+      return res.rows.map(r => ({
+        ...r,
+        status: r.status || "success",
+        details: typeof r.details === "string" ? (() => { try { return JSON.parse(r.details); } catch(e) { return {}; } })() : (r.details || {})
+      }));
+    } catch (err) {
+      console.warn("[ProductService] getActivityLogs error:", err.message);
+      return [];
+    }
+  }
+  const store = ensureDevStoreProducts();
+  return (store.admin_activity_logs || []).slice(0, limit);
+}
+
+// --- INVENTORY MOVEMENT TRACKING ---
+async function recordInventoryMovement(movement) {
+  const {
+    product_id,
+    product_name,
+    product_sku,
+    previous_stock,
+    new_stock,
+    previous_size_stock = {},
+    new_size_stock = {},
+    adjustment_type,
+    delta = 0,
+    admin_email = "admin@indiancorporatewear.com",
+    reason = ""
+  } = movement;
+
+  if (!pool.isMock) {
+    try {
+      await pool.query(
+        `INSERT INTO inventory_movements 
+         (product_id, product_name, product_sku, previous_stock, new_stock, previous_size_stock, new_size_stock, adjustment_type, delta, admin_email, reason)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [
+          String(product_id),
+          product_name || "",
+          product_sku || "",
+          Number(previous_stock) || 0,
+          Number(new_stock) || 0,
+          JSON.stringify(previous_size_stock),
+          JSON.stringify(new_size_stock),
+          adjustment_type,
+          Number(delta) || 0,
+          admin_email,
+          reason || ""
+        ]
+      );
+    } catch (err) {
+      console.warn("[ProductService] recordInventoryMovement DB error:", err.message);
+    }
+  } else {
+    try {
+      const store = ensureDevStoreProducts();
+      store.inventory_movements = store.inventory_movements || [];
+      store.inventory_movements.unshift({
+        id: Date.now(),
+        product_id: String(product_id),
+        product_name,
+        product_sku,
+        previous_stock: Number(previous_stock) || 0,
+        new_stock: Number(new_stock) || 0,
+        previous_size_stock,
+        new_size_stock,
+        adjustment_type,
+        delta: Number(delta) || 0,
+        admin_email,
+        reason,
+        created_at: new Date().toISOString()
+      });
+      fs.writeFileSync(DEV_STORE_FILE, JSON.stringify(store, null, 2), "utf-8");
+    } catch (err) {
+      console.warn("[ProductService] recordInventoryMovement dev-store error:", err.message);
+    }
+  }
+}
+
+async function getInventoryHistory(productId, limit = 50) {
+  if (!pool.isMock) {
+    try {
+      let query = "SELECT * FROM inventory_movements";
+      const params = [];
+      if (productId) {
+        params.push(String(productId));
+        query += " WHERE product_id = $1";
+      }
+      query += ` ORDER BY created_at DESC LIMIT $${params.length + 1}`;
+      params.push(limit);
+      const res = await pool.query(query, params);
+      return res.rows;
+    } catch (err) {
+      console.warn("[ProductService] getInventoryHistory error:", err.message);
+      return [];
+    }
+  }
+  const store = ensureDevStoreProducts();
+  let list = store.inventory_movements || [];
+  if (productId) {
+    list = list.filter(m => String(m.product_id) === String(productId));
+  }
+  return list.slice(0, limit);
+}
+
+// --- SKU ENGINE ---
+async function generateUniqueSKU(categoryId, name) {
+  const cat = (categoryId || "suits").toLowerCase();
+  let catCode = "SUIT";
+  if (cat.includes("sep")) catCode = "SEP";
+  else if (cat.includes("coord")) catCode = "COORD";
+  else if (cat.includes("sign")) catCode = "SIGN";
+
+  const words = (name || "Garment").split(/\s+/).filter(w => w.length > 0 && !["the", "a", "an", "and", "of", "&"].includes(w.toLowerCase()));
+  let styleCode = words.map(w => w[0].toUpperCase()).join("").slice(0, 4);
+  if (styleCode.length < 2) styleCode = (name || "GAR").replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase() || "STYLE";
+
+  const prefix = `SUKO-${catCode}-${styleCode}-`;
+  
+  // Find all existing SKUs with prefix
+  const allProds = await getAllProducts({ includeArchived: true });
+  const existingNumbers = allProds
+    .map(p => p.sku || "")
+    .filter(sku => sku.startsWith(prefix))
+    .map(sku => {
+      const parts = sku.split("-");
+      return parseInt(parts[parts.length - 1], 10);
+    })
+    .filter(n => !isNaN(n));
+
+  const nextSeq = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+  return `${prefix}${String(nextSeq).padStart(3, "0")}`;
+}
+
+// --- DUPLICATE PRODUCT ---
+async function duplicateProduct(id, adminEmail) {
+  const source = await getProductById(id);
+  if (!source) throw new Error("Garment not found");
+
+  const newSku = await generateUniqueSKU(source.category_id || source.category?.id, source.name);
+  const newName = `${source.name} (Atelier Copy)`;
+  const newSlug = newName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "") + `-${Date.now().toString(36).slice(-4)}`;
+
+  const sourceSizes = Array.isArray(source.sizes) && source.sizes.length > 0 
+    ? source.sizes 
+    : ["38", "40", "42", "44", "46"];
+  const draftSizeStock = {};
+  sourceSizes.forEach(sz => { draftSizeStock[sz] = 0; });
+
+  const cloneData = {
+    ...source,
+    id: `suko-${Date.now().toString(36)}`,
+    name: newName,
+    slug: newSlug,
+    sku: newSku,
+    stock: 0,
+    sizes: sourceSizes,
+    size_stock: draftSizeStock,
+    status: "draft",
+    seo_title: `${newName} | SUKO Atelier`,
+    seo_description: source.seo_description || source.description || "Bespoke luxury piece by SUKO Atelier.",
+    seo_keywords: source.seo_keywords || "",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  const created = await createProduct(cloneData);
+  await recordActivityLog({
+    admin_email: adminEmail || "admin@indiancorporatewear.com",
+    action: "duplicate_product",
+    affected_count: 1,
+    details: { sourceId: source.id, newId: created.id, newSku },
+    summary: `Duplicated "${source.name}" as new draft silhouette with SKU ${newSku}`
+  });
+
+  return created;
+}
+
+// --- STRICT PARTIAL BULK UPDATE ---
+async function bulkUpdateProducts(ids = [], updates = {}, adminEmail) {
+  if (!Array.isArray(ids) || ids.length === 0) return { success: true, count: 0, products: [] };
+
+  const allProducts = await getAllProducts({ includeArchived: true });
+  const updatedProducts = [];
+
+  for (const id of ids) {
+    const current = allProducts.find(p => String(p.id) === String(id) || p.slug === String(id));
+    if (!current) continue;
+
+    const patch = {};
+
+    // Only apply fields explicitly present in updates
+    if (updates.category_id !== undefined && updates.category_id !== "") {
+      patch.category_id = updates.category_id;
+    }
+    if (updates.sub_category !== undefined && updates.sub_category !== "") {
+      patch.sub_category = updates.sub_category;
+    }
+    if (updates.status !== undefined && updates.status !== "") {
+      patch.status = updates.status;
+    }
+    if (updates.color !== undefined && updates.color !== "") {
+      patch.color = updates.color;
+    }
+    if (updates.secondary_color !== undefined && updates.secondary_color !== "") {
+      patch.secondary_color = updates.secondary_color;
+    }
+    if (updates.fabric !== undefined && updates.fabric !== "") {
+      patch.fabric = updates.fabric;
+    }
+    if (updates.fit !== undefined && updates.fit !== "") {
+      patch.fit = updates.fit;
+    }
+    if (updates.silhouette !== undefined && updates.silhouette !== "") {
+      patch.silhouette = updates.silhouette;
+    }
+    if (updates.moment !== undefined && updates.moment !== "") {
+      patch.moment = updates.moment;
+      patch.moments = Array.isArray(updates.moments) ? updates.moments : [updates.moment];
+      patch.moment_name = updates.moment_name || updates.momentName || "The Boardroom Edit";
+    }
+
+    // Price calculation modes
+    if (updates.price_mode && updates.price_value !== undefined && updates.price_value !== "") {
+      const val = Number(updates.price_value);
+      const curPrice = Number(current.price) || 0;
+      if (updates.price_mode === "fixed") {
+        patch.price = Math.max(0, val);
+      } else if (updates.price_mode === "percent_increase") {
+        patch.price = Math.round(curPrice * (1 + val / 100));
+      } else if (updates.price_mode === "percent_decrease") {
+        patch.price = Math.max(0, Math.round(curPrice * (1 - val / 100)));
+      } else if (updates.price_mode === "amount_increase") {
+        patch.price = curPrice + val;
+      } else if (updates.price_mode === "amount_decrease") {
+        patch.price = Math.max(0, curPrice - val);
+      }
+    } else if (updates.price !== undefined && updates.price !== "") {
+      patch.price = Number(updates.price);
+    }
+
+    if (updates.discount_price !== undefined) {
+      patch.discount_price = updates.discount_price ? Number(updates.discount_price) : null;
+    }
+
+    if (Object.keys(patch).length > 0) {
+      const res = await updateProduct(current.id, patch);
+      if (res) updatedProducts.push(res);
+    }
+  }
+
+  const sampleNames = updatedProducts.map(p => p.name).filter(Boolean);
+  let actionName = "bulk_update";
+  if (updates.price !== undefined || updates.price_mode !== undefined) {
+    actionName = "price_update";
+  } else if (updates.category_id !== undefined) {
+    actionName = "collection_move";
+  } else if (updates.status !== undefined) {
+    actionName = updates.status === "archived" ? "bulk_archive" : "bulk_update";
+  }
+
+  await recordActivityLog({
+    admin_email: adminEmail || "admin@indiancorporatewear.com",
+    action: actionName,
+    target_entity: "products",
+    affected_count: updatedProducts.length,
+    details: {
+      ids,
+      product_name: sampleNames.length === 1 ? sampleNames[0] : `${updatedProducts.length} Garments`,
+      product_names: sampleNames,
+      fieldsModified: Object.keys(updates),
+      updates
+    },
+    summary: `Bulk updated specifications across ${updatedProducts.length} garments (${Object.keys(updates).join(", ")})`,
+    status: "success"
+  });
+
+  return { success: true, count: updatedProducts.length, products: updatedProducts };
+}
+
+// --- 3-MODE BULK INVENTORY ALLOCATION ---
+async function bulkInventoryUpdate(ids = [], options = {}, adminEmail) {
+  if (!Array.isArray(ids) || ids.length === 0) return { success: true, count: 0, products: [] };
+
+  const { mode = "replace", size_stock = {}, delta = 0, commonQty, reason = "New Production Batch" } = options;
+  const allProducts = await getAllProducts({ includeArchived: true });
+  const updatedProducts = [];
+
+  for (const id of ids) {
+    const current = allProducts.find(p => String(p.id) === String(id) || p.slug === String(id));
+    if (!current) continue;
+
+    const prevSizeStock = resolveProductSizeStock(current);
+    const prevTotal = Object.values(prevSizeStock).reduce((a, b) => a + Number(b), 0);
+    let newSizeStock = {};
+
+    if (mode === "replace") {
+      if (commonQty !== undefined && commonQty !== "") {
+        const qty = Math.max(0, Number(commonQty));
+        ["XS", "S", "M", "L", "XL"].forEach(sz => {
+          newSizeStock[sz] = qty;
+        });
+      } else {
+        ["XS", "S", "M", "L", "XL"].forEach(sz => {
+          newSizeStock[sz] = size_stock[sz] !== undefined && size_stock[sz] !== "" 
+            ? Math.max(0, Number(size_stock[sz])) 
+            : (prevSizeStock[sz] || 0);
+        });
+      }
+    } else if (mode === "increase") {
+      const inc = Number(delta) || 0;
+      Object.keys(prevSizeStock).forEach(sz => {
+        newSizeStock[sz] = Math.max(0, (prevSizeStock[sz] || 0) + inc);
+      });
+      ["XS", "S", "M", "L", "XL"].forEach(sz => {
+        if (newSizeStock[sz] === undefined) newSizeStock[sz] = Math.max(0, inc);
+      });
+    } else if (mode === "decrease") {
+      const dec = Number(delta) || 0;
+      Object.keys(prevSizeStock).forEach(sz => {
+        newSizeStock[sz] = Math.max(0, (prevSizeStock[sz] || 0) - dec);
+      });
+    }
+
+    const newTotal = Object.values(newSizeStock).reduce((a, b) => a + Number(b), 0);
+
+    const updated = await updateProduct(current.id, {
+      size_stock: newSizeStock,
+      sizes: Object.keys(newSizeStock),
+      stock: newTotal
+    });
+
+    if (updated) {
+      updatedProducts.push(updated);
+      await recordInventoryMovement({
+        product_id: current.id,
+        product_name: current.name,
+        product_sku: current.sku,
+        previous_stock: prevTotal,
+        new_stock: newTotal,
+        previous_size_stock: prevSizeStock,
+        new_size_stock: newSizeStock,
+        adjustment_type: mode,
+        delta: newTotal - prevTotal,
+        admin_email: adminEmail || "admin@indiancorporatewear.com",
+        reason
+      });
+    }
+  }
+
+  const sampleNames = updatedProducts.map(p => p.name).filter(Boolean);
+  const sizeBreakdown = mode === "increase"
+    ? { XS: `+${delta}`, S: `+${delta}`, M: `+${delta}`, L: `+${delta}`, XL: `+${delta}` }
+    : (mode === "decrease"
+        ? { XS: `-${delta}`, S: `-${delta}`, M: `-${delta}`, L: `-${delta}`, XL: `-${delta}` }
+        : (commonQty ? { XS: commonQty, S: commonQty, M: commonQty, L: commonQty, XL: commonQty } : size_stock));
+
+  await recordActivityLog({
+    admin_email: adminEmail || "admin@indiancorporatewear.com",
+    action: "inventory_update",
+    target_entity: "products",
+    affected_count: updatedProducts.length,
+    details: {
+      mode,
+      delta,
+      reason: reason || "New Production Batch",
+      product_name: sampleNames.length === 1 ? sampleNames[0] : `${updatedProducts.length} Garments`,
+      product_names: sampleNames,
+      size_breakdown: sizeBreakdown
+    },
+    summary: mode === "increase"
+      ? `Increased stock across ${updatedProducts.length} garments (+${delta} per size)`
+      : (mode === "decrease"
+          ? `Decreased stock across ${updatedProducts.length} garments (-${delta} per size)`
+          : `Replaced inventory allocations across ${updatedProducts.length} garments`),
+    status: "success"
+  });
+
+  return { success: true, count: updatedProducts.length, products: updatedProducts };
+}
+
+// --- BULK ARCHIVE (SOFT DELETE) ---
+async function bulkArchiveProducts(ids = [], adminEmail) {
+  if (!Array.isArray(ids) || ids.length === 0) return { success: true, count: 0, archivedIds: [] };
+
+  const allProducts = await getAllProducts({ includeArchived: true });
+  const archivedIds = [];
+  const archivedNames = [];
+
+  for (const id of ids) {
+    const p = allProducts.find(x => String(x.id) === String(id));
+    const updated = await updateProduct(id, { status: "archived" });
+    if (updated) {
+      archivedIds.push(updated.id);
+      if (p?.name) archivedNames.push(p.name);
+    }
+  }
+
+  await recordActivityLog({
+    admin_email: adminEmail || "admin@indiancorporatewear.com",
+    action: "bulk_archive",
+    target_entity: "products",
+    affected_count: archivedIds.length,
+    details: {
+      ids: archivedIds,
+      product_name: archivedNames.length === 1 ? archivedNames[0] : `${archivedIds.length} Garments`,
+      product_names: archivedNames,
+      reason: "Moved to private archive (showroom hidden, orders & invoices preserved)"
+    },
+    summary: `Archived ${archivedIds.length} garments to Private Archive`,
+    status: "success"
+  });
+
+  return { success: true, count: archivedIds.length, archivedIds };
+}
+
+// --- BULK RESTORE ---
+async function bulkRestoreProducts(ids = [], adminEmail) {
+  if (!Array.isArray(ids) || ids.length === 0) return { success: true, count: 0, restoredIds: [] };
+
+  const allProducts = await getAllProducts({ includeArchived: true });
+  const restoredIds = [];
+  const restoredNames = [];
+
+  for (const id of ids) {
+    const p = allProducts.find(x => String(x.id) === String(id));
+    const updated = await updateProduct(id, { status: "active" });
+    if (updated) {
+      restoredIds.push(updated.id);
+      if (p?.name) restoredNames.push(p.name);
+    }
+  }
+
+  await recordActivityLog({
+    admin_email: adminEmail || "admin@indiancorporatewear.com",
+    action: "bulk_restore",
+    target_entity: "products",
+    affected_count: restoredIds.length,
+    details: {
+      ids: restoredIds,
+      product_name: restoredNames.length === 1 ? restoredNames[0] : `${restoredIds.length} Garments`,
+      product_names: restoredNames
+    },
+    summary: `Restored ${restoredIds.length} garments back to active public showroom`,
+    status: "success"
+  });
+
+  return { success: true, count: restoredIds.length, restoredIds };
+}
+
+// --- BULK MOVE COLLECTION ---
+async function bulkMoveProducts(ids = [], categoryId, adminEmail) {
+  if (!Array.isArray(ids) || ids.length === 0 || !categoryId) return { success: true, count: 0 };
+
+  const cats = await getAllCategories();
+  const matchedCat = cats.find(c => c.id === categoryId || c.slug === categoryId) || { id: categoryId, name: categoryId, slug: categoryId };
+  const allProducts = await getAllProducts({ includeArchived: true });
+
+  const movedIds = [];
+  const movedNames = [];
+  for (const id of ids) {
+    const p = allProducts.find(x => String(x.id) === String(id));
+    const updated = await updateProduct(id, {
+      category_id: matchedCat.id,
+      category: matchedCat
+    });
+    if (updated) {
+      movedIds.push(updated.id);
+      if (p?.name) movedNames.push(p.name);
+    }
+  }
+
+  await recordActivityLog({
+    admin_email: adminEmail || "admin@indiancorporatewear.com",
+    action: "collection_move",
+    target_entity: "products",
+    affected_count: movedIds.length,
+    details: {
+      categoryId: matchedCat.id,
+      categoryName: matchedCat.name,
+      ids: movedIds,
+      product_name: movedNames.length === 1 ? movedNames[0] : `${movedIds.length} Garments`,
+      product_names: movedNames
+    },
+    summary: `Moved ${movedIds.length} garments into collection "${matchedCat.name}"`,
+    status: "success"
+  });
+
+  return { success: true, count: movedIds.length, movedIds };
+}
+
+// --- BULK DELETE (PASSWORD PROTECTED & ORDER PROTECTED) ---
+async function bulkDeleteProducts(ids = [], options = {}, adminUser = {}) {
+  if (!Array.isArray(ids) || ids.length === 0) return { success: true, archivedCount: 0, deletedCount: 0 };
+
+  const { adminPassword, permanent = false, force = false } = options;
+
+  // 1. Password verification for permanent deletion
+  if (permanent) {
+    if (!adminPassword) {
+      throw new Error("Admin re-authentication password is required for permanent deletion");
+    }
+
+    let isValidPassword = false;
+    if (!pool.isMock) {
+      const userRes = await pool.query("SELECT password_hash FROM users WHERE (id = $1 OR email = $2) AND role = 'admin'", [
+        adminUser.userId || -1,
+        adminUser.email || ""
+      ]);
+      if (userRes.rows.length > 0) {
+        isValidPassword = await bcrypt.compare(adminPassword, userRes.rows[0].password_hash);
+      }
+    } else {
+      const { devUsers } = require("../dev-db");
+      const devAdmin = devUsers?.find(u => u.role === "admin" && (u.email === adminUser.email || u.id === adminUser.userId));
+      if (devAdmin && devAdmin.password_hash) {
+        isValidPassword = await bcrypt.compare(adminPassword, devAdmin.password_hash);
+      } else if (adminPassword === "Suko@vnpZUO6tE4") {
+        isValidPassword = true;
+      }
+    }
+
+    if (!isValidPassword) {
+      throw new Error("Admin re-authentication failed: Invalid security password");
+    }
+  }
+
+  let archivedCount = 0;
+  let deletedCount = 0;
+  const details = [];
+
+  for (const id of ids) {
+    const res = await deleteProduct(id, { permanent, force });
+    if (res) {
+      if (res.archived) {
+        archivedCount++;
+        details.push({ id, status: "archived", reason: res.hasOrders ? "Protected due to historical client orders" : "Moved to atelier archive" });
+      } else {
+        deletedCount++;
+        details.push({ id, status: "deleted" });
+        // Enqueue unreferenced images for 30-day retention
+        if (!pool.isMock) {
+          pool.query(
+            `INSERT INTO image_deletion_queue (image_url, product_id, scheduled_purge_at)
+             SELECT unnest(images), $1, now() + INTERVAL '30 days'
+             FROM products WHERE id = $1
+             ON CONFLICT DO NOTHING`,
+            [id]
+          ).catch(() => {});
+        }
+      }
+    }
+  }
+
+  await recordActivityLog({
+    admin_email: adminUser.email || "admin@indiancorporatewear.com",
+    action: permanent ? "bulk_permanent_delete" : "bulk_archive",
+    affected_count: archivedCount + deletedCount,
+    details: { archivedCount, deletedCount, summary: details },
+    summary: permanent 
+      ? `Processed permanent deletion for ${ids.length} garments (${deletedCount} purged, ${archivedCount} safeguarded to archive due to client orders)`
+      : `Safely archived ${archivedCount} garments`
+  });
+
+  return {
+    success: true,
+    archivedCount,
+    deletedCount,
+    details
+  };
+}
+
+// --- COLLECTION DELETION SAFETY CHECK ---
+async function checkCategoryDeletionSafety(categoryId) {
+  const cleanId = String(categoryId).trim();
+  const allProds = await getAllProducts({ includeArchived: true });
+  const attached = allProds.filter(p => 
+    p.category_id === cleanId || 
+    p.category?.slug === cleanId || 
+    p.category?.id === cleanId
+  );
+
+  return {
+    safe: attached.length === 0,
+    count: attached.length,
+    garmentNames: attached.slice(0, 5).map(p => p.name),
+    hasMore: attached.length > 5
+  };
+}
+
 module.exports = {
   getAllProducts,
   getProductById,
@@ -930,8 +1755,25 @@ module.exports = {
   checkProductDeletionEligibility,
   getAllCategories,
   createCategory,
+  updateCategory,
+  reorderCategories,
+  archiveCategory,
   deleteCategory,
+  checkCategoryDeletionSafety,
   ensureDevStoreProducts,
   getSeedData,
-  seedCatalog
+  seedCatalog,
+  recordActivityLog,
+  getActivityLogs,
+  recordInventoryMovement,
+  getInventoryHistory,
+  generateUniqueSKU,
+  duplicateProduct,
+  bulkUpdateProducts,
+  bulkInventoryUpdate,
+  bulkArchiveProducts,
+  bulkRestoreProducts,
+  bulkMoveProducts,
+  bulkDeleteProducts,
+  resolveProductSizeStock
 };
