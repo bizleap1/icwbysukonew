@@ -148,7 +148,14 @@ router.post(
         status, 
         sku, 
         gender, 
-        fabric 
+        fabric,
+        color,
+        secondary_color,
+        pattern,
+        finish,
+        silhouette,
+        fit,
+        occasion
       } = req.body;
 
       if (!name || !price) {
@@ -190,7 +197,14 @@ router.post(
         status: status || "active",
         sku: sku || undefined,
         gender: gender || "female",
-        fabric: fabric || ""
+        fabric: fabric || "",
+        color: color || "",
+        secondary_color: secondary_color || "",
+        pattern: pattern || "",
+        finish: finish || "",
+        silhouette: silhouette || "",
+        fit: fit || "",
+        occasion: occasion || ""
       });
 
       res.status(201).json({
@@ -234,6 +248,13 @@ router.put("/:id", requireAdmin, handleOptionalMultipart, async (req, res) => {
       sku,
       gender,
       fabric,
+      color,
+      secondary_color,
+      pattern,
+      finish,
+      silhouette,
+      fit,
+      occasion,
       existing_images
     } = req.body;
 
@@ -258,6 +279,13 @@ router.put("/:id", requireAdmin, handleOptionalMultipart, async (req, res) => {
     if (sku) updateData.sku = sku;
     if (gender) updateData.gender = gender;
     if (fabric !== undefined) updateData.fabric = fabric;
+    if (color !== undefined) updateData.color = color;
+    if (secondary_color !== undefined) updateData.secondary_color = secondary_color;
+    if (pattern !== undefined) updateData.pattern = pattern;
+    if (finish !== undefined) updateData.finish = finish;
+    if (silhouette !== undefined) updateData.silhouette = silhouette;
+    if (fit !== undefined) updateData.fit = fit;
+    if (occasion !== undefined) updateData.occasion = occasion;
 
     if (parsedSizeStock) {
       updateData.size_stock = parsedSizeStock;

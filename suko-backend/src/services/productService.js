@@ -234,6 +234,13 @@ async function createProduct(productData) {
       sku: productData.sku || `SUKO-${newId.toUpperCase()}`,
       gender: productData.gender || "female",
       fabric: productData.fabric || "",
+      color: productData.color || "",
+      secondary_color: productData.secondary_color || "",
+      pattern: productData.pattern || "",
+      finish: productData.finish || "",
+      silhouette: productData.silhouette || "",
+      fit: productData.fit || "",
+      occasion: productData.occasion || "",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -245,8 +252,8 @@ async function createProduct(productData) {
 
   // Real Postgres mode
   const res = await pool.query(
-    `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+    `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric, color, secondary_color, pattern, finish, silhouette, fit, occasion)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
      RETURNING *`,
     [
       newId,
@@ -265,7 +272,14 @@ async function createProduct(productData) {
       status,
       productData.sku || `SUKO-${newId.toUpperCase()}`,
       productData.gender || "female",
-      productData.fabric || ""
+      productData.fabric || "",
+      productData.color || "",
+      productData.secondary_color || "",
+      productData.pattern || "",
+      productData.finish || "",
+      productData.silhouette || "",
+      productData.fit || "",
+      productData.occasion || ""
     ]
   );
   return res.rows[0];
@@ -291,6 +305,14 @@ async function updateProduct(id, updateData) {
       discount_price: typeof updateData.discount_price !== "undefined" ? Number(updateData.discount_price) : current.discount_price,
       stock: typeof updateData.stock !== "undefined" ? Number(updateData.stock) : current.stock,
       status: updateData.status || current.status || "active",
+      fabric: updateData.fabric !== undefined ? updateData.fabric : current.fabric,
+      color: updateData.color !== undefined ? updateData.color : current.color,
+      secondary_color: updateData.secondary_color !== undefined ? updateData.secondary_color : current.secondary_color,
+      pattern: updateData.pattern !== undefined ? updateData.pattern : current.pattern,
+      finish: updateData.finish !== undefined ? updateData.finish : current.finish,
+      silhouette: updateData.silhouette !== undefined ? updateData.silhouette : current.silhouette,
+      fit: updateData.fit !== undefined ? updateData.fit : current.fit,
+      occasion: updateData.occasion !== undefined ? updateData.occasion : current.occasion,
       updated_at: new Date().toISOString()
     };
 
@@ -311,19 +333,41 @@ async function updateProduct(id, updateData) {
          size_stock = COALESCE($7, size_stock),
          status = COALESCE($8, status),
          discount_price = COALESCE($9, discount_price),
+         fabric = COALESCE($10, fabric),
+         color = COALESCE($11, color),
+         secondary_color = COALESCE($12, secondary_color),
+         pattern = COALESCE($13, pattern),
+         finish = COALESCE($14, finish),
+         silhouette = COALESCE($15, silhouette),
+         fit = COALESCE($16, fit),
+         occasion = COALESCE($17, occasion),
+         image_url = COALESCE($18, image_url),
+         images = COALESCE($19, images),
+         sizes = COALESCE($20, sizes),
          updated_at = now()
-     WHERE id = $10 OR slug = $10
+     WHERE id = $21 OR slug = $21
      RETURNING *`,
     [
-      updateData.name,
-      updateData.price ? Number(updateData.price) : null,
-      updateData.stock ? Number(updateData.stock) : null,
-      updateData.category_id,
-      updateData.sub_category,
-      updateData.description,
+      updateData.name !== undefined ? updateData.name : null,
+      updateData.price !== undefined && updateData.price !== null ? Number(updateData.price) : null,
+      updateData.stock !== undefined && updateData.stock !== null ? Number(updateData.stock) : null,
+      updateData.category_id !== undefined ? updateData.category_id : null,
+      updateData.sub_category !== undefined ? updateData.sub_category : null,
+      updateData.description !== undefined ? updateData.description : null,
       updateData.size_stock ? JSON.stringify(updateData.size_stock) : null,
-      updateData.status,
-      updateData.discount_price ? Number(updateData.discount_price) : null,
+      updateData.status !== undefined ? updateData.status : null,
+      updateData.discount_price !== undefined && updateData.discount_price !== null ? Number(updateData.discount_price) : null,
+      updateData.fabric !== undefined ? updateData.fabric : null,
+      updateData.color !== undefined ? updateData.color : null,
+      updateData.secondary_color !== undefined ? updateData.secondary_color : null,
+      updateData.pattern !== undefined ? updateData.pattern : null,
+      updateData.finish !== undefined ? updateData.finish : null,
+      updateData.silhouette !== undefined ? updateData.silhouette : null,
+      updateData.fit !== undefined ? updateData.fit : null,
+      updateData.occasion !== undefined ? updateData.occasion : null,
+      updateData.image_url !== undefined ? updateData.image_url : null,
+      updateData.images ? JSON.stringify(updateData.images) : null,
+      updateData.sizes ? JSON.stringify(updateData.sizes) : null,
       String(id)
     ]
   );

@@ -4,10 +4,10 @@ import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import {
   Package, Users, ShoppingCart, DollarSign, Trash2, Edit2,
-  Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown, Plus,
+  Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Plus,
   Search, Download, AlertTriangle, Clock, X, Crop, Image as ImageIcon, Star, Eye, Tag, Mail, Send, MessageSquare, ShoppingBag,
   LayoutDashboard, Layers, ShieldCheck, CheckCircle, RefreshCw, Copy, Check, RotateCcw,
-  Menu, Bell, ArrowUpRight, TrendingUp, LogOut, MoreHorizontal
+  Menu, Bell, ArrowUpRight, TrendingUp, LogOut, MoreHorizontal, Palette
 } from "lucide-react";
 import { formatINR, CATEGORIES as DEFAULT_CATEGORIES } from "../data/products";
 import { useProducts } from "../context/ProductContext";
@@ -185,6 +185,432 @@ const compressAndResizeImage = (file) => {
   });
 };
 
+const ATELIER_COLOR_MAP = {
+  // Blues & Navies
+  "midnight navy": "#1B2838",
+  "navy": "#1B2838",
+  "navy blue": "#1B2838",
+  "dark navy": "#0F172A",
+  "deep navy": "#0A1128",
+  "midnight blue": "#191970",
+  "marine": "#042F40",
+  "ink blue": "#0B1D3A",
+  "royal blue": "#1D4ED8",
+  "cobalt": "#0047AB",
+  "cobalt blue": "#0047AB",
+  "sapphire": "#0F52BA",
+  "cerulean": "#007BA7",
+  "electric blue": "#7DF9FF",
+  "sky blue": "#70A1D7",
+  "powder blue": "#B0E0E6",
+  "baby blue": "#89CFF0",
+  "steel blue": "#4682B4",
+  "slate blue": "#5C677D",
+  "ice blue": "#D0F0FD",
+  "ocean blue": "#0077BE",
+  "denim": "#1560BD",
+  "petrol": "#005F73",
+  "petrol blue": "#005F73",
+  "blue": "#2563EB",
+
+  // Blacks & Neutrals
+  "obsidian": "#111113",
+  "obsidian black": "#111113",
+  "black": "#111113",
+  "jet black": "#0A0A0A",
+  "charcoal": "#2C2D30",
+  "anthracite": "#293133",
+  "onyx": "#353839",
+  "pitch black": "#050505",
+
+  // Whites & Creams
+  "ivory": "#FAF8F5",
+  "ivory cream": "#FAF8F5",
+  "cream": "#FFFDD0",
+  "white": "#FFFFFF",
+  "pure white": "#FFFFFF",
+  "off white": "#F5F2EB",
+  "chalk": "#F6F6F4",
+  "chalk white": "#F6F6F4",
+  "bone": "#E3DAC9",
+  "eggshell": "#F0EAD6",
+  "pearl": "#EAE0C8",
+  "alabaster": "#EDEAE0",
+  "linen": "#FAF0E6",
+
+  // Golds & Metallics
+  "champagne": "#C2922E",
+  "champagne gold": "#C2922E",
+  "gold": "#C2922E",
+  "rose gold": "#B76E79",
+  "bronze": "#CD7F32",
+  "copper": "#B87333",
+  "silver": "#C0C0C0",
+  "platinum": "#E5E4E2",
+
+  // Greys & Slates
+  "grey": "#4B4D52",
+  "gray": "#4B4D52",
+  "charcoal grey": "#2C2D30",
+  "charcoal gray": "#2C2D30",
+  "slate grey": "#5C677D",
+  "slate gray": "#5C677D",
+  "steel": "#708090",
+  "steel grey": "#708090",
+  "pewter": "#899499",
+  "ash": "#B2BEB5",
+  "heather grey": "#9AA0A6",
+  "graphite": "#383838",
+  "gunmetal": "#2A3439",
+  "smoke": "#738276",
+
+  // Camels, Beiges & Tans
+  "camel": "#B8976C",
+  "camel beige": "#B8976C",
+  "beige": "#D8CAB8",
+  "khaki": "#C3B091",
+  "tan": "#D2B48C",
+  "taupe": "#8B8589",
+  "sand": "#C2B280",
+  "sand beige": "#C2B280",
+  "fawn": "#E5AA70",
+  "ecru": "#C2B280",
+  "greige": "#B0A8A0",
+  "oatmeal": "#E3DAC9",
+
+  // Reds, Wines & Burgundies
+  "burgundy": "#4A1521",
+  "burgundy wine": "#4A1521",
+  "wine": "#5E1914",
+  "bordeaux": "#5C1D24",
+  "maroon": "#500000",
+  "dark maroon": "#3B0000",
+  "crimson": "#8B0000",
+  "ruby": "#9B111E",
+  "ruby red": "#9B111E",
+  "scarlet": "#FF2400",
+  "blood red": "#660000",
+  "oxblood": "#4A0000",
+  "brick": "#CB4154",
+  "brick red": "#CB4154",
+  "red": "#DC2626",
+  "dark red": "#8B0000",
+
+  // Greens & Olives
+  "green": "#16A34A",
+  "dark green": "#0F5132",
+  "light green": "#90EE90",
+  "forest olive": "#354230",
+  "olive": "#354230",
+  "olive green": "#4B5320",
+  "army green": "#4B5320",
+  "sage": "#879883",
+  "sage green": "#879883",
+  "mint": "#98FF98",
+  "mint green": "#98FF98",
+  "emerald": "#1B3B2B",
+  "emerald green": "#1B3B2B",
+  "forest green": "#1B3B22",
+  "hunter green": "#355E3B",
+  "pine green": "#01796F",
+  "bottle green": "#004225",
+  "moss green": "#8A9A5B",
+  "sea green": "#2E8B57",
+  "jade": "#00A86B",
+  "pistachio": "#93C572",
+  "pista": "#93C572",
+  "pista green": "#93C572",
+
+  // Pinks & Roses
+  "blush": "#DE5D83",
+  "blush pink": "#DE5D83",
+  "dusty rose": "#DCAE96",
+  "rose": "#FF007F",
+  "rose pink": "#FF66CC",
+  "pink": "#EC4899",
+  "baby pink": "#F4C2C2",
+  "powder pink": "#FFD1DC",
+  "soft pink": "#F8B9D4",
+  "hot pink": "#FF69B4",
+  "fuschia": "#FF00FF",
+  "fuchsia": "#FF00FF",
+  "magenta": "#FF00FF",
+  "deep pink": "#FF1493",
+  "rani pink": "#E30B5C",
+  "rani": "#E30B5C",
+
+  // Purples & Lavenders
+  "lavender": "#B57EDC",
+  "lilac": "#C8A2C8",
+  "mauve": "#915C83",
+  "plum": "#4E1A3D",
+  "dark plum": "#360C28",
+  "violet": "#8A2BE2",
+  "purple": "#581C87",
+  "dark purple": "#300030",
+  "eggplant": "#614051",
+  "aubergine": "#3D0C02",
+  "orchid": "#DA70D6",
+  "periwinkle": "#CCCCFF",
+  "indigo": "#4B0082",
+
+  // Oranges, Terracottas & Peaches
+  "terracotta": "#E2725B",
+  "rust": "#B7410E",
+  "burnt orange": "#CC5500",
+  "peach": "#FFE5B4",
+  "apricot": "#FBCEB1",
+  "coral": "#E06D53",
+  "salmon": "#FA8072",
+  "tangerine": "#F28500",
+  "orange": "#EA580C",
+
+  // Yellows & Mustards
+  "mustard": "#D4AF37",
+  "mustard yellow": "#D4AF37",
+  "ochre": "#CC7722",
+  "amber": "#FFBF00",
+  "lemon": "#FFF44F",
+  "lemon yellow": "#FFF44F",
+  "yellow": "#CA8A04",
+  "marigold": "#EAA221",
+  "honey": "#EB9605",
+
+  // Browns & Chocolates
+  "chocolate": "#4B2810",
+  "dark chocolate": "#2B1408",
+  "espresso": "#362B28",
+  "coffee": "#4A2C2A",
+  "mocha": "#6F4E37",
+  "cocoa": "#875638",
+  "chestnut": "#954535",
+  "caramel": "#AF6E4D",
+  "brown": "#78350F",
+  "dark brown": "#3D1C06",
+
+  // Teals & Cyans
+  "teal": "#006666",
+  "teal blue": "#367588",
+  "turquoise": "#40E0D0",
+  "aqua": "#00FFFF",
+  "cyan": "#00FFFF",
+  "peacock blue": "#004953",
+  "morpankhi": "#004953",
+
+  // Indian Atelier Shades & Transliterations
+  "mehendi": "#556B2F",
+  "mehendi green": "#556B2F",
+  "ferozi": "#00CED1",
+  "firozi": "#00CED1",
+  "gulabi": "#FF69B4",
+  "jamun": "#4E1A3D",
+  "jamuni": "#4E1A3D",
+  "kesariya": "#FF9933",
+  "kesari": "#FF9933",
+  "haldi": "#E4A826",
+  "haldi yellow": "#E4A826",
+  "sindoor": "#E32636",
+  "sinduri": "#E32636",
+  "badami": "#EED9C4",
+  "surmai": "#5C677D",
+  "neela": "#1D4ED8",
+  "hara": "#16A34A",
+  "peela": "#EAB308",
+  "laal": "#DC2626",
+  "safed": "#FFFFFF",
+  "kaala": "#111113"
+};
+
+// Normalized map without whitespace/hyphens for O(1) matching
+const ATELIER_COLOR_MAP_NORMALIZED = Object.fromEntries(
+  Object.entries(ATELIER_COLOR_MAP).map(([k, v]) => [k.replace(/[\s\-_]+/g, ""), v])
+);
+
+// Converts 3-digit or 6-digit hex into RGB integers
+const hexToRgbValues = (hex) => {
+  if (!hex || typeof hex !== "string") return null;
+  const clean = hex.replace("#", "").trim();
+  if (clean.length === 3) {
+    return {
+      r: parseInt(clean[0] + clean[0], 16),
+      g: parseInt(clean[1] + clean[1], 16),
+      b: parseInt(clean[2] + clean[2], 16)
+    };
+  }
+  if (clean.length === 6) {
+    return {
+      r: parseInt(clean.substring(0, 2), 16),
+      g: parseInt(clean.substring(2, 4), 16),
+      b: parseInt(clean.substring(4, 6), 16)
+    };
+  }
+  return null;
+};
+
+// Finds the nearest recognizable atelier color name from any custom picked hex code
+const findNearestColorName = (hex) => {
+  const target = hexToRgbValues(hex);
+  if (!target || isNaN(target.r)) return null;
+
+  let bestName = "Custom Shade";
+  let bestDist = Infinity;
+  let bestHex = "#C2922E";
+
+  for (const [name, colorHex] of Object.entries(ATELIER_COLOR_MAP)) {
+    const c = hexToRgbValues(colorHex);
+    if (!c) continue;
+    const dist = Math.sqrt((target.r - c.r) ** 2 + (target.g - c.g) ** 2 + (target.b - c.b) ** 2);
+    if (dist < bestDist) {
+      bestDist = dist;
+      bestName = name.replace(/\b\w/g, l => l.toUpperCase());
+      bestHex = colorHex;
+    }
+  }
+
+  return { name: bestName, hex: bestHex, dist: Math.round(bestDist) };
+};
+
+// Intelligent Color Resolver: converts any color name, Hindi word, or custom hex into exact hex
+const resolveColor = (colorStr) => {
+  if (!colorStr || typeof colorStr !== "string") return null;
+  const clean = colorStr.trim().toLowerCase();
+  if (!clean) return null;
+
+  // 1. Direct hex inside string or full hex (e.g. "#1B2838" or "Navy #1B2838" or "#fff")
+  const hexMatch = clean.match(/#([0-9a-f]{6}|[0-9a-f]{3})\b/i);
+  if (hexMatch) return hexMatch[0];
+  if (clean.startsWith("rgb") || clean.startsWith("hsl")) return clean;
+
+  // 2. Exact match in ATELIER_COLOR_MAP
+  if (ATELIER_COLOR_MAP[clean]) {
+    return ATELIER_COLOR_MAP[clean];
+  }
+
+  // 3. Normalized without spaces/hyphens (e.g. "sky-blue" -> "skyblue", "bottle green" -> "bottlegreen")
+  const noSpaces = clean.replace(/[\s\-_]+/g, "");
+  if (ATELIER_COLOR_MAP_NORMALIZED[noSpaces]) {
+    return ATELIER_COLOR_MAP_NORMALIZED[noSpaces];
+  }
+
+  // 4. Strip common fashion and garment descriptors (e.g. "deep navy blazer" -> "navy", "soft baby pink" -> "baby pink")
+  const descriptors = [
+    "deep", "dark", "light", "pale", "soft", "bright", "rich", "pure", 
+    "classic", "matte", "glossy", "blazer", "suit", "fabric", "dress", 
+    "set", "top", "trousers", "garment", "color", "colour", "shade", "bespoke"
+  ];
+  let stripped = clean;
+  for (const d of descriptors) {
+    stripped = stripped.replace(new RegExp("\\b" + d + "\\b", "g"), "").trim().replace(/\s+/g, " ");
+  }
+  if (ATELIER_COLOR_MAP[stripped]) return ATELIER_COLOR_MAP[stripped];
+  if (ATELIER_COLOR_MAP_NORMALIZED[stripped.replace(/[\s\-_]+/g, "")]) {
+    return ATELIER_COLOR_MAP_NORMALIZED[stripped.replace(/[\s\-_]+/g, "")];
+  }
+
+  // 5. Multi-word substring match with longest key preference
+  let bestMatch = null;
+  let maxLen = 0;
+  for (const [key, hex] of Object.entries(ATELIER_COLOR_MAP)) {
+    if (clean.includes(key) && key.length > maxLen) {
+      maxLen = key.length;
+      bestMatch = hex;
+    }
+  }
+  if (bestMatch) return bestMatch;
+
+  // 6. Test CSS native color parsing in browser
+  if (typeof document !== "undefined") {
+    try {
+      const s = new Option().style;
+      s.color = clean;
+      if (s.color) return clean;
+
+      s.color = noSpaces;
+      if (s.color) return noSpaces;
+
+      // Check root color names inside the user's string
+      const roots = [
+        "navy", "blue", "red", "green", "pink", "purple", "yellow", 
+        "orange", "brown", "black", "white", "grey", "gray", "gold", 
+        "silver", "beige", "coral", "teal", "violet", "indigo", "maroon", 
+        "olive", "cyan", "magenta", "plum", "salmon", "khaki", "turquoise", 
+        "crimson", "lavender", "emerald", "amber", "tan", "chocolate"
+      ];
+      for (const r of roots) {
+        if (clean.includes(r)) {
+          s.color = r;
+          if (s.color) return r;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return null;
+};
+
+const getAtelierColorHex = (colorName, fallback = "#C2922E") => {
+  const resolved = resolveColor(colorName);
+  if (resolved) return resolved;
+  return fallback;
+};
+
+const getHexForColorPicker = (colorName, fallback = "#1B2838") => {
+  const resolved = resolveColor(colorName);
+  if (!resolved) return fallback;
+  if (/^#[0-9a-fA-F]{6}$/i.test(resolved)) return resolved;
+  if (/^#[0-9a-fA-F]{3}$/i.test(resolved)) {
+    return `#${resolved[1]}${resolved[1]}${resolved[2]}${resolved[2]}${resolved[3]}${resolved[3]}`;
+  }
+  if (typeof document !== "undefined") {
+    try {
+      const ctx = document.createElement("canvas").getContext("2d");
+      ctx.fillStyle = resolved;
+      const hex = ctx.fillStyle;
+      if (/^#[0-9a-fA-F]{6}$/i.test(hex)) return hex;
+    } catch {
+      // fallback
+    }
+  }
+  return fallback;
+};
+
+// Curated Luxury Atelier Swatches for 1-Click Fast Selection
+const ATELIER_PRIMARY_SWATCHES = [
+  { name: "Midnight Navy", hex: "#1B2838" },
+  { name: "Obsidian Black", hex: "#111113" },
+  { name: "Pure White", hex: "#FFFFFF" },
+  { name: "Ivory Cream", hex: "#FAF8F5" },
+  { name: "Champagne Gold", hex: "#C2922E" },
+  { name: "Charcoal Grey", hex: "#2C2D30" },
+  { name: "Camel Beige", hex: "#B8976C" },
+  { name: "Burgundy Wine", hex: "#4A1521" },
+  { name: "Emerald Green", hex: "#1B3B2B" },
+  { name: "Bottle Green", hex: "#004225" },
+  { name: "Sage Green", hex: "#879883" },
+  { name: "Royal Blue", hex: "#1D4ED8" },
+  { name: "Lavender", hex: "#B57EDC" },
+  { name: "Dusty Rose", hex: "#DCAE96" },
+  { name: "Baby Pink", hex: "#F4C2C2" },
+  { name: "Rani Pink", hex: "#E30B5C" },
+  { name: "Mustard Yellow", hex: "#D4AF37" },
+  { name: "Terracotta", hex: "#E2725B" }
+];
+
+const ATELIER_ACCENT_SWATCHES = [
+  { name: "Tone-on-Tone", hex: "#FAF8F5" },
+  { name: "Champagne Gold Trim", hex: "#C2922E" },
+  { name: "Ivory Detail", hex: "#FAF8F5" },
+  { name: "Silver Hardware", hex: "#C0C0C0" },
+  { name: "Rose Gold Trim", hex: "#B76E79" },
+  { name: "Obsidian Piping", hex: "#111113" },
+  { name: "Charcoal Accent", hex: "#2C2D30" },
+  { name: "Burgundy Contrast", hex: "#4A1521" },
+  { name: "Monochrome", hex: "#262626" },
+  { name: "Antique Brass", hex: "#CD7F32" }
+];
+
 const Admin = () => {
   const { user, token, logout } = useAuth();
   const { refresh: refreshGlobalProducts } = useProducts();
@@ -275,6 +701,13 @@ const Admin = () => {
   // Category Form State
   const [newCategoryName, setNewCategoryName] = useState("");
   const [showAddCategoryInline, setShowAddCategoryInline] = useState(false);
+  const [collectionSearch, setCollectionSearch] = useState("");
+  const [expandedCollectionId, setExpandedCollectionId] = useState(null);
+  const [collectionToDelete, setCollectionToDelete] = useState(null);
+
+  // Garment Edit & Showroom State (Collection Structure)
+  const [editingGarmentId, setEditingGarmentId] = useState(null);
+  const [existingImagesForEdit, setExistingImagesForEdit] = useState([]);
 
   // Multiple Images & Cropping States
   const [galleryFiles, setGalleryFiles] = useState([]); // [{ file, preview, isPrimary }]
@@ -295,8 +728,26 @@ const Admin = () => {
   const [noteInput, setNoteInput] = useState("");
 
   // Form State
-  const [formData, setFormData] = useState({ name: "", price: "", stock: "", description: "", category_id: "", sub_category: "", sizes: "", status: "active" });
-  const [sizeStockMap, setSizeStockMap] = useState({ "38": 10, "40": 10, "42": 5 });
+  const initialGarmentForm = {
+    name: "",
+    price: "",
+    discount_price: "",
+    stock: "25",
+    description: "",
+    category_id: "",
+    sub_category: "",
+    color: "",
+    secondary_color: "",
+    fabric: "",
+    pattern: "Solid",
+    finish: "Matte",
+    silhouette: "",
+    fit: "Tailored",
+    occasion: "Business Formal",
+    status: "active"
+  };
+  const [formData, setFormData] = useState(initialGarmentForm);
+  const [sizeStockMap, setSizeStockMap] = useState({ "38": 10, "40": 10, "42": 5, "44": 0, "46": 0, "Free": 0 });
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
 
@@ -544,6 +995,9 @@ const Admin = () => {
       case "deleteGarmentModal":
         setGarmentToDelete(null);
         break;
+      case "collectionToDeleteModal":
+        setCollectionToDelete(null);
+        break;
       default:
         break;
     }
@@ -684,27 +1138,37 @@ const Admin = () => {
     toast.success("Images optimized!");
   };
 
-  const handleUploadSubmit = async (e) => {
-    e.preventDefault();
+  const handleGarmentSubmit = async (e, forcedStatus = null) => {
+    if (e && e.preventDefault) e.preventDefault();
     setUploading(true);
 
     try {
+      const finalStatus = forcedStatus || formData.status || "active";
       const data = new FormData();
       data.append("name", formData.name);
       data.append("price", formData.price);
-      data.append("stock", formData.stock);
-      data.append("description", formData.description);
+      if (formData.discount_price) data.append("discount_price", formData.discount_price);
+      data.append("stock", formData.stock || "0");
+      data.append("description", formData.description || "");
       if (formData.category_id) data.append("category_id", formData.category_id);
       if (formData.sub_category) data.append("sub_category", formData.sub_category);
+      data.append("status", finalStatus);
+      data.append("color", formData.color || "");
+      data.append("secondary_color", formData.secondary_color || "");
+      data.append("fabric", formData.fabric || "");
+      data.append("pattern", formData.pattern || "Solid");
+      data.append("finish", formData.finish || "Matte");
+      data.append("silhouette", formData.silhouette || "");
+      data.append("fit", formData.fit || "Tailored");
+      data.append("occasion", formData.occasion || "Business Formal");
       data.append("size_stock", JSON.stringify(sizeStockMap));
 
+      // Handling images
       const primaryItem = galleryFiles.find(g => g.isPrimary) || galleryFiles[0];
       if (primaryItem && primaryItem.file) {
         data.append("image", primaryItem.file);
       } else if (image) {
         data.append("image", image);
-      } else {
-        throw new Error("Please select at least 1 image for the product");
       }
 
       galleryFiles.forEach(g => {
@@ -713,21 +1177,42 @@ const Admin = () => {
         }
       });
 
-      const res = await fetch(`${API_BASE_URL}/api/products/upload`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
-        body: data
-      });
+      if (editingGarmentId) {
+        // In edit mode
+        data.append("existing_images", JSON.stringify(existingImagesForEdit));
+        const res = await fetch(`${API_BASE_URL}/api/products/${editingGarmentId}`, {
+          method: "PUT",
+          headers: { "Authorization": `Bearer ${token}` },
+          body: data
+        });
 
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.message || result.error || "Failed to upload product");
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.message || result.error || "Failed to update garment");
 
-      toast.success("Product successfully created in catalog!");
-      setFormData({ name: "", price: "", stock: "", description: "", category_id: "", sub_category: "", sizes: "" });
-      setSizeStockMap({ "38": 10, "40": 10, "42": 5 });
-      setImage(null);
-      setGalleryFiles([]);
-      e.target.reset();
+        toast.success(`"${formData.name}" successfully updated in atelier catalog!`);
+        handleCancelEdit();
+      } else {
+        // In create mode
+        if (!primaryItem && !image) {
+          throw new Error("Please select at least 1 image for the garment");
+        }
+
+        const res = await fetch(`${API_BASE_URL}/api/products/upload`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${token}` },
+          body: data
+        });
+
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.message || result.error || "Failed to upload garment");
+
+        toast.success(finalStatus === "draft" 
+          ? "Garment saved to private atelier drafts!" 
+          : "Garment successfully published to showroom!"
+        );
+        handleCancelEdit();
+      }
+
       fetchDashboardData();
       refreshGlobalProducts();
     } catch (err) {
@@ -737,45 +1222,92 @@ const Admin = () => {
     }
   };
 
-  useEffect(() => {
-    localStorage.setItem("admin_calendar_notes", JSON.stringify(calendarNotes));
-  }, [calendarNotes]);
+  const handleUploadSubmit = (e) => handleGarmentSubmit(e);
 
-  useEffect(() => {
-    const el = addFormRef.current;
-    if (!el) return;
+  const handleStartEditGarment = (prod) => {
+    setEditingGarmentId(prod.id);
+    setFormData({
+      name: prod.name || "",
+      price: prod.price || "",
+      discount_price: prod.discount_price || "",
+      stock: prod.stock !== undefined ? String(prod.stock) : "25",
+      description: prod.description || "",
+      category_id: prod.category_id || prod.category?.id || prod.category || "",
+      sub_category: prod.sub_category || "",
+      color: prod.color || "",
+      secondary_color: prod.secondary_color || "",
+      fabric: prod.fabric || "",
+      pattern: prod.pattern || "Solid",
+      finish: prod.finish || "Matte",
+      silhouette: prod.silhouette || "",
+      fit: prod.fit || "Tailored",
+      occasion: prod.occasion || "Business Formal",
+      status: prod.status || "active"
+    });
 
-    const handleWheel = (e) => {
-      const { scrollTop, scrollHeight, clientHeight } = el;
-      const isScrollable = scrollHeight > clientHeight;
+    let sMap = { "38": 0, "40": 0, "42": 0, "44": 0, "46": 0, "Free": 0 };
+    if (prod.size_stock && typeof prod.size_stock === "object" && Object.keys(prod.size_stock).length > 0) {
+      sMap = { ...sMap, ...prod.size_stock };
+    } else if (Array.isArray(prod.sizes) && prod.sizes.length > 0) {
+      const perSize = Math.max(1, Math.floor((prod.stock || 10) / prod.sizes.length));
+      prod.sizes.forEach(sz => { sMap[sz] = perSize; });
+    } else {
+      sMap["38"] = prod.stock || 10;
+    }
+    setSizeStockMap(sMap);
 
-      if (isScrollable) {
-        el.scrollTop += e.deltaY;
-        e.preventDefault();
-      }
-    };
+    const existingImgs = Array.isArray(prod.images) && prod.images.length > 0
+      ? prod.images
+      : (prod.image_url ? [prod.image_url] : []);
+    setExistingImagesForEdit(existingImgs);
+    setGalleryFiles([]);
+    setImage(null);
 
-    el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => el.removeEventListener("wheel", handleWheel);
-  }, [activeTab]);
+    const formEl = document.getElementById("atelier-garment-form");
+    if (formEl) {
+      formEl.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
-  const handleCreateCategory = async (e) => {
-    if (e) e.preventDefault();
-    if (!newCategoryName.trim()) return toast.error("Category name is required");
+  const handleCancelEdit = () => {
+    setEditingGarmentId(null);
+    setFormData(initialGarmentForm);
+    setSizeStockMap({ "38": 10, "40": 10, "42": 5, "44": 0, "46": 0, "Free": 0 });
+    setExistingImagesForEdit([]);
+    setGalleryFiles([]);
+    setImage(null);
+  };
+
+  const requestDeleteCategory = (cat) => {
+    const linkedCount = products.filter(p => 
+      String(p.category_id) === String(cat.id) || 
+      String(p.category_id) === String(cat.slug) || 
+      String(p.category) === String(cat.slug) || 
+      String(p.category) === String(cat.id) ||
+      String(p.category?.id) === String(cat.id) ||
+      String(p.category?.slug) === String(cat.slug) ||
+      (p.categoryName && p.categoryName.toLowerCase() === cat.name?.toLowerCase()) ||
+      (typeof p.category === 'object' && p.category?.name?.toLowerCase() === cat.name?.toLowerCase())
+    ).length;
+
+    setCollectionToDelete({
+      id: cat.id,
+      name: cat.name,
+      count: linkedCount
+    });
+    pushModalState("collectionToDeleteModal");
+  };
+
+  const handleConfirmDeleteCollection = async () => {
+    if (!collectionToDelete) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/api/categories`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ name: newCategoryName.trim() })
+      const res = await fetch(`${API_BASE_URL}/api/categories/${collectionToDelete.id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create category");
-      toast.success(`Category "${data.name}" created!`);
-      setNewCategoryName("");
-      setShowAddCategoryInline(false);
+      if (!res.ok) throw new Error("Failed to delete category");
+      toast.success(`Collection "${collectionToDelete.name}" removed from taxonomy`);
+      closeModal("collectionToDeleteModal");
       fetchDashboardData();
     } catch (err) {
       toast.error(err.message);
@@ -783,18 +1315,8 @@ const Admin = () => {
   };
 
   const handleDeleteCategory = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this category?")) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/categories/${id}`, {
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error("Failed to delete category");
-      toast.success("Category deleted");
-      fetchDashboardData();
-    } catch (err) {
-      toast.error(err.message);
-    }
+    const cat = categories.find(c => c.id === id || c.slug === id) || { id, name: "Collection" };
+    requestDeleteCategory(cat);
   };
 
   const fetchDashboardData = async () => {
@@ -3025,15 +3547,15 @@ const Admin = () => {
               {/* CATEGORIES & NEW PRODUCT TAB (COLLECTION STRUCTURE) */}
               {activeTab === "categories" && (
                 <div className="grid lg:grid-cols-12 gap-8">
-                  {/* LEFT SIDE: COLLECTION STRUCTURE */}
-                  <div className="lg:col-span-5 space-y-5">
+                  {/* LEFT SIDE: COLLECTION STRUCTURE (COMPACT LUXURY CARDS) */}
+                  <div className="lg:col-span-5 space-y-4">
                     <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
                       <div>
                         <span className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block mb-0.5">
                           ATELIER TAXONOMY
                         </span>
                         <h2 className="text-xl font-serif font-medium text-[#111113] tracking-tight">
-                          Collection Structure ({categories.length})
+                          Collections ({categories.length})
                         </h2>
                       </div>
                       <button
@@ -3045,18 +3567,39 @@ const Admin = () => {
                       </button>
                     </div>
 
+                    {/* Search Collection Filter */}
+                    <div className="relative">
+                      <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#746F68]" />
+                      <input
+                        type="text"
+                        value={collectionSearch}
+                        onChange={(e) => setCollectionSearch(e.target.value)}
+                        placeholder="Search collections..."
+                        className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-9 pr-8 py-2 text-xs font-mono text-[#111113] outline-none focus:border-[#C2922E] transition-colors"
+                      />
+                      {collectionSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setCollectionSearch("")}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#746F68] hover:text-[#111113] text-sm font-mono cursor-pointer"
+                        >
+                          &times;
+                        </button>
+                      )}
+                    </div>
+
                     {/* Step-based / Compact Create Collection box */}
                     {showAddCategoryInline && (
-                      <div className="p-4 border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] space-y-3 shadow-xs">
+                      <div className="p-4 border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] space-y-3 shadow-xs animate-in fade-in duration-150">
                         <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block">
-                          Create Collection
+                          New Atelier Collection
                         </span>
                         <div className="flex flex-col gap-2">
                           <input
                             type="text"
                             value={newCategoryName}
                             onChange={(e) => setNewCategoryName(e.target.value)}
-                            placeholder="Collection Name (e.g. Power Suits & Tailored Sets)"
+                            placeholder="e.g. Executive Co-ords, Power Suits"
                             className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs font-mono text-[#111113] outline-none focus:border-[#C2922E]"
                           />
                           <div className="flex gap-2 pt-1">
@@ -3079,206 +3622,805 @@ const Admin = () => {
                       </div>
                     )}
 
-                    {/* Editorial Numbered Collection List */}
-                    <div className="border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] divide-y divide-[#E5DDD1]">
-                      {categories.map((cat, idx) => {
-                        const linkedCount = products.filter(p => 
-                          String(p.category_id) === String(cat.id) || 
-                          String(p.category_id) === String(cat.slug) || 
-                          String(p.category) === String(cat.slug) || 
-                          String(p.category) === String(cat.id) ||
-                          String(p.category?.id) === String(cat.id) ||
-                          String(p.category?.slug) === String(cat.slug) ||
-                          (p.categoryName && p.categoryName.toLowerCase() === cat.name?.toLowerCase()) ||
-                          (typeof p.category === 'object' && p.category?.name?.toLowerCase() === cat.name?.toLowerCase())
-                        ).length;
-                        return (
-                          <div key={cat.id} className="p-4 hover:bg-white/80 transition-colors flex items-center justify-between gap-3">
-                            <div className="flex items-start gap-3.5">
-                              <span className="text-xs font-mono font-medium text-[#C2922E] mt-0.5 shrink-0">
-                                {String(idx + 1).padStart(2, '0')}
-                              </span>
-                              <div>
-                                <h4 className="font-serif text-base text-[#111113] font-medium tracking-tight">
-                                  {cat.name}
-                                </h4>
-                                <p className="text-[10.5px] text-[#746F68] font-mono mt-0.5">
-                                  {linkedCount === 1 ? "01 Active Piece" : `${String(linkedCount).padStart(2, '0')} Active Pieces`} &middot; Silhouette Line
-                                </p>
+                    {/* Compact Luxury Cards Collection List */}
+                    <div className="space-y-3">
+                      {categories
+                        .filter(cat => cat.name?.toLowerCase().includes(collectionSearch.toLowerCase().trim()))
+                        .map((cat, idx) => {
+                          const linkedPieces = products.filter(p => 
+                            String(p.category_id) === String(cat.id) || 
+                            String(p.category_id) === String(cat.slug) || 
+                            String(p.category) === String(cat.slug) || 
+                            String(p.category) === String(cat.id) ||
+                            String(p.category?.id) === String(cat.id) ||
+                            String(p.category?.slug) === String(cat.slug) ||
+                            (p.categoryName && p.categoryName.toLowerCase() === cat.name?.toLowerCase()) ||
+                            (typeof p.category === 'object' && p.category?.name?.toLowerCase() === cat.name?.toLowerCase())
+                          );
+                          const linkedCount = linkedPieces.length;
+                          const isExpanded = expandedCollectionId === cat.id;
+
+                          return (
+                            <div 
+                              key={cat.id} 
+                              className={`border rounded-[2px] transition-all bg-white overflow-hidden ${
+                                isExpanded 
+                                  ? "border-[#C2922E] shadow-sm ring-1 ring-[#C2922E]/20" 
+                                  : "border-[#E5DDD1] hover:border-[#C2922E]/60 shadow-xs"
+                              }`}
+                            >
+                              <div className="p-4 bg-[#FAF8F5]/60 flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-3.5">
+                                  <span className="text-xs font-mono font-medium text-[#C2922E] mt-0.5 shrink-0">
+                                    {String(idx + 1).padStart(2, '0')}
+                                  </span>
+                                  <div>
+                                    <h4 className="font-serif text-base text-[#111113] font-medium tracking-tight">
+                                      {cat.name}
+                                    </h4>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-[2px] text-[10px] font-mono uppercase tracking-wider bg-white text-[#111113] border border-[#E5DDD1]">
+                                        {linkedCount === 1 ? "01 Piece" : `${String(linkedCount).padStart(2, '0')} Pieces`}
+                                      </span>
+                                      <span className="text-[10px] text-[#746F68] font-mono">
+                                        &middot; Silhouette Line
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedCollectionId(isExpanded ? null : cat.id)}
+                                    className={`text-[10px] uppercase font-mono tracking-wider px-2.5 py-1.5 border rounded-[2px] transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
+                                      isExpanded
+                                        ? "bg-[#111113] text-white border-[#111113]"
+                                        : "bg-white text-[#111113] border-[#E5DDD1] hover:border-[#111113] hover:text-[#C2922E]"
+                                    }`}
+                                  >
+                                    <span>{isExpanded ? "Hide Pieces" : "View Pieces"}</span>
+                                    <span>{isExpanded ? "↑" : "→"}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => requestDeleteCategory(cat)}
+                                    className="p-1.5 text-[#746F68] hover:text-rose-800 hover:bg-rose-50 border border-[#E5DDD1] rounded-[2px] transition-colors cursor-pointer"
+                                    title="Delete Collection"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
                               </div>
+
+                              {/* Expanded Pieces Sub-Drawer */}
+                              {isExpanded && (
+                                <div className="border-t border-[#E5DDD1] bg-[#FAF8F5] p-3.5 space-y-2">
+                                  <div className="flex items-center justify-between text-[10px] font-mono text-[#746F68] uppercase tracking-wider border-b border-[#E5DDD1] pb-1.5">
+                                    <span>Assigned Pieces ({linkedPieces.length})</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleCancelEdit();
+                                        setFormData(prev => ({ ...prev, category_id: cat.id }));
+                                        const formEl = document.getElementById("atelier-garment-form");
+                                        if (formEl) formEl.scrollIntoView({ behavior: "smooth" });
+                                      }}
+                                      className="text-[#C2922E] hover:underline cursor-pointer"
+                                    >
+                                      + Add Piece To This Line
+                                    </button>
+                                  </div>
+                                  {linkedPieces.length === 0 ? (
+                                    <div className="py-4 text-center text-xs font-mono text-[#746F68]">
+                                      No garments assigned to this collection yet.
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                                      {linkedPieces.map(piece => (
+                                        <div 
+                                          key={piece.id}
+                                          className={`flex items-center justify-between p-2 rounded-[2px] border transition-colors bg-white ${
+                                            editingGarmentId === piece.id 
+                                              ? "border-[#C2922E] ring-1 ring-[#C2922E]/30 bg-[#FFFDF9]" 
+                                              : "border-[#E5DDD1] hover:border-[#111113]"
+                                          }`}
+                                        >
+                                          <div className="flex items-center gap-2.5 min-w-0">
+                                            <img 
+                                              src={piece.images?.[0] || piece.image_url || "/placeholder.png"} 
+                                              alt={piece.name} 
+                                              className="w-9 h-9 object-cover rounded-[1px] border border-[#E5DDD1] shrink-0"
+                                            />
+                                            <div className="min-w-0">
+                                              <p className="text-xs font-serif font-medium text-[#111113] truncate">
+                                                {piece.name}
+                                              </p>
+                                              <p className="text-[10px] font-mono text-[#746F68]">
+                                                {formatINR(piece.price)} &middot; {piece.stock ?? 0} in stock &middot;{" "}
+                                                <span className={piece.status === "draft" ? "text-amber-700" : "text-emerald-700 font-medium"}>
+                                                  {piece.status || "active"}
+                                                </span>
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleStartEditGarment(piece)}
+                                            className={`text-[9.5px] uppercase font-mono px-2 py-1 rounded-[2px] border transition-colors shrink-0 ml-2 cursor-pointer ${
+                                              editingGarmentId === piece.id 
+                                                ? "bg-[#C2922E] text-white border-[#C2922E]" 
+                                                : "border-[#E5DDD1] hover:border-[#111113] text-[#111113] bg-white"
+                                            }`}
+                                          >
+                                            {editingGarmentId === piece.id ? "Editing" : "Edit Piece ✎"}
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedCategory(cat.id);
-                                  setActiveTab("products");
-                                }}
-                                className="text-[10px] uppercase font-mono tracking-wider text-[#111113] hover:text-[#C2922E] px-2.5 py-1 border border-[#E5DDD1] rounded-[2px] hover:border-[#111113] bg-white transition-colors cursor-pointer inline-flex items-center gap-1"
-                              >
-                                <span>Pieces</span>
-                                <span>&rarr;</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteCategory(cat.id)}
-                                className="p-1.5 text-[#746F68] hover:text-rose-800 hover:bg-rose-50 border border-[#E5DDD1] rounded-[2px] transition-colors cursor-pointer"
-                                title="Delete Collection"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {categories.length === 0 && (
-                        <div className="p-6 text-center text-[#746F68] font-mono text-xs">
-                          No silhouettes registered yet. Click &quot;+ Create Collection&quot; above.
+                          );
+                        })}
+
+                      {categories.filter(cat => cat.name?.toLowerCase().includes(collectionSearch.toLowerCase().trim())).length === 0 && (
+                        <div className="p-6 border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] text-center text-[#746F68] font-mono text-xs">
+                          {collectionSearch 
+                            ? `No collections matching "${collectionSearch}".` 
+                            : 'No silhouettes registered yet. Click "+ Create Collection" above.'}
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* RIGHT SIDE: ADD NEW GARMENT FORM */}
-                  <div className="lg:col-span-7">
-                    <div className="border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] shadow-xs p-6 sm:p-7 space-y-5">
+                  {/* RIGHT SIDE: ADD / EDIT GARMENT FORM (5 STRUCTURED SECTIONS) */}
+                  <div id="atelier-garment-form" className="lg:col-span-7">
+                    <div className="border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] shadow-xs p-6 sm:p-7 space-y-6">
+                      
+                      {/* Active Edit Banner */}
+                      {editingGarmentId && (
+                        <div className="bg-[#111113] text-white p-3.5 rounded-[2px] flex items-center justify-between shadow-xs">
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-2 h-2 rounded-full bg-[#C2922E] animate-pulse"></span>
+                            <div>
+                              <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block">
+                                ATELIER EDIT WORKFLOW
+                              </span>
+                              <span className="text-xs font-serif font-normal text-white">
+                                Editing: <strong className="text-[#C2922E] font-medium">{formData.name || "Garment Piece"}</strong>
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleCancelEdit}
+                            className="text-[10px] uppercase tracking-wider font-mono text-[#FAF8F5] hover:text-[#C2922E] border border-[#FAF8F5]/30 hover:border-[#C2922E] px-2.5 py-1 rounded-[2px] transition-colors cursor-pointer"
+                          >
+                            Cancel Edit &times;
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Header */}
                       <div className="border-b border-[#E5DDD1] pb-3">
                         <span className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block mb-0.5">
-                          ATELIER CATALOG ENTRY
+                          {editingGarmentId ? "ATELIER SPECIFICATION REVISION" : "ATELIER CATALOG ENTRY"}
                         </span>
                         <h2 className="text-2xl font-serif font-medium text-[#111113] tracking-tight">
-                          Add New Garment
+                          {editingGarmentId ? "Edit Garment" : "Add New Garment"}
                         </h2>
                         <p className="text-xs text-[#746F68] font-sans mt-0.5">
-                          Publish a bespoke silhouette piece to the SUKO showroom and inventory ledger.
+                          {editingGarmentId 
+                            ? "Update bespoke garment attributes, silhouette lines, lookbook imagery and stock allocation."
+                            : "Publish a bespoke silhouette piece to the SUKO showroom and inventory ledger."}
                         </p>
                       </div>
 
-                      <form onSubmit={handleUploadSubmit} className="space-y-4 font-body">
-                        <div>
-                          <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Garment Title *</label>
-                          <input
-                            type="text"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleInputChange}
-                            placeholder="e.g. Silk Blend Tailored Suit"
-                            required
-                            className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                          <div>
-                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Price (INR) *</label>
-                            <input
-                              type="number"
-                              name="price"
-                              value={formData.price}
-                              onChange={handleInputChange}
-                              placeholder="4990"
-                              required
-                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
-                            />
+                      <form onSubmit={(e) => handleGarmentSubmit(e)} className="space-y-6 font-body">
+                        
+                        {/* SECTION 1: GARMENT IDENTITY & SPECIFICATIONS */}
+                        <div className="space-y-4 pt-1">
+                          <div className="flex items-center gap-2 border-b border-[#E5DDD1] pb-1.5">
+                            <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
+                              01 &middot; Garment Identity &amp; Details
+                            </span>
                           </div>
-                          <div>
-                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Collection / Silhouette *</label>
-                            <select
-                              name="category_id"
-                              value={formData.category_id}
-                              onChange={handleInputChange}
-                              required
-                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer"
-                            >
-                              <option value="">Select Collection</option>
-                              {categories.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                           <div>
-                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Sub-Category Line Tag</label>
+                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                              Garment Title *
+                            </label>
                             <input
                               type="text"
-                              name="sub_category"
-                              value={formData.sub_category}
+                              name="name"
+                              value={formData.name}
                               onChange={handleInputChange}
-                              placeholder="e.g. Luxury Wool, Corporate Formal"
+                              placeholder="e.g. Silk Blend Tailored Suit"
+                              required
                               className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
                             />
                           </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            <div>
+                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                Collection / Silhouette Line *
+                              </label>
+                              <select
+                                name="category_id"
+                                value={formData.category_id}
+                                onChange={handleInputChange}
+                                required
+                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-sans"
+                              >
+                                <option value="">Select Collection</option>
+                                {categories.map(c => (
+                                  <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                Sub-Category Line Tag
+                              </label>
+                              <input
+                                type="text"
+                                name="sub_category"
+                                value={formData.sub_category}
+                                onChange={handleInputChange}
+                                placeholder="e.g. Executive Co-ord, Power Suit"
+                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Color Palette Suite */}
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 bg-[#FCFAF7] border border-[#E5DDD1] p-4 rounded-[2px]">
+                            {/* PRIMARY COLOR */}
+                            <div className="space-y-2.5">
+                              {/* Label Row */}
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono flex items-center gap-1.5 font-medium">
+                                  <span>Primary Color *</span>
+                                </label>
+                                
+                                {/* Custom Color Wheel Button */}
+                                <label 
+                                  className="group inline-flex items-center gap-1.5 px-2 py-0.5 bg-white hover:bg-[#FAF8F5] border border-[#C2922E]/50 hover:border-[#111113] rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider text-[#111113] cursor-pointer shadow-2xs transition-all"
+                                  title="Click to open custom color wheel spectrum"
+                                >
+                                  <span 
+                                    className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0" 
+                                    style={{ backgroundColor: getAtelierColorHex(formData.color) }}
+                                  />
+                                  <span>Color Wheel</span>
+                                  <input
+                                    type="color"
+                                    value={getHexForColorPicker(formData.color)}
+                                    onChange={(e) => {
+                                      const hex = e.target.value;
+                                      const nearest = findNearestColorName(hex);
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        color: nearest?.name ? `${nearest.name} (${hex})` : hex
+                                      }));
+                                    }}
+                                    className="opacity-0 absolute w-0 h-0 pointer-events-none"
+                                  />
+                                </label>
+                              </div>
+
+                              {/* Input + Large Swatch Preview */}
+                              <div className="flex items-center gap-2.5">
+                                {/* Visual Swatch Box */}
+                                <label 
+                                  className="relative w-11 h-10 rounded-[2px] border-2 border-white shadow-xs ring-1 ring-[#E5DDD1] shrink-0 cursor-pointer overflow-hidden flex items-center justify-center group"
+                                  style={{ backgroundColor: getAtelierColorHex(formData.color) }}
+                                  title="Click to choose custom shade from color spectrum"
+                                >
+                                  <input
+                                    type="color"
+                                    value={getHexForColorPicker(formData.color)}
+                                    onChange={(e) => {
+                                      const hex = e.target.value;
+                                      const nearest = findNearestColorName(hex);
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        color: nearest?.name ? `${nearest.name} (${hex})` : hex
+                                      }));
+                                    }}
+                                    className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                                  />
+                                  <span className="opacity-0 group-hover:opacity-100 text-[8px] font-mono text-white bg-black/70 px-1 py-0.5 rounded-[1px] transition-opacity uppercase tracking-tighter">
+                                    Pick
+                                  </span>
+                                </label>
+
+                                {/* Text input for typing color name or hex */}
+                                <div className="relative flex-1">
+                                  <input
+                                    type="text"
+                                    name="color"
+                                    value={formData.color}
+                                    onChange={handleInputChange}
+                                    placeholder="Type name (e.g. Navy, Bottle Green, Rani Pink, Sage, Red...) or Hex"
+                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-3 pr-20 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono placeholder:text-[#A8A29E]"
+                                  />
+                                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                    {formData.color && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, color: "" }))}
+                                        className="text-[10px] text-[#A8A29E] hover:text-[#111113] font-mono px-1 transition-colors cursor-pointer"
+                                        title="Clear color"
+                                      >
+                                        &times;
+                                      </button>
+                                    )}
+                                    <span 
+                                      className="text-[9px] font-mono font-medium text-[#C2922E] bg-[#FAF8F5] px-1.5 py-0.5 border border-[#E5DDD1] rounded-[1px]"
+                                      title="Active Hex Code"
+                                    >
+                                      {getHexForColorPicker(formData.color)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Recognition Status Bar */}
+                              {formData.color && (
+                                <div className="flex items-center justify-between text-[9.5px] font-mono text-[#746F68] bg-white border border-[#E5DDD1] px-2.5 py-1 rounded-[1px]">
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full border border-black/20" style={{ backgroundColor: getAtelierColorHex(formData.color) }}></span>
+                                    <span className="text-[#111113] font-medium">
+                                      Active: {findNearestColorName(getHexForColorPicker(formData.color))?.name || formData.color}
+                                    </span>
+                                  </span>
+                                  {findNearestColorName(getHexForColorPicker(formData.color))?.name && 
+                                   formData.color.toLowerCase() !== findNearestColorName(getHexForColorPicker(formData.color))?.name.toLowerCase() && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setFormData(prev => ({ ...prev, color: findNearestColorName(getHexForColorPicker(formData.color))?.name }))}
+                                      className="text-[#C2922E] hover:text-[#111113] underline font-medium cursor-pointer transition-colors"
+                                    >
+                                      Use &ldquo;{findNearestColorName(getHexForColorPicker(formData.color))?.name}&rdquo;
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Quick Palette Chips */}
+                              <div>
+                                <span className="text-[9px] uppercase tracking-[0.12em] text-[#746F68] font-mono block mb-1">
+                                  Atelier Palette Swatches:
+                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {ATELIER_PRIMARY_SWATCHES.map(({ name, hex }) => {
+                                    const isSelected = formData.color?.toLowerCase() === name.toLowerCase();
+                                    return (
+                                      <button
+                                        key={name}
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, color: name }))}
+                                        className={`inline-flex items-center gap-1 text-[9px] font-mono px-2 py-0.5 rounded-[1px] border transition-all cursor-pointer ${
+                                          isSelected
+                                            ? "bg-[#111113] text-white border-[#111113] shadow-2xs"
+                                            : "bg-white text-[#57534E] border-[#E5DDD1] hover:border-[#111113] hover:text-[#111113]"
+                                        }`}
+                                      >
+                                        <span
+                                          className="w-2 h-2 rounded-full border border-black/20 shrink-0"
+                                          style={{ backgroundColor: hex }}
+                                        />
+                                        <span>{name}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* SECONDARY / ACCENT COLOR */}
+                            <div className="space-y-2.5">
+                              {/* Label Row */}
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono flex items-center gap-1.5 font-medium">
+                                  <span>Secondary / Accent Color</span>
+                                </label>
+                                
+                                {/* Custom Color Wheel Button */}
+                                <label 
+                                  className="group inline-flex items-center gap-1.5 px-2 py-0.5 bg-white hover:bg-[#FAF8F5] border border-[#C2922E]/50 hover:border-[#111113] rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider text-[#111113] cursor-pointer shadow-2xs transition-all"
+                                  title="Click to open custom color wheel spectrum"
+                                >
+                                  <span 
+                                    className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0" 
+                                    style={{ backgroundColor: getAtelierColorHex(formData.secondary_color, "#FAF8F5") }}
+                                  />
+                                  <span>Color Wheel</span>
+                                  <input
+                                    type="color"
+                                    value={getHexForColorPicker(formData.secondary_color, "#FAF8F5")}
+                                    onChange={(e) => {
+                                      const hex = e.target.value;
+                                      const nearest = findNearestColorName(hex);
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        secondary_color: nearest?.name ? `${nearest.name} (${hex})` : hex
+                                      }));
+                                    }}
+                                    className="opacity-0 absolute w-0 h-0 pointer-events-none"
+                                  />
+                                </label>
+                              </div>
+
+                              {/* Input + Large Swatch Preview */}
+                              <div className="flex items-center gap-2.5">
+                                {/* Visual Swatch Box */}
+                                <label 
+                                  className="relative w-11 h-10 rounded-[2px] border-2 border-white shadow-xs ring-1 ring-[#E5DDD1] shrink-0 cursor-pointer overflow-hidden flex items-center justify-center group"
+                                  style={{ backgroundColor: getAtelierColorHex(formData.secondary_color, "#FAF8F5") }}
+                                  title="Click to choose custom accent shade from color spectrum"
+                                >
+                                  <input
+                                    type="color"
+                                    value={getHexForColorPicker(formData.secondary_color, "#FAF8F5")}
+                                    onChange={(e) => {
+                                      const hex = e.target.value;
+                                      const nearest = findNearestColorName(hex);
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        secondary_color: nearest?.name ? `${nearest.name} (${hex})` : hex
+                                      }));
+                                    }}
+                                    className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                                  />
+                                  <span className="opacity-0 group-hover:opacity-100 text-[8px] font-mono text-white bg-black/70 px-1 py-0.5 rounded-[1px] transition-opacity uppercase tracking-tighter">
+                                    Pick
+                                  </span>
+                                </label>
+
+                                {/* Text input for typing secondary color name or hex */}
+                                <div className="relative flex-1">
+                                  <input
+                                    type="text"
+                                    name="secondary_color"
+                                    value={formData.secondary_color}
+                                    onChange={handleInputChange}
+                                    placeholder="e.g. Ivory Detail, Gold Trim, Rose Gold, or Hex..."
+                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-3 pr-20 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono placeholder:text-[#A8A29E]"
+                                  />
+                                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                    {formData.secondary_color && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, secondary_color: "" }))}
+                                        className="text-[10px] text-[#A8A29E] hover:text-[#111113] font-mono px-1 transition-colors cursor-pointer"
+                                        title="Clear color"
+                                      >
+                                        &times;
+                                      </button>
+                                    )}
+                                    {formData.secondary_color && (
+                                      <span 
+                                        className="text-[9px] font-mono font-medium text-[#C2922E] bg-[#FAF8F5] px-1.5 py-0.5 border border-[#E5DDD1] rounded-[1px]"
+                                        title="Active Hex Code"
+                                      >
+                                        {getHexForColorPicker(formData.secondary_color, "#FAF8F5")}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Recognition Status Bar */}
+                              {formData.secondary_color && (
+                                <div className="flex items-center justify-between text-[9.5px] font-mono text-[#746F68] bg-white border border-[#E5DDD1] px-2.5 py-1 rounded-[1px]">
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full border border-black/20" style={{ backgroundColor: getAtelierColorHex(formData.secondary_color, "#FAF8F5") }}></span>
+                                    <span className="text-[#111113] font-medium">
+                                      Active: {findNearestColorName(getHexForColorPicker(formData.secondary_color, "#FAF8F5"))?.name || formData.secondary_color}
+                                    </span>
+                                  </span>
+                                  {findNearestColorName(getHexForColorPicker(formData.secondary_color, "#FAF8F5"))?.name && 
+                                   formData.secondary_color.toLowerCase() !== findNearestColorName(getHexForColorPicker(formData.secondary_color, "#FAF8F5"))?.name.toLowerCase() && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setFormData(prev => ({ ...prev, secondary_color: findNearestColorName(getHexForColorPicker(formData.secondary_color, "#FAF8F5"))?.name }))}
+                                      className="text-[#C2922E] hover:text-[#111113] underline font-medium cursor-pointer transition-colors"
+                                    >
+                                      Use &ldquo;{findNearestColorName(getHexForColorPicker(formData.secondary_color, "#FAF8F5"))?.name}&rdquo;
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Quick Accent Chips */}
+                              <div>
+                                <span className="text-[9px] uppercase tracking-[0.12em] text-[#746F68] font-mono block mb-1">
+                                  Atelier Accent Swatches:
+                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {ATELIER_ACCENT_SWATCHES.map(({ name, hex }) => {
+                                    const isSelected = formData.secondary_color?.toLowerCase() === name.toLowerCase();
+                                    return (
+                                      <button
+                                        key={name}
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, secondary_color: name }))}
+                                        className={`inline-flex items-center gap-1 text-[9px] font-mono px-2 py-0.5 rounded-[1px] border transition-all cursor-pointer ${
+                                          isSelected
+                                            ? "bg-[#111113] text-white border-[#111113] shadow-2xs"
+                                            : "bg-white text-[#57534E] border-[#E5DDD1] hover:border-[#111113] hover:text-[#111113]"
+                                        }`}
+                                      >
+                                        <span
+                                          className="w-2 h-2 rounded-full border border-black/20 shrink-0"
+                                          style={{ backgroundColor: hex }}
+                                        />
+                                        <span>{name}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Fabric Specification */}
                           <div>
-                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Fallback Total Stock</label>
+                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                              Fabric &amp; Composition *
+                            </label>
                             <input
-                              type="number"
-                              name="stock"
-                              value={formData.stock}
+                              type="text"
+                              name="fabric"
+                              value={formData.fabric}
                               onChange={handleInputChange}
-                              placeholder="25"
+                              placeholder="e.g. Italian Wool Blend (60% Wool, 38% Poly, 2% Elastane)"
                               className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
                             />
+                            <div className="flex flex-wrap gap-1.5 mt-1.5">
+                              {["Italian Wool Blend", "Super 120s Worsted Wool", "Mulberry Silk Blend", "Linen Cotton Weave", "Cashmere Blend"].map(fab => (
+                                <button
+                                  key={fab}
+                                  type="button"
+                                  onClick={() => setFormData(prev => ({ ...prev, fabric: fab }))}
+                                  className="text-[9px] font-mono px-2 py-0.5 bg-white border border-[#E5DDD1] hover:border-[#C2922E] text-[#746F68] hover:text-[#111113] rounded-[1px] transition-colors cursor-pointer"
+                                >
+                                  + {fab}
+                                </button>
+                              ))}
+                            </div>
                           </div>
+
+                          {/* Silhouette & Fit */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            <div>
+                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                Silhouette Cut
+                              </label>
+                              <input
+                                type="text"
+                                name="silhouette"
+                                value={formData.silhouette}
+                                onChange={handleInputChange}
+                                placeholder="e.g. Structured Double-Breasted Blazer"
+                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                Garment Fit
+                              </label>
+                              <select
+                                name="fit"
+                                value={formData.fit || "Tailored"}
+                                onChange={handleInputChange}
+                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
+                              >
+                                <option value="Tailored">Tailored (Classic Bespoke)</option>
+                                <option value="Structured">Structured (Firm Architectural)</option>
+                                <option value="Relaxed">Relaxed (Fluid Luxury)</option>
+                                <option value="Oversized">Oversized (Contemporary Chic)</option>
+                                <option value="Slim Fit">Slim Fit (Clean Contour)</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Pattern & Finish */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            <div>
+                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                Pattern / Texture
+                              </label>
+                              <select
+                                name="pattern"
+                                value={formData.pattern || "Solid"}
+                                onChange={handleInputChange}
+                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
+                              >
+                                <option value="Solid">Solid Weave</option>
+                                <option value="Textured">Textured Jacquard</option>
+                                <option value="Pinstripe">Pinstripe Fine</option>
+                                <option value="Checked">Windowpane / Glen Check</option>
+                                <option value="Houndstooth">Houndstooth</option>
+                                <option value="Herringbone">Herringbone</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                Fabric Finish
+                              </label>
+                              <select
+                                name="finish"
+                                value={formData.finish || "Matte"}
+                                onChange={handleInputChange}
+                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
+                              >
+                                <option value="Matte">Matte Fine Tailoring</option>
+                                <option value="Satin Luster">Subtle Satin Luster</option>
+                                <option value="Handcrafted">Handcrafted Sartorial</option>
+                                <option value="Raw Silk">Raw Natural Slub</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Occasion */}
                           <div>
-                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Lifecycle Status</label>
+                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                              Occasion Styling
+                            </label>
                             <select
-                              name="status"
-                              value={formData.status || "active"}
+                              name="occasion"
+                              value={formData.occasion || "Business Formal"}
                               onChange={handleInputChange}
                               className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
                             >
-                              <option value="active">Active (Showroom)</option>
-                              <option value="draft">Draft (Private)</option>
-                              <option value="archived">Archived</option>
+                              <option value="Business Formal">Business Formal &amp; Boardroom</option>
+                              <option value="Office">Daily Executive &amp; Office</option>
+                              <option value="Evening">Evening Soiree &amp; Gala</option>
+                              <option value="Wedding">Ceremony &amp; Luxury Celebrations</option>
+                              <option value="Smart Casual">Elevated Smart Casual</option>
                             </select>
                           </div>
+
+                          {/* Narrative & Weave details */}
+                          <div>
+                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                              Garment Narrative &amp; Weave Details
+                            </label>
+                            <textarea
+                              name="description"
+                              rows={3}
+                              value={formData.description}
+                              onChange={handleInputChange}
+                              placeholder="Provide garment specifications, fabric blend weave, silhouette cuts, styling notes..."
+                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
+                            />
+                          </div>
                         </div>
 
-                        {/* Size Stock Distribution Map */}
-                        <div className="space-y-2 border border-[#E5DDD1] p-3.5 rounded-[2px] bg-[#FAF8F5]">
-                          <div className="flex items-center justify-between">
-                            <label className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono font-medium">Exact Size Allocation Map</label>
-                            <span className="text-[10px] font-mono text-[#C2922E] font-medium">
-                              Total: {Object.values(sizeStockMap).reduce((a, b) => a + (Number(b) || 0), 0)} units
+                        {/* SECTION 2: PRICING & INVENTORY */}
+                        <div className="space-y-4 pt-3 border-t border-[#E5DDD1]">
+                          <div className="flex items-center gap-2 border-b border-[#E5DDD1] pb-1.5">
+                            <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
+                              02 &middot; Pricing &amp; Inventory Ledger
                             </span>
                           </div>
-                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                            {["38", "40", "42", "44", "46", "Free"].map(sz => (
-                              <div key={sz} className="text-center">
-                                <span className="text-[9.5px] font-mono block text-[#746F68] mb-0.5">{sz}</span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={sizeStockMap[sz] ?? 0}
-                                  onChange={(e) => setSizeStockMap({ ...sizeStockMap, [sz]: parseInt(e.target.value, 10) || 0 })}
-                                  className="w-full bg-white border border-[#E5DDD1] rounded-[2px] p-1.5 text-center text-xs font-mono text-[#111113] focus:border-[#C2922E] outline-none"
-                                />
-                              </div>
-                            ))}
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            <div>
+                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                Atelier Retail Price (INR) *
+                              </label>
+                              <input
+                                type="number"
+                                name="price"
+                                value={formData.price}
+                                onChange={handleInputChange}
+                                placeholder="4990"
+                                required
+                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                Fallback Total Stock
+                              </label>
+                              <input
+                                type="number"
+                                name="stock"
+                                value={formData.stock}
+                                onChange={handleInputChange}
+                                placeholder="25"
+                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
+                              />
+                            </div>
                           </div>
                         </div>
 
-                        <div>
-                          <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Garment Narrative &amp; Weave</label>
-                          <textarea
-                            name="description"
-                            rows={3}
-                            value={formData.description}
-                            onChange={handleInputChange}
-                            placeholder="Provide garment specifications, fabric blend weave, silhouette cuts..."
-                            className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
-                          />
+                        {/* SECTION 3: SIZE INVENTORY ALLOCATION */}
+                        <div className="space-y-3 pt-3 border-t border-[#E5DDD1]">
+                          <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-1.5">
+                            <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
+                              03 &middot; Size Inventory Allocation
+                            </span>
+                            <span className="text-[10.5px] font-mono text-[#C2922E] font-medium">
+                              Total Allocated: {Object.values(sizeStockMap).reduce((a, b) => a + (Number(b) || 0), 0)} units
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+                            {["38", "40", "42", "44", "46", "Free"].map(sz => {
+                              const qty = sizeStockMap[sz] ?? 0;
+                              const isZero = qty === 0;
+                              return (
+                                <div 
+                                  key={sz} 
+                                  className={`p-3 border rounded-[2px] text-center transition-all bg-white ${
+                                    isZero ? "border-[#E5DDD1] opacity-75" : "border-[#C2922E]/50 shadow-xs ring-1 ring-[#C2922E]/10"
+                                  }`}
+                                >
+                                  <span className="text-xs font-mono font-bold tracking-wider text-[#111113] block mb-1">
+                                    {sz}
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={qty}
+                                    onChange={(e) => setSizeStockMap({ ...sizeStockMap, [sz]: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                                    className="w-full bg-[#FAF8F5] border border-[#E5DDD1] focus:border-[#C2922E] text-center text-sm font-mono font-medium text-[#111113] py-1 px-1 rounded-[2px] outline-none"
+                                  />
+                                  <span className={`text-[9px] font-mono tracking-tight block mt-1.5 ${isZero ? "text-rose-600" : "text-[#746F68]"}`}>
+                                    {isZero ? "Out of Stock" : `${qty} available`}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
 
-                        {/* Image Upload Zone */}
-                        <div className="space-y-2.5">
-                          <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block">Garment Imagery</label>
+                        {/* SECTION 4: VISUAL ASSETS & LOOKBOOK */}
+                        <div className="space-y-3 pt-3 border-t border-[#E5DDD1]">
+                          <div className="flex items-center gap-2 border-b border-[#E5DDD1] pb-1.5">
+                            <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
+                              04 &middot; Visual Assets &amp; Lookbook
+                            </span>
+                          </div>
+
+                          {/* Existing Images preview in Edit Mode */}
+                          {existingImagesForEdit.length > 0 && (
+                            <div className="space-y-1.5">
+                              <span className="text-[9.5px] uppercase tracking-wider text-[#746F68] font-mono block">
+                                Current Showroom Imagery ({existingImagesForEdit.length})
+                              </span>
+                              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
+                                {existingImagesForEdit.map((url, idx) => (
+                                  <div key={idx} className="relative group border border-[#E5DDD1] rounded-[2px] overflow-hidden bg-white shadow-xs">
+                                    <img src={url} alt={`Existing ${idx}`} className="w-full h-20 object-cover" />
+                                    <span className="absolute top-1 left-1 bg-[#111113]/80 text-white text-[8px] font-mono uppercase px-1 py-0.5 rounded-[1px]">
+                                      {idx === 0 ? "Cover" : "Gallery"}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setExistingImagesForEdit(prev => prev.filter((_, i) => i !== idx))}
+                                      className="absolute top-1 right-1 p-1 bg-rose-600 rounded-[2px] text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                      title="Remove image from piece"
+                                    >
+                                      <X size={10} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           <div className="border border-dashed border-[#E5DDD1] hover:border-[#C2922E] bg-white rounded-[2px] p-5 text-center transition-colors">
                             <ImageIcon size={24} className="mx-auto text-[#C2922E] mb-1.5" />
                             <p className="text-xs text-[#111113] font-medium">Click or drag portrait lookbook imagery</p>
-                            <p className="text-[10px] text-[#746F68] mt-0.5 font-mono">JPEG, PNG, WebP up to 10MB (Auto-optimized)</p>
+                            <p className="text-[10px] text-[#746F68] mt-0.5 font-mono">JPEG, PNG, WebP up to 10MB (Auto-optimized for showroom)</p>
                             <input
                               type="file"
                               multiple
@@ -3330,23 +4472,92 @@ const Admin = () => {
                           )}
                         </div>
 
-                        <button
-                          type="submit"
-                          disabled={uploading}
-                          className="group w-full bg-[#111113] hover:bg-[#C2922E] text-white py-3 px-6 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium shadow-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                          {uploading ? (
-                            <>
-                              <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                              <span>Registering Garment...</span>
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle size={14} className="text-[#C2922E] group-hover:text-white transition-colors" />
-                              <span>Publish to Atelier Showroom</span>
-                            </>
-                          )}
-                        </button>
+                        {/* SECTION 5: PUBLISH CONTROLS & LIFECYCLE */}
+                        <div className="space-y-4 pt-3 border-t border-[#E5DDD1]">
+                          <div className="flex items-center gap-2 border-b border-[#E5DDD1] pb-1.5">
+                            <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
+                              05 &middot; Publish Controls &amp; Lifecycle Status
+                            </span>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                              Current Lifecycle Status
+                            </label>
+                            <select
+                              name="status"
+                              value={formData.status || "active"}
+                              onChange={handleInputChange}
+                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
+                            >
+                              <option value="active">Active (Live in Atelier Showroom)</option>
+                              <option value="draft">Draft (Private Internal Catalog)</option>
+                              <option value="archived">Archived (Decommissioned)</option>
+                            </select>
+                          </div>
+
+                          {/* Dual Actions: Draft vs Publish OR Save Changes */}
+                          <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                            {editingGarmentId ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={handleCancelEdit}
+                                  className="w-full sm:w-1/3 border border-[#E5DDD1] hover:bg-[#EFE9DF] text-[#746F68] py-3 px-4 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors cursor-pointer text-center"
+                                >
+                                  Cancel Edit
+                                </button>
+                                <button
+                                  type="submit"
+                                  disabled={uploading}
+                                  className="group w-full sm:w-2/3 bg-[#111113] hover:bg-[#C2922E] text-white py-3 px-6 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium shadow-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                                >
+                                  {uploading ? (
+                                    <>
+                                      <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                                      <span>Saving Changes...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle size={14} className="text-[#C2922E] group-hover:text-white transition-colors" />
+                                      <span>Save Changes to Garment</span>
+                                    </>
+                                  )}
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={uploading}
+                                  onClick={(e) => handleGarmentSubmit(e, "draft")}
+                                  className="w-full sm:w-1/2 border border-[#C2922E]/60 hover:bg-[#FAF8F5] hover:border-[#111113] text-[#111113] py-3 px-5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer bg-white"
+                                >
+                                  <Clock size={13} className="text-[#C2922E]" />
+                                  <span>Save Draft (Private)</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={uploading}
+                                  onClick={(e) => handleGarmentSubmit(e, "active")}
+                                  className="group w-full sm:w-1/2 bg-[#111113] hover:bg-[#C2922E] text-white py-3 px-5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium shadow-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                                >
+                                  {uploading ? (
+                                    <>
+                                      <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                                      <span>Publishing...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle size={14} className="text-[#C2922E] group-hover:text-white transition-colors" />
+                                      <span>Publish to Showroom</span>
+                                    </>
+                                  )}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </form>
                     </div>
                   </div>
@@ -5701,6 +6912,61 @@ const Admin = () => {
                   className="px-4 py-2 border border-[#E5DDD1] hover:bg-[#EFE9DF] text-[#746F68] hover:text-[#171717] text-[10.5px] uppercase tracking-[0.14em] font-mono transition-colors cursor-pointer rounded-[2px]"
                 >
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* COLLECTION DELETION SAFEGUARD CONFIRMATION MODAL */}
+        {collectionToDelete && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] p-6 max-w-md w-full shadow-2xl space-y-4 font-body animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-amber-100 text-amber-800 rounded-[2px] shrink-0 mt-0.5">
+                  <AlertTriangle size={18} />
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block">
+                    ATELIER TAXONOMY SAFEGUARD
+                  </span>
+                  <h3 className="font-serif text-lg font-medium text-[#111113]">
+                    {collectionToDelete.count > 0 ? "Collection Contains Active Garments" : "Delete Collection"}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="text-xs text-[#746F68] font-sans leading-relaxed space-y-2 border-y border-[#E5DDD1] py-3">
+                {collectionToDelete.count > 0 ? (
+                  <>
+                    <p>
+                      This collection currently contains <strong className="text-[#111113] font-mono font-semibold">{collectionToDelete.count} active garment(s)</strong> in the atelier catalog.
+                    </p>
+                    <p className="bg-white border border-[#E5DDD1] p-2.5 rounded-[2px] text-[11px] text-[#111113]">
+                      Deleting <strong>&quot;{collectionToDelete.name}&quot;</strong> will detach these garments from this silhouette line. Are you sure you want to proceed or would you prefer to move pieces first?
+                    </p>
+                  </>
+                ) : (
+                  <p>
+                    Are you sure you want to permanently remove the empty collection <strong>&quot;{collectionToDelete.name}&quot;</strong> from the atelier taxonomy?
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => closeModal("collectionToDeleteModal")}
+                  className="border border-[#E5DDD1] hover:bg-[#EFE9DF] text-[#746F68] px-4 py-2 rounded-[2px] text-[10.5px] uppercase tracking-wider font-mono transition-colors cursor-pointer"
+                >
+                  Keep Collection
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteCollection}
+                  className="bg-rose-700 hover:bg-rose-800 text-white px-4 py-2 rounded-[2px] text-[10.5px] uppercase tracking-wider font-mono font-medium transition-colors cursor-pointer"
+                >
+                  {collectionToDelete.count > 0 ? "Confirm Detach & Delete" : "Delete Collection"}
                 </button>
               </div>
             </div>

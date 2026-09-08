@@ -23,6 +23,13 @@ CREATE TABLE IF NOT EXISTS products (
   sku VARCHAR(100),
   gender VARCHAR(20) DEFAULT 'female',
   fabric VARCHAR(255),
+  color VARCHAR(100),
+  secondary_color VARCHAR(100),
+  pattern VARCHAR(100),
+  finish VARCHAR(100),
+  silhouette VARCHAR(100),
+  fit VARCHAR(100),
+  occasion VARCHAR(100),
   image_url TEXT,
   images JSONB DEFAULT '[]'::jsonb,
   sizes JSONB DEFAULT '[]'::jsonb,
@@ -31,9 +38,20 @@ CREATE TABLE IF NOT EXISTS products (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Idempotent column additions for products
+ALTER TABLE products ADD COLUMN IF NOT EXISTS fabric VARCHAR(255);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS color VARCHAR(100);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS secondary_color VARCHAR(100);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS pattern VARCHAR(100);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS finish VARCHAR(100);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS silhouette VARCHAR(100);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS fit VARCHAR(100);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS occasion VARCHAR(100);
+
 CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
 CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_products_status ON products(status);
+CREATE INDEX IF NOT EXISTS idx_products_color ON products(color);
 
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
