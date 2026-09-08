@@ -85,11 +85,75 @@ function ensureDevStoreProducts() {
           images: p.images || (p.image_url ? [p.image_url] : []),
           sizes: defaultSizes,
           size_stock: initialSizeStock,
+          moment: p.moment || "boardroom",
+          moments: Array.isArray(p.moments) ? p.moments : [p.moment || "boardroom"],
+          moment_name: p.momentName || p.moment_name || "The Boardroom Edit",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
       });
       modified = true;
+    }
+
+    // Ensure all seed products exist in dev-store
+    const existingIds = new Set(store.products.map(p => String(p.id)));
+    const existingSlugs = new Set(store.products.map(p => p.slug));
+    seed.products.forEach(sp => {
+      if (!existingIds.has(String(sp.id)) && !existingSlugs.has(sp.slug)) {
+        const catId = sp.category || sp.category_id || (sp.categoryName ? sp.categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-') : "suits");
+        const catObj = {
+          id: catId,
+          name: sp.categoryName || (sp.category ? sp.category.charAt(0).toUpperCase() + sp.category.slice(1) : "Collection"),
+          slug: catId
+        };
+        const defaultSizes = sp.sizes || ["38", "40", "42", "44", "46"];
+        const initialSizeStock = sp.size_stock || {};
+        if (Object.keys(initialSizeStock).length === 0) {
+          defaultSizes.forEach(sz => {
+            initialSizeStock[sz] = Math.max(2, Math.floor((sp.stock || 15) / defaultSizes.length));
+          });
+        }
+        store.products.push({
+          id: String(sp.id),
+          name: sp.name,
+          slug: sp.slug || sp.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          price: Number(sp.price) || 0,
+          stock: sp.stock || 15,
+          category_id: catId,
+          category: catObj,
+          sub_category: sp.sub_category || sp.shortType || sp.setType || sp.subCategory || "Atelier Silhouette",
+          description: sp.description || "",
+          image_url: sp.images?.[0] || sp.image || sp.image_url || "/placeholder.png",
+          images: sp.images || (sp.image_url ? [sp.image_url] : []),
+          sizes: defaultSizes,
+          size_stock: initialSizeStock,
+          moment: sp.moment || "boardroom",
+          moments: Array.isArray(sp.moments) ? sp.moments : [sp.moment || "boardroom"],
+          moment_name: sp.momentName || sp.moment_name || "The Boardroom Edit",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+        modified = true;
+      }
+    });
+
+    // Ensure all existing store products have moments mapped from seed or default
+    if (Array.isArray(store.products)) {
+      store.products.forEach(p => {
+        if (!p.moment || !p.moments || p.moments.length === 0) {
+          const matched = seed.products.find(sp => sp.slug === p.slug || String(sp.id) === String(p.id));
+          if (matched) {
+            p.moment = matched.moment || "boardroom";
+            p.moments = Array.isArray(matched.moments) ? matched.moments : [p.moment];
+            p.moment_name = matched.momentName || matched.moment_name || "The Boardroom Edit";
+          } else {
+            p.moment = "boardroom";
+            p.moments = ["boardroom"];
+            p.moment_name = "The Boardroom Edit";
+          }
+          modified = true;
+        }
+      });
     }
 
     if (modified) {
@@ -142,8 +206,27 @@ function ensureProductSizeStock(p) {
     }
   }
 
+  // Parse and ensure moments structure
+  let moments = p.moments;
+  if (typeof moments === "string") {
+    try {
+      moments = JSON.parse(moments);
+    } catch (e) {
+      moments = null;
+    }
+  }
+  if (!Array.isArray(moments) || moments.length === 0) {
+    moments = p.moment ? [p.moment] : ["boardroom"];
+  }
+
+  const moment = p.moment || moments[0] || "boardroom";
+  const momentName = p.moment_name || p.momentName || "The Boardroom Edit";
+
   return {
     ...p,
+    moment,
+    moments,
+    moment_name: momentName,
     size_stock: sizeStock
   };
 }
@@ -285,6 +368,9 @@ async function createProduct(productData) {
       silhouette: productData.silhouette || "",
       fit: productData.fit || "",
       occasion: productData.occasion || "",
+      moment: productData.moment || "boardroom",
+      moments: Array.isArray(productData.moments) ? productData.moments : [productData.moment || "boardroom"],
+      moment_name: productData.momentName || productData.moment_name || "The Boardroom Edit",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -296,8 +382,8 @@ async function createProduct(productData) {
 
   // Real Postgres mode
   const res = await pool.query(
-    `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric, color, secondary_color, pattern, finish, silhouette, fit, occasion)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+    `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric, color, secondary_color, pattern, finish, silhouette, fit, occasion, moment, moments, moment_name)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
      RETURNING *`,
     [
       newId,
@@ -323,7 +409,10 @@ async function createProduct(productData) {
       productData.finish || "",
       productData.silhouette || "",
       productData.fit || "",
-      productData.occasion || ""
+      productData.occasion || "",
+      productData.moment || "boardroom",
+      JSON.stringify(Array.isArray(productData.moments) ? productData.moments : [productData.moment || "boardroom"]),
+      productData.momentName || productData.moment_name || "The Boardroom Edit"
     ]
   );
   return res.rows[0];
@@ -357,6 +446,9 @@ async function updateProduct(id, updateData) {
       silhouette: updateData.silhouette !== undefined ? updateData.silhouette : current.silhouette,
       fit: updateData.fit !== undefined ? updateData.fit : current.fit,
       occasion: updateData.occasion !== undefined ? updateData.occasion : current.occasion,
+      moment: updateData.moment !== undefined ? updateData.moment : current.moment,
+      moments: updateData.moments !== undefined ? updateData.moments : current.moments,
+      moment_name: updateData.moment_name !== undefined ? updateData.moment_name : (updateData.momentName !== undefined ? updateData.momentName : current.moment_name),
       updated_at: new Date().toISOString()
     };
 
@@ -388,8 +480,11 @@ async function updateProduct(id, updateData) {
          image_url = COALESCE($18, image_url),
          images = COALESCE($19, images),
          sizes = COALESCE($20, sizes),
+         moment = COALESCE($21, moment),
+         moments = COALESCE($22, moments),
+         moment_name = COALESCE($23, moment_name),
          updated_at = now()
-     WHERE id = $21 OR slug = $21
+     WHERE id = $24 OR slug = $24
      RETURNING *`,
     [
       updateData.name !== undefined ? updateData.name : null,
@@ -412,6 +507,9 @@ async function updateProduct(id, updateData) {
       updateData.image_url !== undefined ? updateData.image_url : null,
       updateData.images ? JSON.stringify(updateData.images) : null,
       updateData.sizes ? JSON.stringify(updateData.sizes) : null,
+      updateData.moment !== undefined ? updateData.moment : null,
+      updateData.moments ? JSON.stringify(updateData.moments) : null,
+      updateData.moment_name !== undefined ? updateData.moment_name : (updateData.momentName !== undefined ? updateData.momentName : null),
       String(id)
     ]
   );
@@ -715,12 +813,6 @@ async function seedCatalog(force = false) {
     return ensureDevStoreProducts();
   }
 
-  const { rows } = await pool.query("SELECT COUNT(*) FROM products");
-  const count = parseInt(rows[0]?.count, 10) || 0;
-  if (count > 0 && !force) {
-    return { count, message: "Catalog already contains products" };
-  }
-
   const seed = getSeedData();
   if (!seed.products || seed.products.length === 0) {
     console.warn("[ProductService] Seed catalog called but seed data contains 0 products!");
@@ -739,15 +831,35 @@ async function seedCatalog(force = false) {
     }
   }
 
-  // 2. Seed products with all 17 column parameters
+  // 2. Seed / Upsert products with moment and all atelier attributes
   let inserted = 0;
   for (const p of seed.products) {
     const catId = p.category || p.category_id || "suits";
+    const moment = p.moment || "boardroom";
+    const moments = Array.isArray(p.moments) ? p.moments : [moment];
+    const momentName = p.momentName || p.moment_name || "The Boardroom Edit";
+
     const res = await pool.query(
-      `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-       ON CONFLICT (id) DO NOTHING
-       RETURNING id`,
+      `INSERT INTO products (
+        id, name, slug, price, discount_price, stock, category_id, sub_category,
+        description, image_url, images, sizes, size_stock, status, sku, gender,
+        fabric, color, secondary_color, pattern, finish, silhouette, fit, occasion,
+        moment, moments, moment_name
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+      ON CONFLICT (id) DO UPDATE SET
+        moment = COALESCE(products.moment, EXCLUDED.moment),
+        moments = CASE 
+          WHEN products.moments IS NULL OR products.moments = '[]'::jsonb 
+          THEN EXCLUDED.moments 
+          ELSE products.moments 
+        END,
+        moment_name = COALESCE(products.moment_name, EXCLUDED.moment_name),
+        color = COALESCE(products.color, EXCLUDED.color),
+        fit = COALESCE(products.fit, EXCLUDED.fit),
+        fabric = COALESCE(products.fabric, EXCLUDED.fabric),
+        silhouette = COALESCE(products.silhouette, EXCLUDED.silhouette)
+      RETURNING id`,
       [
         String(p.id),
         p.name,
@@ -765,13 +877,47 @@ async function seedCatalog(force = false) {
         p.status || "active",
         p.sku || `SKU-${p.id}`,
         p.gender || "female",
-        p.fabric || ""
+        p.fabric || "",
+        p.color || "",
+        p.secondary_color || "",
+        p.pattern || "",
+        p.finish || "",
+        p.silhouette || "",
+        p.fit || "",
+        p.occasion || "",
+        moment,
+        JSON.stringify(moments),
+        momentName
       ]
     );
     if (res.rowCount > 0) inserted++;
   }
 
-  console.log(`[ProductService] Seeded ${inserted} garments and ${seed.categories?.length || 0} categories.`);
+  // 3. Explicitly backfill moments for any existing products in Postgres where moment is NULL or empty
+  for (const p of seed.products) {
+    const moment = p.moment || "boardroom";
+    const moments = Array.isArray(p.moments) ? p.moments : [moment];
+    const momentName = p.momentName || p.moment_name || "The Boardroom Edit";
+    await pool.query(
+      `UPDATE products
+       SET moment = $1,
+           moments = $2::jsonb,
+           moment_name = $3
+       WHERE (id = $4 OR slug = $5) AND (moment IS NULL OR moment = '' OR moments IS NULL OR moments = '[]'::jsonb)`,
+      [moment, JSON.stringify(moments), momentName, String(p.id), p.slug || '']
+    ).catch(() => {});
+  }
+
+  // Fallback for any unmapped custom products to ensure no product has null moment
+  await pool.query(
+    `UPDATE products
+     SET moment = 'boardroom',
+         moments = '["boardroom"]'::jsonb,
+         moment_name = 'The Boardroom Edit'
+     WHERE moment IS NULL OR moment = '' OR moments IS NULL OR moments = '[]'::jsonb`
+  ).catch(() => {});
+
+  console.log(`[ProductService] Seeded/Upserted ${inserted} garments and synchronized moment metadata.`);
   return { count: inserted, total: seed.products.length };
 }
 

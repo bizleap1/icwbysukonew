@@ -47,11 +47,15 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS finish VARCHAR(100);
 ALTER TABLE products ADD COLUMN IF NOT EXISTS silhouette VARCHAR(100);
 ALTER TABLE products ADD COLUMN IF NOT EXISTS fit VARCHAR(100);
 ALTER TABLE products ADD COLUMN IF NOT EXISTS occasion VARCHAR(100);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS moment VARCHAR(100);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS moments JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS moment_name VARCHAR(255);
 
 CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
 CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_products_status ON products(status);
 CREATE INDEX IF NOT EXISTS idx_products_color ON products(color);
+CREATE INDEX IF NOT EXISTS idx_products_moment ON products(moment);
 
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,

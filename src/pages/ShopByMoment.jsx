@@ -38,9 +38,28 @@ export const ShopByMoment = () => {
   const activeMoment = MOMENTS.find((m) => m.id === activeMomentId) || MOMENTS[0];
 
   // Filter products for active moment
-  const momentProducts = (products || []).filter(
-    (p) => p.moment === activeMoment.id || (p.moments && p.moments.includes(activeMoment.id))
-  );
+  const targetMomentId = (activeMoment?.id || "boardroom").toLowerCase();
+  const momentProducts = (products || []).filter((p) => {
+    const pMoment = (p.moment || "").toLowerCase();
+    const pMoments = Array.isArray(p.moments)
+      ? p.moments.map((m) => String(m).toLowerCase())
+      : typeof p.moments === "string"
+      ? [p.moments.toLowerCase()]
+      : [];
+
+    const matchesMoment = pMoment === targetMomentId || pMoments.includes(targetMomentId);
+    const matchesRecommended =
+      Array.isArray(activeMoment?.recommendedLooks) &&
+      activeMoment.recommendedLooks.some(
+        (look) =>
+          look === p.slug ||
+          look === p.slug?.replace(/^the-/, "") ||
+          `the-${look}` === p.slug ||
+          look === String(p.id)
+      );
+
+    return matchesMoment || matchesRecommended;
+  });
 
   const handleSelectMoment = (momentId) => {
     setActiveMomentId(momentId);
