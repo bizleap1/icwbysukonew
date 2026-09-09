@@ -39,9 +39,17 @@ export const ProductProvider = ({ children }) => {
 
         // Map database products cleanly
         const mappedProducts = productsList.map(bp => {
-          const imagesList = Array.isArray(bp.images) && bp.images.length > 0 
+          const imagesList = (Array.isArray(bp.images) && bp.images.length > 1)
             ? bp.images 
-            : (bp.image_url ? [bp.image_url] : ['/placeholder.png']);
+            : (matchedFallback?.images && matchedFallback.images.length > 0)
+              ? matchedFallback.images
+              : (Array.isArray(bp.images) && bp.images.length > 0 
+                  ? bp.images 
+                  : (bp.image_url ? [bp.image_url] : ['/placeholder.png']));
+
+          const galleryList = (Array.isArray(bp.gallery) && bp.gallery.length > 0)
+            ? bp.gallery
+            : (matchedFallback?.gallery || []);
 
           const catId = bp.category_id || bp.category?.slug || bp.category?.id || (bp.category && typeof bp.category === 'string' ? bp.category : 'suits');
           const catName = bp.category?.name || bp.categoryName || (catId.charAt(0).toUpperCase() + catId.slice(1));
@@ -96,6 +104,7 @@ export const ProductProvider = ({ children }) => {
             category_id: catId,
             sub_category: bp.sub_category || bp.shortType || bp.setType || 'Atelier Silhouette',
             images: imagesList,
+            gallery: galleryList,
             image_url: bp.image_url || imagesList[0] || '/placeholder.png',
             stock: typeof bp.stock !== 'undefined' ? Number(bp.stock) : 10,
             sizes: rawSizes,
@@ -151,6 +160,7 @@ export const ProductProvider = ({ children }) => {
               category_id: catId,
               sub_category: fp.sub_category || fp.shortType || fp.setType || 'Atelier Silhouette',
               images: fp.images || (fp.image ? [fp.image] : ['/placeholder.png']),
+              gallery: fp.gallery || [],
               image_url: fp.images?.[0] || fp.image || '/placeholder.png',
               stock: typeof fp.stock !== 'undefined' ? Number(fp.stock) : 15,
               sizes: rawSizes,

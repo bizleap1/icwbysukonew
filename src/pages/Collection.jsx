@@ -56,21 +56,21 @@ const MOMENTS_TEASERS = [
     id: "boardroom",
     title: "The Boardroom Edit",
     subtitle: "Leadership meetings & investor reviews",
-    image: "/boardroom_women.webp",
+    image: "/the_boardroom_edit.webp",
     link: "/shop-by-moment?moment=boardroom"
   },
   {
     id: "presentation",
     title: "The Presentation Edit",
     subtitle: "Keynotes, conferences & addresses",
-    image: "/presentation_woman.webp",
+    image: "/the_presentation_edit.webp",
     link: "/shop-by-moment?moment=presentation"
   },
   {
     id: "after-hours",
     title: "The After-Hours Edit",
     subtitle: "Business dinners & evening networking",
-    image: "/after_hour_woman.webp",
+    image: "/the_after_hours_executive.webp",
     link: "/shop-by-moment?moment=after-hours"
   }
 ];

@@ -51,7 +51,12 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
   })();
 
   const isHomePage = location.pathname === "/";
-  const isNewInPage = location.pathname === "/new-in" || location.pathname.startsWith("/new-in");
+  const isNewInPage = 
+    location.pathname === "/new-in" || 
+    location.pathname.startsWith("/new-in") ||
+    location.pathname === "/shop" ||
+    location.pathname.startsWith("/shop") ||
+    location.pathname.startsWith("/collection/");
 
   // 1st image (primary model / editorial look)
   const firstImg = 
@@ -70,7 +75,7 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
   // 1. If useSecondImage is explicitly passed, respect it.
   // 2. Trousers & Skirts across the entire website always show 2nd image by default (hover reveals 1st image).
   // 3. On New In page ("/new-in"):
-  //    - Large cards & suits/sets show 1st image as default, and on hover reveal 2nd image.
+  //    - Large cards & suits/sets show 1st image as default.
   // 4. On Homepage ("/"):
   //    - New Arrivals show 2nd image as default, hover reveals 1st image.
   // 5. On Collection page, PDP ("You May Also Like"), Shop By Moment, etc.:
@@ -92,9 +97,11 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
   const defaultImg = preferSecondImage ? secondImg : firstImg;
 
   // Hover image logic:
-  // Hover is enabled unless explicitly disabled with disableHoverImage.
-  // On New In page, large featured cards (isFeatured={true}) explicitly have hover enabled to reveal the 2nd image!
-  const isHoverDisabled = disableHoverImage || (isFeatured && !isNewInPage);
+  // User: "ye new arrivals mai jo bade cards hai usmai hover pe dusri image nhi ani chahiye sirf halka sa zoom honga product card ki image or ye sirf new arrvials ke liye he krna or vo bhi bade vale cards"
+  // For large featured cards on New Arrivals (isFeatured={true} on New In), disable hover image swap.
+  // Small cards in New Arrivals and other sections retain their normal hover image behavior.
+  const isLargeNewInCard = isNewInPage && isFeatured;
+  const isHoverDisabled = disableHoverImage || isLargeNewInCard || (isFeatured && !isNewInPage);
   const hoverImg = isHoverDisabled
     ? null
     : (preferSecondImage ? firstImg : secondImg);
@@ -187,7 +194,9 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
                   e.currentTarget.src = defaultImg;
                 }
               }}
-              className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+              className={`w-full h-full object-cover object-top transition-transform duration-700 ease-out ${
+                isLargeNewInCard ? "group-hover:scale-[1.035]" : "group-hover:scale-[1.02]"
+              }`}
             />
           </div>
 

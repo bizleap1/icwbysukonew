@@ -8,7 +8,7 @@ const DEFAULT_SETTINGS = {
   gst_number: "",
   address: "Atelier Flagship, Mumbai, Maharashtra, India",
   support_email: "indiancorporatewearbysuko@gmail.com",
-  support_phone: "+91 98765 43210",
+  support_phone: "+91 93703 50885",
   website_url: "https://www.indiancorporatewear.com",
   instagram_url: "https://www.instagram.com/icwbysuko?igsi=MXR4a2hwdWJmOW9lZw%3D%3D&utm_source=qr",
   instagram_handle: "@icwbysuko",

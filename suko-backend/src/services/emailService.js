@@ -171,7 +171,7 @@ async function sendOrderConfirmationEmail(order) {
   if (!order) return { success: false, error: "Order details missing" };
 
   const brand = await getBrandSettings();
-  const recipientEmail = (order.email || order.shipping_email || order.user?.email || "meshramshreya042@gmail.com").trim().toLowerCase();
+  const recipientEmail = (order.email || order.shipping_email || order.user?.email || "indiancorporatewearbysuko@gmail.com").trim().toLowerCase();
   const recipientName = (order.name || order.shipping_name || order.user?.name || "Valued Patron").trim();
   const orderNumber = `#SUKO-${1000 + (order.id || 0)}`;
   const orderId = order.id || 1;
@@ -211,6 +211,35 @@ Our artisans are now reviewing your specifications and preparing the archival te
     documentType: "order_confirmation",
     documentNumber: orderNumber,
     sentToEmail: recipientEmail
+  });
+
+  // Dispatch Instant New Order Alert Email to Atelier Admin & Concierge
+  const adminEmail = brand.support_email || "indiancorporatewearbysuko@gmail.com";
+  sendBroadcastEmail({
+    to: adminEmail,
+    subject: `🔔 [NEW ORDER] ${orderNumber} from ${recipientName} (${formatINR(order.total || 0)})`,
+    message: `Atelier Operations Alert,
+
+A new bespoke order has been placed on the storefront:
+
+Requisition ID: ${orderNumber}
+Client: ${recipientName} (${recipientEmail})
+Contact: ${order.phone || order.shipping_phone || "On File"}
+Destination: ${[order.city || order.shipping_city, order.state || order.shipping_state, order.pincode || order.shipping_pincode].filter(Boolean).join(", ") || "India"}
+
+ITEMS ORDERED:
+${itemsSummary}
+
+Total Order Value: ${formatINR(order.total || 0)}
+Payment Method: ${(order.payment_method || "UPI QR").toUpperCase()}
+Payment Status: ${order.status?.toUpperCase() || "PENDING"}
+
+Open your Studio Dashboard to review specifications and initiate workshop dispatch.`,
+    recipientName: "Studio Admin",
+    ctaText: "Open Studio Dashboard",
+    ctaUrl: `${brand.website_url.replace(/\/+$/, "")}/admin`
+  }).catch((err) => {
+    console.warn("⚠️  [EmailService] Admin new order notification dispatch failed:", err.message);
   });
 
   return result;
@@ -945,7 +974,7 @@ async function sendBroadcastEmail({
   ctaText = "Explore Collection"
 }) {
   const brand = await getBrandSettings();
-  const targetEmail = to || "meshramshreya042@gmail.com";
+  const targetEmail = to || "indiancorporatewearbysuko@gmail.com";
   const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || `${brand.business_name} <noreply@indiancorporatewear.com>`;
   const supportEmail = brand.support_email || process.env.SUPPORT_EMAIL || "indiancorporatewearbysuko@gmail.com";
   const replyTo = process.env.REPLY_TO_EMAIL || supportEmail;
@@ -1046,7 +1075,7 @@ Instagram: ${brand.instagram_url} (${brand.instagram_handle || "@icwbysuko"})
 async function sendPaymentReceiptEmail(order) {
   if (!order) return { success: false, error: "Order details missing" };
 
-  const recipientEmail = (order.email || order.user?.email || "meshramshreya042@gmail.com").trim().toLowerCase();
+  const recipientEmail = (order.email || order.user?.email || "indiancorporatewearbysuko@gmail.com").trim().toLowerCase();
   const recipientName = (order.name || order.shipping_name || order.user?.name || "Valued Patron").trim();
   const orderNumber = `#SUKO-${1000 + (order.id || 0)}`;
 
@@ -1093,7 +1122,7 @@ async function sendPaymentReceiptEmail(order) {
 async function sendShippingUpdateEmail(order, statusText = "In Transit") {
   if (!order) return { success: false, error: "Order details missing" };
 
-  const recipientEmail = (order.email || order.user?.email || "meshramshreya042@gmail.com").trim().toLowerCase();
+  const recipientEmail = (order.email || order.user?.email || "indiancorporatewearbysuko@gmail.com").trim().toLowerCase();
   const recipientName = (order.name || order.shipping_name || order.user?.name || "Valued Patron").trim();
   const orderNumber = `#SUKO-${1000 + (order.id || 0)}`;
 

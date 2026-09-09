@@ -37,29 +37,72 @@ export const ShopByMoment = () => {
 
   const activeMoment = MOMENTS.find((m) => m.id === activeMomentId) || MOMENTS[0];
 
-  // Filter products for active moment
+  // Helper to identify complete sets & power suits
+  const isSet = (p) => {
+    if (!p) return false;
+    const slug = (p.slug || "").toLowerCase();
+    const name = (p.name || "").toLowerCase();
+    const catType = (p.categoryType || "").toLowerCase();
+    const cat = (p.category || "").toLowerCase();
+    if (catType === "set" || slug.includes("suit") || slug.includes("set") || name.includes("suit") || name.includes("set")) {
+      return true;
+    }
+    if (cat === "suits" || cat === "coords") {
+      return true;
+    }
+    return false;
+  };
+
+  // Filter & sort products for active moment:
+  // User requirement: "shop by moment mai jo bhi products ayenge usmai phle sir sets he ane chahiye trousers and skirts nhi"
+  // Complete power suits and sets strictly come FIRST in curated order.
+  // Coordinating trousers, skirts, and separates follow after all sets.
   const targetMomentId = (activeMoment?.id || "boardroom").toLowerCase();
-  const momentProducts = (products || []).filter((p) => {
-    const pMoment = (p.moment || "").toLowerCase();
-    const pMoments = Array.isArray(p.moments)
-      ? p.moments.map((m) => String(m).toLowerCase())
-      : typeof p.moments === "string"
-      ? [p.moments.toLowerCase()]
-      : [];
+  const momentProducts = (products || [])
+    .filter((p) => {
+      const pMoment = (p.moment || "").toLowerCase();
+      const pMoments = Array.isArray(p.moments)
+        ? p.moments.map((m) => String(m).toLowerCase())
+        : typeof p.moments === "string"
+        ? [p.moments.toLowerCase()]
+        : [];
 
-    const matchesMoment = pMoment === targetMomentId || pMoments.includes(targetMomentId);
-    const matchesRecommended =
-      Array.isArray(activeMoment?.recommendedLooks) &&
-      activeMoment.recommendedLooks.some(
-        (look) =>
-          look === p.slug ||
-          look === p.slug?.replace(/^the-/, "") ||
-          `the-${look}` === p.slug ||
-          look === String(p.id)
-      );
+      const matchesMoment = pMoment === targetMomentId || pMoments.includes(targetMomentId);
+      const matchesRecommended =
+        Array.isArray(activeMoment?.recommendedLooks) &&
+        activeMoment.recommendedLooks.some(
+          (look) =>
+            look === p.slug ||
+            look === p.slug?.replace(/^the-/, "") ||
+            `the-${look}` === p.slug ||
+            look === String(p.id)
+        );
 
-    return matchesMoment || matchesRecommended;
-  });
+      return matchesMoment || matchesRecommended;
+    })
+    .sort((a, b) => {
+      const aSet = isSet(a);
+      const bSet = isSet(b);
+
+      // 1. Sets strictly come before separates/trousers/skirts
+      if (aSet && !bSet) return -1;
+      if (!aSet && bSet) return 1;
+
+      // 2. Within sets, prioritize recommended looks for this moment in curated order
+      if (aSet && bSet && Array.isArray(activeMoment?.recommendedLooks)) {
+        const aRecIdx = activeMoment.recommendedLooks.findIndex(
+          (l) => l === a.slug || l === a.slug?.replace(/^the-/, "") || `the-${l}` === a.slug || l === String(a.id)
+        );
+        const bRecIdx = activeMoment.recommendedLooks.findIndex(
+          (l) => l === b.slug || l === b.slug?.replace(/^the-/, "") || `the-${l}` === b.slug || l === String(b.id)
+        );
+        const aRank = aRecIdx !== -1 ? aRecIdx : 999;
+        const bRank = bRecIdx !== -1 ? bRecIdx : 999;
+        if (aRank !== bRank) return aRank - bRank;
+      }
+
+      return 0;
+    });
 
   const handleSelectMoment = (momentId) => {
     setActiveMomentId(momentId);

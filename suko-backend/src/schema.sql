@@ -223,7 +223,7 @@ CREATE TABLE IF NOT EXISTS brand_settings (
   gst_number VARCHAR(100) DEFAULT '',
   address TEXT DEFAULT 'Atelier Flagship, Mumbai, Maharashtra, India',
   support_email VARCHAR(255) DEFAULT 'indiancorporatewearbysuko@gmail.com',
-  support_phone VARCHAR(100) DEFAULT '+91 98765 43210',
+  support_phone VARCHAR(100) DEFAULT '+91 93703 50885',
   website_url VARCHAR(255) DEFAULT 'https://www.indiancorporatewear.com',
   instagram_url VARCHAR(255) DEFAULT 'https://www.instagram.com/icwbysuko?igsi=MXR4a2hwdWJmOW9lZw%3D%3D&utm_source=qr',
   instagram_handle VARCHAR(100) DEFAULT '@icwbysuko',
@@ -243,7 +243,7 @@ VALUES (
   '',
   'Atelier Flagship, Mumbai, Maharashtra, India',
   'indiancorporatewearbysuko@gmail.com',
-  '+91 98765 43210',
+  '+91 93703 50885',
   'https://www.indiancorporatewear.com',
   'https://www.instagram.com/icwbysuko?igsi=MXR4a2hwdWJmOW9lZw%3D%3D&utm_source=qr',
   '@icwbysuko',
@@ -318,3 +318,34 @@ CREATE TABLE IF NOT EXISTS image_deletion_queue (
 );
 
 CREATE INDEX IF NOT EXISTS idx_image_deletion_queue_purge ON image_deletion_queue(scheduled_purge_at) WHERE is_purged = false;
+
+-- Admin Security & Session Audit
+ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER DEFAULT 1;
+
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  session_id VARCHAR(100) NOT NULL,
+  device VARCHAR(255),
+  ip_address VARCHAR(100),
+  location VARCHAR(100),
+  is_current BOOLEAN DEFAULT false,
+  last_active TIMESTAMPTZ DEFAULT now(),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_user_id ON admin_sessions(user_id);
+
+CREATE TABLE IF NOT EXISTS admin_login_activity (
+  id SERIAL PRIMARY KEY,
+  admin_email VARCHAR(255) NOT NULL,
+  ip_address VARCHAR(100),
+  user_agent TEXT,
+  device VARCHAR(255),
+  status VARCHAR(20) DEFAULT 'success',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_login_activity_email ON admin_login_activity(admin_email, created_at DESC);

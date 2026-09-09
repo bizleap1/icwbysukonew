@@ -56,6 +56,18 @@ function formatINR(amount) {
 }
 
 /**
+ * Helper to format currency for PDFKit rendering
+ * Uses standard "Rs." prefix to prevent Unicode replacement glyphs (e.g. ¹) with Type-1 Helvetica
+ */
+function formatPdfINR(amount) {
+  const num = Number(amount) || 0;
+  return "Rs. " + num.toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+/**
  * Format a readable date
  */
 function formatDate(dateValue) {
@@ -304,7 +316,10 @@ async function renderDocumentHtml({
     <!-- 1. BRAND HEADER -->
     <div style="text-align: center; padding-bottom: 24px;">
       <a href="${brand.website_url}" target="_blank" style="text-decoration: none; display: inline-block;">
-        <img src="${logoUrl}" alt="${brand.business_name}" style="height: 52px; width: auto; max-width: 180px; object-fit: contain; margin: 0 auto; display: block;" onerror="this.src='/logo.png'" />
+        <img src="${logoUrl}" alt="${brand.business_name}" style="height: 50px; width: auto; max-width: 140px; object-fit: contain; margin: 0 auto; display: block;" onerror="this.style.display='none'; var f=document.getElementById('suko-fallback-emblem'); if(f) f.style.display='flex';" />
+        <div id="suko-fallback-emblem" style="display: none; width: 36px; height: 36px; border: 1.5px solid #C2922E; border-radius: 50%; background-color: #FAF8F5; margin: 0 auto; align-items: center; justify-content: center;">
+          <span style="font-family: 'Times New Roman', serif; font-size: 16px; font-weight: 700; color: #111113;">S</span>
+        </div>
       </a>
       <h1 style="margin: 14px 0 0 0; font-family: 'Times New Roman', Georgia, serif; font-size: 23px; font-weight: 400; letter-spacing: 0.28em; color: #111113; text-transform: uppercase;">
         ${brand.business_name}
@@ -594,21 +609,27 @@ async function generateDocumentPdf({ order, type = "invoice" }) {
       const cLine = "#EAE6DF";
 
       // 1. BRAND HEADER & LOGO EMBLEM
+      // Strictly place logo emblem at top center, then render brand text below it
+      const startHeaderY = doc.y; // Starts at margins.top (40)
       if (logoBuffer) {
         try {
-          const logoWidth = 80;
+          const img = doc.openImage(logoBuffer);
+          const logoWidth = 72; // Refined bespoke emblem width
+          const logoHeight = (img.height / img.width) * logoWidth;
           const logoX = (doc.page.width - logoWidth) / 2;
-          doc.image(logoBuffer, logoX, doc.y, { width: logoWidth });
-          doc.moveDown(0.35);
+          doc.image(img, logoX, startHeaderY, { width: logoWidth });
+          // Advance doc.y to strictly after the logo with elegant padding
+          doc.y = startHeaderY + logoHeight + 10;
         } catch (imgErr) {
           console.warn("⚠️ [PDFKit] Header logo embed note:", imgErr.message);
+          doc.y = startHeaderY;
         }
       }
 
-      doc.fontSize(16).fillColor(cBlack).font("Helvetica-Bold").text(brand.business_name.toUpperCase(), { align: "center", characterSpacing: 3 });
+      doc.fontSize(15).fillColor(cBlack).font("Helvetica-Bold").text(brand.business_name.toUpperCase(), { align: "center", characterSpacing: 3 });
       if (brand.tagline) {
-        doc.moveDown(0.2);
-        doc.fontSize(8).fillColor(cMuted).font("Helvetica").text(brand.tagline.toUpperCase(), { align: "center", characterSpacing: 2 });
+        doc.moveDown(0.25);
+        doc.fontSize(7.5).fillColor(cMuted).font("Helvetica").text(brand.tagline.toUpperCase(), { align: "center", characterSpacing: 2 });
       }
 
       // Gold line
@@ -616,7 +637,7 @@ async function generateDocumentPdf({ order, type = "invoice" }) {
       const centerX = doc.page.width / 2;
       doc.rect(centerX - 24, doc.y, 48, 1.5).fill(cGold);
 
-      doc.moveDown(1);
+      doc.moveDown(0.9);
       doc.rect(45, doc.y, doc.page.width - 90, 0.8).fill(cLine);
       doc.moveDown(0.8);
 
@@ -689,8 +710,8 @@ async function generateDocumentPdf({ order, type = "invoice" }) {
         doc.fillColor(cBlack).fontSize(8.5).font("Helvetica").text(String(qty), 300, rowY, { width: 40, align: "center" });
 
         if (!isPackingSlip) {
-          doc.fillColor(cMuted).text(formatINR(unit), 350, rowY, { width: 90, align: "right" });
-          doc.fillColor(cBlack).font("Helvetica-Bold").text(formatINR(tot), 445, rowY, { width: 100, align: "right" });
+          doc.fillColor(cMuted).text(formatPdfINR(unit), 350, rowY, { width: 90, align: "right" });
+          doc.fillColor(cBlack).font("Helvetica-Bold").text(formatPdfINR(tot), 445, rowY, { width: 100, align: "right" });
         } else {
           doc.fillColor(cMuted).text("[   ] Checked", 360, rowY, { width: 80, align: "center" });
           doc.text("[   ] Ready", 445, rowY, { width: 80, align: "center" });
@@ -715,12 +736,12 @@ async function generateDocumentPdf({ order, type = "invoice" }) {
         // Totals table right
         const tRightX = 320;
         doc.fillColor(cMuted).fontSize(8.5).font("Helvetica").text("Subtotal:", tRightX, sumY, { width: 110 });
-        doc.fillColor(cBlack).text(formatINR(subtotal), tRightX + 110, sumY, { width: 110, align: "right" });
+        doc.fillColor(cBlack).text(formatPdfINR(subtotal), tRightX + 110, sumY, { width: 110, align: "right" });
 
         let curTotY = sumY + 14;
         if (discount > 0) {
           doc.fillColor("#166534").text("Privilege Discount:", tRightX, curTotY, { width: 110 });
-          doc.text(`-${formatINR(discount)}`, tRightX + 110, curTotY, { width: 110, align: "right" });
+          doc.text(`-${formatPdfINR(discount)}`, tRightX + 110, curTotY, { width: 110, align: "right" });
           curTotY += 14;
         }
 
@@ -731,7 +752,7 @@ async function generateDocumentPdf({ order, type = "invoice" }) {
         // Grand Total Box
         doc.rect(tRightX, curTotY, 225, 24).fillAndStroke("#FAF8F5", cGold);
         doc.fillColor(cBlack).fontSize(9.5).font("Helvetica-Bold").text("TOTAL AMOUNT", tRightX + 10, curTotY + 7);
-        doc.fontSize(11).text(formatINR(grandTotal), tRightX + 100, curTotY + 6, { width: 115, align: "right" });
+        doc.fontSize(11).text(formatPdfINR(grandTotal), tRightX + 100, curTotY + 6, { width: 115, align: "right" });
 
         doc.y = curTotY + 40;
       } else {
@@ -745,27 +766,29 @@ async function generateDocumentPdf({ order, type = "invoice" }) {
       }
 
       // 6. LUXURY FOOTER
-      const footY = Math.max(doc.y, doc.page.height - 95);
+      const footY = Math.max(doc.y, doc.page.height - 85);
       doc.rect(45, footY, doc.page.width - 90, 0.8).fill(cLine);
 
       let textY = footY + 8;
       if (logoBuffer) {
         try {
-          const footLogoW = 22;
+          const img = doc.openImage(logoBuffer);
+          const footLogoW = 20;
+          const footLogoH = (img.height / img.width) * footLogoW;
           const footLogoX = (doc.page.width - footLogoW) / 2;
-          doc.image(logoBuffer, footLogoX, footY + 4, { width: footLogoW });
-          textY = footY + 18;
+          doc.image(img, footLogoX, footY + 5, { width: footLogoW });
+          textY = footY + 5 + footLogoH + 5;
         } catch (imgErr) {}
       }
 
-      doc.fillColor(cBlack).fontSize(8.5).font("Helvetica-Oblique")
+      doc.fillColor(cBlack).fontSize(8).font("Helvetica-Oblique")
         .text(`Thank you for choosing ${brand.business_name}. Handcrafted for timeless distinction.`, 45, textY, { align: "center" });
 
-      doc.fillColor(cMuted).fontSize(7.5).font("Helvetica")
-        .text(`Website: ${brand.website_url.replace(/^https?:\/\//, "")}   |   Instagram: ${brand.instagram_handle || "@icwbysuko"}   |   Concierge: ${brand.support_email}`, 45, textY + 12, { align: "center" });
+      doc.fillColor(cMuted).fontSize(7).font("Helvetica")
+        .text(`Website: ${brand.website_url.replace(/^https?:\/\//, "")}   |   Instagram: ${brand.instagram_handle || "@icwbysuko"}   |   Concierge: ${brand.support_email}`, 45, textY + 11, { align: "center" });
 
       doc.fontSize(6.5).fillColor("#A49E93")
-        .text(`© 2026 ${brand.business_name}. All rights reserved.`, 45, textY + 24, { align: "center" });
+        .text(`© 2026 ${brand.business_name}. All rights reserved.`, 45, textY + 22, { align: "center" });
 
       doc.end();
     } catch (err) {

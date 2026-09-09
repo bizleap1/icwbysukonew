@@ -37,7 +37,7 @@ function getInitialData() {
         gst_number: "",
         address: "Atelier Flagship, Mumbai, Maharashtra, India",
         support_email: "indiancorporatewearbysuko@gmail.com",
-        support_phone: "+91 98765 43210",
+        support_phone: "+91 93703 50885",
         website_url: "https://www.indiancorporatewear.com",
         instagram_url: "https://www.instagram.com/icwbysuko?igsi=MXR4a2hwdWJmOW9lZw%3D%3D&utm_source=qr",
         instagram_handle: "@icwbysuko",
@@ -134,10 +134,26 @@ async function executeQuery(text, params = []) {
     const id = Number(params[0]);
     const user = s.users.find((u) => u.id === id);
     if (user) {
+      if (lower.includes("select *")) {
+        return { rows: [{ ...user }], rowCount: 1 };
+      }
       return {
         rows: [{ id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role }],
         rowCount: 1,
       };
+    }
+    return { rows: [], rowCount: 0 };
+  }
+
+  // 4b. Update user password
+  if (lower.includes("update users set password_hash = $1")) {
+    const hash = params[0];
+    const id = Number(params[1]);
+    const user = s.users.find((u) => u.id === id || u.email === params[1]);
+    if (user) {
+      user.password_hash = hash;
+      saveStore();
+      return { rows: [{ id: user.id }], rowCount: 1 };
     }
     return { rows: [], rowCount: 0 };
   }

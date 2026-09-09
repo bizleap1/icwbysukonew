@@ -409,8 +409,24 @@ export const ALL_RAW_PRODUCTS = [
     "coordinateText": "Pair with the coordinating sculpted double-breasted blazer for a commanding executive presence.",
     "gallery": [
       {
+        "url": "/products/plum-sculpted-trousers/1.JPG",
+        "type": "model_front"
+      },
+      {
         "url": "/products/plum-sculpted-trousers/2.png",
         "type": "garment_front"
+      },
+      {
+        "url": "/products/plum-sculpted-trousers/3.png",
+        "type": "detail"
+      },
+      {
+        "url": "/products/plum-sculpted-trousers/4.png",
+        "type": "garment_back"
+      },
+      {
+        "url": "/products/plum-sculpted-trousers/5.JPG",
+        "type": "model_editorial"
       }
     ],
     "pieces": "Includes Tailored Sculpted Flared Trousers.",
@@ -423,7 +439,11 @@ export const ALL_RAW_PRODUCTS = [
       "care": "Specialized dry clean only. Steam on low heat."
     },
     "images": [
-      "/products/plum-sculpted-trousers/2.png"
+      "/products/plum-sculpted-trousers/1.JPG",
+      "/products/plum-sculpted-trousers/2.png",
+      "/products/plum-sculpted-trousers/3.png",
+      "/products/plum-sculpted-trousers/4.png",
+      "/products/plum-sculpted-trousers/5.JPG"
     ],
     "badge": "New Arrival",
     "isNew": true
@@ -568,8 +588,24 @@ export const ALL_RAW_PRODUCTS = [
     "coordinateText": "Pair with the matching draped vest to complete the set, or style with the draped blazer.",
     "gallery": [
       {
+        "url": "/products/aubergine-tailored-mini-skirt/1.JPG",
+        "type": "model_front"
+      },
+      {
         "url": "/products/aubergine-tailored-mini-skirt/2.png",
         "type": "garment_front"
+      },
+      {
+        "url": "/products/aubergine-tailored-mini-skirt/3.png",
+        "type": "detail"
+      },
+      {
+        "url": "/products/aubergine-tailored-mini-skirt/4.png",
+        "type": "garment_back"
+      },
+      {
+        "url": "/products/aubergine-tailored-mini-skirt/5.JPG",
+        "type": "model_editorial"
       }
     ],
     "pieces": "Includes Tailored Structured Mini Skirt with Concealed Zip.",
@@ -582,7 +618,11 @@ export const ALL_RAW_PRODUCTS = [
       "care": "Dry clean only. Store on clip skirt hanger."
     },
     "images": [
-      "/products/aubergine-tailored-mini-skirt/2.png"
+      "/products/aubergine-tailored-mini-skirt/1.JPG",
+      "/products/aubergine-tailored-mini-skirt/2.png",
+      "/products/aubergine-tailored-mini-skirt/3.png",
+      "/products/aubergine-tailored-mini-skirt/4.png",
+      "/products/aubergine-tailored-mini-skirt/5.JPG"
     ],
     "badge": "New Arrival",
     "isNew": true
@@ -822,8 +862,24 @@ export const ALL_RAW_PRODUCTS = [
     "coordinateText": "Pair with the coordinating contour jacket to complete the iconic fishtail skirt ensemble.",
     "gallery": [
       {
+        "url": "/products/midnight-flare-skirt/1.JPG",
+        "type": "model_front"
+      },
+      {
         "url": "/products/midnight-flare-skirt/2.png",
         "type": "garment_front"
+      },
+      {
+        "url": "/products/midnight-flare-skirt/3.png",
+        "type": "detail"
+      },
+      {
+        "url": "/products/midnight-flare-skirt/4.png",
+        "type": "garment_back"
+      },
+      {
+        "url": "/products/midnight-flare-skirt/5.JPG",
+        "type": "model_editorial"
       }
     ],
     "pieces": "Includes Flared Fishtail Tailored Skirt.",
@@ -836,7 +892,11 @@ export const ALL_RAW_PRODUCTS = [
       "care": "Dry clean only."
     },
     "images": [
-      "/products/midnight-flare-skirt/2.png"
+      "/products/midnight-flare-skirt/1.JPG",
+      "/products/midnight-flare-skirt/2.png",
+      "/products/midnight-flare-skirt/3.png",
+      "/products/midnight-flare-skirt/4.png",
+      "/products/midnight-flare-skirt/5.JPG"
     ],
     "badge": "New Arrival",
     "isNew": true
@@ -973,8 +1033,24 @@ export const ALL_RAW_PRODUCTS = [
     "coordinateText": "Pair with the matching Midnight Sculpted Vest to recreate the full architectural column ensemble.",
     "gallery": [
       {
+        "url": "/products/midnight-column-skirt/1.JPG",
+        "type": "model_front"
+      },
+      {
         "url": "/products/midnight-column-skirt/2.png",
         "type": "garment_front"
+      },
+      {
+        "url": "/products/midnight-column-skirt/3.png",
+        "type": "detail"
+      },
+      {
+        "url": "/products/midnight-column-skirt/4.png",
+        "type": "garment_back"
+      },
+      {
+        "url": "/products/midnight-column-skirt/5.JPG",
+        "type": "model_editorial"
       }
     ],
     "pieces": "Includes Floor-Length Tailored Column Skirt with Back Slit.",
@@ -987,7 +1063,11 @@ export const ALL_RAW_PRODUCTS = [
       "care": "Dry clean only."
     },
     "images": [
-      "/products/midnight-column-skirt/2.png"
+      "/products/midnight-column-skirt/1.JPG",
+      "/products/midnight-column-skirt/2.png",
+      "/products/midnight-column-skirt/3.png",
+      "/products/midnight-column-skirt/4.png",
+      "/products/midnight-column-skirt/5.JPG"
     ],
     "badge": "New Arrival",
     "isNew": true
@@ -1236,8 +1316,24 @@ export const ALL_RAW_PRODUCTS = [
     "coordinateText": "Complete the full outfit with the Noir Tailored Set, or pair with its matching blazers and vests.",
     "gallery": [
       {
+        "url": "/products/noir-tailored-trousers/1.JPG",
+        "type": "model_front"
+      },
+      {
         "url": "/products/noir-tailored-trousers/2.png",
         "type": "garment_front"
+      },
+      {
+        "url": "/products/noir-tailored-trousers/3.png",
+        "type": "detail"
+      },
+      {
+        "url": "/products/noir-tailored-trousers/4.png",
+        "type": "garment_back"
+      },
+      {
+        "url": "/products/noir-tailored-trousers/5.JPG",
+        "type": "model_editorial"
       }
     ],
     "pieces": "Includes Tailored Wide-Leg Trousers with Clean Front Fly.",
@@ -1250,7 +1346,11 @@ export const ALL_RAW_PRODUCTS = [
       "care": "Specialized dry clean only. Store on structured clamp hanger."
     },
     "images": [
-      "/products/noir-tailored-trousers/2.png"
+      "/products/noir-tailored-trousers/1.JPG",
+      "/products/noir-tailored-trousers/2.png",
+      "/products/noir-tailored-trousers/3.png",
+      "/products/noir-tailored-trousers/4.png",
+      "/products/noir-tailored-trousers/5.JPG"
     ],
     "badge": "New Arrival",
     "isNew": true
@@ -1395,8 +1495,24 @@ export const ALL_RAW_PRODUCTS = [
     "coordinateText": "Pair with coordinating aubergine single-button blazer or draped vest to create a complete power suit.",
     "gallery": [
       {
+        "url": "/products/aubergine-tailored-wide-leg-trousers/1.png",
+        "type": "model_front"
+      },
+      {
         "url": "/products/aubergine-tailored-wide-leg-trousers/2.png",
         "type": "garment_front"
+      },
+      {
+        "url": "/products/aubergine-tailored-wide-leg-trousers/3.png",
+        "type": "detail"
+      },
+      {
+        "url": "/products/aubergine-tailored-wide-leg-trousers/4.png",
+        "type": "garment_back"
+      },
+      {
+        "url": "/products/aubergine-tailored-wide-leg-trousers/5.JPG",
+        "type": "model_editorial"
       }
     ],
     "pieces": "Includes High-Waisted Wide-Leg Tailored Trousers.",
@@ -1409,7 +1525,11 @@ export const ALL_RAW_PRODUCTS = [
       "care": "Dry clean only. Hang on felted trouser bar."
     },
     "images": [
-      "/products/aubergine-tailored-wide-leg-trousers/2.png"
+      "/products/aubergine-tailored-wide-leg-trousers/1.png",
+      "/products/aubergine-tailored-wide-leg-trousers/2.png",
+      "/products/aubergine-tailored-wide-leg-trousers/3.png",
+      "/products/aubergine-tailored-wide-leg-trousers/4.png",
+      "/products/aubergine-tailored-wide-leg-trousers/5.JPG"
     ],
     "badge": "New Arrival",
     "isNew": true
@@ -1650,8 +1770,24 @@ export const ALL_RAW_PRODUCTS = [
     "coordinateText": "Pair with the coordinating sculpted flare blazer to complete the monochromatic power suit.",
     "gallery": [
       {
+        "url": "/products/lilac-flare-trousers/1.png",
+        "type": "model_front"
+      },
+      {
         "url": "/products/lilac-flare-trousers/2.png",
         "type": "garment_front"
+      },
+      {
+        "url": "/products/lilac-flare-trousers/3.png",
+        "type": "detail"
+      },
+      {
+        "url": "/products/lilac-flare-trousers/4.png",
+        "type": "garment_back"
+      },
+      {
+        "url": "/products/lilac-flare-trousers/5.JPG",
+        "type": "model_editorial"
       }
     ],
     "pieces": "Includes Tailored Flared Suiting Trousers.",
@@ -1664,7 +1800,11 @@ export const ALL_RAW_PRODUCTS = [
       "care": "Dry clean only."
     },
     "images": [
-      "/products/lilac-flare-trousers/2.png"
+      "/products/lilac-flare-trousers/1.png",
+      "/products/lilac-flare-trousers/2.png",
+      "/products/lilac-flare-trousers/3.png",
+      "/products/lilac-flare-trousers/4.png",
+      "/products/lilac-flare-trousers/5.JPG"
     ],
     "badge": "New Arrival",
     "isNew": true
@@ -1712,8 +1852,24 @@ export const ALL_RAW_PRODUCTS = [
     "coordinateText": "Pair with the coordinating embroidered farchi set for an elevated Indian corporate look.",
     "gallery": [
       {
+        "url": "/products/dusty-rose-trousers/1.png",
+        "type": "model_front"
+      },
+      {
         "url": "/products/dusty-rose-trousers/2.png",
         "type": "garment_front"
+      },
+      {
+        "url": "/products/dusty-rose-trousers/3.png",
+        "type": "detail"
+      },
+      {
+        "url": "/products/dusty-rose-trousers/4.png",
+        "type": "garment_back"
+      },
+      {
+        "url": "/products/dusty-rose-trousers/5.JPG",
+        "type": "model_editorial"
       }
     ],
     "pieces": "Includes Tailored Straight-Leg Suiting Trousers.",
@@ -1726,7 +1882,11 @@ export const ALL_RAW_PRODUCTS = [
       "care": "Dry clean only."
     },
     "images": [
-      "/products/dusty-rose-trousers/2.png"
+      "/products/dusty-rose-trousers/1.png",
+      "/products/dusty-rose-trousers/2.png",
+      "/products/dusty-rose-trousers/3.png",
+      "/products/dusty-rose-trousers/4.png",
+      "/products/dusty-rose-trousers/5.JPG"
     ],
     "badge": "New Arrival",
     "isNew": true

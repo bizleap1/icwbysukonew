@@ -68,7 +68,7 @@ export const WomenBoardroomBanner = () => {
     <section className="relative w-full h-[60vh] sm:h-[65vh] min-h-[440px] max-h-[640px] bg-[#0A0A0C] overflow-hidden">
       <div className="absolute inset-0 z-0">
         <img
-          src="/boardroom_women.jpg"
+          src="/the_boardroom_edit.webp"
           alt="The Boardroom Edit - Luxury Tailoring"
           loading="lazy"
           decoding="async"

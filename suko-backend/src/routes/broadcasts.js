@@ -162,7 +162,7 @@ router.post("/", requireAdmin, async (req, res) => {
 
     // Determine recipient count and email target
     let recipientCount = 1;
-    let targetSendEmail = "meshramshreya042@gmail.com"; // Default safe test recipient per guidelines
+    let targetSendEmail = "indiancorporatewearbysuko@gmail.com";
 
     if (audience === "single") {
       if (!recipient_email || !recipient_email.trim()) {

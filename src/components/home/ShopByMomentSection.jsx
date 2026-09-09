@@ -13,8 +13,8 @@ const HOME_MOMENTS = [
   { 
     id: "after-hours", 
     title: "After-Hours Executive", 
-    image: "/after_hour_woman.webp", 
-    position: "object-[50%_8%]" 
+    image: "/the_after_hours_executive.webp", 
+    position: "object-[50%_15%]" 
   },
   { 
     id: "boardroom", 
@@ -25,14 +25,14 @@ const HOME_MOMENTS = [
   { 
     id: "founder", 
     title: "The Founder Edit", 
-    image: "/founder_women.webp", 
-    position: "object-[50%_24%]" 
+    image: "/the_founder_edit.webp", 
+    position: "object-[50%_18%]" 
   },
   { 
     id: "essentials", 
     title: "Executive Essentials", 
-    image: "/executive_woman.webp", 
-    position: "object-[50%_7%]" 
+    image: "/the_executive_essentials.webp", 
+    position: "object-[50%_12%]" 
   }
 ];
 
@@ -41,11 +41,11 @@ const getObjectPosition = (id) => {
     case "presentation":
       return "object-[50%_45%]";
     case "founder":
-      return "object-[50%_24%]";
+      return "object-[50%_18%]";
     case "after-hours":
-      return "object-[50%_8%]";
+      return "object-[50%_15%]";
     case "essentials":
-      return "object-[50%_7%]";
+      return "object-[50%_12%]";
     case "boardroom":
     default:
       return "object-[50%_18%]";

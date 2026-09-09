@@ -278,14 +278,63 @@ router.post("/", requireAuth, validateCreateOrder, async (req, res) => {
   }
 });
 
+async function getOrdersWithItemsBatch(orderRows) {
+  if (!orderRows || orderRows.length === 0) return [];
+
+  const orderIds = orderRows.map((o) => o.id);
+  const userIds = [...new Set(orderRows.map((o) => o.user_id).filter(Boolean))];
+
+  let itemsRes;
+  try {
+    itemsRes = await pool.query(
+      `SELECT oi.*, p.sku AS product_sku, p.color AS product_color 
+       FROM order_items oi 
+       LEFT JOIN products p ON p.id::text = oi.product_id::text 
+       WHERE oi.order_id = ANY($1::int[]) 
+       ORDER BY oi.id ASC`,
+      [orderIds]
+    );
+  } catch (err) {
+    itemsRes = await pool.query(
+      "SELECT * FROM order_items WHERE order_id = ANY($1::int[]) ORDER BY id ASC",
+      [orderIds]
+    );
+  }
+
+  let usersMap = {};
+  if (userIds.length > 0) {
+    try {
+      const userRes = await pool.query(
+        "SELECT id, name, email, phone FROM users WHERE id = ANY($1::int[])",
+        [userIds]
+      );
+      userRes.rows.forEach((u) => {
+        usersMap[u.id] = u;
+      });
+    } catch (err) {
+      console.warn("Batch users fetch error:", err.message);
+    }
+  }
+
+  const itemsByOrderId = {};
+  itemsRes.rows.forEach((it) => {
+    if (!itemsByOrderId[it.order_id]) itemsByOrderId[it.order_id] = [];
+    itemsByOrderId[it.order_id].push(it);
+  });
+
+  return orderRows.map((order) =>
+    formatOrder(order, itemsByOrderId[order.id] || [], usersMap[order.user_id] || null)
+  );
+}
+
 // GET /api/orders -- current customer's own orders
 router.get("/", requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT id FROM orders WHERE user_id = $1 ORDER BY created_at DESC",
+      "SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC",
       [req.user.userId]
     );
-    const orders = await Promise.all(result.rows.map((r) => getOrderWithItems(r.id)));
+    const orders = await getOrdersWithItemsBatch(result.rows);
     res.json(orders);
   } catch (err) {
     console.error("List my orders error:", err);
@@ -293,11 +342,11 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/orders/all -- admin: every order
+// GET /api/orders/all -- admin: every order (Optimized single-batch query)
 router.get("/all", requireAdmin, async (req, res) => {
   try {
-    const result = await pool.query("SELECT id FROM orders ORDER BY created_at DESC");
-    const orders = await Promise.all(result.rows.map((r) => getOrderWithItems(r.id)));
+    const result = await pool.query("SELECT * FROM orders ORDER BY created_at DESC");
+    const orders = await getOrdersWithItemsBatch(result.rows);
     res.json(orders);
   } catch (err) {
     console.error("List all orders error:", err);

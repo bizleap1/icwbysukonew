@@ -51,10 +51,10 @@ const INTENT_MAPPINGS = [
 
 const MOMENT_PORTRAITS = {
   boardroom: { image: "/the_boardroom_edit.webp", position: "object-[center_18%]" },
-  founder: { image: "/founder_women.webp", position: "object-[center_24%]" },
+  founder: { image: "/the_founder_edit.webp", position: "object-[center_18%]" },
   presentation: { image: "/the_presentation_edit.webp", position: "object-[center_45%]" },
-  "after-hours": { image: "/after_hour_woman.webp", position: "object-[center_10%]" },
-  essentials: { image: "/executive_woman.webp", position: "object-[center_8%]" },
+  "after-hours": { image: "/the_after_hours_executive.webp", position: "object-[center_15%]" },
+  essentials: { image: "/the_executive_essentials.webp", position: "object-[center_12%]" },
 };
 
 export const SearchModal = ({ isOpen, onClose }) => {

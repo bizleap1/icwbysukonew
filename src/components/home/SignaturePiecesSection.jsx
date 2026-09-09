@@ -35,7 +35,7 @@ export const SignaturePiecesSection = () => {
     name: heroProduct?.name || "Noir Tailored Set",
     category: heroProduct?.sub_category || "Single-Breasted Blazer & Wide-Leg Trousers",
     price: heroProduct?.price ? formatINR(heroProduct.price) : "₹4,550",
-    image: "/boardroom_women.webp",
+    image: "/the_boardroom_edit.webp",
     position: "object-[50%_15%]"
   }), [heroProduct]);
 

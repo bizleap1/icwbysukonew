@@ -7,13 +7,20 @@ import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Plus,
   Search, Download, AlertTriangle, Clock, X, Crop, Image as ImageIcon, Star, Eye, Tag, Mail, Send, MessageSquare, MessageSquareQuote, ShoppingBag,
   LayoutDashboard, Layers, ShieldCheck, CheckCircle, RefreshCw, Copy, Check, RotateCcw,
-  Menu, Bell, ArrowUpRight, TrendingUp, LogOut, MoreHorizontal, Palette,
+  Menu, Bell, ArrowUpRight, TrendingUp, LogOut, MoreHorizontal, MoreVertical, Palette,
   Sparkles, Truck, Gift, Heart, CheckCircle2, UserCheck, Smartphone, Monitor, ExternalLink,
-  Archive, Filter, SlidersHorizontal, Lock, FileSpreadsheet
+  Archive, Filter, SlidersHorizontal, Lock, FileSpreadsheet, FileText, Share2, ArrowLeft
 } from "lucide-react";
 import { formatINR, CATEGORIES as DEFAULT_CATEGORIES } from "../data/products";
 import { useProducts } from "../context/ProductContext";
 import ImageCropperModal from "../components/ImageCropperModal";
+import AtelierOperationsCalendar from "../components/admin/AtelierOperationsCalendar";
+import AdminControlsSection from "../components/admin/AdminControlsSection";
+import BrandDocumentsSection from "../components/admin/BrandDocumentsSection";
+import CouponsSection from "../components/admin/CouponsSection";
+import CustomerCommunicationSection from "../components/admin/CustomerCommunicationSection";
+import CustomerDirectorySection from "../components/admin/CustomerDirectorySection";
+import OrderDocumentPreviewModal from "../components/admin/OrderDocumentPreviewModal";
 import { apiClient, API_BASE_URL } from "../config/api";
 
 const dataURLtoFile = (dataurl, filename) => {
@@ -39,6 +46,13 @@ const formatDateTime = (dateStr) => {
   const datePart = d.toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' });
   const timePart = d.toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit', hour12: true });
   return `${datePart} · ${timePart}`;
+};
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return "N/A";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "N/A";
+  return d.toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
 const getUserDisplayName = (user) => {
@@ -721,6 +735,7 @@ const Admin = () => {
     "coupons",
     "broadcast",
     "brand_settings",
+    "admin_controls",
     "calendar"
   ];
   const rawTab = (searchParams.get("tab") || "").toLowerCase();
@@ -784,12 +799,23 @@ const Admin = () => {
       .catch(() => setSystemHealth("offline"));
   }, []);
 
-  // Data States
-  const [stats, setStats] = useState({ totalUsers: 0, totalProducts: 0, totalOrders: 0, totalRevenue: 0 });
-  const [products, setProducts] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
-  const [loading, setLoading] = useState(true);
+  // Instant Stale-While-Revalidate (SWR) Admin Memory Cache
+  const cachedAdmin = useMemo(() => {
+    try {
+      const raw = sessionStorage.getItem("suko_admin_cache");
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return null;
+  }, []);
+
+  // Data States (Pre-populated from cache for instant 0ms first render)
+  const [stats, setStats] = useState(() => cachedAdmin?.stats || { totalUsers: 0, totalProducts: 0, totalOrders: 0, totalRevenue: 0 });
+  const [products, setProducts] = useState(() => cachedAdmin?.products || []);
+  const [orders, setOrders] = useState(() => cachedAdmin?.orders || []);
+  const [categories, setCategories] = useState(() => cachedAdmin?.categories || DEFAULT_CATEGORIES);
+  const [loading, setLoading] = useState(() => !cachedAdmin);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const previousOrdersCountRef = useRef(cachedAdmin?.orders?.length || null);
 
   // Search & Filter States
   const [productSearch, setProductSearch] = useState("");
@@ -1032,7 +1058,7 @@ const Admin = () => {
     gst_number: "",
     address: "Atelier Flagship, Mumbai, Maharashtra, India",
     support_email: "indiancorporatewearbysuko@gmail.com",
-    support_phone: "+91 98765 43210",
+    support_phone: "+91 93703 50885",
     website_url: "https://www.indiancorporatewear.com",
     instagram_url: "https://www.instagram.com/icwbysuko?igsi=MXR4a2hwdWJmOW9lZw%3D%3D&utm_source=qr",
     instagram_handle: "@icwbysuko",
@@ -1051,6 +1077,18 @@ const Admin = () => {
   const [brandLogoPreview, setBrandLogoPreview] = useState(null);
   const [savingBrandSettings, setSavingBrandSettings] = useState(false);
   const [previewDocType, setPreviewDocType] = useState("invoice"); // 'invoice' | 'receipt' | 'packing_slip'
+
+  // Dedicated in-app A4 luxury document preview modal
+  const [previewOrderDoc, setPreviewOrderDoc] = useState(null); // { order, type: 'invoice' | 'receipt' | 'packing_slip' }
+
+  const openDocumentPreview = (order, type = "invoice") => {
+    if (!order) return;
+    setPreviewOrderDoc({ order, type });
+  };
+
+  const closeDocumentPreview = () => {
+    setPreviewOrderDoc(null);
+  };
 
   // Document actions & history for inspected order
   const [orderDocsList, setOrderDocsList] = useState([]);
@@ -1232,6 +1270,8 @@ const Admin = () => {
   });
   const [sendingEmail, setSendingEmail] = useState(false);
   const [broadcastsHistory, setBroadcastsHistory] = useState([]);
+  const [fetchingBroadcasts, setFetchingBroadcasts] = useState(false);
+  const broadcastHistory = broadcastsHistory;
   const [showEmailPreviewModal, setShowEmailPreviewModal] = useState(false);
   const [previewDevice, setPreviewDevice] = useState("desktop"); // "desktop" | "mobile"
   const [broadcastFilter, setBroadcastFilter] = useState("all");
@@ -1267,6 +1307,23 @@ const Admin = () => {
   const [editSizeStockMap, setEditSizeStockMap] = useState({});
   const [editImage, setEditImage] = useState(null);
   const [updatingProduct, setUpdatingProduct] = useState(false);
+
+  // Mobile Catalogue & Collections View State
+  const [isMobileAddProductOpen, setIsMobileAddProductOpen] = useState(false);
+  const [mobileFormAccordions, setMobileFormAccordions] = useState({
+    details: true,
+    pricing: true,
+    inventory: true,
+    imagery: true,
+    craft: true
+  });
+
+  const toggleMobileAccordion = (sectionKey) => {
+    setMobileFormAccordions(prev => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey]
+    }));
+  };
 
   const handleOpenEdit = (p, startInEdit = false) => {
     setEditingProduct(p);
@@ -1495,7 +1552,26 @@ const Admin = () => {
 
   useEffect(() => {
     if (user?.authenticated && user.role === "admin" && token) {
-      fetchDashboardData();
+      // If cache exists, revalidate silently without blocking the UI
+      fetchDashboardData(Boolean(cachedAdmin));
+
+      // Silent live background sync every 25 seconds
+      const pollInterval = setInterval(() => {
+        if (!document.hidden) {
+          fetchDashboardData(true);
+        }
+      }, 25000);
+
+      // Instant live refetch when returning to the tab
+      const handleWindowFocus = () => {
+        fetchDashboardData(true);
+      };
+      window.addEventListener("focus", handleWindowFocus);
+
+      return () => {
+        clearInterval(pollInterval);
+        window.removeEventListener("focus", handleWindowFocus);
+      };
     }
   }, [user, token]);
 
@@ -1679,6 +1755,7 @@ const Admin = () => {
     if (formEl) {
       formEl.scrollIntoView({ behavior: "smooth" });
     }
+    setIsMobileAddProductOpen(true);
   };
 
   const handleCancelEdit = () => {
@@ -1688,6 +1765,7 @@ const Admin = () => {
     setExistingImagesForEdit([]);
     setGalleryFiles([]);
     setImage(null);
+    setIsMobileAddProductOpen(false);
   };
 
   const requestDeleteCategory = (cat) => {
@@ -1762,8 +1840,9 @@ const Admin = () => {
     }
   };
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
+  const fetchDashboardData = async (silent = false) => {
+    if (!silent) setLoading(true);
+    setIsSyncing(true);
     try {
       const headers = { "Authorization": `Bearer ${token}` };
 
@@ -1779,21 +1858,51 @@ const Admin = () => {
         fetch(`${API_BASE_URL}/api/settings/brand`, { headers }).catch(() => null)
       ]);
 
-      if (statsRes.ok) setStats(await statsRes.json());
+      let nextStats = null;
+      let nextProducts = null;
+      let nextOrders = null;
+      let nextCategories = null;
+
+      if (statsRes.ok) {
+        nextStats = await statsRes.json();
+        setStats(nextStats);
+      }
       if (prodRes.ok) {
         const pData = await prodRes.json();
         const rawList = Array.isArray(pData) ? pData : (pData?.products || []);
-        const pList = rawList.map(p => ({
+        nextProducts = rawList.map(p => ({
           ...p,
           size_stock: resolveProductSizeStock(p)
         }));
-        setProducts(pList);
+        setProducts(nextProducts);
       }
-      if (ordRes.ok) setOrders(await ordRes.json());
+      if (ordRes.ok) {
+        const ordData = await ordRes.json();
+        nextOrders = Array.isArray(ordData) ? ordData : [];
+        if (previousOrdersCountRef.current !== null && nextOrders.length > previousOrdersCountRef.current) {
+          const latestOrder = nextOrders[0];
+          if (latestOrder) {
+            toast.success(`🔔 New Atelier Order #SUKO-${1000 + latestOrder.id} Received!`, {
+              description: `${latestOrder.shipping_name || latestOrder.name || "Client"} · ${formatINR(latestOrder.total || 0)}`,
+              duration: 9000,
+              action: {
+                label: "View Order",
+                onClick: () => {
+                  setSelectedOrderDetails(latestOrder);
+                  setActiveTab("orders");
+                }
+              }
+            });
+          }
+        }
+        previousOrdersCountRef.current = nextOrders.length;
+        setOrders(nextOrders);
+      }
       if (catRes.ok) {
         const cData = await catRes.json();
         if (Array.isArray(cData) && cData.length > 0) {
-          setCategories(cData);
+          nextCategories = cData;
+          setCategories(nextCategories);
         }
       }
       if (couponRes.ok) setCouponsList(await couponRes.json());
@@ -1811,11 +1920,24 @@ const Admin = () => {
         setBrandSettings(brandData);
         setBrandForm(brandData);
       }
+
+      // Save to memory cache for 0ms instant reload next time
+      try {
+        sessionStorage.setItem("suko_admin_cache", JSON.stringify({
+          stats: nextStats || stats,
+          products: nextProducts || products,
+          orders: nextOrders || orders,
+          categories: nextCategories || categories
+        }));
+      } catch (e) {}
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load dashboard data");
+      if (!silent) {
+        toast.error("Failed to load dashboard data");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+      setIsSyncing(false);
     }
   };
 
@@ -2164,7 +2286,40 @@ const Admin = () => {
 
   const executeDeleteGarment = async (permanent = false, force = false) => {
     if (!garmentToDelete?.product) return;
-    setGarmentToDelete(prev => ({ ...prev, submitting: true }));
+
+    // Critical Action Protection: Require administrator password re-authentication for permanent deletion
+    if (permanent) {
+      const password = window.prompt("Security Re-Authentication Required:\nPlease enter your administrator password to authorize permanent deletion:");
+      if (!password) {
+        toast.error("Deletion cancelled: Administrator password verification is required.");
+        return;
+      }
+
+      setGarmentToDelete(prev => ({ ...prev, submitting: true }));
+      try {
+        const reauthRes = await fetch(`${API_BASE_URL}/api/auth/reauthenticate`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            password,
+            actionDescription: `Permanent Deletion of Garment: ${garmentToDelete.product.name} (ID: ${garmentToDelete.product.id})`
+          })
+        });
+        const reauthData = await reauthRes.json().catch(() => ({}));
+        if (!reauthRes.ok || !reauthData.valid) {
+          throw new Error(reauthData.error || "Incorrect administrator password. Deletion blocked.");
+        }
+      } catch (authErr) {
+        toast.error(authErr.message);
+        setGarmentToDelete(prev => ({ ...prev, submitting: false }));
+        return;
+      }
+    } else {
+      setGarmentToDelete(prev => ({ ...prev, submitting: true }));
+    }
 
     try {
       const pId = garmentToDelete.product.id;
@@ -3863,73 +4018,73 @@ const Admin = () => {
       )}
 
       {/* ============================================================= */}
-      {/* 1. FIXED LEFT SIDEBAR NAVIGATION (3-ZONE ARCHITECTURE)        */}
+      {/* 1. FIXED LEFT SIDEBAR NAVIGATION / MOBILE SLIDE-OUT DRAWER    */}
       {/* ============================================================= */}
       <aside
         data-lenis-prevent="true"
         data-lenis-prevent-wheel="true"
         data-lenis-prevent-touch="true"
-        className={`fixed md:relative inset-y-0 left-0 h-screen w-[270px] min-w-[270px] max-w-[270px] shrink-0 bg-[#F7F3ED] border-r border-[#E5DDD1] flex flex-col z-40 transition-transform duration-300 overflow-hidden ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        className={`fixed md:relative inset-y-0 left-0 h-screen w-[85vw] max-w-[310px] md:w-[270px] md:min-w-[270px] md:max-w-[270px] shrink-0 bg-[#F7F3ED] border-r border-[#E5DDD1] flex flex-col z-50 md:z-40 transition-transform duration-300 ease-out overflow-hidden shadow-2xl md:shadow-none ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
           }`}
       >
-        {/* Zone 1: Fixed Brand Header */}
-        <div className="shrink-0 p-4.5 sm:p-5 pb-4 border-b border-[#E5DDD1] bg-[#F7F3ED] relative">
+        {/* Zone 1: Fixed Brand Header (Compact for Mobile & Desktop) */}
+        <div className="shrink-0 p-4 sm:p-5 pb-3 sm:pb-4 border-b border-[#E5DDD1] bg-[#F7F3ED] relative">
           <div className="flex items-start justify-between">
             <Link to="/" className="inline-block group" onClick={() => closeMobileSidebar(true)}>
               <img
                 src={brandSettings?.logo_url || "/logo.png"}
                 alt="SUKO Atelier"
-                className="h-[56px] sm:h-[60px] w-auto max-w-[145px] object-contain object-left transition-transform duration-300 group-hover:scale-[1.02]"
+                className="h-[46px] sm:h-[54px] w-auto max-w-[135px] object-contain object-left transition-transform duration-300 group-hover:scale-[1.02]"
                 onError={(e) => { e.currentTarget.src = "/logo.png"; }}
               />
             </Link>
             <button
               type="button"
               onClick={closeMobileSidebar}
-              className="md:hidden p-1 text-[#746F68] hover:text-[#171717] cursor-pointer"
-              aria-label="Close sidebar"
+              className="md:hidden p-1.5 text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF] rounded transition-colors cursor-pointer"
+              aria-label="Close navigation drawer"
             >
               <X size={18} />
             </button>
           </div>
 
-          <div className="mt-2.5 space-y-1">
-            <span className="font-serif text-[14px] tracking-[0.14em] uppercase text-[#171717] font-medium block leading-none">
+          <div className="mt-2 space-y-0.5">
+            <span className="font-serif text-[13px] sm:text-[14px] tracking-[0.14em] uppercase text-[#171717] font-medium block leading-none">
               SUKO ADMIN
             </span>
-            <span className="text-[10px] uppercase tracking-[0.14em] text-[#A77B1E] font-mono font-medium block leading-none">
+            <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#C2922E] font-mono font-medium block leading-none">
               STUDIO CONTROL
             </span>
           </div>
         </div>
 
-        {/* Zone 2: Scrollable Navigation Area */}
+        {/* Zone 2: Scrollable Navigation Area (Logical Atelier Workflow) */}
         <nav
           data-lenis-prevent="true"
-          className="flex-1 overflow-y-auto overscroll-contain suko-scrollbar px-4.5 sm:px-5 py-3 space-y-3"
+          className="flex-1 overflow-y-auto overscroll-contain suko-scrollbar px-4 sm:px-5 py-3.5 space-y-4"
         >
-          {/* ATELIER CHAPTER */}
+          {/* 1. MAIN */}
           <div>
-            <span className="text-[9px] uppercase tracking-[0.10em] text-[#8E877E] font-mono font-semibold px-2 block mb-1">
-              ATELIER
+            <span className="text-[9px] uppercase tracking-[0.12em] text-[#8E877E] font-mono font-semibold px-2.5 block mb-1">
+              MAIN
             </span>
             <div className="space-y-0.5">
               <button
                 type="button"
                 onClick={() => { setActiveTab("overview"); closeMobileSidebar(true); }}
                 className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${activeTab === "overview"
-                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    ? "bg-[#EFE9DF]/60 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
                     : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
                   }`}
               >
-                <span>Overview</span>
+                <span>Dashboard</span>
               </button>
             </div>
           </div>
 
-          {/* CATALOGUE CHAPTER */}
+          {/* 2. CATALOGUE */}
           <div>
-            <span className="text-[9px] uppercase tracking-[0.10em] text-[#8E877E] font-mono font-semibold px-2 block mb-1">
+            <span className="text-[9px] uppercase tracking-[0.12em] text-[#8E877E] font-mono font-semibold px-2.5 block mb-1">
               CATALOGUE
             </span>
             <div className="space-y-0.5">
@@ -3937,11 +4092,11 @@ const Admin = () => {
                 type="button"
                 onClick={() => { setActiveTab("products"); closeMobileSidebar(true); }}
                 className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${activeTab === "products"
-                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    ? "bg-[#EFE9DF]/60 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
                     : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
                   }`}
               >
-                <span>Products</span>
+                <span>Garments</span>
                 {lowStockProducts.length > 0 && (
                   <span className="text-[10px] font-mono text-amber-800 font-medium">
                     ({lowStockProducts.length})
@@ -3953,7 +4108,7 @@ const Admin = () => {
                 type="button"
                 onClick={() => { setActiveTab("categories"); closeMobileSidebar(true); }}
                 className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${activeTab === "categories"
-                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    ? "bg-[#EFE9DF]/60 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
                     : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
                   }`}
               >
@@ -3962,17 +4117,17 @@ const Admin = () => {
             </div>
           </div>
 
-          {/* OPERATIONS CHAPTER */}
+          {/* 3. COMMERCE */}
           <div>
-            <span className="text-[9px] uppercase tracking-[0.10em] text-[#8E877E] font-mono font-semibold px-2 block mb-1">
-              OPERATIONS
+            <span className="text-[9px] uppercase tracking-[0.12em] text-[#8E877E] font-mono font-semibold px-2.5 block mb-1">
+              COMMERCE
             </span>
             <div className="space-y-0.5">
               <button
                 type="button"
                 onClick={() => { setActiveTab("orders"); closeMobileSidebar(true); }}
                 className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${activeTab === "orders"
-                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    ? "bg-[#EFE9DF]/60 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
                     : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
                   }`}
               >
@@ -3988,7 +4143,7 @@ const Admin = () => {
                 type="button"
                 onClick={() => { setActiveTab("payments"); closeMobileSidebar(true); }}
                 className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${activeTab === "payments"
-                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    ? "bg-[#EFE9DF]/60 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
                     : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
                   }`}
               >
@@ -3999,20 +4154,12 @@ const Admin = () => {
                   </span>
                 )}
               </button>
-            </div>
-          </div>
 
-          {/* CUSTOMERS CHAPTER */}
-          <div>
-            <span className="text-[9px] uppercase tracking-[0.10em] text-[#8E877E] font-mono font-semibold px-2 block mb-1">
-              CUSTOMERS
-            </span>
-            <div className="space-y-0.5">
               <button
                 type="button"
                 onClick={() => { setActiveTab("customers"); closeMobileSidebar(true); }}
                 className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${activeTab === "customers"
-                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    ? "bg-[#EFE9DF]/60 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
                     : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
                   }`}
               >
@@ -4023,7 +4170,7 @@ const Admin = () => {
                 type="button"
                 onClick={() => { setActiveTab("reviews"); closeMobileSidebar(true); }}
                 className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${activeTab === "reviews"
-                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    ? "bg-[#EFE9DF]/60 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
                     : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
                   }`}
               >
@@ -4037,9 +4184,28 @@ const Admin = () => {
             </div>
           </div>
 
-          {/* MARKETING CHAPTER */}
+          {/* 4. ATELIER */}
           <div>
-            <span className="text-[9px] uppercase tracking-[0.10em] text-[#8E877E] font-mono font-semibold px-2 block mb-1">
+            <span className="text-[9px] uppercase tracking-[0.12em] text-[#8E877E] font-mono font-semibold px-2.5 block mb-1">
+              ATELIER
+            </span>
+            <div className="space-y-0.5">
+              <button
+                type="button"
+                onClick={() => { setActiveTab("calendar"); closeMobileSidebar(true); }}
+                className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${activeTab === "calendar"
+                    ? "bg-[#EFE9DF]/60 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
+                  }`}
+              >
+                <span>Schedule</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 5. MARKETING */}
+          <div>
+            <span className="text-[9px] uppercase tracking-[0.12em] text-[#8E877E] font-mono font-semibold px-2.5 block mb-1">
               MARKETING
             </span>
             <div className="space-y-0.5">
@@ -4047,7 +4213,7 @@ const Admin = () => {
                 type="button"
                 onClick={() => { setActiveTab("coupons"); closeMobileSidebar(true); }}
                 className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${activeTab === "coupons"
-                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    ? "bg-[#EFE9DF]/60 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
                     : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
                   }`}
               >
@@ -4058,28 +4224,18 @@ const Admin = () => {
                 type="button"
                 onClick={() => { setActiveTab("broadcast"); closeMobileSidebar(true); }}
                 className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${activeTab === "broadcast"
-                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    ? "bg-[#EFE9DF]/60 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
                     : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
                   }`}
               >
-                <span>Customer Communication</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => { setActiveTab("calendar"); closeMobileSidebar(true); }}
-                className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${activeTab === "calendar"
-                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
-                    : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
-                  }`}
-              >
-                <span>Schedule</span>
+                <span>Communication</span>
               </button>
             </div>
           </div>
 
-          {/* SETTINGS CHAPTER */}
+          {/* 6. SETTINGS */}
           <div>
-            <span className="text-[9px] uppercase tracking-[0.10em] text-[#8E877E] font-mono font-semibold px-2 block mb-1">
+            <span className="text-[9px] uppercase tracking-[0.12em] text-[#8E877E] font-mono font-semibold px-2.5 block mb-1">
               SETTINGS
             </span>
             <div className="space-y-0.5">
@@ -4087,39 +4243,43 @@ const Admin = () => {
                 type="button"
                 onClick={() => { setActiveTab("brand_settings"); closeMobileSidebar(true); }}
                 className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${activeTab === "brand_settings"
-                    ? "bg-[#EFE9DF]/55 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    ? "bg-[#EFE9DF]/60 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
                     : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
                   }`}
               >
-                <span>Brand &amp; Invoices</span>
+                <span>Brand &amp; Documents</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab("admin_controls"); closeMobileSidebar(true); }}
+                className={`w-full text-[12.5px] tracking-[0.02em] py-1.5 px-2.5 rounded-r-[4px] rounded-l-none flex items-center justify-between transition-all cursor-pointer ${activeTab === "admin_controls"
+                    ? "bg-[#EFE9DF]/60 text-[#111113] font-medium border-l-[2.5px] border-[#C2922E]"
+                    : "text-[#3D3A35] hover:text-[#111113] hover:bg-[#EFE9DF]/40 border-l-[2.5px] border-transparent font-normal sm:font-medium"
+                  }`}
+              >
+                <span>Admin Controls</span>
               </button>
             </div>
           </div>
         </nav>
 
-        {/* Zone 3: Fixed Footer Controls */}
-        <div className="shrink-0 p-4.5 sm:p-5 pt-3.5 pb-4.5 border-t border-[#E5DDD1] bg-[#F7F3ED] space-y-2.5">
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <Link
-              to="/"
-              onClick={() => closeMobileSidebar(true)}
-              className="py-2 px-2.5 rounded-[4px] bg-[#FAF8F5] hover:bg-[#EFE9DF] border border-[#E5DDD1] text-[11px] text-[#171717] font-medium transition-colors flex items-center justify-between group cursor-pointer"
-              title="Open Storefront"
-            >
+        {/* Zone 3: Fixed Footer Controls (Quiet Luxury Storefront & Sign Out) */}
+        <div className="shrink-0 p-4 sm:p-5 pt-3.5 pb-4 border-t border-[#E5DDD1] bg-[#F7F3ED] space-y-2">
+          <Link
+            to="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => closeMobileSidebar(true)}
+            className="w-full py-2 px-3 rounded-[4px] bg-[#FAF8F5] hover:bg-[#EFE9DF] border border-[#E5DDD1] text-[12px] text-[#171717] font-medium transition-colors flex items-center justify-between group cursor-pointer shadow-2xs"
+            title="Open Live Storefront"
+          >
+            <span className="flex items-center gap-2">
+              <Sparkles size={13} className="text-[#C2922E]" />
               <span>Storefront</span>
-              <ArrowUpRight size={12} className="text-[#78726A] group-hover:text-[#171717]" />
-            </Link>
-
-            <button
-              type="button"
-              onClick={exportOrdersCSV}
-              className="py-2 px-2.5 rounded-[4px] bg-[#FAF8F5] hover:bg-[#EFE9DF] border border-[#E5DDD1] text-[11px] text-[#171717] font-medium transition-colors flex items-center justify-between group cursor-pointer"
-              title="Export Orders CSV"
-            >
-              <span>Export CSV</span>
-              <Download size={12} className="text-[#A77B1E]" />
-            </button>
-          </div>
+            </span>
+            <ArrowUpRight size={13} className="text-[#78726A] group-hover:text-[#171717] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </Link>
 
           <button
             type="button"
@@ -4127,10 +4287,10 @@ const Admin = () => {
               closeMobileSidebar(true);
               if (logout) logout();
             }}
-            className="w-full py-1.5 px-2.5 text-[11px] text-[#746F68] hover:text-[#171717] hover:bg-[#EFE9DF]/50 rounded-[4px] transition-colors flex items-center justify-between cursor-pointer font-medium"
+            className="w-full py-2 px-3 text-[12px] text-[#746F68] hover:text-red-700 hover:bg-red-50/60 rounded-[4px] transition-colors flex items-center justify-between cursor-pointer font-medium"
           >
             <span>Sign Out</span>
-            <LogOut size={12} className="text-[#746F68]" />
+            <LogOut size={13} className="text-[#746F68]" />
           </button>
         </div>
       </aside>
@@ -4146,17 +4306,20 @@ const Admin = () => {
       >
 
         {/* Atelier Top Header Bar (Sleek ~54px) */}
-        <header className="h-13 sm:h-14 bg-[#F7F3ED]/95 backdrop-blur-md border-b border-[#E5DDD1] px-5 sm:px-8 lg:px-10 flex items-center justify-between sticky top-0 z-30 shrink-0">
-          <div className="flex items-center gap-3.5">
+        {/* Atelier Top Header Bar (Sleek ~54px) */}
+        <header className="h-13 sm:h-14 bg-[#F7F3ED]/95 backdrop-blur-md border-b border-[#E5DDD1] px-3.5 sm:px-8 lg:px-10 flex items-center justify-between sticky top-0 z-30 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <button
               type="button"
               onClick={isMobileSidebarOpen ? closeMobileSidebar : openMobileSidebar}
-              className="md:hidden p-1.5 text-[#171717] hover:bg-[#EFE9DF] rounded transition-colors cursor-pointer"
+              className="md:hidden p-1.5 -ml-1 text-[#171717] hover:bg-[#EFE9DF] rounded transition-colors cursor-pointer"
               aria-label="Toggle navigation drawer"
             >
-              <Menu size={18} />
+              <Menu size={20} />
             </button>
-            <div>
+
+            {/* Desktop Active Tab Title */}
+            <div className="hidden md:block">
               <div className="flex items-center gap-2">
                 <h1 className="font-serif text-base sm:text-[17px] font-normal text-[#171717] tracking-tight leading-none">
                   {activeTab === "overview" && "Studio Dashboard"}
@@ -4168,14 +4331,33 @@ const Admin = () => {
                   {activeTab === "customers" && "Customer Directory"}
                   {activeTab === "reviews" && "Review Management"}
                   {activeTab === "broadcast" && "Customer Communication"}
-                  {activeTab === "brand_settings" && "Brand & Invoices"}
+                  {activeTab === "brand_settings" && "Brand & Documents"}
+                  {activeTab === "admin_controls" && "Admin Controls & Security"}
                   {activeTab === "calendar" && "Schedule & Calendar"}
                 </h1>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 sm:gap-6">
+          {/* Mobile Center Page Title */}
+          <div className="md:hidden flex-1 text-center px-1">
+            <h1 className="font-serif text-[15px] font-medium text-[#171717] tracking-tight truncate max-w-[170px] sm:max-w-xs mx-auto">
+              {activeTab === "overview" && "Studio Dashboard"}
+              {activeTab === "products" && "Product Catalogue"}
+              {activeTab === "categories" && "Collections"}
+              {activeTab === "orders" && "Atelier Orders"}
+              {activeTab === "payments" && "Reconciliation"}
+              {activeTab === "coupons" && "Coupons"}
+              {activeTab === "customers" && "Customers"}
+              {activeTab === "reviews" && "Reviews"}
+              {activeTab === "broadcast" && "Communication"}
+              {activeTab === "brand_settings" && "Brand & Docs"}
+              {activeTab === "admin_controls" && "Admin Controls"}
+              {activeTab === "calendar" && "Schedule"}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-2.5 sm:gap-6">
             {/* Restrained Quick Text Action */}
             <button
               type="button"
@@ -4183,6 +4365,19 @@ const Admin = () => {
               className="hidden sm:inline-flex items-center gap-1 text-xs text-[#55514B] hover:text-[#171717] transition-colors cursor-pointer font-medium tracking-normal"
             >
               <span>+ Add Product</span>
+            </button>
+
+            {/* Live Real-Time Database Sync Button */}
+            <button
+              type="button"
+              onClick={() => {
+                fetchDashboardData(true);
+                toast.success("Atelier data synchronized live with database", { id: "live-sync" });
+              }}
+              className="p-1.5 text-[#55514B] hover:text-[#171717] hover:bg-[#EFE9DF]/50 rounded transition-colors cursor-pointer"
+              title="Synchronize live database"
+            >
+              <RotateCcw size={15} className={`transition-transform duration-700 ${isSyncing ? "animate-spin text-[#C2922E]" : ""}`} />
             </button>
 
             {/* Notifications Bell for UPI verifications */}
@@ -4207,7 +4402,8 @@ const Admin = () => {
                 aria-expanded={isProfileDropdownOpen}
                 aria-haspopup="true"
               >
-                <span>Studio Admin</span>
+                <span className="hidden sm:inline">Studio Admin</span>
+                <span className="sm:hidden font-mono text-[11px]">Admin</span>
                 <ChevronDown
                   size={12}
                   className={`text-[#8E877E] transition-transform duration-200 ${isProfileDropdownOpen ? "rotate-180 text-[#C2922E]" : ""}`}
@@ -4322,8 +4518,35 @@ const Admin = () => {
               {activeTab === "overview" && (
                 <div className="space-y-6">
 
-                  {/* 1. ATELIER OPERATIONS HEADER */}
-                  <div className="pb-4 border-b border-[#E5DDD1] flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+                  {/* MOBILE WELCOME / HERO SECTION */}
+                  <div className="md:hidden border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] p-4 sm:p-5 space-y-3.5 shadow-2xs">
+                    <div className="space-y-1">
+                      <span className="text-[9.5px] uppercase tracking-[0.2em] text-[#C2922E] font-mono font-medium block">
+                        STUDIO DASHBOARD
+                      </span>
+                      <h2 className="font-serif text-2xl font-normal text-[#171717] tracking-tight">
+                        Welcome back, Admin
+                      </h2>
+                      <p className="text-xs text-[#746F68] font-sans font-normal leading-relaxed">
+                        Manage garments, orders and atelier operations.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("categories");
+                        handleCancelEdit();
+                        setIsMobileAddProductOpen(true);
+                      }}
+                      className="w-full bg-[#111113] hover:bg-[#C2922E] text-white py-2.5 px-4 rounded-[2px] text-xs font-mono uppercase tracking-widest font-medium flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Plus size={14} className="text-[#C2922E]" />
+                      <span>+ Add Product</span>
+                    </button>
+                  </div>
+
+                  {/* DESKTOP OPERATIONS HEADER */}
+                  <div className="hidden md:flex pb-4 border-b border-[#E5DDD1] flex-col lg:flex-row lg:items-end justify-between gap-4">
                     <div className="space-y-1">
                       <span className="text-[10px] uppercase tracking-[0.18em] text-[#C2922E] font-mono font-medium block">
                         ATELIER OVERVIEW &middot; {new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()}
@@ -4380,9 +4603,36 @@ const Admin = () => {
                     </div>
                   </div>
 
-                  {/* 2. ATELIER SUMMARY CARD */}
-                  <div className="border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] p-6 sm:p-7 shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-4">
-                    <div className="flex items-center justify-between border-b border-[#E5DDD1]/70 pb-3">
+                  {/* FIRST FOLD PRIORITY: INVENTORY LOW STOCK ALERT */}
+                  {lowStockProducts.length > 0 && (
+                    <div className="border border-amber-300/80 bg-[#FFFDF7] p-3.5 sm:p-4 rounded-[4px] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
+                          <AlertTriangle size={15} className="text-amber-800" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[9.5px] uppercase tracking-[0.16em] text-amber-800 font-mono font-medium block">
+                            Inventory Alert
+                          </span>
+                          <p className="text-xs text-[#111113] font-medium truncate">
+                            {lowStockProducts[0].name} &mdash; <strong className="text-rose-800 font-semibold">{lowStockProducts[0].stock} pieces remaining</strong>
+                            {lowStockProducts.length > 1 && ` (+${lowStockProducts.length - 1} other pieces low)`}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("products")}
+                        className="text-xs font-mono font-semibold text-[#111113] hover:text-[#C2922E] flex items-center gap-1 shrink-0 self-start sm:self-auto cursor-pointer"
+                      >
+                        <span>Manage Inventory &rarr;</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 2. ATELIER SUMMARY STATS CARDS (2-COLUMN RESPONSIVE ON MOBILE) */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between px-0.5">
                       <span className="text-[10px] uppercase tracking-[0.2em] text-[#746F68] font-mono font-medium">
                         ATELIER SUMMARY
                       </span>
@@ -4390,58 +4640,70 @@ const Admin = () => {
                         {datePreset === 'all' ? 'All Lifetime Records' : 'Selected Period'}
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 pt-1">
-                      {/* Folio 1: Revenue */}
-                      <div className="space-y-1">
-                        <span className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#111113] tracking-tight leading-none block truncate">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+                      {/* Card 1: Revenue */}
+                      <div className="bg-[#FCFAF7] border border-[#E5DDD1] p-3.5 sm:p-5 rounded-[4px] shadow-2xs space-y-1 transition-all hover:border-[#C2922E]/60">
+                        <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono block">
+                          Revenue
+                        </span>
+                        <span className="font-serif text-xl sm:text-3xl lg:text-[36px] font-normal text-[#111113] tracking-tight leading-none block truncate">
                           {formatINR(filteredRevenue)}
                         </span>
-                        <span className="text-[10px] uppercase tracking-[0.16em] text-[#746F68] font-mono block pt-1">
-                          Revenue Generated
+                        <span className="text-[9px] font-mono text-[#8E877E] block pt-0.5">
+                          Settled earnings
                         </span>
                       </div>
 
-                      {/* Folio 2: Orders */}
-                      <div className="space-y-1">
-                        <div className="flex items-baseline gap-2">
-                          <span className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#111113] tracking-tight leading-none block">
+                      {/* Card 2: Orders */}
+                      <div className="bg-[#FCFAF7] border border-[#E5DDD1] p-3.5 sm:p-5 rounded-[4px] shadow-2xs space-y-1 transition-all hover:border-[#C2922E]/60">
+                        <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono block">
+                          Orders
+                        </span>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="font-serif text-xl sm:text-3xl lg:text-[36px] font-normal text-[#111113] tracking-tight leading-none block">
                             {String(filteredPaidOrders.length).padStart(2, '0')}
                           </span>
                           {verificationRequests.length > 0 && (
-                            <span className="text-[9px] font-mono text-amber-900 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30">
-                              {verificationRequests.length} pending
+                            <span className="text-[8.5px] font-mono text-amber-900 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30">
+                              {verificationRequests.length} pend.
                             </span>
                           )}
                         </div>
-                        <span className="text-[10px] uppercase tracking-[0.16em] text-[#746F68] font-mono block pt-1">
-                          Orders Completed
+                        <span className="text-[9px] font-mono text-[#8E877E] block pt-0.5">
+                          Completed orders
                         </span>
                       </div>
 
-                      {/* Folio 3: Pieces */}
-                      <div className="space-y-1">
-                        <div className="flex items-baseline gap-2">
-                          <span className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#111113] tracking-tight leading-none block">
+                      {/* Card 3: Products */}
+                      <div className="bg-[#FCFAF7] border border-[#E5DDD1] p-3.5 sm:p-5 rounded-[4px] shadow-2xs space-y-1 transition-all hover:border-[#C2922E]/60">
+                        <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono block">
+                          Products
+                        </span>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="font-serif text-xl sm:text-3xl lg:text-[36px] font-normal text-[#111113] tracking-tight leading-none block">
                             {String(stats.totalProducts).padStart(2, '0')}
                           </span>
                           {lowStockProducts.length > 0 && (
-                            <span className="text-[9px] font-mono text-amber-900 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30">
+                            <span className="text-[8.5px] font-mono text-amber-900 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30">
                               {lowStockProducts.length} low
                             </span>
                           )}
                         </div>
-                        <span className="text-[10px] uppercase tracking-[0.16em] text-[#746F68] font-mono block pt-1">
-                          Active Pieces
+                        <span className="text-[9px] font-mono text-[#8E877E] block pt-0.5">
+                          Active pieces
                         </span>
                       </div>
 
-                      {/* Folio 4: Clients */}
-                      <div className="space-y-1">
-                        <span className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#111113] tracking-tight leading-none block">
+                      {/* Card 4: Customers */}
+                      <div className="bg-[#FCFAF7] border border-[#E5DDD1] p-3.5 sm:p-5 rounded-[4px] shadow-2xs space-y-1 transition-all hover:border-[#C2922E]/60">
+                        <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono block">
+                          Customers
+                        </span>
+                        <span className="font-serif text-xl sm:text-3xl lg:text-[36px] font-normal text-[#111113] tracking-tight leading-none block">
                           {String(stats.totalUsers || uniqueClientsList.length).padStart(2, '0')}
                         </span>
-                        <span className="text-[10px] uppercase tracking-[0.16em] text-[#746F68] font-mono block pt-1">
-                          Registered Clients
+                        <span className="text-[9px] font-mono text-[#8E877E] block pt-0.5">
+                          Registered clients
                         </span>
                       </div>
                     </div>
@@ -4451,7 +4713,7 @@ const Admin = () => {
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
                     {/* LEFT CARD: Financial Performance (7 cols) */}
-                    <div className="lg:col-span-7 border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] p-6 sm:p-7 shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-5">
+                    <div className="lg:col-span-7 border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] p-5 sm:p-7 shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-5">
                       <div className="flex items-end justify-between border-b border-[#E5DDD1]/70 pb-3.5">
                         <div>
                           <span className="text-[10px] uppercase tracking-[0.2em] text-[#746F68] font-mono font-medium block mb-1">
@@ -4464,13 +4726,21 @@ const Admin = () => {
                             Settlement timeline &middot; {new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })}
                           </p>
                         </div>
-                        <div className="text-right">
-                          <span className="font-serif text-2xl sm:text-[28px] font-normal text-[#111113] block leading-none">
+                        <div className="text-right flex flex-col items-end">
+                          <span className="font-serif text-xl sm:text-[28px] font-normal text-[#111113] block leading-none">
                             {formatINR(filteredRevenue)}
                           </span>
-                          <span className="text-[10.5px] font-mono text-[#746F68] block mt-1.5">
+                          <span className="text-[10.5px] font-mono text-[#746F68] block mt-1">
                             {filteredPaidOrders.length} {filteredPaidOrders.length === 1 ? "Settled Order" : "Settled Orders"}
                           </span>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab("payments")}
+                            className="mt-1.5 text-[11px] font-medium text-[#C2922E] hover:underline cursor-pointer flex items-center gap-1"
+                          >
+                            <span>View Analytics</span>
+                            <span>&rarr;</span>
+                          </button>
                         </div>
                       </div>
 
@@ -4629,7 +4899,7 @@ const Admin = () => {
                     </div>
 
                     {/* RIGHT CARD: Recent Activity (5 cols) */}
-                    <div className="lg:col-span-5 border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] p-6 sm:p-7 shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-4">
+                    <div className="lg:col-span-5 border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] p-5 sm:p-7 shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-4">
                       <div className="flex items-end justify-between border-b border-[#E5DDD1]/70 pb-3.5">
                         <div>
                           <span className="text-[10px] uppercase tracking-[0.2em] text-[#746F68] font-mono font-medium block mb-1">
@@ -4651,7 +4921,67 @@ const Admin = () => {
                         </button>
                       </div>
 
-                      <div className="divide-y divide-[#E5DDD1]/60">
+                      {/* MOBILE VIEW: Dedicated Touch-Friendly Order Cards */}
+                      <div className="lg:hidden space-y-2.5">
+                        {orders.slice(0, 4).map(o => {
+                          const orderItems = Array.isArray(o.items) ? o.items : [];
+                          let pieceName = "";
+                          if (orderItems.length > 0) {
+                            const item = orderItems[0];
+                            pieceName = item.product_name || item.name || item.title || "";
+                            if (!pieceName && item.product_id) {
+                              const matched = products.find(p => p.id === item.product_id);
+                              if (matched) pieceName = matched.name;
+                            }
+                          }
+                          if (!pieceName) pieceName = "Tailored Bespoke Piece";
+                          const extraCount = orderItems.length > 1 ? orderItems.length - 1 : 0;
+
+                          return (
+                            <div
+                              key={o.id}
+                              onClick={() => {
+                                setSelectedOrderDetails(o);
+                                setActiveTab("orders");
+                              }}
+                              className="p-3.5 bg-white border border-[#E5DDD1] rounded-[2px] shadow-2xs space-y-2.5 cursor-pointer hover:border-[#C2922E] transition-all"
+                            >
+                              <div className="flex items-center justify-between border-b border-[#E5DDD1]/60 pb-2">
+                                <span className="font-mono text-xs font-semibold text-[#111113]">
+                                  #SUKO-{1000 + o.id}
+                                </span>
+                                <span className="text-[10px] font-mono text-[#8E877E]">
+                                  {formatDate(o.created_at)}
+                                </span>
+                              </div>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <h5 className="font-serif text-[14px] font-medium text-[#111113] truncate">
+                                    {o.name || o.shipping_name || o.user?.name || "Client"}
+                                  </h5>
+                                  <p className="text-xs text-[#746F68] font-sans truncate mt-0.5">
+                                    {pieceName} {extraCount > 0 && <span className="font-mono text-[10px]">(+{extraCount} more)</span>}
+                                  </p>
+                                </div>
+                                <span className="font-mono text-xs font-bold text-[#111113] shrink-0">
+                                  {formatINR(o.total)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between pt-2 border-t border-[#E5DDD1]/60">
+                                <div>
+                                  {renderStatusIndicator(o.status)}
+                                </div>
+                                <span className="text-xs font-mono font-medium text-[#C2922E] flex items-center gap-1">
+                                  View &rarr;
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* DESKTOP VIEW: Compact Divider List */}
+                      <div className="hidden lg:block divide-y divide-[#E5DDD1]/60">
                         {orders.slice(0, 5).map(o => {
                           const orderItems = Array.isArray(o.items) ? o.items : [];
                           let pieceName = "";
@@ -5025,80 +5355,49 @@ const Admin = () => {
                 </div>
               )}
 
-              {/* CALENDAR TAB FULL */}
+              {/* ATELIER OPERATIONS TIMELINE & CALENDAR */}
               {activeTab === "calendar" && (
-                <div className="border border-[#E8E4DC] p-8 bg-white rounded-2xl shadow-sm">
-                  <div className="flex items-center justify-between mb-8">
-                    <div>
-                      <h2 className="font-quiche text-3xl font-light text-[#121215]">Full Calendar & Scheduler</h2>
-                      <p className="text-xs text-[#555560] font-body mt-1">Manage events, track daily sales highlights & add studio tasks.</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <button
-                        onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
-                        className="p-2 border border-[#E8E4DC] rounded-xl hover:border-[#C2922E] transition-all text-[#555560] hover:text-[#121215]"
-                      >
-                        <ChevronLeft size={18} />
-                      </button>
-                      <span className="text-sm uppercase tracking-[0.12em] font-mono text-[#121215]">
-                        {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                      </span>
-                      <button
-                        onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-                        className="p-2 border border-[#E8E4DC] rounded-xl hover:border-[#C2922E] transition-all text-[#555560] hover:text-[#121215]"
-                      >
-                        <ChevronRight size={18} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Grid */}
-                  <div className="grid grid-cols-7 text-center mb-3 text-xs uppercase tracking-widest text-[#888890] font-mono">
-                    <span>Sunday</span><span>Monday</span><span>Tuesday</span><span>Wednesday</span><span>Thursday</span><span>Friday</span><span>Saturday</span>
-                  </div>
-                  <div className="grid grid-cols-7 gap-2">
-                    {getDaysInMonth().map((day, idx) => {
-                      if (!day) return <div key={idx} className="h-28 border border-transparent" />;
-                      const dStr = dateKey(day);
-                      const isSelected = dateKey(selectedDate) === dStr;
-                      const isToday = dateKey(new Date()) === dStr;
-                      const dayOrders = orders.filter(o => dateKey(new Date(o.created_at)) === dStr);
-                      const notes = calendarNotes[dStr] || [];
-
-                      return (
-                        <div
-                          key={idx}
-                          onClick={() => setSelectedDate(day)}
-                          className={`h-28 border rounded-xl p-2.5 text-left cursor-pointer flex flex-col justify-between transition-all ${isSelected ? "border-[#C2922E] bg-[#C2922E]/10" : isToday ? "border-[#121215] bg-[#121215]/5" : "border-[#E8E4DC]/60 hover:border-[#C2922E] bg-[#FAF8F5]"
-                            }`}
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className={`text-xs font-body ${isToday ? "font-bold text-[#121215]" : "text-[#555560]"}`}>
-                              {day.getDate()}
-                            </span>
-                            {dayOrders.length > 0 && (
-                              <span className="text-[9px] uppercase tracking-wider bg-emerald-500/10 text-emerald-700 px-1.5 py-0.5 rounded-full border border-emerald-500/20 font-mono">
-                                {dayOrders.length} orders
-                              </span>
-                            )}
-                          </div>
-                          <div className="space-y-1 max-h-16 overflow-y-auto">
-                            {notes.map(n => (
-                              <div key={n.id} className="text-[9px] bg-white border border-[#E8E4DC] px-1.5 py-0.5 rounded truncate text-[#555560]">
-                                • {n.text}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <AtelierOperationsCalendar
+                  orders={orders}
+                  onSelectOrder={(order) => {
+                    setActiveTab("orders");
+                    setSelectedOrderDetails(order);
+                  }}
+                  onBack={() => setActiveTab("overview")}
+                />
               )}
 
               {/* PRODUCTS TAB (CATALOGUE & GARMENTS) */}
               {activeTab === "products" && (
                 <div className="space-y-6">
+                  {/* MOBILE CATALOGUE SUB-NAVIGATION: GARMENTS VS COLLECTIONS */}
+                  <div className="lg:hidden flex items-center gap-1.5 p-1 bg-[#F5F2EC] border border-[#E5DDD1] rounded-[3px]">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("products")}
+                      className={`flex-1 py-2 text-xs font-mono uppercase tracking-wider rounded-[2px] transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        activeTab === "products"
+                          ? "bg-[#111113] text-white font-medium shadow-xs"
+                          : "text-[#55514B] hover:text-[#111113]"
+                      }`}
+                    >
+                      <Package size={13} className={activeTab === "products" ? "text-[#C2922E]" : "text-[#746F68]"} />
+                      <span>Garments ({products.length})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("categories")}
+                      className={`flex-1 py-2 text-xs font-mono uppercase tracking-wider rounded-[2px] transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        activeTab === "categories"
+                          ? "bg-[#111113] text-white font-medium shadow-xs"
+                          : "text-[#55514B] hover:text-[#111113]"
+                      }`}
+                    >
+                      <Layers size={13} className={activeTab === "categories" ? "text-[#C2922E]" : "text-[#746F68]"} />
+                      <span>Collections ({categories.length})</span>
+                    </button>
+                  </div>
+
                   {/* Title, Tabs & Action Buttons */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5DDD1] pb-4">
                     <div>
@@ -6062,523 +6361,737 @@ const Admin = () => {
 
               {/* CATEGORIES & NEW PRODUCT TAB (COLLECTION STRUCTURE) */}
               {activeTab === "categories" && (
-                <div className="grid lg:grid-cols-12 gap-8">
-                  {/* LEFT SIDE: COLLECTION STRUCTURE (COMPACT LUXURY CARDS) */}
-                  <div className="lg:col-span-5 space-y-4">
-                    <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
-                      <div>
-                        <span className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block mb-0.5">
-                          COLLECTIONS
-                        </span>
-                        <h2 className="text-xl font-serif font-medium text-[#111113] tracking-tight">
-                          Collection Management ({categories.length})
-                        </h2>
-                        <p className="text-xs text-[#746F68] font-sans mt-0.5">
-                          Organize and manage your product collections.
-                        </p>
-                      </div>
+                <div className="space-y-4">
+                  {/* MOBILE CATALOGUE SUB-NAVIGATION: GARMENTS VS COLLECTIONS */}
+                  {!isMobileAddProductOpen && (
+                    <div className="lg:hidden flex items-center gap-1.5 p-1 bg-[#F5F2EC] border border-[#E5DDD1] rounded-[3px]">
                       <button
                         type="button"
-                        onClick={() => setShowAddCategoryInline(!showAddCategoryInline)}
-                        className="text-[10px] uppercase tracking-wider text-[#C2922E] hover:underline font-mono font-medium cursor-pointer"
+                        onClick={() => setActiveTab("products")}
+                        className={`flex-1 py-2 text-xs font-mono uppercase tracking-wider rounded-[2px] transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          activeTab === "products"
+                            ? "bg-[#111113] text-white font-medium shadow-xs"
+                            : "text-[#55514B] hover:text-[#111113]"
+                        }`}
                       >
-                        {showAddCategoryInline ? "Cancel" : "+ Create Collection"}
+                        <Package size={13} className={activeTab === "products" ? "text-[#C2922E]" : "text-[#746F68]"} />
+                        <span>Garments ({products.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("categories")}
+                        className={`flex-1 py-2 text-xs font-mono uppercase tracking-wider rounded-[2px] transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          activeTab === "categories"
+                            ? "bg-[#111113] text-white font-medium shadow-xs"
+                            : "text-[#55514B] hover:text-[#111113]"
+                        }`}
+                      >
+                        <Layers size={13} className={activeTab === "categories" ? "text-[#C2922E]" : "text-[#746F68]"} />
+                        <span>Collections ({categories.length})</span>
                       </button>
                     </div>
+                  )}
 
-                    {/* Search Collection Filter */}
-                    <div className="relative">
-                      <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#746F68]" />
-                      <input
-                        type="text"
-                        value={collectionSearch}
-                        onChange={(e) => setCollectionSearch(e.target.value)}
-                        placeholder="Search collections..."
-                        className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-9 pr-8 py-2 text-xs font-mono text-[#111113] outline-none focus:border-[#C2922E] transition-colors"
-                      />
-                      {collectionSearch && (
+                  <div className="grid lg:grid-cols-12 gap-8">
+                    {/* LEFT SIDE: COLLECTION STRUCTURE (COMPACT LUXURY CARDS) */}
+                    <div className={`space-y-4 lg:col-span-5 ${isMobileAddProductOpen ? "hidden lg:block" : "block"}`}>
+                      {/* Mobile prominent CTA buttons */}
+                      <div className="lg:hidden flex gap-2 pt-1">
                         <button
                           type="button"
-                          onClick={() => setCollectionSearch("")}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#746F68] hover:text-[#111113] text-sm font-mono cursor-pointer"
+                          onClick={() => {
+                            handleCancelEdit();
+                            setIsMobileAddProductOpen(true);
+                          }}
+                          className="flex-1 bg-[#111113] hover:bg-[#C2922E] text-white py-2.5 px-3 rounded-[2px] text-xs font-mono uppercase tracking-wider font-medium flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
                         >
-                          &times;
+                          <Plus size={14} className="text-[#C2922E]" />
+                          <span>+ Add New Product</span>
                         </button>
-                      )}
-                    </div>
-
-                    {/* Step-based / Compact Create Collection box */}
-                    {showAddCategoryInline && (
-                      <div className="p-4 border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] space-y-3 shadow-xs animate-in fade-in duration-150">
-                        <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block">
-                          New Atelier Collection
-                        </span>
-                        <div className="flex flex-col gap-2">
-                          <input
-                            type="text"
-                            autoFocus
-                            value={newCategoryName}
-                            onChange={(e) => setNewCategoryName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleCreateCategory(e);
-                              } else if (e.key === "Escape") {
-                                setShowAddCategoryInline(false);
-                              }
-                            }}
-                            placeholder="e.g. Executive Co-ords, Power Suits"
-                            className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs font-mono text-[#111113] outline-none focus:border-[#C2922E]"
-                          />
-                          <div className="flex gap-2 pt-1">
-                            <button
-                              type="button"
-                              onClick={handleCreateCategory}
-                              className="flex-1 bg-[#111113] hover:bg-[#C2922E] text-white px-4 py-2 rounded-[2px] text-[10px] uppercase tracking-widest font-mono font-medium transition-colors cursor-pointer"
-                            >
-                              Create Collection
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setShowAddCategoryInline(false)}
-                              className="border border-[#E5DDD1] hover:bg-[#EFE9DF] text-[#746F68] px-3.5 py-2 rounded-[2px] text-[10px] uppercase tracking-widest font-mono transition-colors cursor-pointer"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddCategoryInline(!showAddCategoryInline)}
+                          className="border border-[#E5DDD1] bg-white hover:bg-[#FAF8F5] text-[#111113] py-2.5 px-3 rounded-[2px] text-xs font-mono uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                        >
+                          <Layers size={13} className="text-[#C2922E]" />
+                          <span>{showAddCategoryInline ? "Close" : "+ Collection"}</span>
+                        </button>
                       </div>
-                    )}
 
-                    {/* Compact Luxury Cards Collection List */}
-                    <div className="space-y-3">
-                      {categories
-                        .filter(cat => cat.name?.toLowerCase().includes(collectionSearch.toLowerCase().trim()))
-                        .map((cat, idx) => {
-                          const linkedPieces = products.filter(p => 
-                            String(p.category_id) === String(cat.id) || 
-                            String(p.category_id) === String(cat.slug) || 
-                            String(p.category) === String(cat.slug) || 
-                            String(p.category) === String(cat.id) ||
-                            String(p.category?.id) === String(cat.id) ||
-                            String(p.category?.slug) === String(cat.slug) ||
-                            (p.categoryName && p.categoryName.toLowerCase() === cat.name?.toLowerCase()) ||
-                            (typeof p.category === 'object' && p.category?.name?.toLowerCase() === cat.name?.toLowerCase())
-                          );
-                          const linkedCount = linkedPieces.length;
-                          const isExpanded = expandedCollectionId === cat.id;
-
-                          return (
-                            <div 
-                              key={cat.id} 
-                              className={`border rounded-[2px] transition-all bg-white overflow-hidden ${
-                                isExpanded 
-                                  ? "border-[#C2922E] shadow-sm ring-1 ring-[#C2922E]/20" 
-                                  : "border-[#E5DDD1] hover:border-[#C2922E]/60 shadow-xs"
-                              }`}
-                            >
-                              <div className="p-3.5 sm:p-4 bg-[#FAF8F5]/60 flex flex-col gap-2.5">
-                                {/* Top Row: Index + Full Title + Trash Icon */}
-                                <div className="flex items-center justify-between gap-2.5">
-                                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-                                    <span className="text-xs font-mono font-medium text-[#C2922E] shrink-0">
-                                      {String(idx + 1).padStart(2, '0')}
-                                    </span>
-                                    <h4 className="font-serif text-[15px] sm:text-base text-[#111113] font-medium tracking-tight truncate">
-                                      {cat.name}
-                                    </h4>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => requestDeleteCategory(cat)}
-                                    className="p-1.5 text-[#746F68] hover:text-rose-800 hover:bg-rose-50 border border-[#E5DDD1] rounded-[2px] transition-colors cursor-pointer shrink-0"
-                                    title="Delete Collection"
-                                  >
-                                    <Trash2 size={12} />
-                                  </button>
-                                </div>
-
-                                {/* Bottom Row: Product Count Badge + Collection Tag + View Products Button */}
-                                <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#E5DDD1]/70">
-                                  <div className="flex items-center gap-2 text-[10px] font-mono whitespace-nowrap min-w-0">
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-[2px] font-medium uppercase tracking-wider bg-white text-[#111113] border border-[#E5DDD1] shrink-0">
-                                      {linkedCount === 1 ? "01 Product" : `${String(linkedCount).padStart(2, '0')} Products`}
-                                    </span>
-                                    <span className="text-[#746F68] uppercase tracking-wider shrink-0">
-                                      &middot; Collection
-                                    </span>
-                                  </div>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => setExpandedCollectionId(isExpanded ? null : cat.id)}
-                                    className={`text-[10px] uppercase font-mono tracking-wider px-2.5 py-1 border rounded-[2px] transition-colors cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
-                                      isExpanded
-                                        ? "bg-[#111113] text-white border-[#111113]"
-                                        : "bg-white text-[#111113] border-[#E5DDD1] hover:border-[#111113] hover:text-[#C2922E]"
-                                    }`}
-                                  >
-                                    <span>{isExpanded ? "Hide Products" : "View Products"}</span>
-                                    <span>{isExpanded ? "↑" : "→"}</span>
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Expanded Products Sub-Drawer */}
-                              {isExpanded && (
-                                <div className="border-t border-[#E5DDD1] bg-[#FAF8F5] p-3.5 space-y-2">
-                                  <div className="flex items-center justify-between text-[10px] font-mono text-[#746F68] uppercase tracking-wider border-b border-[#E5DDD1] pb-1.5">
-                                    <span>Assigned Products ({linkedPieces.length})</span>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleCancelEdit();
-                                        setFormData(prev => ({ ...prev, category_id: cat.id }));
-                                        const formEl = document.getElementById("atelier-garment-form");
-                                        if (formEl) formEl.scrollIntoView({ behavior: "smooth" });
-                                      }}
-                                      className="text-[#C2922E] hover:underline cursor-pointer"
-                                    >
-                                      + Add Product To This Collection
-                                    </button>
-                                  </div>
-                                  {linkedPieces.length === 0 ? (
-                                    <div className="py-4 text-center text-xs font-mono text-[#746F68]">
-                                      No products assigned to this collection yet.
-                                    </div>
-                                  ) : (
-                                    <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
-                                      {linkedPieces.map(piece => (
-                                        <div 
-                                          key={piece.id}
-                                          className={`flex items-center justify-between p-2 rounded-[2px] border transition-colors bg-white ${
-                                            editingGarmentId === piece.id 
-                                              ? "border-[#C2922E] ring-1 ring-[#C2922E]/30 bg-[#FFFDF9]" 
-                                              : "border-[#E5DDD1] hover:border-[#111113]"
-                                          }`}
-                                        >
-                                          <div className="flex items-center gap-2.5 min-w-0">
-                                            <img 
-                                              src={piece.images?.[0] || piece.image_url || "/placeholder.png"} 
-                                              alt={piece.name} 
-                                              className="w-9 h-9 object-cover rounded-[1px] border border-[#E5DDD1] shrink-0"
-                                            />
-                                            <div className="min-w-0">
-                                              <p className="text-xs font-serif font-medium text-[#111113] truncate">
-                                                {piece.name}
-                                              </p>
-                                              <p className="text-[10px] font-mono text-[#746F68]">
-                                                {formatINR(piece.price)} &middot; {piece.stock ?? 0} in stock &middot;{" "}
-                                                <span className={piece.status === "draft" ? "text-amber-700" : "text-emerald-700 font-medium"}>
-                                                  {piece.status || "active"}
-                                                </span>
-                                              </p>
-                                            </div>
-                                          </div>
-                                          <button
-                                            type="button"
-                                            onClick={() => handleStartEditGarment(piece)}
-                                            className={`text-[9.5px] uppercase font-mono px-2 py-1 rounded-[2px] border transition-colors shrink-0 ml-2 cursor-pointer ${
-                                              editingGarmentId === piece.id 
-                                                ? "bg-[#C2922E] text-white border-[#C2922E]" 
-                                                : "border-[#E5DDD1] hover:border-[#111113] text-[#111113] bg-white"
-                                            }`}
-                                          >
-                                            {editingGarmentId === piece.id ? "Editing" : "Edit Product ✎"}
-                                          </button>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-
-                      {categories.filter(cat => cat.name?.toLowerCase().includes(collectionSearch.toLowerCase().trim())).length === 0 && (
-                        <div className="p-6 border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] text-center text-[#746F68] font-mono text-xs">
-                          {collectionSearch 
-                            ? `No collections matching "${collectionSearch}".` 
-                            : 'No silhouettes registered yet. Click "+ Create Collection" above.'}
+                      <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-3">
+                        <div>
+                          <span className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block mb-0.5">
+                            COLLECTIONS
+                          </span>
+                          <h2 className="text-xl font-serif font-medium text-[#111113] tracking-tight">
+                            Collection Management ({categories.length})
+                          </h2>
+                          <p className="text-xs text-[#746F68] font-sans mt-0.5">
+                            Organize and manage your product collections.
+                          </p>
                         </div>
-                      )}
-                    </div>
-                  </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddCategoryInline(!showAddCategoryInline)}
+                          className="hidden sm:inline-block text-[10px] uppercase tracking-wider text-[#C2922E] hover:underline font-mono font-medium cursor-pointer"
+                        >
+                          {showAddCategoryInline ? "Cancel" : "+ Create Collection"}
+                        </button>
+                      </div>
 
-                  {/* RIGHT SIDE: ADD / EDIT GARMENT FORM (5 STRUCTURED SECTIONS) */}
-                  <div id="atelier-garment-form" className="lg:col-span-7">
-                    <div className="border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] shadow-xs p-6 sm:p-7 space-y-6">
-                      
-                      {/* Active Edit Banner */}
-                      {editingGarmentId && (
-                        <div className="bg-[#111113] text-white p-3.5 rounded-[2px] flex items-center justify-between shadow-xs">
-                          <div className="flex items-center gap-2.5">
-                            <span className="w-2 h-2 rounded-full bg-[#C2922E] animate-pulse"></span>
-                            <div>
-                              <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block">
-                                ATELIER EDIT WORKFLOW
-                              </span>
-                              <span className="text-xs font-serif font-normal text-white">
-                                Editing: <strong className="text-[#C2922E] font-medium">{formData.name || "Product"}</strong>
-                              </span>
-                            </div>
-                          </div>
+                      {/* Search Collection Filter */}
+                      <div className="relative">
+                        <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#746F68]" />
+                        <input
+                          type="text"
+                          value={collectionSearch}
+                          onChange={(e) => setCollectionSearch(e.target.value)}
+                          placeholder="Search collections..."
+                          className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-9 pr-8 py-2 text-xs font-mono text-[#111113] outline-none focus:border-[#C2922E] transition-colors"
+                        />
+                        {collectionSearch && (
                           <button
                             type="button"
-                            onClick={handleCancelEdit}
-                            className="text-[10px] uppercase tracking-wider font-mono text-[#FAF8F5] hover:text-[#C2922E] border border-[#FAF8F5]/30 hover:border-[#C2922E] px-2.5 py-1 rounded-[2px] transition-colors cursor-pointer"
+                            onClick={() => setCollectionSearch("")}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#746F68] hover:text-[#111113] text-sm font-mono cursor-pointer"
                           >
-                            Cancel Edit &times;
+                            &times;
                           </button>
+                        )}
+                      </div>
+
+                      {/* Step-based / Compact Create Collection box */}
+                      {showAddCategoryInline && (
+                        <div className="p-4 border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] space-y-3 shadow-xs animate-in fade-in duration-150">
+                          <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block">
+                            New Atelier Collection
+                          </span>
+                          <div className="flex flex-col gap-2">
+                            <input
+                              type="text"
+                              autoFocus
+                              value={newCategoryName}
+                              onChange={(e) => setNewCategoryName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleCreateCategory(e);
+                                } else if (e.key === "Escape") {
+                                  setShowAddCategoryInline(false);
+                                }
+                              }}
+                              placeholder="e.g. Executive Co-ords, Power Suits"
+                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs font-mono text-[#111113] outline-none focus:border-[#C2922E]"
+                            />
+                            <div className="flex gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={handleCreateCategory}
+                                className="flex-1 bg-[#111113] hover:bg-[#C2922E] text-white px-4 py-2 rounded-[2px] text-[10px] uppercase tracking-widest font-mono font-medium transition-colors cursor-pointer"
+                              >
+                                Create Collection
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShowAddCategoryInline(false)}
+                                className="border border-[#E5DDD1] hover:bg-[#EFE9DF] text-[#746F68] px-3.5 py-2 rounded-[2px] text-[10px] uppercase tracking-widest font-mono transition-colors cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       )}
 
-                      {/* Header */}
-                      <div className="border-b border-[#E5DDD1] pb-3">
-                        <span className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block mb-0.5">
-                          {editingGarmentId ? "EDIT PRODUCT SPECIFICATION" : "ADD NEW PRODUCT"}
-                        </span>
-                        <h2 className="text-2xl font-serif font-medium text-[#111113] tracking-tight">
-                          {editingGarmentId ? "Edit Product" : "Add New Product"}
-                        </h2>
-                        <p className="text-xs text-[#746F68] font-sans mt-0.5">
-                          {editingGarmentId 
-                            ? "Update product attributes, collection, imagery and size inventory."
-                            : "Add products to your showroom and inventory."}
-                        </p>
-                      </div>
+                      {/* Compact Luxury Cards Collection List */}
+                      <div className="space-y-3">
+                        {categories
+                          .filter(cat => cat.name?.toLowerCase().includes(collectionSearch.toLowerCase().trim()))
+                          .map((cat, idx) => {
+                            const linkedPieces = products.filter(p => 
+                              String(p.category_id) === String(cat.id) || 
+                              String(p.category_id) === String(cat.slug) || 
+                              String(p.category) === String(cat.slug) || 
+                              String(p.category) === String(cat.id) ||
+                              String(p.category?.id) === String(cat.id) ||
+                              String(p.category?.slug) === String(cat.slug) ||
+                              (p.categoryName && p.categoryName.toLowerCase() === cat.name?.toLowerCase()) ||
+                              (typeof p.category === 'object' && p.category?.name?.toLowerCase() === cat.name?.toLowerCase())
+                            );
+                            const linkedCount = linkedPieces.length;
+                            const isExpanded = expandedCollectionId === cat.id;
 
-                      <form onSubmit={(e) => handleGarmentSubmit(e)} className="space-y-6 font-body">
-                        
-                        {/* SECTION 1: PRODUCT IDENTITY & SPECIFICATIONS */}
-                        <div className="space-y-4 pt-1">
-                          <div className="flex items-center gap-2 border-b border-[#E5DDD1] pb-1.5">
-                            <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
-                              01 &middot; Product Identity &amp; Details
-                            </span>
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                              Product Name *
-                            </label>
-                            <input
-                              type="text"
-                              name="name"
-                              value={formData.name}
-                              onChange={handleInputChange}
-                              placeholder="e.g. Silk Blend Tailored Suit"
-                              required
-                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                            <div>
-                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                                Collection *
-                              </label>
-                              <select
-                                name="category_id"
-                                value={formData.category_id}
-                                onChange={handleInputChange}
-                                required
-                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-sans"
+                            return (
+                              <div 
+                                key={cat.id} 
+                                className={`border rounded-[2px] transition-all bg-white overflow-hidden ${
+                                  isExpanded 
+                                    ? "border-[#C2922E] shadow-sm ring-1 ring-[#C2922E]/20" 
+                                    : "border-[#E5DDD1] hover:border-[#C2922E]/60 shadow-xs"
+                                }`}
                               >
-                                <option value="">Select Collection</option>
-                                {categories.map(c => (
-                                  <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                                Category
-                              </label>
-                              <input
-                                type="text"
-                                name="sub_category"
-                                value={formData.sub_category}
-                                onChange={handleInputChange}
-                                placeholder="e.g. Executive Co-ord, Power Suit"
-                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Color Palette Suite */}
-                          <div className="bg-[#FCFAF7] border border-[#E5DDD1] p-4 rounded-[2px] space-y-3">
-                            {/* Header Row */}
-                            <div className="flex items-center justify-between">
-                              <label className="text-[10.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono flex items-center gap-1.5 font-medium">
-                                <span>Color *</span>
-                              </label>
-                              
-                              {/* Custom Color Wheel Button */}
-                              <label 
-                                className="group inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-[#FAF8F5] border border-[#C2922E]/50 hover:border-[#111113] rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider text-[#111113] cursor-pointer shadow-2xs transition-all"
-                                title="Click to open custom color wheel spectrum"
-                              >
-                                <span 
-                                  className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0" 
-                                  style={{ backgroundColor: getAtelierColorHex(formData.color) }}
-                                />
-                                <span>Color Wheel</span>
-                                <input
-                                  type="color"
-                                  value={getHexForColorPicker(formData.color)}
-                                  onChange={(e) => {
-                                    const hex = e.target.value;
-                                    const nearest = findNearestColorName(hex);
-                                    const val = nearest?.name ? nearest.name : hex;
-                                    setFormData(prev => ({ ...prev, color: val }));
-                                    handleSaveNewColor(val, true);
-                                  }}
-                                  className="opacity-0 absolute w-0 h-0 pointer-events-none"
-                                />
-                              </label>
-                            </div>
-
-                            {/* Input + Large Swatch Preview */}
-                            <div className="flex items-center gap-2.5">
-                              {/* Visual Swatch Box */}
-                              <label 
-                                className="relative w-12 h-10 rounded-[2px] border-2 border-white shadow-xs ring-1 ring-[#E5DDD1] shrink-0 cursor-pointer overflow-hidden flex items-center justify-center group"
-                                style={{ backgroundColor: getAtelierColorHex(formData.color) }}
-                                title="Click to choose custom shade from color spectrum"
-                              >
-                                <input
-                                  type="color"
-                                  value={getHexForColorPicker(formData.color)}
-                                  onChange={(e) => {
-                                    const hex = e.target.value;
-                                    const nearest = findNearestColorName(hex);
-                                    const val = nearest?.name ? nearest.name : hex;
-                                    setFormData(prev => ({ ...prev, color: val }));
-                                    handleSaveNewColor(val, true);
-                                  }}
-                                  className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                                />
-                                <span className="opacity-0 group-hover:opacity-100 text-[8px] font-mono text-white bg-black/70 px-1 py-0.5 rounded-[1px] transition-opacity uppercase tracking-tighter">
-                                  Pick
-                                </span>
-                              </label>
-
-                              {/* Text input for typing color name or hex */}
-                              <div className="relative flex-1">
-                                <input
-                                  type="text"
-                                  name="color"
-                                  value={formData.color}
-                                  onChange={handleInputChange}
-                                  placeholder="Type color name (e.g. Midnight Navy, Obsidian Black, Ivory Cream...) or Hex"
-                                  className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-3 pr-24 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono placeholder:text-[#A8A29E]"
-                                />
-                                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                                  {formData.color && (
+                                <div className="p-3.5 sm:p-4 bg-[#FAF8F5]/60 flex flex-col gap-2.5">
+                                  {/* Top Row: Index + Full Title + Trash Icon */}
+                                  <div className="flex items-center justify-between gap-2.5">
+                                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                                      <span className="text-xs font-mono font-medium text-[#C2922E] shrink-0">
+                                        {String(idx + 1).padStart(2, '0')}
+                                      </span>
+                                      <h4 className="font-serif text-[15px] sm:text-base text-[#111113] font-medium tracking-tight truncate">
+                                        {cat.name}
+                                      </h4>
+                                    </div>
                                     <button
                                       type="button"
-                                      onClick={() => setFormData(prev => ({ ...prev, color: "" }))}
-                                      className="text-[10px] text-[#A8A29E] hover:text-[#111113] font-mono px-1 transition-colors cursor-pointer"
-                                      title="Clear color"
+                                      onClick={() => requestDeleteCategory(cat)}
+                                      className="p-1.5 text-[#746F68] hover:text-rose-800 hover:bg-rose-50 border border-[#E5DDD1] rounded-[2px] transition-colors cursor-pointer shrink-0"
+                                      title="Delete Collection"
                                     >
-                                      &times;
+                                      <Trash2 size={12} />
                                     </button>
-                                  )}
-                                  <span 
-                                    className="text-[9.5px] font-mono font-medium text-[#C2922E] bg-[#FAF8F5] px-1.5 py-0.5 border border-[#E5DDD1] rounded-[1px]"
-                                    title="Active Hex Code"
+                                  </div>
+
+                                  {/* Bottom Row: Product Count Badge + Collection Tag + View Products Button */}
+                                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#E5DDD1]/70">
+                                    <div className="flex items-center gap-2 text-[10px] font-mono whitespace-nowrap min-w-0">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-[2px] font-medium uppercase tracking-wider bg-white text-[#111113] border border-[#E5DDD1] shrink-0">
+                                        {linkedCount === 1 ? "01 Product" : `${String(linkedCount).padStart(2, '0')} Products`}
+                                      </span>
+                                      <span className="text-[#746F68] uppercase tracking-wider shrink-0">
+                                        &middot; Collection
+                                      </span>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpandedCollectionId(isExpanded ? null : cat.id)}
+                                      className={`text-[10px] uppercase font-mono tracking-wider px-2.5 py-1 border rounded-[2px] transition-colors cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                                        isExpanded
+                                          ? "bg-[#111113] text-white border-[#111113]"
+                                          : "bg-white text-[#111113] border-[#E5DDD1] hover:border-[#111113] hover:text-[#C2922E]"
+                                      }`}
+                                    >
+                                      <span>{isExpanded ? "Hide Products" : "View Products"}</span>
+                                      <span>{isExpanded ? "↑" : "→"}</span>
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Expanded Products Sub-Drawer */}
+                                {isExpanded && (
+                                  <div className="border-t border-[#E5DDD1] bg-[#FAF8F5] p-3.5 space-y-2">
+                                    <div className="flex items-center justify-between text-[10px] font-mono text-[#746F68] uppercase tracking-wider border-b border-[#E5DDD1] pb-1.5">
+                                      <span>Assigned Products ({linkedPieces.length})</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleCancelEdit();
+                                          setFormData(prev => ({ ...prev, category_id: cat.id }));
+                                          setIsMobileAddProductOpen(true);
+                                          const formEl = document.getElementById("atelier-garment-form");
+                                          if (formEl) formEl.scrollIntoView({ behavior: "smooth" });
+                                        }}
+                                        className="text-[#C2922E] hover:underline cursor-pointer"
+                                      >
+                                        + Add Product To This Collection
+                                      </button>
+                                    </div>
+                                    {linkedPieces.length === 0 ? (
+                                      <div className="py-4 text-center text-xs font-mono text-[#746F68]">
+                                        No products assigned to this collection yet.
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                                        {linkedPieces.map(piece => (
+                                          <div 
+                                            key={piece.id}
+                                            className={`flex items-center justify-between p-2 rounded-[2px] border transition-colors bg-white ${
+                                              editingGarmentId === piece.id 
+                                                ? "border-[#C2922E] ring-1 ring-[#C2922E]/30 bg-[#FFFDF9]" 
+                                                : "border-[#E5DDD1] hover:border-[#111113]"
+                                            }`}
+                                          >
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                              <img 
+                                                src={piece.images?.[0] || piece.image_url || "/placeholder.png"} 
+                                                alt={piece.name} 
+                                                className="w-9 h-9 object-cover rounded-[1px] border border-[#E5DDD1] shrink-0"
+                                              />
+                                              <div className="min-w-0">
+                                                <p className="text-xs font-serif font-medium text-[#111113] truncate">
+                                                  {piece.name}
+                                                </p>
+                                                <p className="text-[10px] font-mono text-[#746F68]">
+                                                  {formatINR(piece.price)} &middot; {piece.stock ?? 0} in stock &middot;{" "}
+                                                  <span className={piece.status === "draft" ? "text-amber-700" : "text-emerald-700 font-medium"}>
+                                                    {piece.status || "active"}
+                                                  </span>
+                                                </p>
+                                              </div>
+                                            </div>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleStartEditGarment(piece)}
+                                              className={`text-[9.5px] uppercase font-mono px-2 py-1 rounded-[2px] border transition-colors shrink-0 ml-2 cursor-pointer ${
+                                                editingGarmentId === piece.id 
+                                                  ? "bg-[#C2922E] text-white border-[#C2922E]" 
+                                                  : "border-[#E5DDD1] hover:border-[#111113] text-[#111113] bg-white"
+                                              }`}
+                                            >
+                                              {editingGarmentId === piece.id ? "Editing" : "Edit Product ✎"}
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                        {categories.filter(cat => cat.name?.toLowerCase().includes(collectionSearch.toLowerCase().trim())).length === 0 && (
+                          <div className="p-6 border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] text-center text-[#746F68] font-mono text-xs">
+                            {collectionSearch 
+                              ? `No collections matching "${collectionSearch}".` 
+                              : 'No silhouettes registered yet. Click "+ Create Collection" above.'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* RIGHT SIDE: ADD / EDIT GARMENT FORM (5 STRUCTURED SECTIONS) */}
+                    <div id="atelier-garment-form" className={`lg:col-span-7 pb-20 lg:pb-0 ${!isMobileAddProductOpen ? "hidden lg:block" : "block"}`}>
+                      <div className="border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] shadow-xs p-4 sm:p-7 space-y-6">
+                        
+                        {/* Mobile Top Back & Header Bar */}
+                        <div className="lg:hidden flex items-center justify-between pb-3 border-b border-[#E5DDD1]">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsMobileAddProductOpen(false);
+                              if (editingGarmentId) handleCancelEdit();
+                            }}
+                            className="inline-flex items-center gap-1.5 text-xs font-mono text-[#111113] hover:text-[#C2922E] cursor-pointer"
+                          >
+                            <ArrowLeft size={14} />
+                            <span>← Collections</span>
+                          </button>
+                          <span className="text-[10px] uppercase font-mono tracking-widest text-[#C2922E] font-medium">
+                            {editingGarmentId ? "Edit Product" : "New Product"}
+                          </span>
+                        </div>
+
+                        {/* Active Edit Banner */}
+                        {editingGarmentId && (
+                          <div className="bg-[#111113] text-white p-3.5 rounded-[2px] flex items-center justify-between shadow-xs">
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-2 h-2 rounded-full bg-[#C2922E] animate-pulse"></span>
+                              <div>
+                                <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block">
+                                  ATELIER EDIT WORKFLOW
+                                </span>
+                                <span className="text-xs font-serif font-normal text-white">
+                                  Editing: <strong className="text-[#C2922E] font-medium">{formData.name || "Product"}</strong>
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleCancelEdit}
+                              className="text-[10px] uppercase tracking-wider font-mono text-[#FAF8F5] hover:text-[#C2922E] border border-[#FAF8F5]/30 hover:border-[#C2922E] px-2.5 py-1 rounded-[2px] transition-colors cursor-pointer"
+                            >
+                              Cancel Edit &times;
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Header */}
+                        <div className="border-b border-[#E5DDD1] pb-3">
+                          <span className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block mb-0.5">
+                            {editingGarmentId ? "EDIT PRODUCT SPECIFICATION" : "ADD NEW PRODUCT"}
+                          </span>
+                          <h2 className="text-xl sm:text-2xl font-serif font-medium text-[#111113] tracking-tight">
+                            {editingGarmentId ? "Edit Product" : "Add New Product"}
+                          </h2>
+                          <p className="text-xs text-[#746F68] font-sans mt-0.5">
+                            {editingGarmentId 
+                              ? "Update product attributes, collection, imagery and size inventory."
+                              : "Add products to your showroom and inventory."}
+                          </p>
+                        </div>
+
+                        <form onSubmit={(e) => handleGarmentSubmit(e)} className="space-y-6 font-body">
+                          
+                          {/* SECTION 1: PRODUCT IDENTITY & SPECIFICATIONS */}
+                          <div className="space-y-4 pt-1">
+                            <div 
+                              onClick={() => toggleMobileAccordion("details")}
+                              className="flex items-center justify-between border-b border-[#E5DDD1] pb-1.5 cursor-pointer lg:cursor-default select-none"
+                            >
+                              <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
+                                01 &middot; Product Identity &amp; Details
+                              </span>
+                              <span className="lg:hidden text-xs text-[#746F68] font-mono font-bold">
+                                {mobileFormAccordions.details ? "−" : "+"}
+                              </span>
+                            </div>
+
+                            <div className={`space-y-4 pt-1 ${mobileFormAccordions.details ? "block" : "hidden lg:block"}`}>
+                              <div>
+                                <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                  Product Name *
+                                </label>
+                                <input
+                                  type="text"
+                                  name="name"
+                                  value={formData.name}
+                                  onChange={handleInputChange}
+                                  placeholder="e.g. Silk Blend Tailored Suit"
+                                  required
+                                  className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                <div>
+                                  <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                    Collection *
+                                  </label>
+                                  <select
+                                    name="category_id"
+                                    value={formData.category_id}
+                                    onChange={handleInputChange}
+                                    required
+                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-sans"
                                   >
-                                    {getHexForColorPicker(formData.color)}
-                                  </span>
+                                    <option value="">Select Collection</option>
+                                    {categories.map(c => (
+                                      <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                    Category
+                                  </label>
+                                  <input
+                                    type="text"
+                                    name="sub_category"
+                                    value={formData.sub_category}
+                                    onChange={handleInputChange}
+                                    placeholder="e.g. Executive Co-ord, Power Suit"
+                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
+                                  />
                                 </div>
                               </div>
 
-                              {/* Save Color Button if not in swatches */}
-                              {formData.color && !availableColorSwatches.some(s => s.name.toLowerCase() === formData.color.trim().toLowerCase()) && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSaveNewColor(formData.color)}
-                                  className="bg-white hover:bg-[#FAF8F5] border border-[#C2922E] text-[#111113] hover:text-[#C2922E] px-3 py-2 rounded-[2px] text-[10px] font-mono uppercase tracking-wider transition-colors cursor-pointer shrink-0 shadow-2xs font-medium"
-                                  title="Save this color to Atelier Palette Swatches"
+                              {/* Color Palette Suite */}
+                              <div className="bg-[#FCFAF7] border border-[#E5DDD1] p-4 rounded-[2px] space-y-3">
+                                {/* Header Row */}
+                                <div className="flex items-center justify-between">
+                                  <label className="text-[10.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono flex items-center gap-1.5 font-medium">
+                                    <span>Color *</span>
+                                  </label>
+                                  
+                                  {/* Custom Color Wheel Button */}
+                                  <label 
+                                    className="group inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-[#FAF8F5] border border-[#C2922E]/50 hover:border-[#111113] rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider text-[#111113] cursor-pointer shadow-2xs transition-all"
+                                    title="Click to open custom color wheel spectrum"
+                                  >
+                                    <span 
+                                      className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0" 
+                                      style={{ backgroundColor: getAtelierColorHex(formData.color) }}
+                                    />
+                                    <span>Color Wheel</span>
+                                    <input
+                                      type="color"
+                                      value={getHexForColorPicker(formData.color)}
+                                      onChange={(e) => {
+                                        const hex = e.target.value;
+                                        const nearest = findNearestColorName(hex);
+                                        const val = nearest?.name ? nearest.name : hex;
+                                        setFormData(prev => ({ ...prev, color: val }));
+                                      }}
+                                      className="sr-only"
+                                    />
+                                  </label>
+                                </div>
+
+                                {/* Active Color Display Banner */}
+                                <div className="flex items-center justify-between gap-3 p-2.5 bg-white border border-[#E5DDD1] rounded-[2px]">
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <span 
+                                      className="w-6 h-6 rounded-full border border-black/15 shadow-2xs shrink-0"
+                                      style={{ backgroundColor: getAtelierColorHex(formData.color) }}
+                                    />
+                                    <div className="min-w-0">
+                                      <span className="text-xs font-serif font-medium text-[#111113] block truncate">
+                                        {formData.color || "Select or type a color"}
+                                      </span>
+                                      <span className="text-[10px] font-mono text-[#746F68] block">
+                                        Hex: {getAtelierColorHex(formData.color).toUpperCase()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Curated Atelier Quick Swatches */}
+                                <div className="space-y-1.5">
+                                  <span className="text-[9.5px] uppercase tracking-wider text-[#746F68] font-mono block">
+                                    Curated Atelier Swatches:
+                                  </span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {[
+                                      { name: "Obsidian Black", hex: "#111113" },
+                                      { name: "Ivory White", hex: "#FAF8F5" },
+                                      { name: "Champagne Gold", hex: "#C2922E" },
+                                      { name: "Midnight Navy", hex: "#1A2536" },
+                                      { name: "Charcoal Slate", hex: "#3A3D42" },
+                                      { name: "Forest Emerald", hex: "#1E382B" },
+                                      { name: "Burgundy Wine", hex: "#4A1E27" },
+                                      { name: "Warm Taupe", hex: "#8A7968" },
+                                      { name: "Camel", hex: "#C19A6B" },
+                                      { name: "Dusty Rose", hex: "#BC8A8E" }
+                                    ].map(swatch => (
+                                      <button
+                                        key={swatch.name}
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, color: swatch.name }))}
+                                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-[2px] border text-[9.5px] font-mono transition-all cursor-pointer ${
+                                          formData.color?.toLowerCase() === swatch.name.toLowerCase()
+                                            ? "border-[#111113] bg-[#111113] text-white shadow-xs font-semibold"
+                                            : "border-[#E5DDD1] bg-white text-[#111113] hover:border-[#C2922E]"
+                                        }`}
+                                      >
+                                        <span 
+                                          className="w-2 h-2 rounded-full border border-black/10 shrink-0" 
+                                          style={{ backgroundColor: swatch.hex }}
+                                        />
+                                        <span>{swatch.name}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Custom Color Text Input */}
+                                <div>
+                                  <label className="text-[9.5px] uppercase tracking-wider text-[#746F68] font-mono block mb-1">
+                                    Or type custom color title / hex:
+                                  </label>
+                                  <input
+                                    type="text"
+                                    name="color"
+                                    value={formData.color}
+                                    onChange={handleInputChange}
+                                    placeholder="e.g. Desert Sand, Deep Maroon, #C2922E"
+                                    required
+                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-1.5 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Fabric & Fit */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                <div>
+                                  <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                    Fabric Composition
+                                  </label>
+                                  <input
+                                    type="text"
+                                    name="fabric"
+                                    value={formData.fabric}
+                                    onChange={handleInputChange}
+                                    placeholder="e.g. 100% Super 130s Merino Wool"
+                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                    Fit &amp; Cut
+                                  </label>
+                                  <select
+                                    name="fit"
+                                    value={formData.fit || "Tailored"}
+                                    onChange={handleInputChange}
+                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
+                                  >
+                                    <option value="Tailored">Tailored (Classic Bespoke)</option>
+                                    <option value="Structured">Structured (Firm Architectural)</option>
+                                    <option value="Relaxed">Relaxed (Fluid Luxury)</option>
+                                    <option value="Oversized">Oversized (Contemporary Chic)</option>
+                                    <option value="Slim Fit">Slim Fit (Clean Contour)</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Pattern & Finish */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                <div>
+                                  <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                    Pattern / Texture
+                                  </label>
+                                  <select
+                                    name="pattern"
+                                    value={formData.pattern || "Solid"}
+                                    onChange={handleInputChange}
+                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
+                                  >
+                                    <option value="Solid">Solid Weave</option>
+                                    <option value="Textured">Textured Jacquard</option>
+                                    <option value="Pinstripe">Pinstripe Fine</option>
+                                    <option value="Checked">Windowpane / Glen Check</option>
+                                    <option value="Houndstooth">Houndstooth</option>
+                                    <option value="Herringbone">Herringbone</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                    Fabric Finish
+                                  </label>
+                                  <select
+                                    name="finish"
+                                    value={formData.finish || "Matte"}
+                                    onChange={handleInputChange}
+                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
+                                  >
+                                    <option value="Matte">Matte Fine Tailoring</option>
+                                    <option value="Satin Luster">Subtle Satin Luster</option>
+                                    <option value="Handcrafted">Handcrafted Sartorial</option>
+                                    <option value="Raw Silk">Raw Natural Slub</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Occasion */}
+                              <div>
+                                <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                  Occasion Styling
+                                </label>
+                                <select
+                                  name="occasion"
+                                  value={formData.occasion || "Business Formal"}
+                                  onChange={handleInputChange}
+                                  className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
                                 >
-                                  + Save Color
-                                </button>
-                              )}
+                                  <option value="Business Formal">Business Formal &amp; Boardroom</option>
+                                  <option value="Office">Daily Executive &amp; Office</option>
+                                  <option value="Evening">Evening Soiree &amp; Gala</option>
+                                  <option value="Wedding">Ceremony &amp; Luxury Celebrations</option>
+                                  <option value="Smart Casual">Elevated Smart Casual</option>
+                                </select>
+                              </div>
+
+                              {/* Product Description */}
+                              <div>
+                                <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                  Product Description
+                                </label>
+                                <textarea
+                                  name="description"
+                                  rows={3}
+                                  value={formData.description}
+                                  onChange={handleInputChange}
+                                  placeholder="Provide product specifications, fabric blend weave, silhouette cuts, styling notes..."
+                                  className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* SECTION 2: PRICING & INVENTORY */}
+                          <div className="space-y-4 pt-3 border-t border-[#E5DDD1]">
+                            <div 
+                              onClick={() => toggleMobileAccordion("pricing")}
+                              className="flex items-center justify-between border-b border-[#E5DDD1] pb-1.5 cursor-pointer lg:cursor-default select-none"
+                            >
+                              <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
+                                02 &middot; Pricing &amp; Inventory Ledger
+                              </span>
+                              <span className="lg:hidden text-xs text-[#746F68] font-mono font-bold">
+                                {mobileFormAccordions.pricing ? "−" : "+"}
+                              </span>
                             </div>
 
-                            {/* Recognition Status Bar */}
-                            {formData.color && (
-                              <div className="flex items-center justify-between text-[9.5px] font-mono text-[#746F68] bg-white border border-[#E5DDD1] px-2.5 py-1 rounded-[1px]">
-                                <span className="flex items-center gap-1.5">
-                                  <span className="w-2 h-2 rounded-full border border-black/20" style={{ backgroundColor: getAtelierColorHex(formData.color) }}></span>
-                                  <span className="text-[#111113] font-medium">
-                                    Active: {findNearestColorName(getHexForColorPicker(formData.color))?.name || formData.color}
-                                  </span>
-                                </span>
-                                {findNearestColorName(getHexForColorPicker(formData.color))?.name && 
-                                 formData.color.toLowerCase() !== findNearestColorName(getHexForColorPicker(formData.color))?.name.toLowerCase() && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const name = findNearestColorName(getHexForColorPicker(formData.color))?.name;
-                                      setFormData(prev => ({ ...prev, color: name }));
-                                      handleSaveNewColor(name);
-                                    }}
-                                    className="text-[#C2922E] hover:text-[#111113] underline font-medium cursor-pointer transition-colors"
-                                  >
-                                    Use &ldquo;{findNearestColorName(getHexForColorPicker(formData.color))?.name}&rdquo;
-                                  </button>
-                                )}
+                            <div className={`space-y-4 pt-1 ${mobileFormAccordions.pricing ? "block" : "hidden lg:block"}`}>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                <div>
+                                  <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                    Atelier Retail Price (INR) *
+                                  </label>
+                                  <input
+                                    type="number"
+                                    name="price"
+                                    value={formData.price}
+                                    onChange={handleInputChange}
+                                    placeholder="4990"
+                                    required
+                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                    Fallback Total Stock
+                                  </label>
+                                  <input
+                                    type="number"
+                                    name="stock"
+                                    value={formData.stock}
+                                    onChange={handleInputChange}
+                                    placeholder="25"
+                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
+                                  />
+                                </div>
                               </div>
-                            )}
+                            </div>
+                          </div>
 
-                            {/* Showroom & Saved Swatches */}
-                            <div>
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono font-medium">
-                                  Atelier Palette Swatches ({availableColorSwatches.length} Available):
+                          {/* SECTION 3: SIZE INVENTORY */}
+                          <div className="space-y-3 pt-3 border-t border-[#E5DDD1]">
+                            <div 
+                              onClick={() => toggleMobileAccordion("inventory")}
+                              className="flex items-center justify-between border-b border-[#E5DDD1] pb-1.5 cursor-pointer lg:cursor-default select-none"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
+                                  03 &middot; Size Inventory
                                 </span>
                               </div>
-                              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto suko-scrollbar p-1.5 bg-white border border-[#E5DDD1] rounded-[2px]">
-                                {availableColorSwatches.map((sw) => {
-                                  const isSelected = formData.color?.toLowerCase() === sw.name.toLowerCase();
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10.5px] font-mono text-[#C2922E] font-medium">
+                                  Total: {Object.values(sizeStockMap).reduce((a, b) => a + (Number(b) || 0), 0)} units
+                                </span>
+                                <span className="lg:hidden text-xs text-[#746F68] font-mono font-bold">
+                                  {mobileFormAccordions.inventory ? "−" : "+"}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className={`pt-1 ${mobileFormAccordions.inventory ? "block" : "hidden lg:block"}`}>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+                                {["38", "40", "42", "44", "46", "Free"].map(sz => {
+                                  const qty = sizeStockMap[sz] ?? 0;
+                                  const isZero = qty === 0;
                                   return (
-                                    <div
-                                      key={sw.name}
-                                      className={`group inline-flex items-center gap-1.5 text-[9.5px] font-mono px-2 py-1 rounded-[1px] border transition-all cursor-pointer ${
-                                        isSelected
-                                          ? "bg-[#111113] text-white border-[#111113] shadow-2xs"
-                                          : "bg-[#FAF8F5] text-[#3D3A35] border-[#E5DDD1] hover:border-[#111113] hover:text-[#111113]"
+                                    <div 
+                                      key={sz} 
+                                      className={`p-3 border rounded-[2px] text-center transition-all bg-white ${
+                                        isZero ? "border-[#E5DDD1] opacity-75" : "border-[#C2922E]/50 shadow-xs ring-1 ring-[#C2922E]/10"
                                       }`}
                                     >
-                                      <button
-                                        type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, color: sw.name }))}
-                                        className="inline-flex items-center gap-1.5 cursor-pointer text-left"
-                                      >
-                                        <span
-                                          className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0"
-                                          style={{ backgroundColor: sw.hex }}
-                                        />
-                                        <span>{sw.name}</span>
-                                      </button>
-                                      {sw.isCustom && (
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleRemoveCustomColor(sw.name);
-                                          }}
-                                          className={`opacity-0 group-hover:opacity-100 hover:text-rose-600 transition-opacity ml-0.5 text-xs font-bold leading-none ${
-                                            isSelected ? "text-white/70 hover:text-white" : "text-[#746F68]"
-                                          }`}
-                                          title="Remove saved color"
-                                        >
-                                          &times;
-                                        </button>
-                                      )}
+                                      <span className="text-xs font-mono font-bold tracking-wider text-[#111113] block mb-1">
+                                        {sz}
+                                      </span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={qty}
+                                        onChange={(e) => setSizeStockMap({ ...sizeStockMap, [sz]: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                                        className="w-full bg-[#FAF8F5] border border-[#E5DDD1] focus:border-[#C2922E] text-center text-sm font-mono font-medium text-[#111113] py-1 px-1 rounded-[2px] outline-none"
+                                      />
+                                      <span className={`text-[9px] font-mono tracking-tight block mt-1.5 ${isZero ? "text-rose-600" : "text-[#746F68]"}`}>
+                                        {isZero ? "Out of Stock" : `${qty} available`}
+                                      </span>
                                     </div>
                                   );
                                 })}
@@ -6586,397 +7099,232 @@ const Admin = () => {
                             </div>
                           </div>
 
-                          {/* Fabric Specification */}
-                          <div>
-                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                              Fabric &amp; Composition *
-                            </label>
-                            <input
-                              type="text"
-                              name="fabric"
-                              value={formData.fabric}
-                              onChange={handleInputChange}
-                              placeholder="e.g. Italian Wool Blend (60% Wool, 38% Poly, 2% Elastane)"
-                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
-                            />
-                            <div className="flex flex-wrap gap-1.5 mt-1.5">
-                              {["Italian Wool Blend", "Super 120s Worsted Wool", "Mulberry Silk Blend", "Linen Cotton Weave", "Cashmere Blend"].map(fab => (
-                                <button
-                                  key={fab}
-                                  type="button"
-                                  onClick={() => setFormData(prev => ({ ...prev, fabric: fab }))}
-                                  className="text-[9px] font-mono px-2 py-0.5 bg-white border border-[#E5DDD1] hover:border-[#C2922E] text-[#746F68] hover:text-[#111113] rounded-[1px] transition-colors cursor-pointer"
-                                >
-                                  + {fab}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Silhouette & Fit */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                            <div>
-                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                                Silhouette Cut
-                              </label>
-                              <input
-                                type="text"
-                                name="silhouette"
-                                value={formData.silhouette}
-                                onChange={handleInputChange}
-                                placeholder="e.g. Structured Double-Breasted Blazer"
-                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                                Garment Fit
-                              </label>
-                              <select
-                                name="fit"
-                                value={formData.fit || "Tailored"}
-                                onChange={handleInputChange}
-                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
-                              >
-                                <option value="Tailored">Tailored (Classic Bespoke)</option>
-                                <option value="Structured">Structured (Firm Architectural)</option>
-                                <option value="Relaxed">Relaxed (Fluid Luxury)</option>
-                                <option value="Oversized">Oversized (Contemporary Chic)</option>
-                                <option value="Slim Fit">Slim Fit (Clean Contour)</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          {/* Pattern & Finish */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                            <div>
-                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                                Pattern / Texture
-                              </label>
-                              <select
-                                name="pattern"
-                                value={formData.pattern || "Solid"}
-                                onChange={handleInputChange}
-                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
-                              >
-                                <option value="Solid">Solid Weave</option>
-                                <option value="Textured">Textured Jacquard</option>
-                                <option value="Pinstripe">Pinstripe Fine</option>
-                                <option value="Checked">Windowpane / Glen Check</option>
-                                <option value="Houndstooth">Houndstooth</option>
-                                <option value="Herringbone">Herringbone</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                                Fabric Finish
-                              </label>
-                              <select
-                                name="finish"
-                                value={formData.finish || "Matte"}
-                                onChange={handleInputChange}
-                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
-                              >
-                                <option value="Matte">Matte Fine Tailoring</option>
-                                <option value="Satin Luster">Subtle Satin Luster</option>
-                                <option value="Handcrafted">Handcrafted Sartorial</option>
-                                <option value="Raw Silk">Raw Natural Slub</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          {/* Occasion */}
-                          <div>
-                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                              Occasion Styling
-                            </label>
-                            <select
-                              name="occasion"
-                              value={formData.occasion || "Business Formal"}
-                              onChange={handleInputChange}
-                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
+                          {/* SECTION 4: PRODUCT IMAGES & GALLERY */}
+                          <div className="space-y-3 pt-3 border-t border-[#E5DDD1]">
+                            <div 
+                              onClick={() => toggleMobileAccordion("imagery")}
+                              className="flex items-center justify-between border-b border-[#E5DDD1] pb-1.5 cursor-pointer lg:cursor-default select-none"
                             >
-                              <option value="Business Formal">Business Formal &amp; Boardroom</option>
-                              <option value="Office">Daily Executive &amp; Office</option>
-                              <option value="Evening">Evening Soiree &amp; Gala</option>
-                              <option value="Wedding">Ceremony &amp; Luxury Celebrations</option>
-                              <option value="Smart Casual">Elevated Smart Casual</option>
-                            </select>
-                          </div>
-
-                          {/* Product Description */}
-                          <div>
-                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                              Product Description
-                            </label>
-                            <textarea
-                              name="description"
-                              rows={3}
-                              value={formData.description}
-                              onChange={handleInputChange}
-                              placeholder="Provide product specifications, fabric blend weave, silhouette cuts, styling notes..."
-                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
-                            />
-                          </div>
-                        </div>
-
-                        {/* SECTION 2: PRICING & INVENTORY */}
-                        <div className="space-y-4 pt-3 border-t border-[#E5DDD1]">
-                          <div className="flex items-center gap-2 border-b border-[#E5DDD1] pb-1.5">
-                            <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
-                              02 &middot; Pricing &amp; Inventory Ledger
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                            <div>
-                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                                Atelier Retail Price (INR) *
-                              </label>
-                              <input
-                                type="number"
-                                name="price"
-                                value={formData.price}
-                                onChange={handleInputChange}
-                                placeholder="4990"
-                                required
-                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                                Fallback Total Stock
-                              </label>
-                              <input
-                                type="number"
-                                name="stock"
-                                value={formData.stock}
-                                onChange={handleInputChange}
-                                placeholder="25"
-                                className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* SECTION 3: SIZE INVENTORY */}
-                        <div className="space-y-3 pt-3 border-t border-[#E5DDD1]">
-                          <div className="flex items-center justify-between border-b border-[#E5DDD1] pb-1.5">
-                            <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
-                              03 &middot; Size Inventory
-                            </span>
-                            <span className="text-[10.5px] font-mono text-[#C2922E] font-medium">
-                              Total Allocated: {Object.values(sizeStockMap).reduce((a, b) => a + (Number(b) || 0), 0)} units
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
-                            {["38", "40", "42", "44", "46", "Free"].map(sz => {
-                              const qty = sizeStockMap[sz] ?? 0;
-                              const isZero = qty === 0;
-                              return (
-                                <div 
-                                  key={sz} 
-                                  className={`p-3 border rounded-[2px] text-center transition-all bg-white ${
-                                    isZero ? "border-[#E5DDD1] opacity-75" : "border-[#C2922E]/50 shadow-xs ring-1 ring-[#C2922E]/10"
-                                  }`}
-                                >
-                                  <span className="text-xs font-mono font-bold tracking-wider text-[#111113] block mb-1">
-                                    {sz}
-                                  </span>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={qty}
-                                    onChange={(e) => setSizeStockMap({ ...sizeStockMap, [sz]: Math.max(0, parseInt(e.target.value, 10) || 0) })}
-                                    className="w-full bg-[#FAF8F5] border border-[#E5DDD1] focus:border-[#C2922E] text-center text-sm font-mono font-medium text-[#111113] py-1 px-1 rounded-[2px] outline-none"
-                                  />
-                                  <span className={`text-[9px] font-mono tracking-tight block mt-1.5 ${isZero ? "text-rose-600" : "text-[#746F68]"}`}>
-                                    {isZero ? "Out of Stock" : `${qty} available`}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* SECTION 4: PRODUCT IMAGES & GALLERY */}
-                        <div className="space-y-3 pt-3 border-t border-[#E5DDD1]">
-                          <div className="flex items-center gap-2 border-b border-[#E5DDD1] pb-1.5">
-                            <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
-                              04 &middot; Product Images &amp; Gallery
-                            </span>
-                          </div>
-
-                          {/* Existing Images preview in Edit Mode */}
-                          {existingImagesForEdit.length > 0 && (
-                            <div className="space-y-1.5">
-                              <span className="text-[9.5px] uppercase tracking-wider text-[#746F68] font-mono block">
-                                Current Product Images ({existingImagesForEdit.length})
+                              <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
+                                04 &middot; Product Images &amp; Gallery
                               </span>
-                              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
-                                {existingImagesForEdit.map((url, idx) => (
-                                  <div key={idx} className="relative group border border-[#E5DDD1] rounded-[2px] overflow-hidden bg-white shadow-xs">
-                                    <img src={url} alt={`Existing ${idx}`} className="w-full h-20 object-cover" />
-                                    <span className="absolute top-1 left-1 bg-[#111113]/80 text-white text-[8px] font-mono uppercase px-1 py-0.5 rounded-[1px]">
-                                      {idx === 0 ? "Cover" : "Gallery"}
-                                    </span>
+                              <span className="lg:hidden text-xs text-[#746F68] font-mono font-bold">
+                                {mobileFormAccordions.imagery ? "−" : "+"}
+                              </span>
+                            </div>
+
+                            <div className={`space-y-3 pt-1 ${mobileFormAccordions.imagery ? "block" : "hidden lg:block"}`}>
+                              {/* Existing Images preview in Edit Mode */}
+                              {existingImagesForEdit.length > 0 && (
+                                <div className="space-y-1.5">
+                                  <span className="text-[9.5px] uppercase tracking-wider text-[#746F68] font-mono block">
+                                    Current Product Images ({existingImagesForEdit.length})
+                                  </span>
+                                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
+                                    {existingImagesForEdit.map((url, idx) => (
+                                      <div key={idx} className="relative group border border-[#E5DDD1] rounded-[2px] overflow-hidden bg-white shadow-xs">
+                                        <img src={url} alt={`Existing ${idx}`} className="w-full h-20 object-cover" />
+                                        <span className="absolute top-1 left-1 bg-[#111113]/80 text-white text-[8px] font-mono uppercase px-1 py-0.5 rounded-[1px]">
+                                          {idx === 0 ? "Cover" : "Gallery"}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => setExistingImagesForEdit(prev => prev.filter((_, i) => i !== idx))}
+                                          className="absolute top-1 right-1 p-1 bg-rose-600 rounded-[2px] text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                          title="Remove image from piece"
+                                        >
+                                          <X size={10} />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="border border-dashed border-[#E5DDD1] hover:border-[#C2922E] bg-white rounded-[2px] p-5 text-center transition-colors">
+                                <ImageIcon size={24} className="mx-auto text-[#C2922E] mb-1.5" />
+                                <p className="text-xs text-[#111113] font-medium">Click or drag portrait lookbook imagery</p>
+                                <p className="text-[10px] text-[#746F68] mt-0.5 font-mono">JPEG, PNG, WebP up to 10MB (Auto-optimized for showroom)</p>
+                                <input
+                                  type="file"
+                                  multiple
+                                  accept="image/*"
+                                  onChange={handleAddGalleryFiles}
+                                  className="mt-2.5 text-xs text-[#746F68] font-mono file:mr-3 file:py-1 file:px-3 file:rounded-[2px] file:border file:border-[#E5DDD1] file:text-[10px] file:font-mono file:uppercase file:tracking-wider file:bg-[#FAF8F5] file:text-[#111113] hover:file:bg-[#111113] hover:file:text-white cursor-pointer"
+                                />
+                              </div>
+
+                              {/* Gallery Preview Items */}
+                              {galleryFiles.length > 0 && (
+                                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5 pt-1">
+                                  {galleryFiles.map((item, idx) => (
+                                    <div key={idx} className="relative group border border-[#E5DDD1] rounded-[2px] overflow-hidden bg-white shadow-xs">
+                                      <img src={item.preview} alt={`Upload ${idx}`} className="w-full h-20 object-cover" />
+                                      {item.isPrimary && (
+                                        <span className="absolute top-1 left-1 bg-[#111113] text-[#C2922E] text-[8px] font-mono uppercase px-1.5 py-0.5 rounded-[1px]">
+                                          Cover
+                                        </span>
+                                      )}
+                                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setCropperSrc(item.preview);
+                                            pushModalState("cropper");
+                                            setCropperCallback(() => (cropped) => {
+                                              setGalleryFiles(prev => prev.map((g, i) => i === idx ? { ...g, file: cropped.file, preview: cropped.preview } : g));
+                                              closeModal("cropper");
+                                            });
+                                          }}
+                                          className="p-1 bg-white rounded-[2px] text-[#111113] hover:bg-[#C2922E] hover:text-white transition-colors cursor-pointer"
+                                          title="Crop Image"
+                                        >
+                                          <Crop size={12} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setGalleryFiles(prev => prev.filter((_, i) => i !== idx))}
+                                          className="p-1 bg-rose-600 rounded-[2px] text-white hover:bg-rose-700 transition-colors cursor-pointer"
+                                          title="Remove"
+                                        >
+                                          <X size={12} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* SECTION 5: PUBLISH CONTROLS & PRODUCT STATUS */}
+                          <div className="space-y-4 pt-3 border-t border-[#E5DDD1]">
+                            <div 
+                              onClick={() => toggleMobileAccordion("craft")}
+                              className="flex items-center justify-between border-b border-[#E5DDD1] pb-1.5 cursor-pointer lg:cursor-default select-none"
+                            >
+                              <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
+                                05 &middot; Product Status &amp; Publish Controls
+                              </span>
+                              <span className="lg:hidden text-xs text-[#746F68] font-mono font-bold">
+                                {mobileFormAccordions.craft ? "−" : "+"}
+                              </span>
+                            </div>
+
+                            <div className={`space-y-4 pt-1 ${mobileFormAccordions.craft ? "block" : "hidden lg:block"}`}>
+                              <div>
+                                <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                  Product Status
+                                </label>
+                                <select
+                                  name="status"
+                                  value={formData.status || "active"}
+                                  onChange={handleInputChange}
+                                  className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
+                                >
+                                  <option value="active">Active (Live in Atelier Showroom)</option>
+                                  <option value="draft">Draft (Private Internal Catalog)</option>
+                                  <option value="archived">Archived (Decommissioned)</option>
+                                </select>
+                              </div>
+
+                              {/* Dual Actions: Draft vs Publish OR Save Changes */}
+                              <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                                {editingGarmentId ? (
+                                  <>
                                     <button
                                       type="button"
-                                      onClick={() => setExistingImagesForEdit(prev => prev.filter((_, i) => i !== idx))}
-                                      className="absolute top-1 right-1 p-1 bg-rose-600 rounded-[2px] text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                      title="Remove image from piece"
+                                      onClick={handleCancelEdit}
+                                      className="w-full sm:w-1/3 border border-[#E5DDD1] hover:bg-[#EFE9DF] text-[#746F68] py-3 px-4 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors cursor-pointer text-center"
                                     >
-                                      <X size={10} />
+                                      Cancel Edit
                                     </button>
-                                  </div>
-                                ))}
+                                    <button
+                                      type="submit"
+                                      disabled={uploading}
+                                      className="group w-full sm:w-2/3 bg-[#111113] hover:bg-[#C2922E] text-white py-3 px-6 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium shadow-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                                    >
+                                      {uploading ? (
+                                        <>
+                                          <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                                          <span>Saving Changes...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <CheckCircle size={14} className="text-[#C2922E] group-hover:text-white transition-colors" />
+                                          <span>Save Changes to Product</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      disabled={uploading}
+                                      onClick={(e) => handleGarmentSubmit(e, "draft")}
+                                      className="w-full sm:w-1/2 border border-[#C2922E]/60 hover:bg-[#FAF8F5] hover:border-[#111113] text-[#111113] py-3 px-5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer bg-white"
+                                    >
+                                      <Clock size={13} className="text-[#C2922E]" />
+                                      <span>Save Draft (Private)</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={uploading}
+                                      onClick={(e) => handleGarmentSubmit(e, "active")}
+                                      className="group w-full sm:w-1/2 bg-[#111113] hover:bg-[#C2922E] text-white py-3 px-5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium shadow-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                                    >
+                                      {uploading ? (
+                                        <>
+                                          <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                                          <span>Publishing...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <CheckCircle size={14} className="text-[#C2922E] group-hover:text-white transition-colors" />
+                                          <span>Publish Product</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </div>
+                          </div>
+                        </form>
+                      </div>
+
+                      {/* Mobile Sticky Bottom Floating Save/Cancel Bar */}
+                      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E5DDD1] p-3 flex items-center gap-2 shadow-lg">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsMobileAddProductOpen(false);
+                            if (editingGarmentId) handleCancelEdit();
+                          }}
+                          className="flex-1 py-2.5 px-3 border border-[#E5DDD1] text-xs font-mono text-[#746F68] hover:text-[#111113] rounded-[2px] uppercase tracking-wider text-center cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={uploading}
+                          onClick={(e) => handleGarmentSubmit(e, editingGarmentId ? formData.status : "active")}
+                          className="flex-1 py-2.5 px-3 bg-[#111113] hover:bg-[#C2922E] text-white text-xs font-mono font-medium rounded-[2px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer transition-colors"
+                        >
+                          {uploading ? (
+                            <>
+                              <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                              <span>Saving...</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle size={13} className="text-[#C2922E]" />
+                              <span>{editingGarmentId ? "Save Changes" : "Publish Product"}</span>
+                            </>
                           )}
-
-                          <div className="border border-dashed border-[#E5DDD1] hover:border-[#C2922E] bg-white rounded-[2px] p-5 text-center transition-colors">
-                            <ImageIcon size={24} className="mx-auto text-[#C2922E] mb-1.5" />
-                            <p className="text-xs text-[#111113] font-medium">Click or drag portrait lookbook imagery</p>
-                            <p className="text-[10px] text-[#746F68] mt-0.5 font-mono">JPEG, PNG, WebP up to 10MB (Auto-optimized for showroom)</p>
-                            <input
-                              type="file"
-                              multiple
-                              accept="image/*"
-                              onChange={handleAddGalleryFiles}
-                              className="mt-2.5 text-xs text-[#746F68] font-mono file:mr-3 file:py-1 file:px-3 file:rounded-[2px] file:border file:border-[#E5DDD1] file:text-[10px] file:font-mono file:uppercase file:tracking-wider file:bg-[#FAF8F5] file:text-[#111113] hover:file:bg-[#111113] hover:file:text-white cursor-pointer"
-                            />
-                          </div>
-
-                          {/* Gallery Preview Items */}
-                          {galleryFiles.length > 0 && (
-                            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5 pt-1">
-                              {galleryFiles.map((item, idx) => (
-                                <div key={idx} className="relative group border border-[#E5DDD1] rounded-[2px] overflow-hidden bg-white shadow-xs">
-                                  <img src={item.preview} alt={`Upload ${idx}`} className="w-full h-20 object-cover" />
-                                  {item.isPrimary && (
-                                    <span className="absolute top-1 left-1 bg-[#111113] text-[#C2922E] text-[8px] font-mono uppercase px-1.5 py-0.5 rounded-[1px]">
-                                      Cover
-                                    </span>
-                                  )}
-                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setCropperSrc(item.preview);
-                                        pushModalState("cropper");
-                                        setCropperCallback(() => (cropped) => {
-                                          setGalleryFiles(prev => prev.map((g, i) => i === idx ? { ...g, file: cropped.file, preview: cropped.preview } : g));
-                                          closeModal("cropper");
-                                        });
-                                      }}
-                                      className="p-1 bg-white rounded-[2px] text-[#111113] hover:bg-[#C2922E] hover:text-white transition-colors cursor-pointer"
-                                      title="Crop Image"
-                                    >
-                                      <Crop size={12} />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setGalleryFiles(prev => prev.filter((_, i) => i !== idx))}
-                                      className="p-1 bg-rose-600 rounded-[2px] text-white hover:bg-rose-700 transition-colors cursor-pointer"
-                                      title="Remove"
-                                    >
-                                      <X size={12} />
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* SECTION 5: PUBLISH CONTROLS & PRODUCT STATUS */}
-                        <div className="space-y-4 pt-3 border-t border-[#E5DDD1]">
-                          <div className="flex items-center gap-2 border-b border-[#E5DDD1] pb-1.5">
-                            <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
-                              05 &middot; Product Status &amp; Publish Controls
-                            </span>
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                              Product Status
-                            </label>
-                            <select
-                              name="status"
-                              value={formData.status || "active"}
-                              onChange={handleInputChange}
-                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
-                            >
-                              <option value="active">Active (Live in Atelier Showroom)</option>
-                              <option value="draft">Draft (Private Internal Catalog)</option>
-                              <option value="archived">Archived (Decommissioned)</option>
-                            </select>
-                          </div>
-
-                          {/* Dual Actions: Draft vs Publish OR Save Changes */}
-                          <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-                            {editingGarmentId ? (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={handleCancelEdit}
-                                  className="w-full sm:w-1/3 border border-[#E5DDD1] hover:bg-[#EFE9DF] text-[#746F68] py-3 px-4 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors cursor-pointer text-center"
-                                >
-                                  Cancel Edit
-                                </button>
-                                <button
-                                  type="submit"
-                                  disabled={uploading}
-                                  className="group w-full sm:w-2/3 bg-[#111113] hover:bg-[#C2922E] text-white py-3 px-6 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium shadow-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
-                                >
-                                  {uploading ? (
-                                    <>
-                                      <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                                      <span>Saving Changes...</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <CheckCircle size={14} className="text-[#C2922E] group-hover:text-white transition-colors" />
-                                      <span>Save Changes to Product</span>
-                                    </>
-                                  )}
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  disabled={uploading}
-                                  onClick={(e) => handleGarmentSubmit(e, "draft")}
-                                  className="w-full sm:w-1/2 border border-[#C2922E]/60 hover:bg-[#FAF8F5] hover:border-[#111113] text-[#111113] py-3 px-5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer bg-white"
-                                >
-                                  <Clock size={13} className="text-[#C2922E]" />
-                                  <span>Save Draft (Private)</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={uploading}
-                                  onClick={(e) => handleGarmentSubmit(e, "active")}
-                                  className="group w-full sm:w-1/2 bg-[#111113] hover:bg-[#C2922E] text-white py-3 px-5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium shadow-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
-                                >
-                                  {uploading ? (
-                                    <>
-                                      <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                                      <span>Publishing...</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <CheckCircle size={14} className="text-[#C2922E] group-hover:text-white transition-colors" />
-                                      <span>Publish Product</span>
-                                    </>
-                                  )}
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </form>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -7038,8 +7386,8 @@ const Admin = () => {
                     </div>
                   </div>
 
-                  {/* Orders Data Table */}
-                  <div className="overflow-x-auto border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] suko-scrollbar min-h-[360px] overscroll-y-auto">
+                  {/* Desktop Orders Data Table (>= md) */}
+                  <div className="hidden md:block overflow-x-auto border border-[#E5DDD1] bg-[#FAF8F5] rounded-[2px] suko-scrollbar min-h-[360px] overscroll-y-auto">
                     <table className="w-full text-left font-body text-sm table-auto">
                       <thead className="bg-[#F7F3ED] text-[10px] uppercase tracking-[0.08em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
                         <tr>
@@ -7217,22 +7565,31 @@ const Admin = () => {
                                 >
                                   Edit
                                 </button>
-                                <div className="relative">
+                                <div className={`relative ${openActionMenuOrderId === o.id ? "z-30" : "z-10"}`} onClick={(e) => e.stopPropagation()}>
                                   <button
                                     type="button"
-                                    onClick={() => setOpenActionMenuOrderId(openActionMenuOrderId === o.id ? null : o.id)}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setOpenActionMenuOrderId((prev) => (prev === o.id ? null : o.id));
+                                    }}
                                     className="p-1 text-[#746F68] hover:text-[#111113] hover:bg-[#EFE9DF]/60 rounded-[2px] transition-colors cursor-pointer leading-none font-bold"
                                     title="More Actions"
+                                    aria-expanded={openActionMenuOrderId === o.id}
                                   >
                                     <MoreHorizontal size={14} />
                                   </button>
                                   {openActionMenuOrderId === o.id && (
-                                    <div className="absolute right-0 mt-1 w-44 bg-[#FAF8F5] border border-[#E5DDD1] shadow-xl rounded-[2px] py-1 z-30 divide-y divide-[#E5DDD1]/40">
+                                    <div
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="absolute right-0 mt-1 w-44 bg-[#FAF8F5] border border-[#E5DDD1] shadow-xl rounded-[2px] py-1 z-40 divide-y divide-[#E5DDD1]/40 animate-in fade-in duration-100"
+                                    >
                                       <button
                                         type="button"
-                                        onClick={() => {
+                                        onClick={(e) => {
+                                          e.stopPropagation();
                                           setOpenActionMenuOrderId(null);
-                                          openOrderDetails(o);
+                                          openDocumentPreview(o, "invoice");
                                         }}
                                         className="w-full px-3 py-1.5 text-left text-xs text-[#111113] hover:bg-[#EFE9DF]/60 transition-colors flex items-center justify-between cursor-pointer"
                                       >
@@ -7241,7 +7598,8 @@ const Admin = () => {
                                       </button>
                                       <button
                                         type="button"
-                                        onClick={() => {
+                                        onClick={(e) => {
+                                          e.stopPropagation();
                                           setOpenActionMenuOrderId(null);
                                           handleDeleteOrder(o.id);
                                         }}
@@ -7263,1942 +7621,291 @@ const Admin = () => {
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Mobile Orders Responsive Luxury Cards (< md) */}
+                  <div className="md:hidden space-y-3.5">
+                    {filteredOrders.length === 0 ? (
+                      <div className="p-8 text-center bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] space-y-2">
+                        <p className="font-serif text-base text-[#111113]">No orders found</p>
+                        <p className="text-xs text-[#746F68] font-mono">Adjust your status filter above.</p>
+                      </div>
+                    ) : (
+                      filteredOrders.map((o) => (
+                        <div
+                          key={o.id}
+                          className={`bg-white border border-[#E5DDD1] rounded-[2px] p-4 shadow-2xs space-y-3 transition-all hover:border-[#C2922E]/40 relative ${openActionMenuOrderId === o.id ? "z-30" : "z-0"}`}
+                        >
+                          {/* Card Header: Order ID + Date & Time */}
+                          <div className="flex items-start justify-between border-b border-[#F0EBE1] pb-2.5">
+                            <div>
+                              <span className="font-mono text-sm font-semibold text-[#111113] block">
+                                #SUKO-{1000 + o.id}
+                              </span>
+                              <span className="text-[10px] uppercase font-mono tracking-wider text-[#C2922E]">
+                                Atelier Client
+                              </span>
+                            </div>
+                            <div className="text-right font-mono">
+                              <span className="text-xs text-[#111113] block">
+                                {new Date(o.created_at || Date.now()).toLocaleDateString("en-IN", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric"
+                                })}
+                              </span>
+                              <span className="text-[10px] text-[#746F68]">
+                                {new Date(o.created_at || Date.now()).toLocaleTimeString("en-IN", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: true
+                                }).toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Customer & Garment Item Summary */}
+                          <div className="space-y-1 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-[#111113] text-[13px]">
+                                {getUserDisplayName(o.user)}
+                              </span>
+                              <span className="text-[10.5px] font-mono text-[#746F68]">
+                                {o.city || o.shipping_city || "India"}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[#55514B]">
+                              <span className="font-serif truncate max-w-[200px]">
+                                {o.items?.[0]?.product_name || o.items?.[0]?.name || "Tailored Garment"}
+                              </span>
+                              <span className="font-mono text-[10px] text-[#746F68] shrink-0">
+                                {o.items?.length || 1} {o.items?.length === 1 ? "piece" : "pieces"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Amount + Payment & Status Details */}
+                          <div className="bg-[#FAF8F5] border border-[#E5DDD1] p-3 rounded-[2px] flex items-center justify-between text-xs">
+                            <div>
+                              <span className="text-[9.5px] uppercase font-mono text-[#746F68] block leading-none mb-1">
+                                Total ({isFinanciallyPaid(o.status) ? "Settled" : "Payable"})
+                              </span>
+                              <span className="font-serif text-base font-medium text-[#111113]">
+                                {formatINR(o.total)}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[9.5px] uppercase font-mono text-[#746F68] block leading-none mb-1">
+                                {formatPaymentMethod(o.payment_method)}
+                              </span>
+                              <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-medium px-2 py-0.5 rounded-[2px] border border-[#E5DDD1] bg-white">
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    ORDER_STATUS_CONFIG.find((s) => s.value === o.status)?.dotColor || "bg-[#8E877E]"
+                                  }`}
+                                />
+                                <span>{formatStatus(o.status)}</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Inline Verification Action if pending */}
+                          {o.status === "payment_verification_pending" && (
+                            <div className="pt-1 flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleVerifyPayment(o.id)}
+                                disabled={verifyingOrderId === o.id}
+                                className="flex-1 py-1.5 bg-[#111113] hover:bg-[#C2922E] text-white text-[11px] font-mono uppercase tracking-wider rounded-[2px] transition-colors disabled:opacity-50 cursor-pointer"
+                              >
+                                {verifyingOrderId === o.id ? "Verifying..." : "Approve"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRejectPayment(o.id)}
+                                disabled={rejectingOrderId === o.id}
+                                className="flex-1 py-1.5 border border-[#D9A4A4] text-[#8B3A3A] hover:bg-[#D9A4A4]/15 text-[11px] font-mono uppercase tracking-wider rounded-[2px] transition-colors disabled:opacity-50 cursor-pointer"
+                              >
+                                {rejectingOrderId === o.id ? "Rejecting..." : "Reject"}
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Bottom Action Bar: VIEW ORDER | INVOICE | MORE ⋮ */}
+                          <div className="pt-2.5 border-t border-[#F0EBE1] flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openOrderDetails(o)}
+                              className="flex-1 py-2 px-3 bg-[#111113] hover:bg-[#C2922E] text-white text-xs font-mono uppercase tracking-wider rounded-[2px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                            >
+                              <span>View Order</span>
+                              <ArrowUpRight size={13} className="text-[#C2922E]" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => openDocumentPreview(o, "invoice")}
+                              className="py-2 px-3 border border-[#E5DDD1] hover:border-[#111113] bg-[#FAF8F5] text-xs font-mono uppercase tracking-wider text-[#111113] rounded-[2px] transition-colors flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <FileText size={13} className="text-[#C2922E]" />
+                              <span>Invoice</span>
+                            </button>
+
+                            <div className={`relative ${openActionMenuOrderId === o.id ? "z-40" : "z-10"}`} onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setOpenActionMenuOrderId((prev) => (prev === o.id ? null : o.id));
+                                }}
+                                className="p-2 sm:p-2 border border-[#E5DDD1] hover:bg-[#FAF8F5] active:bg-[#EFE9DF] rounded-[2px] text-[#746F68] hover:text-[#111113] transition-colors cursor-pointer flex items-center justify-center min-w-[36px] h-full touch-manipulation select-none"
+                                title="More Options"
+                                aria-expanded={openActionMenuOrderId === o.id}
+                              >
+                                <MoreVertical size={15} />
+                              </button>
+
+                              {openActionMenuOrderId === o.id && (
+                                <div
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="absolute right-0 bottom-full mb-1.5 w-48 bg-[#FAF8F5] border border-[#E5DDD1] shadow-xl rounded-[2px] py-1 z-50 divide-y divide-[#E5DDD1]/40 animate-in fade-in duration-100"
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenActionMenuOrderId(null);
+                                      openDocumentPreview(o, "receipt");
+                                    }}
+                                    className="w-full px-3 py-2 text-left text-xs text-[#111113] hover:bg-[#EFE9DF]/60 transition-colors flex items-center justify-between cursor-pointer"
+                                  >
+                                    <span>Payment Receipt</span>
+                                    <CheckCircle size={12} className="text-emerald-700" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenActionMenuOrderId(null);
+                                      openDocumentPreview(o, "packing_slip");
+                                    }}
+                                    className="w-full px-3 py-2 text-left text-xs text-[#111113] hover:bg-[#EFE9DF]/60 transition-colors flex items-center justify-between cursor-pointer"
+                                  >
+                                    <span>Packing Slip</span>
+                                    <Truck size={12} className="text-blue-700" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenActionMenuOrderId(null);
+                                      handleOpenEditOrder(o);
+                                    }}
+                                    className="w-full px-3 py-2 text-left text-xs text-[#111113] hover:bg-[#EFE9DF]/60 transition-colors flex items-center justify-between cursor-pointer"
+                                  >
+                                    <span>Edit Details</span>
+                                    <Edit2 size={12} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenActionMenuOrderId(null);
+                                      handleDeleteOrder(o.id);
+                                    }}
+                                    className="w-full px-3 py-2 text-left text-xs text-[#8B3A3A] hover:bg-[#D9A4A4]/15 transition-colors flex items-center justify-between cursor-pointer font-medium"
+                                  >
+                                    <span>Delete Order</span>
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               )}
 
               {/* COUPONS TAB */}
               {activeTab === "coupons" && (
-                <div className="space-y-6">
-                  {/* Tab Header Banner */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[#E5DDD1]">
-                    <div>
-                      <span className="text-[10px] uppercase tracking-[0.14em] text-[#C2922E] font-mono font-semibold block mb-0.5">
-                        MARKETING & PROMOTIONS
-                      </span>
-                      <h2 className="text-xl sm:text-2xl font-serif text-[#111113] font-normal tracking-tight">
-                        Discounts & Coupons
-                      </h2>
-                      <p className="text-xs text-[#6B655D] mt-0.5">
-                        Configure promotional codes, percentage or flat discounts, usage caps, and cart thresholds.
-                      </p>
-                    </div>
-
-                    {/* Quick Metric Badges */}
-                    <div className="flex items-center gap-2 text-xs">
-                      <div className="bg-white border border-[#E5DDD1] px-3 py-1.5 rounded-[3px] flex items-center gap-2">
-                        <span className="text-[11px] text-[#746F68] uppercase font-mono">Total Coupons:</span>
-                        <span className="font-mono font-medium text-[#111113]">{couponsList.length}</span>
-                      </div>
-                      <div className="bg-white border border-[#E5DDD1] px-3 py-1.5 rounded-[3px] flex items-center gap-2">
-                        <span className="text-[11px] text-emerald-700 uppercase font-mono">Active:</span>
-                        <span className="font-mono font-medium text-emerald-800">{activeCouponsCount}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid lg:grid-cols-12 gap-6 items-start">
-                    {/* Left: Create Coupon Card */}
-                    <div className="lg:col-span-5">
-                      <div className="border border-[#E5DDD1] bg-white rounded-[4px] shadow-sm p-5 sm:p-6 space-y-5">
-                        <div className="border-b border-[#EAE6DF] pb-3.5">
-                          <span className="text-[10px] uppercase tracking-[0.14em] text-[#C2922E] font-mono font-semibold block mb-1">
-                            CREATE NEW COUPON
-                          </span>
-                          <h3 className="text-lg font-serif text-[#111113] font-normal">Create Coupon</h3>
-                          <p className="text-xs text-[#746F68] mt-0.5">
-                            Set redemption rules, discount type, validity, and cart conditions.
-                          </p>
-                        </div>
-
-                        <form onSubmit={handleCreateCouponSubmit} className="space-y-4 text-xs">
-                          {/* Coupon Code */}
-                          <div>
-                            <label className="text-[10.5px] uppercase tracking-[0.10em] text-[#3D3A35] font-mono font-medium block mb-1.5">
-                              Coupon Code <span className="text-rose-600">*</span>
-                            </label>
-                            <div className="relative">
-                              <input
-                                type="text"
-                                value={newCouponForm.code}
-                                onChange={(e) => setNewCouponForm({ ...newCouponForm, code: e.target.value.toUpperCase() })}
-                                placeholder="E.G. SUKO10, FESTIVE500"
-                                required
-                                className="w-full bg-[#FAF8F5] border border-[#E5DDD1] rounded-[3px] px-3.5 py-2.5 text-xs font-mono uppercase text-[#111113] placeholder:text-[#A49E93] focus:border-[#C2922E] focus:bg-white outline-none transition-colors"
-                              />
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-[#8E877E] uppercase tracking-wider pointer-events-none">
-                                AUTO UPPERCASE
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Discount Type */}
-                          <div>
-                            <label className="text-[10.5px] uppercase tracking-[0.10em] text-[#3D3A35] font-mono font-medium block mb-1.5">
-                              Discount Type <span className="text-rose-600">*</span>
-                            </label>
-                            <div className="grid grid-cols-2 gap-2 bg-[#FAF8F5] p-1 border border-[#E5DDD1] rounded-[3px]">
-                              <button
-                                type="button"
-                                onClick={() => setNewCouponForm({ ...newCouponForm, discount_type: "percentage" })}
-                                className={`py-2 px-3 text-xs font-medium rounded-[2px] transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                  newCouponForm.discount_type === "percentage"
-                                    ? "bg-[#111113] text-[#FAF8F5] shadow-sm font-semibold"
-                                    : "text-[#55514B] hover:text-[#111113] hover:bg-white/60"
-                                }`}
-                              >
-                                <span>Percentage (%)</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setNewCouponForm({ ...newCouponForm, discount_type: "flat" })}
-                                className={`py-2 px-3 text-xs font-medium rounded-[2px] transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                  newCouponForm.discount_type === "flat"
-                                    ? "bg-[#111113] text-[#FAF8F5] shadow-sm font-semibold"
-                                    : "text-[#55514B] hover:text-[#111113] hover:bg-white/60"
-                                }`}
-                              >
-                                <span>Flat Amount (₹)</span>
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Conditional Discount Fields */}
-                          {newCouponForm.discount_type === "percentage" ? (
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="text-[10.5px] uppercase tracking-[0.10em] text-[#3D3A35] font-mono font-medium block mb-1.5">
-                                  Discount Value (%) <span className="text-rose-600">*</span>
-                                </label>
-                                <div className="relative">
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max="100"
-                                    value={newCouponForm.discount_value}
-                                    onChange={(e) => setNewCouponForm({ ...newCouponForm, discount_value: e.target.value })}
-                                    placeholder="10"
-                                    required
-                                    className="w-full bg-[#FAF8F5] border border-[#E5DDD1] rounded-[3px] pl-3.5 pr-8 py-2.5 text-xs font-mono text-[#111113] placeholder:text-[#A49E93] focus:border-[#C2922E] focus:bg-white outline-none transition-colors"
-                                  />
-                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-[#746F68] pointer-events-none">%</span>
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="text-[10.5px] uppercase tracking-[0.10em] text-[#3D3A35] font-mono font-medium block mb-1.5">
-                                  Max Discount (₹)
-                                </label>
-                                <div className="relative">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={newCouponForm.max_discount}
-                                    onChange={(e) => setNewCouponForm({ ...newCouponForm, max_discount: e.target.value })}
-                                    placeholder="e.g. 2000"
-                                    className="w-full bg-[#FAF8F5] border border-[#E5DDD1] rounded-[3px] pl-7 pr-3 py-2.5 text-xs font-mono text-[#111113] placeholder:text-[#A49E93] focus:border-[#C2922E] focus:bg-white outline-none transition-colors"
-                                  />
-                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-[#746F68] pointer-events-none">₹</span>
-                                </div>
-                                <span className="text-[10px] text-[#8E877E] mt-0.5 block">Optional cap limit</span>
-                              </div>
-                            </div>
-                          ) : (
-                            <div>
-                              <label className="text-[10.5px] uppercase tracking-[0.10em] text-[#3D3A35] font-mono font-medium block mb-1.5">
-                                Discount Amount (₹) <span className="text-rose-600">*</span>
-                              </label>
-                              <div className="relative">
-                                <input
-                                  type="number"
-                                  min="1"
-                                  value={newCouponForm.discount_value}
-                                  onChange={(e) => setNewCouponForm({ ...newCouponForm, discount_value: e.target.value })}
-                                  placeholder="500"
-                                  required
-                                  className="w-full bg-[#FAF8F5] border border-[#E5DDD1] rounded-[3px] pl-7 pr-3 py-2.5 text-xs font-mono text-[#111113] placeholder:text-[#A49E93] focus:border-[#C2922E] focus:bg-white outline-none transition-colors"
-                                />
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-[#746F68] pointer-events-none">₹</span>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Minimum Order Value */}
-                          <div>
-                            <label className="text-[10.5px] uppercase tracking-[0.10em] text-[#3D3A35] font-mono font-medium block mb-1.5">
-                              Minimum Order Value (₹)
-                            </label>
-                            <div className="relative">
-                              <input
-                                type="number"
-                                min="0"
-                                value={newCouponForm.min_order_value}
-                                onChange={(e) => setNewCouponForm({ ...newCouponForm, min_order_value: e.target.value })}
-                                placeholder="2000"
-                                className="w-full bg-[#FAF8F5] border border-[#E5DDD1] rounded-[3px] pl-7 pr-3 py-2.5 text-xs font-mono text-[#111113] placeholder:text-[#A49E93] focus:border-[#C2922E] focus:bg-white outline-none transition-colors"
-                              />
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-[#746F68] pointer-events-none">₹</span>
-                            </div>
-                            <span className="text-[10px] text-[#8E877E] mt-0.5 block">Cart value required before discount applies</span>
-                          </div>
-
-                          {/* Usage Limit & Expiry Date */}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-[10.5px] uppercase tracking-[0.10em] text-[#3D3A35] font-mono font-medium block mb-1.5">
-                                Total Usage Limit
-                              </label>
-                              <input
-                                type="number"
-                                min="1"
-                                value={newCouponForm.usage_limit}
-                                onChange={(e) => setNewCouponForm({ ...newCouponForm, usage_limit: e.target.value })}
-                                placeholder="e.g. 100"
-                                className="w-full bg-[#FAF8F5] border border-[#E5DDD1] rounded-[3px] px-3 py-2.5 text-xs font-mono text-[#111113] placeholder:text-[#A49E93] focus:border-[#C2922E] focus:bg-white outline-none transition-colors"
-                              />
-                              <span className="text-[10px] text-[#8E877E] mt-0.5 block">Blank = Unlimited</span>
-                            </div>
-
-                            <div>
-                              <label className="text-[10.5px] uppercase tracking-[0.10em] text-[#3D3A35] font-mono font-medium block mb-1.5">
-                                Valid Until
-                              </label>
-                              <input
-                                type="date"
-                                value={newCouponForm.expiry_date ? newCouponForm.expiry_date.split("T")[0] : ""}
-                                onChange={(e) => setNewCouponForm({ ...newCouponForm, expiry_date: e.target.value ? `${e.target.value}T23:59:59.000Z` : "" })}
-                                className="w-full bg-[#FAF8F5] border border-[#E5DDD1] rounded-[3px] px-3 py-2 text-xs font-mono text-[#111113] focus:border-[#C2922E] focus:bg-white outline-none transition-colors"
-                              />
-                              <span className="text-[10px] text-[#8E877E] mt-0.5 block">Blank = No expiry</span>
-                            </div>
-                          </div>
-
-                          {/* Status */}
-                          <div>
-                            <label className="text-[10.5px] uppercase tracking-[0.10em] text-[#3D3A35] font-mono font-medium block mb-1.5">
-                              Status
-                            </label>
-                            <div className="flex items-center gap-4 bg-[#FAF8F5] p-2 border border-[#E5DDD1] rounded-[3px]">
-                              <label className="flex items-center gap-2 cursor-pointer select-none">
-                                <input
-                                  type="radio"
-                                  name="coupon_status"
-                                  checked={newCouponForm.is_active === true}
-                                  onChange={() => setNewCouponForm({ ...newCouponForm, is_active: true })}
-                                  className="accent-[#C2922E]"
-                                />
-                                <span className="text-xs text-[#111113] font-medium">Active</span>
-                              </label>
-                              <label className="flex items-center gap-2 cursor-pointer select-none">
-                                <input
-                                  type="radio"
-                                  name="coupon_status"
-                                  checked={newCouponForm.is_active === false}
-                                  onChange={() => setNewCouponForm({ ...newCouponForm, is_active: false })}
-                                  className="accent-[#C2922E]"
-                                />
-                                <span className="text-xs text-[#55514B]">Inactive</span>
-                              </label>
-                            </div>
-                          </div>
-
-                          {/* Submit Button */}
-                          <button
-                            type="submit"
-                            disabled={submittingCoupon}
-                            className="w-full bg-[#111113] hover:bg-[#C2922E] text-[#FAF8F5] py-3 rounded-[3px] text-xs uppercase tracking-[0.12em] font-medium transition-colors shadow-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-2"
-                          >
-                            {submittingCoupon ? (
-                              <>
-                                <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                <span>Creating Coupon...</span>
-                              </>
-                            ) : (
-                              <span>Create Coupon</span>
-                            )}
-                          </button>
-                        </form>
-                      </div>
-                    </div>
-
-                    {/* Right: Detailed Table & Filters */}
-                    <div className="lg:col-span-7 space-y-4">
-                      {/* Filter Bar & Search */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2.5 rounded-[4px] border border-[#E5DDD1] shadow-sm">
-                        <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
-                          {[
-                            { id: "all", label: "All", count: couponsList.length },
-                            { id: "active", label: "Active", count: activeCouponsCount },
-                            { id: "expired", label: "Expired", count: expiredCouponsCount },
-                            { id: "inactive", label: "Inactive", count: inactiveCouponsCount },
-                          ].map((tab) => (
-                            <button
-                              key={tab.id}
-                              type="button"
-                              onClick={() => setCouponFilter(tab.id)}
-                              className={`px-3 py-1.5 text-xs rounded-[2px] transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                                couponFilter === tab.id
-                                  ? "bg-[#111113] text-[#FAF8F5] font-medium"
-                                  : "text-[#55514B] hover:text-[#111113] hover:bg-[#FAF8F5]"
-                              }`}
-                            >
-                              <span>{tab.label}</span>
-                              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
-                                couponFilter === tab.id ? "bg-white/20 text-white" : "bg-[#EFE9DF] text-[#746F68]"
-                              }`}>
-                                {tab.count}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Search Input */}
-                        <div className="relative w-full sm:w-56">
-                          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8E877E] pointer-events-none" />
-                          <input
-                            type="text"
-                            value={couponSearch}
-                            onChange={(e) => setCouponSearch(e.target.value)}
-                            placeholder="Search by code..."
-                            className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:bg-white focus:border-[#C2922E] outline-none font-mono transition-colors text-[#111113] placeholder:text-[#8E877E]"
-                          />
-                          {couponSearch && (
-                            <button
-                              type="button"
-                              onClick={() => setCouponSearch("")}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8E877E] hover:text-[#111113]"
-                            >
-                              <X size={12} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Coupons Table Card */}
-                      <div className="border border-[#E5DDD1] bg-white rounded-[4px] shadow-sm overflow-hidden">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left text-xs font-sans">
-                            <thead className="bg-[#FAF8F5] text-[10px] uppercase tracking-[0.10em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
-                              <tr>
-                                <th className="py-3 px-3.5 font-medium">Code</th>
-                                <th className="py-3 px-3 font-medium">Discount</th>
-                                <th className="py-3 px-3 font-medium">Min Order</th>
-                                <th className="py-3 px-3 font-medium">Used</th>
-                                <th className="py-3 px-3 font-medium">Validity</th>
-                                <th className="py-3 px-3 font-medium">Status</th>
-                                <th className="py-3 px-3.5 font-medium text-right">Action</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#EAE6DF] text-[#111113]">
-                              {filteredCoupons.map((c) => {
-                                const isExpired = (c.expiry_date && new Date(c.expiry_date).getTime() < Date.now()) ||
-                                                  (c.usage_limit && Number(c.used_count || 0) >= Number(c.usage_limit));
-                                const status = !c.is_active ? "inactive" : isExpired ? "expired" : "active";
-                                const isToggling = togglingCouponId === c.id;
-
-                                return (
-                                  <tr key={c.id} className="hover:bg-[#FAF8F5]/80 transition-colors">
-                                    {/* CODE */}
-                                    <td className="py-3.5 px-3.5">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="font-mono font-semibold text-xs tracking-wider text-[#111113] bg-[#FAF8F5] border border-[#E5DDD1] px-2 py-0.5 rounded-[2px]">
-                                          {c.code}
-                                        </span>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            navigator.clipboard.writeText(c.code);
-                                            toast.success(`Copied "${c.code}"`);
-                                          }}
-                                          className="text-[#8E877E] hover:text-[#C2922E] transition-colors p-1 cursor-pointer"
-                                          title="Copy coupon code"
-                                        >
-                                          <Copy size={12} />
-                                        </button>
-                                      </div>
-                                    </td>
-
-                                    {/* DISCOUNT */}
-                                    <td className="py-3.5 px-3">
-                                      <div className="font-mono">
-                                        <span className="font-semibold text-[#111113]">
-                                          {c.discount_type === "percentage" || c.discount_percent
-                                            ? `${c.discount_value || c.discount_percent}% OFF`
-                                            : `₹${c.discount_value || c.discount_flat} Flat`}
-                                        </span>
-                                        {(c.discount_type === "percentage" || c.discount_percent) && c.max_discount && (
-                                          <span className="block text-[10px] text-[#746F68]">
-                                            Max ₹{Number(c.max_discount).toLocaleString("en-IN")}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </td>
-
-                                    {/* MIN ORDER */}
-                                    <td className="py-3.5 px-3 font-mono text-[#55514B]">
-                                      {c.min_order_value && Number(c.min_order_value) > 0 ? (
-                                        `₹${Number(c.min_order_value).toLocaleString("en-IN")}+`
-                                      ) : (
-                                        <span className="text-[#8E877E] italic font-sans text-[11px]">No min</span>
-                                      )}
-                                    </td>
-
-                                    {/* USED */}
-                                    <td className="py-3.5 px-3">
-                                      <div className="font-mono text-xs text-[#111113]">
-                                        <span>{c.used_count || 0}</span>
-                                        {c.usage_limit ? (
-                                          <span className="text-[#746F68]">/{c.usage_limit}</span>
-                                        ) : (
-                                          <span className="text-[#8E877E] text-[10px] ml-1 font-sans">used</span>
-                                        )}
-                                      </div>
-                                      {c.usage_limit && (
-                                        <div className="w-16 h-1 bg-[#EFE9DF] rounded-full mt-1 overflow-hidden">
-                                          <div
-                                            className={`h-full ${
-                                              Number(c.used_count || 0) >= Number(c.usage_limit)
-                                                ? "bg-rose-500"
-                                                : "bg-[#C2922E]"
-                                            }`}
-                                            style={{
-                                              width: `${Math.min(100, Math.round(((Number(c.used_count || 0)) / Number(c.usage_limit)) * 100))}%`
-                                            }}
-                                          />
-                                        </div>
-                                      )}
-                                    </td>
-
-                                    {/* VALIDITY */}
-                                    <td className="py-3.5 px-3 font-mono text-[11px] text-[#55514B]">
-                                      {c.expiry_date ? (
-                                        new Date(c.expiry_date).toLocaleDateString("en-IN", {
-                                          day: "2-digit",
-                                          month: "short",
-                                          year: "numeric"
-                                        })
-                                      ) : (
-                                        <span className="text-[#8E877E] font-sans text-[11px]">Ongoing</span>
-                                      )}
-                                    </td>
-
-                                    {/* STATUS */}
-                                    <td className="py-3.5 px-3">
-                                      {status === "active" && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono font-medium rounded-[2px] bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                          Active
-                                        </span>
-                                      )}
-                                      {status === "expired" && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono font-medium rounded-[2px] bg-amber-50 text-amber-800 border border-amber-200">
-                                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                          Expired
-                                        </span>
-                                      )}
-                                      {status === "inactive" && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono font-medium rounded-[2px] bg-[#FAF8F5] text-[#746F68] border border-[#E5DDD1]">
-                                          <span className="w-1.5 h-1.5 rounded-full bg-[#8E877E]" />
-                                          Inactive
-                                        </span>
-                                      )}
-                                    </td>
-
-                                    {/* ACTION */}
-                                    <td className="py-3.5 px-3.5 text-right">
-                                      <div className="flex items-center justify-end gap-1.5">
-                                        <button
-                                          type="button"
-                                          disabled={isToggling}
-                                          onClick={() => handleToggleCouponStatus(c)}
-                                          className={`px-2 py-1 text-[10.5px] font-medium rounded-[2px] border transition-colors cursor-pointer disabled:opacity-50 ${
-                                            c.is_active
-                                              ? "bg-white text-[#55514B] border-[#E5DDD1] hover:text-[#111113] hover:border-[#111113]"
-                                              : "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
-                                          }`}
-                                          title={c.is_active ? "Deactivate coupon" : "Activate coupon"}
-                                        >
-                                          {isToggling ? "..." : c.is_active ? "Deactivate" : "Activate"}
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={() => handleDeleteCoupon(c.id)}
-                                          className="text-[#8E877E] hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-[2px] p-1.5 transition-colors cursor-pointer"
-                                          title="Delete coupon"
-                                        >
-                                          <Trash2 size={13} />
-                                        </button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-
-                              {/* Empty State */}
-                              {filteredCoupons.length === 0 && (
-                                <tr>
-                                  <td colSpan="7" className="py-12 px-6 text-center">
-                                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto space-y-2.5">
-                                      <div className="w-12 h-12 rounded-full bg-[#FAF8F5] border border-[#E5DDD1] flex items-center justify-center text-[#C2922E]">
-                                        <Tag size={20} />
-                                      </div>
-                                      <h4 className="font-serif text-base text-[#111113] font-normal">
-                                        {couponSearch || couponFilter !== "all"
-                                          ? "No matching coupons found"
-                                          : "No coupons created yet."}
-                                      </h4>
-                                      <p className="text-xs text-[#746F68] leading-relaxed">
-                                        {couponSearch || couponFilter !== "all"
-                                          ? "Try changing your filter criteria or search keyword."
-                                          : "Create your first discount code to offer customers exclusive savings."}
-                                      </p>
-                                      {(couponSearch || couponFilter !== "all") && (
-                                        <button
-                                          type="button"
-                                          onClick={() => { setCouponFilter("all"); setCouponSearch(""); }}
-                                          className="text-xs text-[#C2922E] hover:underline font-medium cursor-pointer pt-1"
-                                        >
-                                          Reset filters
-                                        </button>
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <CouponsSection
+                  couponsList={couponsList}
+                  activeCouponsCount={activeCouponsCount}
+                  expiredCouponsCount={expiredCouponsCount}
+                  inactiveCouponsCount={inactiveCouponsCount}
+                  newCouponForm={newCouponForm}
+                  setNewCouponForm={setNewCouponForm}
+                  submittingCoupon={submittingCoupon}
+                  handleCreateCouponSubmit={handleCreateCouponSubmit}
+                  couponFilter={couponFilter}
+                  setCouponFilter={setCouponFilter}
+                  couponSearch={couponSearch}
+                  setCouponSearch={setCouponSearch}
+                  filteredCoupons={filteredCoupons}
+                  togglingCouponId={togglingCouponId}
+                  handleToggleCouponStatus={handleToggleCouponStatus}
+                  handleDeleteCoupon={handleDeleteCoupon}
+                  onBack={() => setActiveTab("overview")}
+                />
               )}
 
               {/* ============================================================= */}
               {/* CUSTOMER COMMUNICATION TAB (LUXURY CLIENT MESSAGING)          */}
               {/* ============================================================= */}
               {activeTab === "broadcast" && (
-                <div className="space-y-8 animate-in fade-in duration-200">
-                  {/* Top Section Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5DDD1] pb-5">
-                    <div className="space-y-1">
-                      <span className="text-[10px] uppercase tracking-[0.2em] text-[#C2922E] font-mono block">
-                        CONCIERGE &amp; CLIENT MESSAGING
-                      </span>
-                      <h2 className="text-2xl sm:text-3xl font-serif font-light text-[#111113] tracking-tight">
-                        Customer Communication
-                      </h2>
-                      <p className="text-xs text-[#746F68] font-sans">
-                        Send updates, offers and announcements to your customers.
-                      </p>
-                    </div>
-
-                    {/* Channel Selector Pills */}
-                    <div className="inline-flex p-1 bg-[#EFE9DF]/60 border border-[#E5DDD1] rounded-[3px] self-start sm:self-auto">
-                      <button
-                        type="button"
-                        onClick={() => setBroadcastChannel("email")}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono tracking-wider uppercase rounded-[2px] transition-all cursor-pointer ${
-                          broadcastChannel === "email"
-                            ? "bg-[#111113] text-white shadow-xs font-medium"
-                            : "text-[#55514B] hover:text-[#111113]"
-                        }`}
-                      >
-                        <Mail size={13} />
-                        <span>Email Broadcast</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setBroadcastChannel("whatsapp")}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono tracking-wider uppercase rounded-[2px] transition-all cursor-pointer ${
-                          broadcastChannel === "whatsapp"
-                            ? "bg-[#111113] text-white shadow-xs font-medium"
-                            : "text-[#55514B] hover:text-[#111113]"
-                        }`}
-                      >
-                        <MessageSquare size={13} />
-                        <span>WhatsApp Concierge</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Main Grid: Composer & History */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                    {/* Left 7 Cols: Communication Composer */}
-                    <div className="lg:col-span-7 bg-white border border-[#E5DDD1] rounded-[2px] p-6 sm:p-7 shadow-[0_1px_3px_rgba(0,0,0,0.04)] space-y-6">
-                      <div className="flex items-center justify-between border-b border-[#F0EBE1] pb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-[#C2922E]" />
-                          <h3 className="font-serif text-lg font-normal text-[#111113]">
-                            {broadcastChannel === "email" ? "New Email Broadcast" : "WhatsApp Concierge Dispatch"}
-                          </h3>
-                        </div>
-                        <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#746F68]">
-                          {broadcastChannel === "email" ? "Resend Direct SMTP" : "Direct WhatsApp Link"}
-                        </span>
-                      </div>
-
-                      {/* Quick Templates Selector */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[10.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono block">
-                            Quick Templates
-                          </label>
-                          <span className="text-[10px] text-[#A77B1E] font-mono">
-                            Auto-fills subject &amp; message
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {COMMUNICATION_TEMPLATES.map((tpl) => {
-                            const IconComponent = tpl.icon;
-                            const isSelected = emailForm.templateUsed === tpl.name;
-                            return (
-                              <button
-                                key={tpl.id}
-                                type="button"
-                                onClick={() => {
-                                  setEmailForm((prev) => ({
-                                    ...prev,
-                                    subject: tpl.subject,
-                                    message: tpl.message,
-                                    templateUsed: tpl.name
-                                  }));
-                                  toast.success(`Loaded "${tpl.name}" template`);
-                                }}
-                                className={`text-left p-2.5 rounded-[2px] border transition-all cursor-pointer flex flex-col justify-between ${
-                                  isSelected
-                                    ? "border-[#C2922E] bg-[#FAF8F5] shadow-xs"
-                                    : "border-[#E5DDD1] bg-[#FAF8F5]/60 hover:bg-[#FAF8F5] hover:border-[#C2922E]/60"
-                                }`}
-                              >
-                                <div className="flex items-center justify-between mb-1.5">
-                                  <div className={`p-1 rounded-[2px] ${isSelected ? "text-[#C2922E]" : "text-[#746F68]"}`}>
-                                    <IconComponent size={14} />
-                                  </div>
-                                  <span className="text-[9px] font-mono uppercase tracking-wider text-[#A77B1E] px-1 py-0.2 bg-[#EFE9DF]/80 rounded-[2px]">
-                                    {tpl.badge}
-                                  </span>
-                                </div>
-                                <span className="text-[11.5px] font-medium text-[#111113] line-clamp-1">
-                                  {tpl.name}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <form onSubmit={handleSendEmailSubmit} className="space-y-5">
-                        {/* Target Audience Dropdown */}
-                        <div className="space-y-1.5">
-                          <label className="text-[10.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono block">
-                            Send To
-                          </label>
-                          <select
-                            value={emailForm.target}
-                            onChange={(e) => setEmailForm({ ...emailForm, target: e.target.value })}
-                            className="w-full bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] px-3.5 py-2.5 text-xs text-[#111113] focus:border-[#C2922E] focus:outline-none transition-colors"
-                          >
-                            <option value="all">All Customers ({totalAudienceCount})</option>
-                            <option value="recent_buyers">Recent Buyers ({recentBuyersCount}) — Orders in last 30 days</option>
-                            <option value="vip">VIP Customers ({vipCustomersCount}) — 2+ orders or ₹15k+ spend</option>
-                            <option value="single">Single Customer</option>
-                          </select>
-                        </div>
-
-                        {/* Audience Info Badge (when not single) */}
-                        {emailForm.target !== "single" && (
-                          <div className="p-3 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                              <Users size={16} className="text-[#C2922E] shrink-0" />
-                              <div>
-                                <span className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block">
-                                  Sending to:
-                                </span>
-                                <span className="text-xs font-serif font-medium text-[#111113]">
-                                  {emailForm.target === "all" && `${totalAudienceCount} Customers (Full Client Directory)`}
-                                  {emailForm.target === "recent_buyers" && `${recentBuyersCount} Customers (Active Purchasers)`}
-                                  {emailForm.target === "vip" && `${vipCustomersCount} Customers (VIP High-Value Patrons)`}
-                                </span>
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-mono uppercase tracking-wider text-[#3B6E4C] bg-emerald-50 px-2 py-0.5 border border-emerald-200/60 rounded-[2px]">
-                              Segment Active
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Conditional Single Recipient Email */}
-                        {emailForm.target === "single" && (
-                          <div className="space-y-1.5 animate-in fade-in duration-150">
-                            <label className="text-[10.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono block">
-                              Recipient Email *
-                            </label>
-                            <input
-                              type="email"
-                              value={emailForm.recipientEmail}
-                              onChange={(e) => setEmailForm({ ...emailForm, recipientEmail: e.target.value })}
-                              placeholder="client@luxury.com"
-                              required
-                              className="w-full bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] px-3.5 py-2.5 text-xs text-[#111113] focus:border-[#C2922E] focus:outline-none transition-colors"
-                            />
-                            <p className="text-[10.5px] text-[#746F68]">
-                              Dispatches directly to this single patron's inbox.
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Subject */}
-                        <div className="space-y-1.5">
-                          <label className="text-[10.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono block">
-                            Email Subject *
-                          </label>
-                          <input
-                            type="text"
-                            value={emailForm.subject}
-                            onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })}
-                            placeholder="e.g. Autumn Silhouettes Preview: Exclusive Atelier Launch"
-                            required
-                            className="w-full bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] px-3.5 py-2.5 text-xs text-[#111113] focus:border-[#C2922E] focus:outline-none transition-colors"
-                          />
-                        </div>
-
-                        {/* Message Body & Personalization Tags */}
-                        <div className="space-y-1.5">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                            <label className="text-[10.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono block">
-                              Message Body *
-                            </label>
-                            {/* Formatting & Personalization Tags */}
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-[9.5px] text-[#746F68] font-mono">Insert:</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEmailForm((prev) => ({
-                                    ...prev,
-                                    message: (prev.message || "") + " {customer_name}"
-                                  }));
-                                }}
-                                className="text-[10px] font-mono text-[#111113] bg-[#FAF8F5] hover:bg-[#EFE9DF] border border-[#E5DDD1] px-1.5 py-0.5 rounded-[2px] transition-colors cursor-pointer"
-                                title="Inserts client's name"
-                              >
-                                &#123;customer_name&#125;
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEmailForm((prev) => ({
-                                    ...prev,
-                                    message: (prev.message || "") + " {discount_code}"
-                                  }));
-                                }}
-                                className="text-[10px] font-mono text-[#111113] bg-[#FAF8F5] hover:bg-[#EFE9DF] border border-[#E5DDD1] px-1.5 py-0.5 rounded-[2px] transition-colors cursor-pointer"
-                                title="Inserts active coupon code"
-                              >
-                                &#123;discount_code&#125;
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEmailForm((prev) => ({
-                                    ...prev,
-                                    message: (prev.message || "") + " {showroom_url}"
-                                  }));
-                                }}
-                                className="text-[10px] font-mono text-[#111113] bg-[#FAF8F5] hover:bg-[#EFE9DF] border border-[#E5DDD1] px-1.5 py-0.5 rounded-[2px] transition-colors cursor-pointer"
-                                title="Inserts store web address"
-                              >
-                                &#123;showroom_url&#125;
-                              </button>
-                            </div>
-                          </div>
-
-                          <textarea
-                            rows={6}
-                            value={emailForm.message}
-                            onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })}
-                            placeholder="Compose your personalized message to the client..."
-                            required
-                            className="w-full bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] p-3 text-xs text-[#111113] focus:border-[#C2922E] focus:outline-none transition-colors leading-relaxed font-sans"
-                          />
-                          <div className="flex items-center justify-between text-[10px] font-mono text-[#746F68] pt-0.5">
-                            <span>SUKO Atelier Quiet Luxury Dual Multipart HTML</span>
-                            <span>{emailForm.message.length} characters</span>
-                          </div>
-                        </div>
-
-                        {/* Call to Action Button (Optional) */}
-                        <div className="p-3.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] space-y-3">
-                          <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={emailForm.includeCta}
-                                onChange={(e) => setEmailForm({ ...emailForm, includeCta: e.target.checked })}
-                                className="w-3.5 h-3.5 accent-[#111113] rounded cursor-pointer"
-                              />
-                              <span className="text-[10.5px] uppercase tracking-[0.14em] text-[#111113] font-mono font-medium">
-                                Include Call to Action Button
-                              </span>
-                            </label>
-                            <span className="text-[10px] font-mono text-[#746F68]">
-                              {emailForm.includeCta ? "Active in email" : "Hidden"}
-                            </span>
-                          </div>
-
-                          {emailForm.includeCta && (
-                            <div className="space-y-2.5 pt-1 animate-in fade-in duration-150">
-                              <div>
-                                <span className="text-[9.5px] font-mono uppercase tracking-wider text-[#746F68] block mb-1.5">
-                                  Button Label Presets:
-                                </span>
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  {["Explore Collection", "View Order", "Shop Now", "Exclusive Preview"].map((preset) => (
-                                    <button
-                                      key={preset}
-                                      type="button"
-                                      onClick={() => setEmailForm({ ...emailForm, ctaText: preset })}
-                                      className={`text-[10px] font-mono px-2 py-0.5 rounded-[2px] border transition-all cursor-pointer ${
-                                        emailForm.ctaText === preset
-                                          ? "bg-[#111113] text-white border-[#111113] font-medium"
-                                          : "bg-white text-[#55514B] border-[#E5DDD1] hover:border-[#111113]"
-                                      }`}
-                                    >
-                                      {preset}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                                <div>
-                                  <label className="text-[9.5px] uppercase tracking-wider font-mono text-[#746F68] block mb-1">
-                                    Button Text
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={emailForm.ctaText}
-                                    onChange={(e) => setEmailForm({ ...emailForm, ctaText: e.target.value })}
-                                    placeholder="e.g. Explore Collection"
-                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-2.5 py-1.5 text-xs text-[#111113] focus:border-[#C2922E] focus:outline-none"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-[9.5px] uppercase tracking-wider font-mono text-[#746F68] block mb-1">
-                                    Destination URL
-                                  </label>
-                                  <input
-                                    type="url"
-                                    value={emailForm.ctaUrl}
-                                    onChange={(e) => setEmailForm({ ...emailForm, ctaUrl: e.target.value })}
-                                    placeholder="https://www.indiancorporatewear.com"
-                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-2.5 py-1.5 text-xs text-[#111113] focus:border-[#C2922E] focus:outline-none"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!emailForm.subject.trim()) return toast.error("Please enter a subject first");
-                              if (!emailForm.message.trim()) return toast.error("Please enter a message body first");
-                              setShowEmailPreviewModal(true);
-                            }}
-                            className="w-full sm:w-auto px-5 py-2.5 rounded-[2px] border border-[#E5DDD1] bg-white hover:bg-[#FAF8F5] text-xs font-mono uppercase tracking-[0.14em] text-[#111113] font-medium transition-all flex items-center justify-center gap-2 cursor-pointer"
-                          >
-                            <Eye size={14} className="text-[#C2922E]" />
-                            <span>Preview Email</span>
-                          </button>
-
-                          {broadcastChannel === "email" ? (
-                            <button
-                              type="submit"
-                              disabled={sendingEmail}
-                              className="w-full sm:flex-1 py-2.5 px-6 rounded-[2px] bg-[#111113] hover:bg-[#C2922E] text-white text-xs font-mono uppercase tracking-[0.14em] font-medium transition-all shadow-xs disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
-                            >
-                              {sendingEmail ? (
-                                <>
-                                  <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                                  <span>Transmitting...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Send size={13} />
-                                  <span>Send Email</span>
-                                </>
-                              )}
-                            </button>
-                          ) : (
-                            <a
-                              href={`https://wa.me/?text=${encodeURIComponent(
-                                `*${emailForm.subject}*\n\n${emailForm.message}\n\n— SUKO Atelier Concierge\nhttps://www.indiancorporatewear.com`
-                              )}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="w-full sm:flex-1 py-2.5 px-6 rounded-[2px] bg-[#25D366] hover:bg-[#1EBE5D] text-white text-xs font-mono uppercase tracking-[0.14em] font-medium transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer text-center"
-                            >
-                              <MessageSquare size={13} />
-                              <span>Open in WhatsApp</span>
-                            </a>
-                          )}
-                        </div>
-                      </form>
-
-                      {/* WhatsApp Readiness Callout */}
-                      {broadcastChannel === "whatsapp" && (
-                        <div className="p-3.5 bg-emerald-50/70 border border-emerald-200/80 rounded-[2px] space-y-1.5 animate-in fade-in duration-200">
-                          <div className="flex items-center gap-2 text-emerald-900 text-xs font-medium">
-                            <MessageSquare size={14} />
-                            <span>WhatsApp Concierge Broadcast Ready</span>
-                          </div>
-                          <p className="text-[11px] text-emerald-800 leading-relaxed font-sans">
-                            Direct click opens WhatsApp with your pre-composed quiet luxury message. Ideal for repeat couture bookings and high-intent patron outreach.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Right 5 Cols: Campaign History & Quick Stats */}
-                    <div className="lg:col-span-5 space-y-6">
-                      {/* Campaign History Card */}
-                      <div className="bg-white border border-[#E5DDD1] rounded-[2px] p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] space-y-5">
-                        <div className="flex items-center justify-between border-b border-[#F0EBE1] pb-3">
-                          <div className="space-y-0.5">
-                            <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#C2922E] font-mono block">
-                              TRANSMISSION LOGS
-                            </span>
-                            <h3 className="font-serif text-lg font-normal text-[#111113]">
-                              Campaign History
-                            </h3>
-                          </div>
-                          <span className="text-[10px] font-mono text-[#746F68] bg-[#FAF8F5] px-2 py-0.5 border border-[#E5DDD1] rounded-[2px]">
-                            {broadcastsHistory.length} Dispatched
-                          </span>
-                        </div>
-
-                        {/* Broadcasts History List */}
-                        {broadcastsHistory.length === 0 ? (
-                          <div className="p-8 text-center space-y-2 bg-[#FAF8F5]/60 border border-dashed border-[#E5DDD1] rounded-[2px]">
-                            <Mail size={22} className="mx-auto text-[#746F68]/60" />
-                            <h4 className="font-serif text-sm font-normal text-[#111113]">
-                              No campaigns dispatched yet
-                            </h4>
-                            <p className="text-[11px] text-[#746F68] leading-relaxed">
-                              Dispatches and client communications will appear here with delivery metrics and status logs.
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="divide-y divide-[#F0EBE1] max-h-[520px] overflow-y-auto pr-1">
-                            {broadcastsHistory.map((b) => {
-                              const totalCount = b.recipient_count || 1;
-                              const deliveredCount = b.delivered_count ?? totalCount;
-                              const failedCount = b.failed_count ?? 0;
-                              return (
-                                <div key={b.id} className="py-3.5 space-y-2 first:pt-0 last:pb-0">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <h4 className="text-xs font-serif font-medium text-[#111113] line-clamp-1 leading-snug">
-                                      {b.subject || "Customer Broadcast"}
-                                    </h4>
-                                    <span
-                                      className={`text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-[2px] shrink-0 ${
-                                        b.status === "delivered" || b.status === "sent"
-                                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                                          : "bg-amber-50 text-amber-800 border border-amber-200"
-                                      }`}
-                                    >
-                                      {b.status || "SENT"}
-                                    </span>
-                                  </div>
-
-                                  <div className="flex items-center justify-between text-[10.5px] font-mono text-[#746F68]">
-                                    <span className="flex items-center gap-1">
-                                      <Users size={11} className="text-[#C2922E]" />
-                                      <span className="capitalize">
-                                        {b.audience_type === "all" && "All Customers"}
-                                        {b.audience_type === "recent_buyers" && "Recent Buyers"}
-                                        {b.audience_type === "vip" && "VIP Customers"}
-                                        {b.audience_type === "single" && (b.recipient_email || "Single Patron")}
-                                      </span>
-                                    </span>
-                                    <span>{formatDateTime(b.created_at)}</span>
-                                  </div>
-
-                                  {/* Delivery Metrics Bar */}
-                                  <div className="p-2 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] flex items-center justify-between text-[10px] font-mono">
-                                    <span className="text-[#111113] font-medium">
-                                      {totalCount} sent
-                                    </span>
-                                    <span className="text-emerald-700">
-                                      {deliveredCount} delivered
-                                    </span>
-                                    {failedCount > 0 ? (
-                                      <span className="text-rose-700 font-medium">
-                                        {failedCount} failed
-                                      </span>
-                                    ) : (
-                                      <span className="text-[#746F68]">
-                                        0 failed
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Quiet Luxury Communication Guarantee Card */}
-                      <div className="p-4 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] space-y-2">
-                        <div className="flex items-center gap-2">
-                          <ShieldCheck size={15} className="text-[#C2922E]" />
-                          <h4 className="text-xs font-serif font-medium text-[#111113]">
-                            Quiet Luxury Dispatch Protocol
-                          </h4>
-                        </div>
-                        <p className="text-[11px] text-[#746F68] font-sans leading-relaxed">
-                          All client broadcasts are formatted with SUKO Atelier's bespoke ivory palette, responsive typography, and anti-spam verification headers for optimum deliverability.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ========================================================= */}
-                  {/* LUXURY EMAIL PREVIEW MODAL (DESKTOP & MOBILE TOGGLE)       */}
-                  {/* ========================================================= */}
-                  {showEmailPreviewModal && (
-                    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-                      <div className="bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] max-w-3xl w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
-                        {/* Modal Header with Device Switcher */}
-                        <div className="p-3.5 sm:p-4 bg-white border-b border-[#E5DDD1] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <div className="flex items-center gap-2">
-                            <Eye size={16} className="text-[#C2922E]" />
-                            <h3 className="font-serif text-lg font-normal text-[#111113]">
-                              Branded Email Preview
-                            </h3>
-                          </div>
-
-                          {/* Desktop vs Mobile Toggle Pills */}
-                          <div className="inline-flex p-0.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[3px] self-start sm:self-auto">
-                            <button
-                              type="button"
-                              onClick={() => setPreviewDevice("desktop")}
-                              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono uppercase tracking-wider rounded-[2px] transition-all cursor-pointer ${
-                                previewDevice === "desktop"
-                                  ? "bg-[#111113] text-white shadow-xs font-medium"
-                                  : "text-[#746F68] hover:text-[#111113]"
-                              }`}
-                            >
-                              <Monitor size={12} />
-                              <span>Desktop Preview</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setPreviewDevice("mobile")}
-                              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono uppercase tracking-wider rounded-[2px] transition-all cursor-pointer ${
-                                previewDevice === "mobile"
-                                  ? "bg-[#111113] text-white shadow-xs font-medium"
-                                  : "text-[#746F68] hover:text-[#111113]"
-                              }`}
-                            >
-                              <Smartphone size={12} />
-                              <span>Mobile Preview</span>
-                            </button>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => setShowEmailPreviewModal(false)}
-                            className="p-1 text-[#746F68] hover:text-[#111113] rounded transition-colors cursor-pointer self-end sm:self-auto"
-                          >
-                            <X size={18} />
-                          </button>
-                        </div>
-
-                        {/* Email Metadata Envelope */}
-                        <div className="p-3.5 sm:p-4 bg-[#FAF8F5] border-b border-[#E5DDD1] space-y-1.5 text-xs font-mono">
-                          <div className="flex items-center justify-between text-[#746F68]">
-                            <span>From:</span>
-                            <span className="text-[#111113] font-medium">
-                              SUKO Atelier &lt;noreply@indiancorporatewear.com&gt;
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-[#746F68]">
-                            <span>Reply-To:</span>
-                            <span className="text-[#111113]">
-                              indiancorporatewearbysuko@gmail.com
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-[#746F68]">
-                            <span>To:</span>
-                            <span className="text-[#111113] font-medium">
-                              {emailForm.target === "all" && `All Customers (${totalAudienceCount} patrons)`}
-                              {emailForm.target === "recent_buyers" && `Recent Buyers (${recentBuyersCount} patrons)`}
-                              {emailForm.target === "vip" && `VIP Customers (${vipCustomersCount} patrons)`}
-                              {emailForm.target === "single" && (emailForm.recipientEmail || "patron@luxury.com")}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-[#746F68] pt-1 border-t border-[#E5DDD1]">
-                            <span>Subject:</span>
-                            <span className="text-[#111113] font-serif font-medium text-sm">
-                              {emailForm.subject || "No subject set"}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Rendered Canvas Body (Scrollable) */}
-                        <div className="p-4 sm:p-8 overflow-y-auto flex-1 bg-[#F5F2EC] flex items-center justify-center">
-                          {/* Desktop View Container */}
-                          {previewDevice === "desktop" ? (
-                            <div className="max-w-xl w-full bg-white border border-[#EAE6DF] shadow-md p-8 sm:p-10 space-y-6 text-center animate-in fade-in duration-150">
-                              {/* Top Center Logo */}
-                              <div className="space-y-2">
-                                <img
-                                  src="/logo.png"
-                                  alt="SUKO Atelier"
-                                  className="h-14 w-auto mx-auto object-contain"
-                                />
-                                <div className="font-serif text-xl sm:text-2xl font-normal tracking-[0.26em] text-[#111113] uppercase pt-2">
-                                  SUKO ATELIER
-                                </div>
-                                <div className="font-mono text-[10px] tracking-[0.20em] uppercase text-[#8E877E]">
-                                  Contemporary Indian Corporate Wear
-                                </div>
-                                <div className="h-[1.5px] w-12 bg-[#C2922E] mx-auto mt-3" />
-                              </div>
-
-                              <div className="h-[1px] bg-[#EAE6DF] w-full" />
-
-                              {/* Salutation & Subject */}
-                              <div className="text-left space-y-2">
-                                <p className="font-sans text-sm font-semibold text-[#111113]">
-                                  Hi Shreya,
-                                </p>
-                                <h3 className="font-serif text-lg font-normal text-[#111113] leading-snug">
-                                  {emailForm.subject || "Atelier Collection Announcement"}
-                                </h3>
-                              </div>
-
-                              {/* Message Content */}
-                              <div className="text-left font-sans text-xs sm:text-sm text-[#2D2A26] leading-relaxed whitespace-pre-line space-y-3">
-                                {emailForm.message
-                                  .replace(/\{(?:name|customer_name|Customer Name)\}/gi, "Shreya")
-                                  .replace(/\{discount_code\}/gi, "SUKO10")
-                                  .replace(/\{order_number\}/gi, "#SUKO-1042")
-                                  .replace(/\{showroom_url\}/gi, "https://www.indiancorporatewear.com")}
-                              </div>
-
-                              {/* Optional CTA Button */}
-                              {emailForm.includeCta && (
-                                <div className="pt-6 pb-2 text-center">
-                                  <a
-                                    href={emailForm.ctaUrl || "https://www.indiancorporatewear.com"}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-block px-8 py-3 bg-[#111113] hover:bg-[#C2922E] text-[#FAF8F5] text-xs font-mono uppercase tracking-[0.16em] font-medium border border-[#C2922E] shadow-sm rounded-[2px] transition-colors"
-                                  >
-                                    {emailForm.ctaText || "Explore Collection"}
-                                  </a>
-                                </div>
-                              )}
-
-                              {/* Sign-off */}
-                              <div className="pt-6 border-t border-[#EAE6DF] text-left text-xs space-y-0.5">
-                                <p className="text-[#111113] font-medium">With regards,</p>
-                                <p className="font-semibold text-[#111113]">SUKO Atelier</p>
-                                <p className="text-[10px] font-mono uppercase tracking-wider text-[#C2922E]">
-                                  Contemporary Indian Corporate Wear
-                                </p>
-                              </div>
-
-                              {/* Footer */}
-                              <div className="pt-5 border-t border-[#EAE6DF] text-center text-[10.5px] font-mono text-[#8E877E] leading-relaxed space-y-1">
-                                <p>
-                                  Website: <a href="https://www.indiancorporatewear.com" target="_blank" rel="noreferrer" className="text-[#111113] underline font-medium">www.indiancorporatewear.com</a>
-                                </p>
-                                <p>
-                                  Instagram: <a href="https://www.instagram.com/icwbysuko?igsi=MXR4a2hwdWJmOW9lZw%3D%3D&utm_source=qr" target="_blank" rel="noreferrer" className="text-[#C2922E] underline font-medium">@icwbysuko</a>
-                                </p>
-                                <p className="text-[9.5px] text-[#A49E93] pt-1">
-                                  &copy; 2026 SUKO Atelier. All rights reserved.
-                                </p>
-                              </div>
-                            </div>
-                          ) : (
-                            /* Mobile Smartphone Mockup Frame */
-                            <div className="max-w-[365px] w-full border-[10px] border-[#1C1C1E] rounded-[38px] shadow-2xl bg-white relative overflow-hidden animate-in fade-in duration-150">
-                              {/* Phone Speaker Notch & Status Bar */}
-                              <div className="bg-[#FAF8F5] pt-2 pb-1.5 px-6 border-b border-[#EAE6DF] flex items-center justify-between text-[9px] font-mono text-[#746F68]">
-                                <span>9:41</span>
-                                <div className="w-16 h-3 bg-[#1C1C1E] rounded-full mx-auto" />
-                                <span>5G 100%</span>
-                              </div>
-
-                              {/* Mobile Email Content Canvas */}
-                              <div className="p-5 space-y-5 text-center max-h-[580px] overflow-y-auto">
-                                {/* Mobile Header */}
-                                <div className="space-y-1.5">
-                                  <img
-                                    src="/logo.png"
-                                    alt="SUKO Atelier"
-                                    className="h-10 w-auto mx-auto object-contain"
-                                  />
-                                  <div className="font-serif text-lg font-normal tracking-[0.22em] text-[#111113] uppercase pt-1">
-                                    SUKO ATELIER
-                                  </div>
-                                  <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-[#8E877E]">
-                                    Contemporary Indian Corporate Wear
-                                  </div>
-                                  <div className="h-[1.5px] w-10 bg-[#C2922E] mx-auto mt-2" />
-                                </div>
-
-                                <div className="h-[1px] bg-[#EAE6DF] w-full" />
-
-                                {/* Mobile Salutation & Subject */}
-                                <div className="text-left space-y-1.5">
-                                  <p className="font-sans text-xs font-semibold text-[#111113]">
-                                    Hi Shreya,
-                                  </p>
-                                  <h3 className="font-serif text-base font-normal text-[#111113] leading-snug">
-                                    {emailForm.subject || "Atelier Collection Announcement"}
-                                  </h3>
-                                </div>
-
-                                {/* Mobile Message Body */}
-                                <div className="text-left font-sans text-xs text-[#2D2A26] leading-relaxed whitespace-pre-line space-y-2.5">
-                                  {emailForm.message
-                                    .replace(/\{(?:name|customer_name|Customer Name)\}/gi, "Shreya")
-                                    .replace(/\{discount_code\}/gi, "SUKO10")
-                                    .replace(/\{order_number\}/gi, "#SUKO-1042")
-                                    .replace(/\{showroom_url\}/gi, "https://www.indiancorporatewear.com")}
-                                </div>
-
-                                {/* Mobile CTA Button */}
-                                {emailForm.includeCta && (
-                                  <div className="pt-4 pb-1">
-                                    <a
-                                      href={emailForm.ctaUrl || "https://www.indiancorporatewear.com"}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="block w-full py-3 bg-[#111113] text-[#FAF8F5] text-xs font-mono uppercase tracking-[0.14em] font-medium border border-[#C2922E] rounded-[2px]"
-                                    >
-                                      {emailForm.ctaText || "Explore Collection"}
-                                    </a>
-                                  </div>
-                                )}
-
-                                {/* Mobile Sign-off */}
-                                <div className="pt-4 border-t border-[#EAE6DF] text-left text-xs space-y-0.5">
-                                  <p className="text-[#111113] font-medium">With regards,</p>
-                                  <p className="font-semibold text-[#111113]">SUKO Atelier</p>
-                                  <p className="text-[9.5px] font-mono uppercase tracking-wider text-[#C2922E]">
-                                    Contemporary Indian Corporate Wear
-                                  </p>
-                                </div>
-
-                                {/* Mobile Footer */}
-                                <div className="pt-4 border-t border-[#EAE6DF] text-center text-[9.5px] font-mono text-[#8E877E] leading-relaxed space-y-1">
-                                  <p>
-                                    Website: <a href="https://www.indiancorporatewear.com" target="_blank" rel="noreferrer" className="text-[#111113] underline font-medium">www.indiancorporatewear.com</a>
-                                  </p>
-                                  <p>
-                                    Instagram: <a href="https://www.instagram.com/icwbysuko?igsi=MXR4a2hwdWJmOW9lZw%3D%3D&utm_source=qr" target="_blank" rel="noreferrer" className="text-[#C2922E] underline font-medium">@icwbysuko</a>
-                                  </p>
-                                  <p className="text-[9px] text-[#A49E93] pt-0.5">
-                                    &copy; 2026 SUKO Atelier. All rights reserved.
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Modal Footer */}
-                        <div className="p-3.5 sm:p-4 bg-[#FAF8F5] border-t border-[#E5DDD1] flex items-center justify-end gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setShowEmailPreviewModal(false)}
-                            className="px-4 py-2 border border-[#E5DDD1] rounded-[2px] text-xs font-mono uppercase tracking-wider text-[#746F68] hover:text-[#111113] transition-colors cursor-pointer"
-                          >
-                            Back to Composer
-                          </button>
-                          <button
-                            type="button"
-                            disabled={sendingEmail}
-                            onClick={handleSendEmailSubmit}
-                            className="px-6 py-2 bg-[#111113] hover:bg-[#C2922E] text-white rounded-[2px] text-xs font-mono uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                          >
-                            {sendingEmail ? (
-                              <>
-                                <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                                <span>Sending...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Send size={13} />
-                                <span>Send Email Now</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <CustomerCommunicationSection
+                  broadcastChannel={broadcastChannel}
+                  setBroadcastChannel={setBroadcastChannel}
+                  emailForm={emailForm}
+                  setEmailForm={setEmailForm}
+                  sendingEmail={sendingEmail}
+                  handleSendEmailSubmit={handleSendEmailSubmit}
+                  totalAudienceCount={totalAudienceCount}
+                  recentBuyersCount={recentBuyersCount}
+                  vipCustomersCount={vipCustomersCount}
+                  COMMUNICATION_TEMPLATES={COMMUNICATION_TEMPLATES}
+                  broadcastHistory={broadcastHistory}
+                  fetchingBroadcasts={fetchingBroadcasts}
+                  onBack={() => setActiveTab("overview")}
+                />
               )}
 
               {/* ============================================================= */}
               {/* BRAND & INVOICE SETTINGS TAB                                  */}
               {/* ============================================================= */}
               {activeTab === "brand_settings" && (
-                <div className="space-y-8 animate-in fade-in duration-200">
-                  {/* Top Section Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5DDD1] pb-5">
-                    <div className="space-y-1">
-                      <span className="text-[10px] uppercase tracking-[0.2em] text-[#C2922E] font-mono block">
-                        ATELIER IDENTITY &amp; BILLING
-                      </span>
-                      <h2 className="text-2xl sm:text-3xl font-serif font-light text-[#111113] tracking-tight">
-                        Brand &amp; Invoices
-                      </h2>
-                      <p className="text-xs text-[#746F68] font-sans">
-                        Configure brand identity, contact details, GST, and automated document generation across invoices, receipts, and workshop slips.
-                      </p>
-                    </div>
+                <BrandDocumentsSection
+                  brandForm={brandForm}
+                  setBrandForm={setBrandForm}
+                  brandLogoPreview={brandLogoPreview}
+                  setBrandLogoPreview={setBrandLogoPreview}
+                  setBrandLogoFile={setBrandLogoFile}
+                  savingBrandSettings={savingBrandSettings}
+                  handleSaveBrandSettings={handleSaveBrandSettings}
+                  handleResetBrandSettings={handleResetBrandSettings}
+                  previewDocType={previewDocType}
+                  setPreviewDocType={setPreviewDocType}
+                  onBack={() => setActiveTab("overview")}
+                />
+              )}
 
-                    <div className="flex items-center gap-2.5 self-start sm:self-auto">
-                      <button
-                        type="button"
-                        onClick={handleResetBrandSettings}
-                        disabled={savingBrandSettings}
-                        className="px-3 py-2 border border-[#E5DDD1] hover:border-[#111113] bg-white text-xs font-mono tracking-wider uppercase text-[#746F68] hover:text-[#111113] rounded-[2px] transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                        title="Restore initial SUKO Atelier settings"
-                      >
-                        <RotateCcw size={13} />
-                        <span className="hidden sm:inline">Reset Defaults</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleSaveBrandSettings}
-                        disabled={savingBrandSettings}
-                        className="px-5 py-2 bg-[#111113] hover:bg-[#C2922E] text-[#FAF8F5] text-xs font-mono uppercase tracking-wider rounded-[2px] transition-all flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
-                      >
-                        {savingBrandSettings ? (
-                          <>
-                            <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                            <span>Saving...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Check size={14} className="text-[#C2922E]" />
-                            <span>Save Changes</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Main Split Grid: 4-Zone Settings Form (Left) & Live Luxury Document Preview (Right) */}
-                  <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-                    
-                    {/* Left 7 Columns: Form Configurations */}
-                    <div className="xl:col-span-7 space-y-6">
-                      
-                      {/* CARD 1: BRAND IDENTITY & LOGO */}
-                      <div className="bg-white border border-[#E5DDD1] rounded-[2px] p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] space-y-5">
-                        <div className="flex items-center justify-between border-b border-[#F0EBE1] pb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-[#C2922E]" />
-                            <h3 className="font-serif text-lg font-normal text-[#111113]">
-                              1. Brand Identity &amp; Atelier Emblem
-                            </h3>
-                          </div>
-                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#8E877E] bg-[#FAF8F5] px-2 py-0.5 border border-[#E5DDD1] rounded-[2px]">
-                            Document Header
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
-                            <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                              Business Name <span className="text-[#C2922E]">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={brandForm.business_name || ""}
-                              onChange={(e) => setBrandForm({ ...brandForm, business_name: e.target.value })}
-                              placeholder="e.g. SUKO Atelier"
-                              className="w-full text-xs font-sans p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                              Tagline / Subtitle
-                            </label>
-                            <input
-                              type="text"
-                              value={brandForm.tagline || ""}
-                              onChange={(e) => setBrandForm({ ...brandForm, tagline: e.target.value })}
-                              placeholder="e.g. Contemporary Indian Corporate Wear"
-                              className="w-full text-xs font-sans p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Logo Architecture: Cloudinary / S3 / CDN URL + Local File Fallback */}
-                        <div className="space-y-3 pt-2">
-                          <div className="flex items-center justify-between">
-                            <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                              Atelier Logo (Cloudinary / S3 / CDN Ready)
-                            </label>
-                            <span className="text-[10px] text-[#8E877E] font-mono">
-                              PNG, JPG, SVG, WebP
-                            </span>
-                          </div>
-
-                          <p className="text-[11px] text-[#746F68] font-sans leading-relaxed">
-                            Paste any remote image link (Cloudinary, AWS S3, or custom CDN), or select an image file from your device. Documents and email notifications will render this logo dynamically.
-                          </p>
-
-                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                            <div className="flex-1">
-                              <input
-                                type="text"
-                                value={brandForm.logo_url || ""}
-                                onChange={(e) => {
-                                  setBrandForm({ ...brandForm, logo_url: e.target.value });
-                                  setBrandLogoPreview(e.target.value);
-                                }}
-                                placeholder="https://res.cloudinary.com/... or /logo.png"
-                                className="w-full text-xs font-mono p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors"
-                              />
-                            </div>
-
-                            <label className="px-4 py-2.5 bg-[#FAF8F5] hover:bg-[#EFE9DF] border border-[#E5DDD1] text-xs font-mono tracking-wider uppercase text-[#111113] rounded-[2px] transition-colors cursor-pointer flex items-center justify-center gap-2 shrink-0">
-                              <ImageIcon size={14} className="text-[#C2922E]" />
-                              <span>Upload File</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    setBrandLogoFile(file);
-                                    setBrandLogoPreview(URL.createObjectURL(file));
-                                  }
-                                }}
-                              />
-                            </label>
-                          </div>
-
-                          {/* Logo Preview Badge */}
-                          <div className="p-3 bg-[#FAF8F5] border border-[#ECE7DE] rounded-[2px] flex items-center gap-4">
-                            <div className="w-24 h-12 bg-white border border-[#E5DDD1] rounded-[2px] flex items-center justify-center p-1.5 shrink-0 overflow-hidden">
-                              <img
-                                src={brandLogoPreview || brandForm.logo_url || "/logo.png"}
-                                alt="Atelier Logo"
-                                className="max-h-full max-w-full object-contain"
-                                onError={(e) => { e.currentTarget.src = "/logo.png"; }}
-                              />
-                            </div>
-                            <div className="text-xs space-y-0.5 min-w-0">
-                              <p className="font-mono text-[11px] text-[#111113] font-medium truncate">
-                                {brandLogoFile ? brandLogoFile.name : (brandForm.logo_url || "/logo.png")}
-                              </p>
-                              <p className="text-[10px] text-[#8E877E] font-sans">
-                                {brandLogoFile ? "Ready to upload on save" : "Active atelier logo for invoices & receipts"}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* CARD 2: CONCIERGE & CONTACT DETAILS */}
-                      <div className="bg-white border border-[#E5DDD1] rounded-[2px] p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] space-y-5">
-                        <div className="flex items-center justify-between border-b border-[#F0EBE1] pb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-[#C2922E]" />
-                            <h3 className="font-serif text-lg font-normal text-[#111113]">
-                              2. Concierge &amp; Contact Channels
-                            </h3>
-                          </div>
-                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#8E877E] bg-[#FAF8F5] px-2 py-0.5 border border-[#E5DDD1] rounded-[2px]">
-                            Support &amp; Social
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
-                            <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                              Support Email <span className="text-[#C2922E]">*</span>
-                            </label>
-                            <input
-                              type="email"
-                              value={brandForm.support_email || ""}
-                              onChange={(e) => setBrandForm({ ...brandForm, support_email: e.target.value })}
-                              placeholder="e.g. indiancorporatewearbysuko@gmail.com"
-                              className="w-full text-xs font-sans p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                              Concierge Phone / WhatsApp
-                            </label>
-                            <input
-                              type="text"
-                              value={brandForm.support_phone || ""}
-                              onChange={(e) => setBrandForm({ ...brandForm, support_phone: e.target.value })}
-                              placeholder="e.g. +91 98765 43210"
-                              className="w-full text-xs font-sans p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                              Official Website URL
-                            </label>
-                            <input
-                              type="url"
-                              value={brandForm.website_url || ""}
-                              onChange={(e) => setBrandForm({ ...brandForm, website_url: e.target.value })}
-                              placeholder="https://www.indiancorporatewear.com"
-                              className="w-full text-xs font-sans p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                              Instagram Handle
-                            </label>
-                            <input
-                              type="text"
-                              value={brandForm.instagram_handle || ""}
-                              onChange={(e) => setBrandForm({ ...brandForm, instagram_handle: e.target.value })}
-                              placeholder="e.g. @icwbysuko"
-                              className="w-full text-xs font-sans p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                            Instagram Profile URL
-                          </label>
-                          <input
-                            type="url"
-                            value={brandForm.instagram_url || ""}
-                            onChange={(e) => setBrandForm({ ...brandForm, instagram_url: e.target.value })}
-                            placeholder="https://www.instagram.com/icwbysuko?..."
-                            className="w-full text-xs font-mono p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors"
-                          />
-                        </div>
-                      </div>
-
-                      {/* CARD 3: INVOICE & COMPLIANCE SETTINGS */}
-                      <div className="bg-white border border-[#E5DDD1] rounded-[2px] p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] space-y-5">
-                        <div className="flex items-center justify-between border-b border-[#F0EBE1] pb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-[#C2922E]" />
-                            <h3 className="font-serif text-lg font-normal text-[#111113]">
-                              3. Invoice Numbering &amp; Registered Address
-                            </h3>
-                          </div>
-                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#8E877E] bg-[#FAF8F5] px-2 py-0.5 border border-[#E5DDD1] rounded-[2px]">
-                            Tax &amp; Billing
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                                Invoice Prefix
-                              </label>
-                              <span className="text-[10px] text-[#8E877E] font-mono">Separate Sequence</span>
-                            </div>
-                            <input
-                              type="text"
-                              value={brandForm.invoice_prefix || ""}
-                              onChange={(e) => setBrandForm({ ...brandForm, invoice_prefix: e.target.value })}
-                              placeholder="e.g. INV-2026-"
-                              className="w-full text-xs font-mono p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors"
-                            />
-                            <p className="text-[10px] text-[#8E877E] font-sans">
-                              Next invoice generated will follow this sequence.
-                            </p>
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                              GSTIN / Tax ID (Optional)
-                            </label>
-                            <input
-                              type="text"
-                              value={brandForm.gst_number || ""}
-                              onChange={(e) => setBrandForm({ ...brandForm, gst_number: e.target.value.toUpperCase() })}
-                              placeholder="e.g. 27ABCDE1234F1Z5 (or leave empty)"
-                              className="w-full text-xs font-mono p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors uppercase"
-                            />
-                            <p className="text-[10px] text-[#8E877E] font-sans">
-                              Leave empty if not GST registered. When filled, GST will be printed.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                            Registered Atelier Address
-                          </label>
-                          <textarea
-                            rows={3}
-                            value={brandForm.address || ""}
-                            onChange={(e) => setBrandForm({ ...brandForm, address: e.target.value })}
-                            placeholder="Atelier Flagship, Mumbai, Maharashtra, India"
-                            className="w-full text-xs font-sans p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors leading-relaxed"
-                          />
-                        </div>
-                      </div>
-
-                      {/* CARD 4: BANK DETAILS (OPTIONAL) */}
-                      <div className="bg-white border border-[#E5DDD1] rounded-[2px] p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] space-y-5">
-                        <div className="flex items-center justify-between border-b border-[#F0EBE1] pb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-[#8E877E]" />
-                            <h3 className="font-serif text-lg font-normal text-[#111113]">
-                              4. Settlement &amp; Bank Details (Optional)
-                            </h3>
-                          </div>
-                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#8E877E] bg-[#FAF8F5] px-2 py-0.5 border border-[#E5DDD1] rounded-[2px]">
-                            Wire Transfer
-                          </span>
-                        </div>
-
-                        <div className="p-3 bg-[#FAF8F5] border border-[#ECE7DE] rounded-[2px] text-[11px] text-[#746F68] font-sans leading-relaxed">
-                          <strong className="text-[#111113]">Safety Notice:</strong> These fields are strictly optional. They are only printed on client invoices if filled. If you accept payments via online gateways or direct UPI QR only, leave them completely empty.
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
-                            <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                              Bank Name
-                            </label>
-                            <input
-                              type="text"
-                              value={brandForm.payment_details?.bank_name || ""}
-                              onChange={(e) => setBrandForm({
-                                ...brandForm,
-                                payment_details: { ...brandForm.payment_details, bank_name: e.target.value }
-                              })}
-                              placeholder="e.g. HDFC Bank"
-                              className="w-full text-xs font-sans p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                              Account Holder Name
-                            </label>
-                            <input
-                              type="text"
-                              value={brandForm.payment_details?.account_name || ""}
-                              onChange={(e) => setBrandForm({
-                                ...brandForm,
-                                payment_details: { ...brandForm.payment_details, account_name: e.target.value }
-                              })}
-                              placeholder="e.g. SUKO Atelier Private Limited"
-                              className="w-full text-xs font-sans p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                              Account Number
-                            </label>
-                            <input
-                              type="text"
-                              value={brandForm.payment_details?.account_number || ""}
-                              onChange={(e) => setBrandForm({
-                                ...brandForm,
-                                payment_details: { ...brandForm.payment_details, account_number: e.target.value }
-                              })}
-                              placeholder="e.g. 50200012345678"
-                              className="w-full text-xs font-mono p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                              IFSC Code
-                            </label>
-                            <input
-                              type="text"
-                              value={brandForm.payment_details?.ifsc_code || ""}
-                              onChange={(e) => setBrandForm({
-                                ...brandForm,
-                                payment_details: { ...brandForm.payment_details, ifsc_code: e.target.value.toUpperCase() }
-                              })}
-                              placeholder="e.g. HDFC0001234"
-                              className="w-full text-xs font-mono p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors uppercase"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#55514B] block font-medium">
-                            UPI ID / VPA
-                          </label>
-                          <input
-                            type="text"
-                            value={brandForm.payment_details?.upi_id || ""}
-                            onChange={(e) => setBrandForm({
-                              ...brandForm,
-                              payment_details: { ...brandForm.payment_details, upi_id: e.target.value }
-                            })}
-                            placeholder="e.g. sukoatelier@hdfcbank"
-                            className="w-full text-xs font-mono p-2.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] focus:outline-none focus:border-[#111113] transition-colors"
-                          />
-                        </div>
-                      </div>
-
-                    </div>
-
-                    {/* Right 5 Columns: LIVE INTERACTIVE DOCUMENT PREVIEW */}
-                    <div className="xl:col-span-5 sticky top-20 space-y-4">
-                      
-                      {/* Document Type Switcher Pills */}
-                      <div className="bg-white border border-[#E5DDD1] rounded-[2px] p-2 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-                        <div className="inline-flex p-0.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[3px] w-full">
-                          <button
-                            type="button"
-                            onClick={() => setPreviewDocType("invoice")}
-                            className={`flex-1 py-1.5 text-[11px] font-mono tracking-wider uppercase rounded-[2px] transition-all cursor-pointer text-center ${
-                              previewDocType === "invoice"
-                                ? "bg-[#111113] text-white font-semibold shadow-xs"
-                                : "text-[#746F68] hover:text-[#111113]"
-                            }`}
-                          >
-                            Tax Invoice
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPreviewDocType("receipt")}
-                            className={`flex-1 py-1.5 text-[11px] font-mono tracking-wider uppercase rounded-[2px] transition-all cursor-pointer text-center ${
-                              previewDocType === "receipt"
-                                ? "bg-[#111113] text-white font-semibold shadow-xs"
-                                : "text-[#746F68] hover:text-[#111113]"
-                            }`}
-                          >
-                            Receipt
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPreviewDocType("packing_slip")}
-                            className={`flex-1 py-1.5 text-[11px] font-mono tracking-wider uppercase rounded-[2px] transition-all cursor-pointer text-center ${
-                              previewDocType === "packing_slip"
-                                ? "bg-[#111113] text-white font-semibold shadow-xs"
-                                : "text-[#746F68] hover:text-[#111113]"
-                            }`}
-                          >
-                            Packing Slip
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Live Document Paper Canvas */}
-                      <div className="bg-white border border-[#E5DDD1] rounded-[3px] p-6 shadow-md text-[#111113] font-sans space-y-5 max-h-[85vh] overflow-y-auto">
-                        
-                        {/* 1. Header Emblem */}
-                        <div className="text-center space-y-1.5 pb-2">
-                          <img
-                            src={brandLogoPreview || brandForm.logo_url || "/logo.png"}
-                            alt={brandForm.business_name || "SUKO Atelier"}
-                            className="h-10 w-auto mx-auto object-contain"
-                            onError={(e) => { e.currentTarget.src = "/logo.png"; }}
-                          />
-                          <div className="font-serif text-lg font-normal tracking-[0.24em] text-[#111113] uppercase pt-1">
-                            {brandForm.business_name || "SUKO ATELIER"}
-                          </div>
-                          {brandForm.tagline && (
-                            <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-[#8E877E]">
-                              {brandForm.tagline}
-                            </div>
-                          )}
-                          <div className="h-[1.5px] w-10 bg-[#C2922E] mx-auto mt-2" />
-                        </div>
-
-                        <div className="h-[1px] bg-[#EAE6DF] w-full" />
-
-                        {/* 2. Metadata Eyebrow */}
-                        <div className="flex items-start justify-between text-xs">
-                          <div>
-                            <span className="inline-block px-2 py-0.5 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] font-mono text-[9px] font-bold tracking-wider uppercase text-[#C2922E] mb-1">
-                              {previewDocType === "packing_slip" ? "PACKING & FULFILLMENT SLIP" : (previewDocType === "receipt" ? "PAYMENT RECEIPT" : "TAX INVOICE")}
-                            </span>
-                            <div className="font-serif text-base text-[#111113]">
-                              {brandForm.invoice_prefix || "INV-2026-"}1001
-                            </div>
-                            <div className="text-[10.5px] font-mono text-[#746F68] mt-0.5">
-                              Order: #SUKO-1001 &bull; 08 Sep 2026
-                            </div>
-                          </div>
-
-                          <div className="text-right">
-                            <span className="inline-block px-2 py-0.5 bg-[#FAF8F5] border border-[#D5CEBF] rounded-[2px] font-mono text-[9px] font-bold tracking-wider uppercase text-[#111113]">
-                              {previewDocType === "packing_slip" ? "WORKSHOP COPY" : "ORIGINAL"}
-                            </span>
-                            {brandForm.gst_number && (
-                              <div className="font-mono text-[10px] text-[#111113] font-semibold mt-1">
-                                GSTIN: {brandForm.gst_number}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* 3. Dual Address Box */}
-                        <div className="p-3 bg-[#FAF8F5] border border-[#ECE7DE] rounded-[2px] grid grid-cols-2 gap-3 text-[11px]">
-                          <div>
-                            <span className="text-[8.5px] font-mono font-bold uppercase tracking-wider text-[#C2922E] block mb-0.5">
-                              {previewDocType === "packing_slip" ? "SHIP TO" : "BILL TO"}
-                            </span>
-                            <strong className="text-[#111113] font-medium block">Shreya Meshram</strong>
-                            <p className="text-[10px] text-[#746F68] leading-tight mt-0.5">
-                              Atelier White-Glove Hand Delivery<br/>
-                              Mumbai, MH &bull; PIN: 400001
-                            </p>
-                          </div>
-
-                          <div className="text-right">
-                            <span className="text-[8.5px] font-mono font-bold uppercase tracking-wider text-[#8E877E] block mb-0.5">
-                              ISSUED BY
-                            </span>
-                            <strong className="text-[#111113] font-medium block">{brandForm.business_name || "SUKO Atelier"}</strong>
-                            <p className="text-[10px] text-[#746F68] leading-tight mt-0.5">
-                              {brandForm.address || "Atelier Flagship, Mumbai"}<br/>
-                              {brandForm.support_email || "support@indiancorporatewear.com"}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* 4. Line Items Table */}
-                        <table className="w-full text-left border-collapse text-xs">
-                          <thead>
-                            <tr className="border-t border-b border-[#111113] font-mono text-[9px] uppercase tracking-wider text-[#111113]">
-                              <th className="py-2">Item</th>
-                              <th className="py-2 text-center">Qty</th>
-                              {previewDocType !== "packing_slip" ? (
-                                <>
-                                  <th className="py-2 text-right">Price</th>
-                                  <th className="py-2 text-right">Total</th>
-                                </>
-                              ) : (
-                                <>
-                                  <th className="py-2 text-center">Inspected</th>
-                                  <th className="py-2 text-center">Packed</th>
-                                </>
-                              )}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#EAE6DF] text-[11.5px]">
-                            <tr>
-                              <td className="py-2.5 pr-2">
-                                <strong className="text-[#111113] block">Savile Double-Breasted Blazer</strong>
-                                <span className="text-[9.5px] font-mono text-[#746F68]">Size: M &bull; Obsidian Black</span>
-                              </td>
-                              <td className="py-2.5 text-center font-mono font-medium">1</td>
-                              {previewDocType !== "packing_slip" ? (
-                                <>
-                                  <td className="py-2.5 text-right font-mono text-[#746F68]">₹4,800.00</td>
-                                  <td className="py-2.5 text-right font-mono font-bold text-[#111113]">₹4,800.00</td>
-                                </>
-                              ) : (
-                                <>
-                                  <td className="py-2.5 text-center text-[10px] font-mono text-[#746F68]">
-                                    <span className="inline-block w-3 h-3 border border-[#111113] rounded-[1px] mr-1 align-middle" /> Yes
-                                  </td>
-                                  <td className="py-2.5 text-center text-[10px] font-mono text-[#746F68]">
-                                    <span className="inline-block w-3 h-3 border border-[#111113] rounded-[1px] mr-1 align-middle" /> Yes
-                                  </td>
-                                </>
-                              )}
-                            </tr>
-                          </tbody>
-                        </table>
-
-                        {/* 5. Pricing or Packing QA Summary */}
-                        {previewDocType !== "packing_slip" ? (
-                          <div className="p-3 bg-[#FAF8F5] border border-[#ECE7DE] rounded-[2px] space-y-2">
-                            <div className="flex justify-between text-[11px] text-[#746F68]">
-                              <span>Subtotal</span>
-                              <span className="font-mono text-[#111113]">₹4,800.00</span>
-                            </div>
-                            <div className="flex justify-between text-[11px] text-[#746F68]">
-                              <span>White-Glove Shipping</span>
-                              <span className="font-mono text-[#C2922E] font-bold text-[10px]">COMPLIMENTARY</span>
-                            </div>
-                            {brandForm.gst_number && (
-                              <div className="flex justify-between text-[10.5px] text-[#746F68]">
-                                <span>Taxes (GST)</span>
-                                <span className="font-mono">Inclusive</span>
-                              </div>
-                            )}
-                            <div className="pt-2 border-t border-[#D5CEBF] flex justify-between items-center text-xs font-bold text-[#111113]">
-                              <span className="font-mono uppercase tracking-wider text-[10px]">Total Amount</span>
-                              <span className="font-mono text-sm text-[#111113]">₹4,800.00</span>
-                            </div>
-
-                            {/* Optional Bank Details in Preview */}
-                            {(brandForm.payment_details?.bank_name || brandForm.payment_details?.upi_id) && (
-                              <div className="pt-2 border-t border-dashed border-[#D5CEBF] text-[10px] font-mono text-[#746F68] space-y-0.5">
-                                <span className="text-[8.5px] uppercase tracking-wider text-[#8E877E] block font-bold">Direct Settlement:</span>
-                                {brandForm.payment_details.bank_name && <div>Bank: {brandForm.payment_details.bank_name}</div>}
-                                {brandForm.payment_details.account_number && <div>A/C: {brandForm.payment_details.account_number}</div>}
-                                {brandForm.payment_details.ifsc_code && <div>IFSC: {brandForm.payment_details.ifsc_code}</div>}
-                                {brandForm.payment_details.upi_id && <div>UPI: {brandForm.payment_details.upi_id}</div>}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="p-3 bg-[#FAF8F5] border border-[#ECE7DE] rounded-[2px] text-[10.5px] font-mono text-[#746F68] space-y-2">
-                            <span className="text-[9px] uppercase tracking-wider text-[#1E3A8A] font-bold block">
-                              WORKSHOP DISPATCH SIGN-OFF (PRICING EXCLUDED)
-                            </span>
-                            <div className="grid grid-cols-2 gap-2 text-[10px]">
-                              <div>Tailor: ____________</div>
-                              <div>QA Inspector: ____________</div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 6. Footer Note */}
-                        <div className="pt-3 border-t border-[#EAE6DF] text-center text-[9.5px] font-mono text-[#8E877E] leading-relaxed">
-                          <p className="font-serif italic text-xs text-[#111113] mb-1">
-                            Thank you for choosing {brandForm.business_name || "SUKO Atelier"}.
-                          </p>
-                          <div>
-                            {brandForm.website_url?.replace(/^https?:\/\//, "") || "indiancorporatewear.com"} &bull; {brandForm.instagram_handle || "@icwbysuko"}
-                          </div>
-                          <div className="text-[8.5px] text-[#A49E93] mt-1">
-                            &copy; 2026 {brandForm.business_name || "SUKO Atelier"}. All rights reserved.
-                          </div>
-                        </div>
-
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                </div>
+              {/* ============================================================= */}
+              {/* ADMIN CONTROLS & SECURITY TAB                                 */}
+              {/* ============================================================= */}
+              {activeTab === "admin_controls" && (
+                <AdminControlsSection
+                  currentUser={user}
+                  token={token}
+                  onOpenActivityLogs={() => {
+                    fetchActivityLogs();
+                    setIsActivityLogModalOpen(true);
+                  }}
+                  activityLogsCount={activityLogs.length}
+                  onBack={() => setActiveTab("overview")}
+                />
               )}
 
               {/* ============================================================= */}
@@ -9783,392 +8490,25 @@ const Admin = () => {
               {/* ============================================================= */}
               {/* PRIVATE PATRON DIRECTORY (Client Relationships & Archive)      */}
               {/* ============================================================= */}
-              {activeTab === "customers" && (() => {
-                const filteredPatrons = uniqueClientsList.filter((c) => {
-                  if (clientSearch.trim()) {
-                    const q = clientSearch.toLowerCase().trim();
-                    const matchName = (c.name || "").toLowerCase().includes(q);
-                    const matchEmail = (c.email || "").toLowerCase().includes(q);
-                    const matchPhone = (c.phone || "").toLowerCase().includes(q);
-                    const matchCity = (c.city || "").toLowerCase().includes(q);
-                    if (!matchName && !matchEmail && !matchPhone && !matchCity) return false;
-                  }
-
-                  if (patronFilter === "recent") {
-                    if (!c.lastOrderDate) return false;
-                    const days = (Date.now() - new Date(c.lastOrderDate).getTime()) / (1000 * 60 * 60 * 24);
-                    return days <= 60 || c.orderCount > 0;
-                  }
-                  if (patronFilter === "high_value") {
-                    return c.totalSpent >= 25000 || (c.totalSpent > 0 && c.orderCount >= 2);
-                  }
-                  if (patronFilter === "new") {
-                    const joined = c.joinedDate ? new Date(c.joinedDate).getTime() : 0;
-                    const daysSinceJoined = joined ? (Date.now() - joined) / (1000 * 60 * 60 * 24) : 999;
-                    return daysSinceJoined <= 30 || c.orderCount <= 1;
-                  }
-                  return true;
-                });
-
-                const totalOrdersCompleted = orders.filter(o => isFinanciallyPaid(o.status)).length;
-                const totalRevenueGenerated = uniqueClientsList.reduce((acc, c) => acc + c.totalSpent, 0);
-                const activeClientsCount = uniqueClientsList.filter(c => c.orderCount > 0).length;
-
-                return (
-                  <div className="space-y-8 animate-in fade-in duration-200">
-                    {/* Header Section */}
-                    <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-[#E5DDD1] pb-6">
-                      <div className="space-y-1">
-                        <span className="text-[10px] uppercase tracking-[0.2em] text-[#746F68] font-mono block">
-                          CUSTOMER DIRECTORY
-                        </span>
-                        <h2 className="text-3xl sm:text-4xl font-serif font-light text-[#171717] tracking-tight">
-                          Customer Profile &amp; Orders
-                        </h2>
-                        <p className="text-xs text-[#746F68] font-light max-w-2xl font-sans pt-0.5">
-                          Manage customer profiles, orders and purchase history.
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3 self-start sm:self-auto shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEmailForm({ target: "all", recipientEmail: "", subject: "", message: "" });
-                            setActiveTab("broadcast");
-                          }}
-                          className="inline-flex items-center gap-2 px-4 py-2 border border-[#E5DDD1] hover:border-[#171717] bg-[#FCFAF7] hover:bg-[#FAF8F5] text-[#171717] text-[10.5px] uppercase tracking-[0.16em] font-mono transition-colors cursor-pointer rounded-[2px]"
-                        >
-                          <Mail size={12} className="text-[#C2922E]" /> Send Update
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Customer Overview Cards (4 Distinct Luxury Cards) */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-                      <div className="border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] p-5 sm:p-6 shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-2">
-                        <span className="font-serif text-3xl sm:text-4xl lg:text-[40px] font-normal text-[#111113] tracking-tight leading-none block">
-                          {String(uniqueClientsList.length).padStart(2, '0')}
-                        </span>
-                        <div>
-                          <span className="text-[10px] uppercase tracking-[0.16em] text-[#746F68] font-mono block">
-                            Total Patrons
-                          </span>
-                          <p className="text-[11px] text-[#8C8275] font-sans font-light mt-0.5">
-                            Atelier client accounts
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] p-5 sm:p-6 shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-2">
-                        <span className="font-serif text-3xl sm:text-4xl lg:text-[40px] font-normal text-[#111113] tracking-tight leading-none block">
-                          {String(totalOrdersCompleted).padStart(2, '0')}
-                        </span>
-                        <div>
-                          <span className="text-[10px] uppercase tracking-[0.16em] text-[#746F68] font-mono block">
-                            Orders Completed
-                          </span>
-                          <p className="text-[11px] text-[#8C8275] font-sans font-light mt-0.5">
-                            Fulfilled commissions
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] p-5 sm:p-6 shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-2">
-                        <span className="font-serif text-3xl sm:text-4xl lg:text-[40px] font-normal text-[#111113] tracking-tight leading-none block truncate">
-                          {formatINR(totalRevenueGenerated)}
-                        </span>
-                        <div>
-                          <span className="text-[10px] uppercase tracking-[0.16em] text-[#746F68] font-mono block">
-                            Revenue Generated
-                          </span>
-                          <p className="text-[11px] text-[#8C8275] font-sans font-light mt-0.5">
-                            Reconciled lifetime spend
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] p-5 sm:p-6 shadow-[0_1px_2px_rgba(0,0,0,0.02)] space-y-2">
-                        <span className="font-serif text-3xl sm:text-4xl lg:text-[40px] font-normal text-[#111113] tracking-tight leading-none block">
-                          {String(activeClientsCount).padStart(2, '0')}
-                        </span>
-                        <div>
-                          <span className="text-[10px] uppercase tracking-[0.16em] text-[#746F68] font-mono block">
-                            Active Clients
-                          </span>
-                          <p className="text-[11px] text-[#8C8275] font-sans font-light mt-0.5">
-                            Acquired garment patrons
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Search & Filter Row */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-                      {/* Filters with clear readable labels */}
-                      <nav className="flex items-center gap-6 sm:gap-8 border-b border-[#E5DDD1] overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                        {[
-                          { id: "all", label: "All Patrons", count: uniqueClientsList.length },
-                          { id: "recent", label: "Recent Buyers", count: uniqueClientsList.filter(c => c.lastOrderDate).length },
-                          { id: "high_value", label: "High Value Clients", count: uniqueClientsList.filter(c => c.totalSpent >= 25000 || (c.totalSpent > 0 && c.orderCount >= 2)).length },
-                          { id: "new", label: "New Patrons", count: uniqueClientsList.filter(c => c.orderCount <= 1).length },
-                        ].map((tab) => {
-                          const isActive = patronFilter === tab.id;
-                          return (
-                            <button
-                              key={tab.id}
-                              type="button"
-                              onClick={() => setPatronFilter(tab.id)}
-                              className={`relative pb-2.5 text-[11px] uppercase tracking-[0.14em] font-mono transition-colors cursor-pointer whitespace-nowrap ${
-                                isActive
-                                  ? "text-[#171717] font-medium"
-                                  : "text-[#746F68] hover:text-[#171717] font-normal"
-                              }`}
-                            >
-                              <span>{tab.label}</span>
-                              <span className={`ml-1.5 text-[10px] font-mono ${isActive ? "text-[#C2922E]" : "text-[#8C8275]"}`}>
-                                ({tab.count})
-                              </span>
-                              {isActive && (
-                                <span className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#171717]" />
-                              )}
-                            </button>
-                          );
-                        })}
-                      </nav>
-
-                      {/* Minimal Search Input */}
-                      <div className="relative w-full sm:w-72">
-                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#746F68] pointer-events-none" />
-                        <input
-                          type="text"
-                          placeholder="Search patron name, city..."
-                          value={clientSearch}
-                          onChange={(e) => setClientSearch(e.target.value)}
-                          style={{ paddingLeft: "36px" }}
-                          className="w-full bg-[#FCFAF7] border border-[#E5DDD1] rounded-[2px] pr-8 py-2 text-xs text-[#171717] placeholder:text-[#746F68]/70 outline-none focus:border-[#C2922E] font-sans transition-colors"
-                        />
-                        {clientSearch && (
-                          <button
-                            type="button"
-                            onClick={() => setClientSearch("")}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#746F68] hover:text-[#171717] p-0.5 cursor-pointer"
-                            title="Clear search"
-                          >
-                            <X size={12} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Main Customer Registry — Desktop Table View (Compact CRM Hierarchy) */}
-                    <div className="hidden md:block border border-[#E5DDD1] bg-[#FCFAF7] rounded-[4px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left font-body text-xs">
-                          <thead className="bg-[#FAF8F5] text-[9.5px] uppercase tracking-[0.16em] text-[#746F68] font-mono border-b border-[#E5DDD1]">
-                            <tr>
-                              <th className="py-4 px-6 font-medium min-w-[220px]">CLIENT</th>
-                              <th className="py-4 px-5 font-medium whitespace-nowrap">STATUS</th>
-                              <th className="py-4 px-5 font-medium whitespace-nowrap">ORDERS &amp; SPEND</th>
-                              <th className="py-4 px-5 font-medium whitespace-nowrap">LAST ACTIVITY</th>
-                              <th className="py-4 px-6 font-medium text-right whitespace-nowrap">ACTION</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#E5DDD1]/70 text-[#171717]">
-                            {filteredPatrons.map((client, idx) => {
-                              // Calculate client status tier
-                              let statusLabel = "New Patron";
-                              let statusStyle = "text-[#746F68] bg-[#FAF8F5] border-[#E5DDD1]";
-                              if (client.totalSpent >= 25000 || client.orderCount >= 3) {
-                                statusLabel = "VIP Patron";
-                                statusStyle = "text-[#7A5B15] bg-[#F7F0E1] border-[#DECBA6]";
-                              } else if (client.orderCount > 1) {
-                                statusLabel = "Returning Client";
-                                statusStyle = "text-[#171717] bg-[#EFE9DF] border-[#DDD5C7]";
-                              }
-
-                              const clientSince = client.joinedDate || client.created_at || (client.orders?.[client.orders.length - 1]?.date);
-                              const clientSinceFormatted = clientSince
-                                ? new Date(clientSince).toLocaleDateString("en-US", { month: "short", year: "numeric" })
-                                : "Sep 2026";
-
-                              return (
-                                <tr
-                                  key={client.email || idx}
-                                  className="hover:bg-[#F5F0E8]/40 transition-colors group"
-                                >
-                                  {/* 1. Client Identity */}
-                                  <td className="py-4 px-6">
-                                    <div className="space-y-0.5">
-                                      <p className="font-serif text-[15px] font-medium text-[#111113] group-hover:text-[#C2922E] transition-colors leading-snug">
-                                        {client.name}
-                                      </p>
-                                      <div className="flex items-center gap-1.5 text-xs text-[#746F68] font-sans">
-                                        <span>{client.city !== "—" ? client.city : "Atelier Client"}</span>
-                                        <span className="text-[#C5BDB2]">&middot;</span>
-                                        <span className="text-[10.5px] font-mono text-[#8C8275]">
-                                          Client since {clientSinceFormatted}
-                                        </span>
-                                      </div>
-                                      {(client.email || client.phone) && (
-                                        <p className="text-[10.5px] font-mono text-[#8C8275] pt-0.5 truncate max-w-xs">
-                                          {client.email || client.phone}
-                                        </p>
-                                      )}
-                                    </div>
-                                  </td>
-
-                                  {/* 2. Status Tier */}
-                                  <td className="py-4 px-5 whitespace-nowrap">
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-[2px] border text-[9.5px] font-mono uppercase tracking-[0.10em] font-medium whitespace-nowrap ${statusStyle}`}>
-                                      {statusLabel}
-                                    </span>
-                                  </td>
-
-                                  {/* 3. Orders & Lifetime Value */}
-                                  <td className="py-4 px-5 whitespace-nowrap">
-                                    <div className="space-y-0.5">
-                                      <span className="font-serif text-base font-normal text-[#111113] block leading-tight">
-                                        {formatINR(client.totalSpent)}
-                                      </span>
-                                      <span className="text-[10.5px] font-mono text-[#746F68] block">
-                                        {String(client.orderCount).padStart(2, "0")} {client.orderCount === 1 ? "Commission" : "Commissions"}
-                                      </span>
-                                    </div>
-                                  </td>
-
-                                  {/* 4. Last Activity */}
-                                  <td className="py-4 px-5 whitespace-nowrap">
-                                    <div className="space-y-0.5">
-                                      <span className="font-mono text-xs text-[#111113] block">
-                                        {client.lastOrderDate
-                                          ? new Date(client.lastOrderDate).toLocaleDateString("en-IN", {
-                                              day: "2-digit",
-                                              month: "short",
-                                              year: "numeric"
-                                            })
-                                          : "—"}
-                                      </span>
-                                      <span className="text-[11px] text-[#746F68] font-serif italic block truncate max-w-[170px]">
-                                        {client.purchasedGarments?.[0]?.name || (client.orderCount > 0 ? "Tailored Bespoke Piece" : "Inquiry / Registry")}
-                                      </span>
-                                    </div>
-                                  </td>
-
-                                  {/* 5. Action Button */}
-                                  <td className="py-4 px-6 text-right whitespace-nowrap">
-                                    <button
-                                      type="button"
-                                      onClick={() => openClientProfile(client)}
-                                      className="whitespace-nowrap px-3.5 py-1.5 border border-[#E5DDD1] hover:border-[#C2922E] bg-[#FAF8F5] hover:bg-[#F4EFE6] text-[#111113] hover:text-[#C2922E] transition-all font-mono text-[10.5px] uppercase tracking-[0.14em] font-medium inline-flex items-center gap-1.5 cursor-pointer rounded-[2px] shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
-                                    >
-                                      Open Client &rarr;
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    {/* Main Customer Registry — Mobile Compact Entries */}
-                    <div className="md:hidden divide-y divide-[#E5DDD1] bg-[#FCFAF7] border border-[#E5DDD1] rounded-[4px] shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                      {filteredPatrons.map((client, idx) => {
-                        let statusLabel = "New Patron";
-                        let statusStyle = "text-[#746F68] bg-[#FAF8F5] border-[#E5DDD1]";
-                        if (client.totalSpent >= 25000 || client.orderCount >= 3) {
-                          statusLabel = "VIP Patron";
-                          statusStyle = "text-[#7A5B15] bg-[#F7F0E1] border-[#DECBA6]";
-                        } else if (client.orderCount > 1) {
-                          statusLabel = "Returning Client";
-                          statusStyle = "text-[#171717] bg-[#EFE9DF] border-[#DDD5C7]";
-                        }
-
-                        const clientSince = client.joinedDate || client.created_at || (client.orders?.[client.orders.length - 1]?.date);
-                        const clientSinceFormatted = clientSince
-                          ? new Date(clientSince).toLocaleDateString("en-US", { month: "short", year: "numeric" })
-                          : "Sep 2026";
-
-                        return (
-                          <div key={client.email || idx} className="p-5 space-y-3.5">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <h4 className="font-serif text-lg font-medium text-[#111113] leading-snug">
-                                  {client.name}
-                                </h4>
-                                <p className="text-xs text-[#746F68] font-sans pt-0.5">
-                                  {client.city !== "—" ? client.city : "Atelier Client"} &middot; Client since {clientSinceFormatted}
-                                </p>
-                                {client.email && (
-                                  <p className="text-[11px] font-mono text-[#8C8275] pt-0.5">{client.email}</p>
-                                )}
-                              </div>
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-[2px] border text-[9px] font-mono uppercase tracking-[0.08em] font-medium shrink-0 whitespace-nowrap ${statusStyle}`}>
-                                {statusLabel}
-                              </span>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-2 py-2.5 px-3 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] text-center">
-                              <div>
-                                <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block whitespace-nowrap">COMMISSIONS</span>
-                                <span className="font-mono text-xs font-medium text-[#111113] mt-0.5 block">
-                                  {String(client.orderCount).padStart(2, '0')}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block whitespace-nowrap">LIFETIME</span>
-                                <span className="font-serif text-xs font-medium text-[#111113] mt-0.5 block">
-                                  {formatINR(client.totalSpent)}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[9px] uppercase tracking-wider text-[#746F68] font-mono block whitespace-nowrap">LAST ORDER</span>
-                                <span className="font-mono text-[10.5px] text-[#746F68] mt-0.5 block truncate">
-                                  {client.lastOrderDate
-                                    ? new Date(client.lastOrderDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
-                                    : "—"}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="flex justify-end pt-1">
-                              <button
-                                type="button"
-                                onClick={() => openClientProfile(client)}
-                                className="whitespace-nowrap px-3.5 py-1.5 border border-[#E5DDD1] hover:border-[#C2922E] bg-[#FAF8F5] hover:bg-[#F4EFE6] text-[#111113] hover:text-[#C2922E] transition-all font-mono text-[10.5px] uppercase tracking-[0.14em] font-medium inline-flex items-center gap-1.5 cursor-pointer rounded-[2px]"
-                              >
-                                Open Client &rarr;
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Empty State */}
-                    {filteredPatrons.length === 0 && (
-                      <div className="p-12 sm:p-16 text-center border border-[#E5DDD1] bg-[#FCFAF7] rounded-[2px] space-y-2">
-                        <p className="font-serif text-xl sm:text-2xl font-light text-[#171717]">
-                          No patron records available yet.
-                        </p>
-                        <p className="text-xs text-[#746F68] font-light max-w-md mx-auto font-sans">
-                          Customer history will appear after completed atelier orders.
-                        </p>
-                        {clientSearch && (
-                          <button
-                            type="button"
-                            onClick={() => setClientSearch("")}
-                            className="mt-3 text-[10.5px] uppercase tracking-[0.14em] font-mono text-[#C2922E] hover:underline inline-block cursor-pointer"
-                          >
-                            Reset patron search
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
+              {activeTab === "customers" && (
+                <CustomerDirectorySection
+                  uniqueClientsList={uniqueClientsList}
+                  clientSearch={clientSearch}
+                  setClientSearch={setClientSearch}
+                  patronFilter={patronFilter}
+                  setPatronFilter={setPatronFilter}
+                  orders={orders}
+                  openClientProfile={openClientProfile}
+                  selectedClientProfile={selectedClientProfile}
+                  closeClientProfile={closeClientProfile}
+                  setEmailForm={setEmailForm}
+                  setActiveTab={setActiveTab}
+                  formatDateTime={formatDateTime}
+                  renderStatusIndicator={renderStatusIndicator}
+                  isFinanciallyPaid={isFinanciallyPaid}
+                  onBack={() => setActiveTab("overview")}
+                />
+              )}
 
             </div>
           )}
@@ -10188,35 +8528,57 @@ const Admin = () => {
         {/* PRODUCT DETAIL DRAWER (ATELIER GARMENT SPECIFICATION) */}
         {editingProduct && (
           <div
-            className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+            className="fixed inset-0 z-50 flex md:justify-end bg-black/65 md:backdrop-blur-xs animate-in fade-in duration-200"
             onClick={closeEditingProduct}
           >
             <div
-              className="bg-[#FAF8F5] border-l border-[#E5DDD1] w-full max-w-lg h-full shadow-2xl flex flex-col text-[#111113] animate-in slide-in-from-right duration-250 ease-out overflow-hidden"
+              className="bg-[#FAF8F5] border-0 md:border-l md:border-[#E5DDD1] w-full h-full md:max-w-lg shadow-2xl flex flex-col text-[#111113] md:animate-in md:slide-in-from-right duration-250 ease-out overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* FIXED / STICKY DRAWER HEADER */}
-              <div className="shrink-0 px-6 py-4 border-b border-[#E5DDD1] bg-[#FAF8F5] flex items-center justify-between sticky top-0 z-20">
-                <div>
-                  <span className="text-[9.5px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block mb-0.5">
-                    ATELIER ARCHIVE &middot; {isDrawerInEditMode ? "EDIT SPECIFICATIONS" : "GARMENT INSPECTION"}
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-serif font-medium text-[#111113] tracking-tight leading-snug">
-                    {editingProduct.name}
-                  </h2>
+              <div className="shrink-0 px-4 sm:px-6 py-3.5 border-b border-[#E5DDD1] bg-white/95 backdrop-blur-xs flex items-center justify-between sticky top-0 z-20">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <button
+                    type="button"
+                    onClick={closeEditingProduct}
+                    className="p-1.5 -ml-1 text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] rounded-[2px] md:hidden cursor-pointer shrink-0"
+                    title="Back to Garments"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                  <div className="min-w-0">
+                    <span className="text-[9px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block mb-0.5 truncate">
+                      ATELIER ARCHIVE &middot; {isDrawerInEditMode ? "EDIT SPECIFICATIONS" : "GARMENT INSPECTION"}
+                    </span>
+                    <h2 className="text-base sm:text-xl font-serif font-medium text-[#111113] tracking-tight leading-snug truncate">
+                      {editingProduct.name}
+                    </h2>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={closeEditingProduct}
-                  className="p-1.5 text-[#746F68] hover:text-[#111113] hover:bg-[#EFE9DF] rounded-[2px] border border-[#E5DDD1] transition-colors cursor-pointer"
-                  title="Close Drawer (Esc)"
-                >
-                  <X size={18} />
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {isDrawerInEditMode && (
+                    <button
+                      type="button"
+                      onClick={handleEditSubmit}
+                      disabled={updatingProduct}
+                      className="px-3 py-1.5 bg-[#111113] hover:bg-[#C2922E] text-white text-xs font-mono uppercase tracking-wider rounded-[2px] transition-colors md:hidden cursor-pointer disabled:opacity-50"
+                    >
+                      {updatingProduct ? "Saving..." : "Save"}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={closeEditingProduct}
+                    className="hidden md:inline-flex p-1.5 text-[#746F68] hover:text-[#111113] hover:bg-[#EFE9DF] rounded-[2px] border border-[#E5DDD1] transition-colors cursor-pointer"
+                    title="Close Drawer (Esc)"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
 
               {/* SCROLLABLE DRAWER BODY */}
-              <div className="overflow-y-auto suko-scrollbar p-6 space-y-5 flex-1 font-body">
+              <div className="overflow-y-auto suko-scrollbar p-4 sm:p-6 space-y-5 flex-1 font-body pb-28 sm:pb-6">
                 {!isDrawerInEditMode ? (
                   /* INSPECTION MODE (CHANEL/DIOR ATELIER ARCHIVE VIEW) */
                   <div className="space-y-5">
@@ -10606,7 +8968,7 @@ const Admin = () => {
               </div>
 
               {/* FIXED / STICKY DRAWER FOOTER */}
-              <div className="shrink-0 px-6 py-3.5 border-t border-[#E5DDD1] bg-[#FAF8F5] flex items-center justify-between gap-3 sticky bottom-0 z-20 shadow-[0_-4px_16px_rgba(0,0,0,0.03)]">
+              <div className="shrink-0 px-4 sm:px-6 py-3.5 border-t border-[#E5DDD1] bg-white/95 backdrop-blur-xs flex items-center justify-between gap-3 sticky bottom-0 z-20 shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
                 {!isDrawerInEditMode ? (
                   <>
                     <button
@@ -10668,35 +9030,51 @@ const Admin = () => {
           </div>
         )}
 
-        {/* INSPECT ORDER DETAILS MODAL */}
+        {/* INSPECT ORDER DETAILS MODAL (Full-screen Sheet on Mobile, Centered Modal on Desktop) */}
         {selectedOrderDetails && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex flex-col md:items-center md:justify-center bg-[#FAF8F5] md:bg-black/60 md:backdrop-blur-sm overflow-y-auto md:p-4"
             onClick={closeOrderDetails}
           >
             <div
               ref={inspectModalRef}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#FAF8F5] border border-[#E5DDD1] max-w-2xl w-full rounded-[2px] shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden text-[#111113]"
+              className="w-full h-full md:h-auto md:max-h-[88vh] md:max-w-2xl bg-[#FAF8F5] border-0 md:border md:border-[#E5DDD1] md:rounded-[2px] shadow-2xl flex flex-col overflow-hidden text-[#111113]"
             >
               {/* FIXED / STICKY HEADER - NEVER SCROLLS AWAY */}
-              <div className="shrink-0 px-5 py-4 border-b border-[#E5DDD1] bg-[#FAF8F5] flex items-center justify-between sticky top-0 z-20">
-                <div>
-                  <span className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block mb-0.5">
-                    ORDER DETAILS
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-serif font-medium text-[#111113] tracking-tight leading-snug">
-                    Order #SUKO-{1000 + selectedOrderDetails.id}
-                  </h2>
+              <div className="shrink-0 px-4 sm:px-6 py-3.5 border-b border-[#E5DDD1] bg-white/95 backdrop-blur-xs flex items-center justify-between sticky top-0 z-20">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={closeOrderDetails}
+                    className="p-1.5 -ml-1 text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] rounded-[2px] transition-colors md:hidden cursor-pointer"
+                    title="Back to Orders"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                  <div>
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-[#C2922E] font-mono font-medium block leading-tight">
+                      ORDER DETAILS
+                    </span>
+                    <h2 className="text-lg sm:text-2xl font-serif font-medium text-[#111113] tracking-tight leading-snug">
+                      Order #SUKO-{1000 + selectedOrderDetails.id}
+                    </h2>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={closeOrderDetails}
-                  className="p-1.5 text-[#746F68] hover:text-[#111113] hover:bg-[#EFE9DF] rounded-[2px] border border-[#E5DDD1] transition-colors cursor-pointer"
-                  title="Close Inspector (Esc)"
-                >
-                  <X size={18} />
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <div className="hidden sm:block">
+                    {renderStatusIndicator(selectedOrderDetails.status)}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeOrderDetails}
+                    className="p-1.5 text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] rounded-[2px] border border-[#E5DDD1] transition-colors cursor-pointer"
+                    title="Close Inspector (Esc)"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
 
               {/* SCROLLABLE BODY */}
@@ -10946,20 +9324,20 @@ const Admin = () => {
                     {/* 2. View / Print Invoice */}
                     <button
                       type="button"
-                      onClick={() => handlePrintOrderDoc(selectedOrderDetails.id, "invoice")}
+                      onClick={() => openDocumentPreview(selectedOrderDetails, "invoice")}
                       className="p-2.5 bg-[#FAF8F5] hover:bg-[#EFE9DF] border border-[#E5DDD1] text-[#111113] rounded-[2px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                      title="Open printable HTML tax invoice"
+                      title="Open in-app luxury tax invoice preview"
                     >
-                      <Eye size={13} className="text-[#746F68]" />
-                      <span className="tracking-wider uppercase text-[10.5px]">Print Invoice</span>
+                      <FileText size={13} className="text-[#C2922E]" />
+                      <span className="tracking-wider uppercase text-[10.5px]">View Invoice</span>
                     </button>
 
                     {/* 3. Print Packing Slip (Excludes Pricing) */}
                     <button
                       type="button"
-                      onClick={() => handlePrintOrderDoc(selectedOrderDetails.id, "packing_slip")}
+                      onClick={() => openDocumentPreview(selectedOrderDetails, "packing_slip")}
                       className="p-2.5 bg-[#FAF8F5] hover:bg-[#EFE9DF] border border-[#E5DDD1] text-[#111113] rounded-[2px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                      title="Open workshop packing slip (strictly excludes pricing & payments)"
+                      title="Open workshop packing slip preview"
                     >
                       <Truck size={13} className="text-[#1E3A8A]" />
                       <span className="tracking-wider uppercase text-[10.5px]">Packing Slip</span>
@@ -10968,7 +9346,7 @@ const Admin = () => {
                     {/* 4. View Payment Receipt */}
                     <button
                       type="button"
-                      onClick={() => handlePrintOrderDoc(selectedOrderDetails.id, "receipt")}
+                      onClick={() => openDocumentPreview(selectedOrderDetails, "receipt")}
                       className="p-2.5 bg-[#FAF8F5] hover:bg-[#EFE9DF] border border-[#E5DDD1] text-[#111113] rounded-[2px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                       title="Open official payment settlement receipt"
                     >
@@ -11042,9 +9420,38 @@ const Admin = () => {
                   </div>
                 </div>
               </div>
+
+              {/* STICKY BOTTOM BAR ON MOBILE */}
+              <div className="shrink-0 p-3 bg-white border-t border-[#E5DDD1] flex items-center justify-between gap-2.5 md:hidden">
+                <button
+                  type="button"
+                  onClick={() => openDocumentPreview(selectedOrderDetails, "invoice")}
+                  className="flex-1 py-2 px-3 bg-[#111113] hover:bg-[#C2922E] text-white text-xs font-mono uppercase tracking-wider rounded-[2px] flex items-center justify-center gap-1.5 shadow-xs"
+                >
+                  <FileText size={13} className="text-[#C2922E]" />
+                  <span>Invoice Preview</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={closeOrderDetails}
+                  className="py-2 px-4 border border-[#E5DDD1] hover:bg-[#FAF8F5] text-xs font-mono uppercase tracking-wider text-[#746F68] rounded-[2px]"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}
+
+        {/* IN-APP A4 LUXURY ORDER DOCUMENT PREVIEW MODAL */}
+        <OrderDocumentPreviewModal
+          isOpen={Boolean(previewOrderDoc)}
+          onClose={closeDocumentPreview}
+          order={previewOrderDoc?.order}
+          brandSettings={brandSettings}
+          initialDocType={previewOrderDoc?.type || "invoice"}
+          token={token}
+        />
 
         {/* ENLARGED PAYMENT SCREENSHOT MODAL */}
         {zoomedScreenshot && (
@@ -11417,7 +9824,7 @@ const Admin = () => {
         {/* CUSTOMER PROFILE DRAWER (PRIVATE PATRON PROFILE & ARCHIVE) */}
         {selectedClientProfile && (
           <div
-            className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+            className="hidden md:flex fixed inset-0 z-50 justify-end bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
             onClick={closeClientProfile}
           >
             <div

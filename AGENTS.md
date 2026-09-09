@@ -9,9 +9,9 @@ All developers and AI assistants working on this codebase must strictly observe 
 
 2. **Email & Invoice Communications**:
    - Powered by Resend via verified domain sender: `SUKO Atelier <noreply@indiancorporatewear.com>` with `reply_to: 'indiancorporatewearbysuko@gmail.com'`.
-   - Concierge Support Email: `indiancorporatewearbysuko@gmail.com`
-   - Designated Testing Email: `meshramshreya042@gmail.com` (DO NOT use `meshramshreya28@gmail.com`).
-   - All email communications (OTP, invoices, order confirmations, billing) must provide dual multipart bodies (`text` + `html`) matching the SUKO luxury palette.
+   - Concierge Support & Store Admin Email: `indiancorporatewearbysuko@gmail.com`
+   - Official Store Notifications: `indiancorporatewearbysuko@gmail.com`
+   - All email communications (OTP, invoices, order confirmations, billing, new order alerts) must deliver strictly to `indiancorporatewearbysuko@gmail.com`.
 
 3. **Mandatory Git Workflow**:
    - At the conclusion of every response or feature work, provide the exact 3 git commands:

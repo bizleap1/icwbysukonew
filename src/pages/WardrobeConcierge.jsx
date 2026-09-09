@@ -21,7 +21,7 @@ export const WardrobeConcierge = () => {
       title: "PRESENTATIONS & PITCHES",
       description: "High-visibility dressing for pitches and key presentations.",
       whatsappText: "Hi SUKO, I’d like styling help for an upcoming presentation or pitch.",
-      image: "/presentation_woman.webp",
+      image: "/the_presentation_edit.webp",
       tagline: "Keynotes & Boardroom Pitches"
     },
     {
@@ -29,7 +29,7 @@ export const WardrobeConcierge = () => {
       title: "LEADERSHIP MOMENTS",
       description: "Considered tailoring for meetings, new roles and executive presence.",
       whatsappText: "Hi SUKO, I’d like styling help for an important leadership moment.",
-      image: "/boardroom_women.webp",
+      image: "/the_boardroom_edit.webp",
       tagline: "Executive Presence & Board Meetings"
     },
     {
@@ -45,7 +45,7 @@ export const WardrobeConcierge = () => {
       title: "EXECUTIVE WARDROBE",
       description: "Build a professional wardrobe around your needs.",
       whatsappText: "Hi SUKO, I’d like help building my professional wardrobe.",
-      image: "/executive_woman.webp",
+      image: "/the_executive_essentials.webp",
       tagline: "Complete Capsule & Wardrobe Foundations"
     }
   ];
@@ -75,28 +75,28 @@ export const WardrobeConcierge = () => {
       id: "boardroom",
       name: "The Boardroom Edit",
       tagline: "Command the Room.",
-      image: "/boardroom_women.webp",
+      image: "/the_boardroom_edit.webp",
       link: "/shop-by-moment?moment=boardroom"
     },
     {
       id: "founder",
       name: "The Founder Edit",
       tagline: "Building What’s Next.",
-      image: "/founder_women.webp",
+      image: "/the_founder_edit.webp",
       link: "/shop-by-moment?moment=founder"
     },
     {
       id: "presentation",
       name: "The Presentation Edit",
       tagline: "Own the Room.",
-      image: "/presentation_woman.webp",
+      image: "/the_presentation_edit.webp",
       link: "/shop-by-moment?moment=presentation"
     },
     {
       id: "after-hours",
       name: "The After-Hours Edit",
       tagline: "From Workday to Evening.",
-      image: "/after_hour_woman.webp",
+      image: "/the_after_hours_executive.webp",
       link: "/shop-by-moment?moment=after-hours"
     }
   ];
