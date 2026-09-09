@@ -315,17 +315,78 @@ function parseDevice(ua) {
 router.get("/profile", requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT id, name, email, phone, role FROM users WHERE id = $1",
+      "SELECT id, name, email, phone, role, created_at FROM users WHERE id = $1",
       [req.user.userId]
     );
     const user = result.rows[0];
     if (!user) return res.status(404).json({ error: "User not found." });
-    res.json(user);
+
+    let orderCount = 0;
+    let totalSpend = 0;
+    try {
+      const ordersRes = await pool.query(
+        "SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as spend FROM orders WHERE user_id = $1",
+        [req.user.userId]
+      );
+      orderCount = parseInt(ordersRes.rows[0]?.count || 0, 10);
+      totalSpend = Number(ordersRes.rows[0]?.spend || 0);
+    } catch (e) {}
+
+    res.json({
+      ...user,
+      orderCount,
+      totalSpend
+    });
   } catch (err) {
     console.error("Profile fetch error:", err);
     res.status(500).json({ error: "Failed to load profile." });
   }
 });
+
+// PUT /api/auth/profile -- update authenticated client's name & phone
+router.put("/profile", requireAuth, async (req, res) => {
+  try {
+    const { name, phone } = req.body || {};
+    
+    const updateRes = await pool.query(
+      `UPDATE users 
+       SET name = COALESCE($1, name), 
+           phone = COALESCE($2, phone) 
+       WHERE id = $3 
+       RETURNING id, name, phone, email, role, created_at`,
+      [name !== undefined ? name.trim() : null, phone !== undefined ? phone.trim() : null, req.user.userId]
+    );
+
+    const user = updateRes.rows[0];
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    // Fetch order metrics for complete profile return
+    let orderCount = 0;
+    let totalSpend = 0;
+    try {
+      const ordersRes = await pool.query(
+        "SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as spend FROM orders WHERE user_id = $1",
+        [req.user.userId]
+      );
+      orderCount = parseInt(ordersRes.rows[0]?.count || 0, 10);
+      totalSpend = Number(ordersRes.rows[0]?.spend || 0);
+    } catch (e) {}
+
+    res.json({
+      success: true,
+      user: {
+        ...user,
+        orderCount,
+        totalSpend
+      },
+      message: "Atelier profile updated successfully."
+    });
+  } catch (err) {
+    console.error("Profile update error:", err);
+    res.status(500).json({ error: "Failed to update profile details." });
+  }
+});
+
 
 // GET /api/auth/users -- admin: list registered patrons
 router.get("/users", requireAdmin, async (req, res) => {

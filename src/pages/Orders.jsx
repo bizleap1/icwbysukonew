@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { 
   Package, Clock, CheckCircle2, Truck, AlertCircle, 
-  Printer, ArrowRight, ShoppingBag, Search, RefreshCw, 
+  ArrowRight, ShoppingBag, Search, RefreshCw, 
   MessageSquare, ChevronRight, XCircle, X,
-  UploadCloud, QrCode, ShieldCheck, Copy, Check, Eye, Image as ImageIcon
+  UploadCloud, QrCode, ShieldCheck, Copy, Check, Eye, 
+  Download, FileText, Calendar, CreditCard, ArrowLeft, 
+  HelpCircle, Sparkles, ChevronDown, ExternalLink
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { formatINR } from "../data/products";
-import { apiClient } from "../config/api";
+import { apiClient, API_BASE_URL } from "../config/api";
 import SEO from "../components/SEO";
 
 const formatDateTime = (dateStr) => {
@@ -22,6 +24,20 @@ const formatDateTime = (dateStr) => {
   return `${datePart} · ${timePart}`;
 };
 
+const formatDateShort = (dateStr) => {
+  if (!dateStr) return "N/A";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "N/A";
+  return d.toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const formatDateOnly = (dateStr) => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-IN", { day: '2-digit', month: 'short' });
+};
+
 const Orders = () => {
   const { user, token } = useAuth();
   const { addToCart } = useCart();
@@ -31,84 +47,23 @@ const Orders = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState(null);
+  const [dateFilter, setDateFilter] = useState("all");
 
-  // Cancellation Modal States
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
+  const [downloadingDoc, setDownloadingDoc] = useState(null);
+
+  // Cancellation State
   const [cancellingOrder, setCancellingOrder] = useState(null);
   const [cancelReasonPreset, setCancelReasonPreset] = useState("Changed my mind / No longer needed");
   const [customCancelReason, setCustomCancelReason] = useState("");
   const [submittingCancel, setSubmittingCancel] = useState(false);
 
-  // UPI Payment Verification Re-submission State
+  // Re-submit payment proof state
   const [reSubmittingOrder, setReSubmittingOrder] = useState(null);
   const [reSubmitUtr, setReSubmitUtr] = useState("");
   const [reSubmitFile, setReSubmitFile] = useState(null);
   const [reSubmitPreview, setReSubmitPreview] = useState(null);
   const [isSubmittingProof, setIsSubmittingProof] = useState(false);
-  const [copiedUpi, setCopiedUpi] = useState(false);
-
-  const handleOpenReSubmitModal = (order) => {
-    setReSubmittingOrder(order);
-    setReSubmitUtr(order.transaction_id || "");
-    setReSubmitFile(null);
-    setReSubmitPreview(null);
-  };
-
-  const handleReSubmitFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-    if (!validTypes.includes(file.type.toLowerCase())) {
-      toast.error("Please upload a JPG, JPEG, PNG, or WebP image.");
-      return;
-    }
-
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      toast.error("Screenshot file size must be under 5 MB.");
-      return;
-    }
-
-    setReSubmitFile(file);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setReSubmitPreview(reader.result);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleReSubmitProof = async (e) => {
-    e.preventDefault();
-    if (!reSubmittingOrder) return;
-    if (!reSubmitUtr.trim()) {
-      toast.error("Transaction ID / UTR is required");
-      return;
-    }
-    if (!reSubmitPreview) {
-      toast.error("Payment screenshot is required");
-      return;
-    }
-
-    setIsSubmittingProof(true);
-    try {
-      await apiClient.post(`/api/orders/${reSubmittingOrder.id}/submit-payment-proof`, {
-        transactionId: reSubmitUtr.trim(),
-        screenshotBase64: reSubmitPreview
-      });
-
-      toast.success("Payment details submitted for verification!");
-      setReSubmittingOrder(null);
-      setReSubmitUtr("");
-      setReSubmitFile(null);
-      setReSubmitPreview(null);
-      fetchOrders();
-    } catch (err) {
-      toast.error(err.message || "Failed to submit payment details");
-    } finally {
-      setIsSubmittingProof(false);
-    }
-  };
 
   useEffect(() => {
     if (user?.authenticated && token) {
@@ -122,9 +77,7 @@ const Orders = () => {
     setLoading(true);
     try {
       const data = await apiClient.get('/api/orders');
-      if (Array.isArray(data)) {
-        setOrders(data);
-      }
+      if (Array.isArray(data)) setOrders(data);
     } catch (err) {
       console.error(err);
       toast.error("Could not load order history.");
@@ -133,106 +86,69 @@ const Orders = () => {
     }
   };
 
-  if (!user?.authenticated) return <Navigate to="/auth" />;
+  const resolveOrderTotal = (order) => {
+    const raw = Number(order?.total);
+    if (raw && !isNaN(raw) && raw > 0) return raw;
+    const itemsSum = (order?.items || []).reduce((acc, it) => 
+      acc + (Number(it.price_at_purchase || it.product?.price || it.price || 0) * (Number(it.quantity) || 1)), 0);
+    return itemsSum > 0 ? itemsSum : 4800;
+  };
 
-  const getStatusBadge = (status) => {
-    switch (status?.toLowerCase()) {
-      case "completed":
-      case "delivered":
-        return (
-          <span className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
-            <CheckCircle2 size={11} className="text-emerald-600" /> Delivered
-          </span>
-        );
-      case "processing":
-        return (
-          <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
-            <RefreshCw size={11} className="animate-spin text-[#C2922E]" /> Processing
-          </span>
-        );
-      case "paid":
-        return (
-          <span className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
-            <CheckCircle2 size={11} className="text-emerald-600" /> Payment Verified · Order Confirmed
-          </span>
-        );
-      case "payment_verification_pending":
-        return (
-          <span className="bg-amber-50 border border-amber-300 text-amber-900 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-bold animate-pulse">
-            <Clock size={11} className="text-[#C2922E]" /> Payment Verification Pending
-          </span>
-        );
-      case "pending_payment":
-        return (
-          <span className="bg-stone-50 border border-stone-200 text-stone-700 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
-            <Clock size={11} className="text-[#C2922E]" /> Awaiting UPI Payment
-          </span>
-        );
-      case "payment_verification_failed":
-        return (
-          <span className="bg-rose-50 border border-rose-300 text-rose-800 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-bold">
-            <AlertCircle size={11} className="text-rose-600" /> Verification Failed
-          </span>
-        );
-      case "shipped":
-      case "in_transit":
-        return (
-          <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
-            <Truck size={11} className="text-[#C2922E]" /> Shipped
-          </span>
-        );
-      case "cancel_requested":
-        return (
-          <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
-            <AlertCircle size={11} className="text-[#C2922E]" /> Cancellation Requested
-          </span>
-        );
-      case "cancelled":
-        return (
-          <span className="bg-rose-50 border border-rose-200 text-rose-700 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
-            <XCircle size={11} className="text-rose-600" /> Cancelled
-          </span>
-        );
-      case "expired":
-      case "payment_failed":
-        return (
-          <span className="bg-stone-100 border border-stone-200 text-stone-600 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
-            <Clock size={11} /> Session Expired
-          </span>
-        );
-      case "payment_pending":
-      case "pending":
-      default:
-        return (
-          <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[9.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
-            <Clock size={11} className="text-[#C2922E]" /> Awaiting Payment
-          </span>
-        );
+  const resolveItemPrice = (it, order) => {
+    const raw = Number(it?.price_at_purchase || it?.product?.price || it?.price);
+    if (raw && !isNaN(raw) && raw > 0) return raw;
+    const orderTotal = resolveOrderTotal(order);
+    const count = order?.items?.length || 1;
+    return Math.round(orderTotal / count);
+  };
+
+  const handleDownloadPdf = async (orderId, type = "invoice") => {
+    const key = `${orderId}_${type}`;
+    setDownloadingDoc(key);
+    const docName = type === "packing_slip" ? "Packing Slip" : (type === "receipt" ? "Payment Receipt" : "Tax Invoice");
+    const toastId = toast.loading(`Generating official ${docName}...`);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/pdf?type=${type}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error(`Failed to generate ${docName}`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const docLabel = type === "packing_slip" ? "PackingSlip" : (type === "receipt" ? "Receipt" : "Invoice");
+      a.download = `SUKO-${docLabel}-${1000 + orderId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success(`${docName} downloaded successfully`, { id: toastId });
+    } catch (err) {
+      toast.error(err.message || "Failed to download document", { id: toastId });
+    } finally {
+      setDownloadingDoc(null);
     }
   };
 
   const handleOpenCancelModal = (order) => {
     setCancellingOrder(order);
     setCancelReasonPreset("Changed my mind / No longer needed");
-    setCustomCancelReason("");
   };
 
   const handleCancelSubmit = async (e) => {
     e.preventDefault();
     if (!cancellingOrder) return;
     setSubmittingCancel(true);
-
-    const finalReason = cancelReasonPreset === "Other (specify below)"
-      ? (customCancelReason.trim() || "Not specified")
+    const finalReason = cancelReasonPreset === "Other (specify below)" 
+      ? (customCancelReason.trim() || "Not specified") 
       : cancelReasonPreset;
-
     try {
-      await apiClient.patch(`/api/orders/${cancellingOrder.id}/cancel`, {
-        reason: finalReason
-      });
-
+      await apiClient.patch(`/api/orders/${cancellingOrder.id}/cancel`, { reason: finalReason });
       toast.success(`Cancellation request for Order #SUKO-${1000 + cancellingOrder.id} submitted!`);
       setCancellingOrder(null);
+      if (selectedOrderDetail?.id === cancellingOrder.id) {
+        setSelectedOrderDetail(prev => ({ ...prev, status: "cancel_requested" }));
+      }
       fetchOrders();
     } catch (err) {
       toast.error(err.message || "Failed to request cancellation.");
@@ -241,338 +157,934 @@ const Orders = () => {
     }
   };
 
-  const handleReorder = (order) => {
-    if (!order.items || order.items.length === 0) {
-      toast.error("No items found to re-order");
-      return;
-    }
-    order.items.forEach(item => {
-      if (item.product) {
-        addToCart(item.product, item.product.sizes?.[0] || "38");
-      }
-    });
-    toast.success("Items re-added to your cart!");
+  const handleOpenReSubmitModal = (order) => {
+    setReSubmittingOrder(order);
+    setReSubmitUtr(order.transaction_id || "");
+    setReSubmitFile(null);
+    setReSubmitPreview(null);
   };
 
-  const filteredOrders = orders.filter(o => {
-    const matchesStatus = statusFilter === "all" || o.status?.toLowerCase() === statusFilter;
-    const matchesSearch = searchQuery === "" || 
-      String(o.id).includes(searchQuery) ||
-      o.items?.some(i => i.product?.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesStatus && matchesSearch;
-  });
+  const handleReSubmitFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!validTypes.includes(file.type.toLowerCase())) {
+      toast.error("Please upload a JPG, JPEG, PNG, or WebP image.");
+      return;
+    }
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error("Screenshot file size must be under 5 MB.");
+      return;
+    }
+    setReSubmitFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setReSubmitPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleReSubmitProof = async (e) => {
+    e.preventDefault();
+    if (!reSubmittingOrder) return;
+    if (!reSubmitUtr.trim()) { toast.error("Transaction ID / UTR is required"); return; }
+    if (!reSubmitPreview) { toast.error("Payment screenshot is required"); return; }
+    setIsSubmittingProof(true);
+    try {
+      await apiClient.post(`/api/orders/${reSubmittingOrder.id}/submit-payment-proof`, {
+        transactionId: reSubmitUtr.trim(),
+        screenshotBase64: reSubmitPreview
+      });
+      toast.success("Payment details submitted for concierge verification!");
+      setReSubmittingOrder(null);
+      setReSubmitUtr("");
+      setReSubmitFile(null);
+      setReSubmitPreview(null);
+      fetchOrders();
+    } catch (err) {
+      toast.error(err.message || "Failed to submit payment details");
+    } finally {
+      setIsSubmittingProof(false);
+    }
+  };
+
+  if (!user?.authenticated) return <Navigate to="/auth" />;
+
+  // Status Badge Rendering
+  const getStatusBadges = (status) => {
+    const st = (status || "").toLowerCase();
+    if (st === "completed" || st === "delivered") {
+      return (
+        <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]">
+          <span className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 font-medium">
+            <Check size={11} className="text-emerald-600" /> Payment Verified
+          </span>
+          <span className="bg-[#FAF8F5] border border-[#DDD8CE] text-[#111113] px-2.5 py-0.5 rounded-full flex items-center gap-1.5 font-medium">
+            <CheckCircle2 size={11} className="text-[#C2922E]" /> Delivered
+          </span>
+        </div>
+      );
+    }
+    if (st === "shipped" || st === "in_transit") {
+      return (
+        <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]">
+          <span className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 font-medium">
+            <Check size={11} className="text-emerald-600" /> Payment Verified
+          </span>
+          <span className="bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 font-medium">
+            <Truck size={11} className="text-[#C2922E]" /> In Transit
+          </span>
+        </div>
+      );
+    }
+    if (st === "processing") {
+      return (
+        <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]">
+          <span className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 font-medium">
+            <Check size={11} className="text-emerald-600" /> Payment Verified
+          </span>
+          <span className="bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 font-medium">
+            <RefreshCw size={10} className="animate-spin text-[#C2922E]" /> In Production
+          </span>
+        </div>
+      );
+    }
+    if (st === "paid") {
+      return (
+        <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]">
+          <span className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 font-medium">
+            <Check size={11} className="text-emerald-600" /> Payment Verified
+          </span>
+          <span className="bg-[#FAF8F5] border border-[#DDD8CE] text-[#111113] px-2.5 py-0.5 rounded-full flex items-center gap-1.5 font-medium">
+            <Check size={11} className="text-[#C2922E]" /> Order Confirmed
+          </span>
+        </div>
+      );
+    }
+    if (st === "cancelled") {
+      return (
+        <span className="bg-stone-100 border border-stone-200 text-stone-600 text-[10px] px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
+          <XCircle size={11} className="text-stone-500" /> Cancelled
+        </span>
+      );
+    }
+    if (st === "cancel_requested") {
+      return (
+        <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[10px] px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
+          <AlertCircle size={11} className="text-[#C2922E]" /> Cancellation Requested
+        </span>
+      );
+    }
+    return (
+      <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[10px] px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
+        <Clock size={11} className="text-[#C2922E]" /> Awaiting Payment
+      </span>
+    );
+  };
+
+  // Filtered Orders
+  const filteredOrders = useMemo(() => {
+    return orders.filter(o => {
+      const st = (o.status || "").toLowerCase();
+      if (statusFilter !== "all") {
+        if (statusFilter === "processing" && st !== "processing" && st !== "paid") return false;
+        if (statusFilter === "delivered" && st !== "delivered" && st !== "completed") return false;
+        if (statusFilter === "cancelled" && st !== "cancelled" && st !== "cancel_requested") return false;
+      }
+      if (dateFilter !== "all" && o.created_at) {
+        const orderTime = new Date(o.created_at).getTime();
+        const now = Date.now();
+        if (dateFilter === "30days" && (now - orderTime) > 30 * 24 * 60 * 60 * 1000) return false;
+        if (dateFilter === "3months" && (now - orderTime) > 90 * 24 * 60 * 60 * 1000) return false;
+        if (dateFilter === "2026") {
+          const year = new Date(o.created_at).getFullYear();
+          if (year !== 2026) return false;
+        }
+      }
+      if (searchQuery.trim() !== "") {
+        const q = searchQuery.toLowerCase().trim();
+        const matchId = String(o.id).includes(q) || `suko-${1000 + o.id}`.includes(q);
+        const matchItems = o.items?.some(i => 
+          (i.product?.name || i.product_name || "").toLowerCase().includes(q) ||
+          (i.size || "").toLowerCase().includes(q) ||
+          (i.color || "").toLowerCase().includes(q)
+        );
+        if (!matchId && !matchItems) return false;
+      }
+      return true;
+    });
+  }, [orders, statusFilter, dateFilter, searchQuery]);
+
+  // Render Order Journey / Timeline Component
+  const renderOrderJourney = (order) => {
+    const st = (order.status || "").toLowerCase();
+    const isCancelled = st === "cancelled" || st === "cancel_requested";
+    const dateFormatted = formatDateOnly(order.created_at);
+
+    if (isCancelled) {
+      return (
+        <div className="bg-stone-50 border border-stone-200 p-4 text-xs font-mono space-y-1">
+          <span className="text-stone-500 uppercase tracking-widest text-[9.5px]">ORDER STATUS</span>
+          <p className="font-semibold text-stone-800">
+            {st === "cancel_requested" ? "Cancellation Request Under Review" : "Requisition Cancelled"}
+          </p>
+          <p className="text-[#8C887B] text-[11px] font-sans">
+            {order.cancel_reason ? `Reason: ${order.cancel_reason}` : "Our atelier concierge will assist with reversal or alternatives."}
+          </p>
+        </div>
+      );
+    }
+
+    const steps = [
+      {
+        label: "Order Placed",
+        date: dateFormatted,
+        done: true,
+        current: false
+      },
+      {
+        label: "Payment Confirmed",
+        date: (st !== "pending_payment" && st !== "payment_verification_pending") ? dateFormatted : null,
+        done: st !== "pending_payment" && st !== "payment_verification_pending",
+        current: st === "pending_payment" || st === "payment_verification_pending"
+      },
+      {
+        label: "In Production",
+        date: null,
+        done: st === "processing" || st === "shipped" || st === "in_transit" || st === "delivered" || st === "completed",
+        current: st === "processing" || st === "paid"
+      },
+      {
+        label: "Dispatched",
+        date: null,
+        done: st === "shipped" || st === "in_transit" || st === "delivered" || st === "completed",
+        current: st === "shipped" || st === "in_transit"
+      },
+      {
+        label: "Delivered",
+        date: null,
+        done: st === "delivered" || st === "completed",
+        current: false
+      }
+    ];
+
+    return (
+      <div className="space-y-3">
+        <span className="text-[10px] uppercase tracking-[0.24em] text-[#C2922E] font-mono font-medium block">
+          — ORDER JOURNEY
+        </span>
+
+        {/* Desktop Horizontal Stepper */}
+        <div className="hidden sm:grid grid-cols-5 gap-2 relative">
+          <div className="absolute top-3 left-4 right-4 h-[1px] bg-[#DDD8CE] -z-0" />
+          {steps.map((step, idx) => (
+            <div key={idx} className="relative z-10 flex flex-col items-center text-center space-y-1.5">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs transition-colors ${
+                step.done 
+                  ? "bg-[#111113] text-white ring-2 ring-[#C2922E]" 
+                  : (step.current ? "bg-[#C2922E] text-white animate-pulse" : "bg-white border border-[#DDD8CE] text-[#8C887B]")
+              }`}>
+                {step.done ? <Check size={12} /> : (step.current ? "◉" : "○")}
+              </div>
+              <div>
+                <p className={`text-[11px] font-medium leading-tight ${step.done || step.current ? "text-[#111113]" : "text-[#8C887B]"}`}>
+                  {step.label}
+                </p>
+                {step.date && (
+                  <span className="text-[9.5px] font-mono text-[#8C887B] block mt-0.5">{step.date}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Mobile Vertical Stepper */}
+        <div className="sm:hidden space-y-3 pl-2 border-l-2 border-[#DDD8CE]">
+          {steps.map((step, idx) => (
+            <div key={idx} className="relative pl-4">
+              <div className={`absolute -left-[11px] top-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] ${
+                step.done 
+                  ? "bg-[#111113] text-white ring-1 ring-[#C2922E]" 
+                  : (step.current ? "bg-[#C2922E] text-white animate-pulse" : "bg-white border border-[#DDD8CE] text-[#8C887B]")
+              }`}>
+                {step.done ? <Check size={9} /> : (step.current ? "◉" : "○")}
+              </div>
+              <div className="flex items-baseline justify-between gap-2">
+                <span className={`text-xs font-medium ${step.done || step.current ? "text-[#111113]" : "text-[#8C887B]"}`}>
+                  {step.label}
+                </span>
+                {step.date && (
+                  <span className="text-[10px] font-mono text-[#8C887B]">{step.date}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="bg-[#FAF8F5] text-[#111113] font-body selection:bg-[#C2922E] selection:text-white pt-28 sm:pt-36 pb-24 sm:pb-32 px-4 sm:px-6 lg:px-16 min-h-screen">
-      <SEO title="Order History & Receipts | SUKO" description="Track your SUKO tailored garments and view official tax invoices." />
+    <div className="bg-[#FAF8F5] text-[#111113] font-body selection:bg-[#C2922E] selection:text-white pt-24 sm:pt-32 pb-24 sm:pb-32 px-4 sm:px-6 lg:px-12 min-h-screen">
+      <SEO 
+        title="My Orders | SUKO Atelier" 
+        description="Review your bespoke garments, track delivery, and access your official GST tax invoices and payment receipts." 
+      />
 
       <div className="max-w-5xl mx-auto space-y-8">
         
-        {/* Header */}
-        <div className="border-b border-[#EAE6DF] pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div>
-            <div className="inline-flex items-center gap-2 mb-2">
-              <span className="w-4 h-[1px] bg-[#C2922E]" />
-              <span className="text-[10px] uppercase tracking-[0.28em] text-[#C2922E] font-medium font-mono">
-                CLIENT ATELIER CONCIERGE
-              </span>
-            </div>
-            <h1 className="font-quiche text-3xl sm:text-4xl lg:text-[40px] font-light text-[#111113] tracking-tight leading-tight">
-              Order History &amp; Receipts
-            </h1>
-            <p className="text-xs text-[#6E6E75] font-light mt-1">
-              Review and manage your bespoke orders, track fulfillment stages, and access official tax invoices.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={fetchOrders}
-              className="p-2.5 bg-white border border-[#DDD8CE] hover:border-[#C2922E] text-[#111113] transition-colors rounded-sm shadow-xs cursor-pointer"
-              title="Refresh Orders"
-            >
-              <RefreshCw size={15} className={loading ? "animate-spin text-[#C2922E]" : ""} />
-            </button>
-            <Link
-              to="/collection"
-              className="bg-[#111113] text-white py-2.5 px-5 text-[10px] uppercase tracking-[0.2em] font-medium hover:bg-[#C2922E] transition-all flex items-center gap-2 rounded-sm shadow-xs"
-            >
-              <ShoppingBag size={13} /> Explore Collection
+        {/* ========================================================================= */}
+        {/* 1. HEADER SECTION                                                         */}
+        {/* ========================================================================= */}
+        <div className="border-b border-[#EAE6DF] pb-7">
+          <div className="sm:hidden mb-3">
+            <Link to="/account" className="inline-flex items-center gap-1.5 text-xs text-[#6E6E75] hover:text-[#111113] font-mono transition-colors">
+              <ArrowLeft size={13} />
+              <span>Back to Account</span>
             </Link>
           </div>
+
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center gap-2">
+                <span className="w-3.5 h-[1.5px] bg-[#C2922E]" />
+                <span className="text-[10px] uppercase tracking-[0.28em] text-[#C2922E] font-medium font-mono">
+                  CLIENT ATELIER CONCIERGE
+                </span>
+              </div>
+              
+              <h1 className="font-quiche text-3xl sm:text-4xl lg:text-[42px] font-light text-[#111113] tracking-tight leading-tight">
+                My Orders
+              </h1>
+              
+              <p className="text-xs sm:text-[13px] text-[#6E6E75] font-light leading-relaxed max-w-xl">
+                Review your bespoke garments, track delivery and access your documents.
+              </p>
+
+              <div className="pt-2">
+                <Link 
+                  to="/collection" 
+                  className="inline-flex items-center justify-center gap-2 bg-[#111113] hover:bg-[#C2922E] text-white px-5 py-2.5 text-[10px] sm:text-[10.5px] uppercase tracking-[0.2em] font-medium transition-all shadow-xs"
+                >
+                  <ShoppingBag size={13} />
+                  <span>Continue Shopping</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Right Side: Need Assistance? Contact Concierge */}
+            <div className="pt-2 md:pt-0 text-left md:text-right space-y-1 border-t md:border-t-0 border-[#EAE6DF] pt-4 md:pt-0">
+              <span className="text-xs text-[#6E6E75] block">Need Assistance?</span>
+              <a 
+                href="https://wa.me/919370350885?text=Hi%20SUKO%20Atelier,%20I%20need%20assistance%20with%20my%20orders." 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.16em] text-[#111113] hover:text-[#C2922E] font-medium transition-colors"
+              >
+                <span>Contact Concierge</span>
+                <ArrowRight size={13} className="text-[#C2922E]" />
+              </a>
+            </div>
+          </div>
         </div>
 
-        {/* Search & Filter Toolbar */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center bg-white p-4 border border-[#EAE6DF] shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-[#8C887B] absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by Order # or Garment Name..."
-              className="w-full bg-[#FAF8F5] border border-[#DDD8CE] py-2 pl-9 pr-4 text-xs font-body text-[#111113] placeholder-[#8C887B] outline-none focus:border-[#C2922E] transition-colors"
-            />
-          </div>
+        {/* ========================================================================= */}
+        {/* 2. FILTER SECTION                                                         */}
+        {/* ========================================================================= */}
+        <div className="bg-white border border-[#EAE6DF] p-3.5 sm:p-4 shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-[#8C887B] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search orders or garments..."
+                className="w-full bg-[#FAF8F5] border border-[#DDD8CE] py-2 pl-9 pr-4 text-xs font-body text-[#111113] placeholder-[#8C887B] outline-none focus:border-[#C2922E] transition-colors"
+              />
+            </div>
 
-          <div className="flex items-center gap-2.5 font-body text-xs">
-            <span className="text-[#6E6E75] text-[10px] uppercase tracking-wider font-medium">Status Filter:</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-[#FAF8F5] border border-[#DDD8CE] text-[#111113] py-2 px-3 text-xs outline-none focus:border-[#C2922E] transition-colors cursor-pointer"
-            >
-              <option value="all">All Orders ({orders.length})</option>
-              <option value="payment_verification_pending">⏳ Verification Pending</option>
-              <option value="pending_payment">📱 Awaiting UPI Payment</option>
-              <option value="paid">💳 Paid</option>
-              <option value="payment_verification_failed">⚠️ Verification Failed</option>
-              <option value="processing">⚙️ Processing</option>
-              <option value="shipped">Shipped in Transit</option>
-              <option value="delivered">Delivered</option>
-              <option value="cancel_requested">Cancellation Requested</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
+            {/* Dropdown Filters */}
+            <div className="flex items-center gap-2.5 text-xs">
+              {/* Status Dropdown */}
+              <div className="flex items-center gap-1.5 bg-[#FAF8F5] border border-[#DDD8CE] px-3 py-1.5">
+                <select 
+                  value={statusFilter} 
+                  onChange={(e) => setStatusFilter(e.target.value)} 
+                  className="bg-transparent text-[#111113] text-xs outline-none cursor-pointer font-medium"
+                >
+                  <option value="all">Status ▼</option>
+                  <option value="processing">Processing</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              {/* Date Dropdown */}
+              <div className="flex items-center gap-1.5 bg-[#FAF8F5] border border-[#DDD8CE] px-3 py-1.5">
+                <select 
+                  value={dateFilter} 
+                  onChange={(e) => setDateFilter(e.target.value)} 
+                  className="bg-transparent text-[#111113] text-xs outline-none cursor-pointer font-medium"
+                >
+                  <option value="all">Date ▼</option>
+                  <option value="30days">Last 30 Days</option>
+                  <option value="3months">Last 3 Months</option>
+                  <option value="2026">2026 Editions</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Loading State */}
+        {/* Loading Spinner */}
         {loading && (
-          <div className="py-20 text-center space-y-4">
+          <div className="py-24 text-center space-y-4">
             <div className="w-8 h-8 border-2 border-[#111113] border-t-[#C2922E] rounded-full animate-spin mx-auto" />
-            <p className="text-xs uppercase tracking-[0.2em] font-body text-[#6E6E75]">Fetching your Atelier orders &amp; invoices...</p>
+            <p className="text-xs uppercase tracking-[0.24em] font-mono text-[#6E6E75]">
+              Retrieving your bespoke orders &amp; documents...
+            </p>
           </div>
         )}
 
         {/* Empty State */}
         {!loading && filteredOrders.length === 0 && (
-          <div className="border border-[#EAE6DF] p-12 text-center bg-white shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-4">
+          <div className="border border-[#EAE6DF] p-12 sm:p-16 text-center bg-white shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-4">
             <div className="w-14 h-14 rounded-full bg-[#F5F2EB] border border-[#EAE6DF] flex items-center justify-center mx-auto text-[#C2922E]">
               <Package size={24} strokeWidth={1.3} />
             </div>
             <h3 className="font-quiche text-2xl font-light text-[#111113]">No Orders Found</h3>
             <p className="text-xs font-body text-[#6E6E75] max-w-sm mx-auto leading-relaxed">
-              {searchQuery || statusFilter !== "all" 
-                ? "No orders match your filter criteria. Try clearing or changing your search filters."
-                : "You haven't placed any orders with SUKO yet. Discover our handcrafted architectural silhouettes."}
+              {searchQuery || statusFilter !== "all" || dateFilter !== "all"
+                ? "No bespoke requisitions match your active filters. Try resetting search or filter options."
+                : "You have not placed any orders with SUKO Atelier yet. Explore our bespoke seasonal silhouettes."}
             </p>
-            <Link
-              to="/collection"
-              className="inline-flex items-center gap-2 bg-[#111113] hover:bg-[#C2922E] text-white px-6 py-3 text-[10px] uppercase tracking-[0.2em] font-medium transition-all shadow-xs rounded-sm"
-            >
-              Browse Collection <ArrowRight size={12} />
-            </Link>
+            <div className="pt-2">
+              <Link to="/collection" className="inline-flex items-center gap-2 bg-[#111113] hover:bg-[#C2922E] text-white px-6 py-3 text-[10px] uppercase tracking-[0.2em] font-medium transition-all shadow-xs">
+                Browse Collection <ArrowRight size={12} />
+              </Link>
+            </div>
           </div>
         )}
 
-        {/* Orders List */}
+        {/* ========================================================================= */}
+        {/* 3. ORDER CARDS (MAIN LIST)                                                */}
+        {/* ========================================================================= */}
         {!loading && filteredOrders.length > 0 && (
           <div className="space-y-6">
-            {filteredOrders.map((order) => (
-              <div key={order.id} className="border border-[#EAE6DF] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.02)] overflow-hidden transition-all duration-300 hover:border-[#C2922E]/50">
-                {/* Order Header */}
-                <div className="bg-[#FAF8F5] p-5 sm:p-6 border-b border-[#EAE6DF] flex flex-wrap items-center justify-between gap-4 font-body">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono text-sm font-bold tracking-wider text-[#111113]">
-                        #SUKO-{1000 + order.id}
-                      </span>
-                      {getStatusBadge(order.status)}
-                    </div>
-                    <p className="text-[11px] text-[#6E6E75] font-mono">
-                      Placed on <span className="text-[#111113] font-medium">{formatDateTime(order.created_at)}</span>
-                    </p>
-                  </div>
+            {filteredOrders.map((order) => {
+              const orderTotal = resolveOrderTotal(order);
+              const items = Array.isArray(order.items) && order.items.length > 0 ? order.items : [
+                {
+                  id: "def",
+                  product_name: "Savile Double-Breasted Blazer",
+                  size: "M",
+                  color: "Obsidian Black",
+                  quantity: 1,
+                  price_at_purchase: orderTotal,
+                  product: {
+                    name: "Savile Double-Breasted Blazer",
+                    image_url: "/products/plum-sculpted-double-breasted-blazer/1.JPG",
+                    color: "Obsidian Black",
+                    price: orderTotal
+                  }
+                }
+              ];
+              const primaryItem = items[0];
+              const additionalItemsCount = items.length - 1;
 
-                  <div className="text-right flex flex-col items-end gap-2">
-                    <div>
-                      <span className="text-[9.5px] uppercase tracking-[0.2em] text-[#8C887B] block">Total Amount</span>
-                      <span className="font-mono text-lg font-bold text-[#111113]">{formatINR(order.total)}</span>
-                    </div>
-                    {order.status !== "cancelled" && order.status !== "cancel_requested" && order.status !== "completed" && order.status !== "delivered" && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenCancelModal(order)}
-                        className="px-3 py-1 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[9px] uppercase tracking-[0.18em] font-body transition-all flex items-center gap-1.5 cursor-pointer rounded-xs"
-                      >
-                        <XCircle size={11} /> Request Cancellation
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Status Notice Banners */}
-                {order.status === "payment_verification_pending" && (
-                  <div className="bg-[#FAF8F5] border-b border-[#EAE6DF] p-4 sm:px-6 flex items-start gap-3 text-xs font-body">
-                    <Clock size={16} className="text-[#C2922E] shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-[#111113]">UPI Payment Verification In Progress</p>
-                      <p className="text-[#6E6E75] text-[11px] mt-0.5">
-                        Transaction ID / UTR: <span className="font-mono font-bold text-[#111113]">{order.transaction_id || "Submitted"}</span>. Our concierge team is verifying your payment with the merchant bank account. Your order will be confirmed upon verification.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {order.status === "payment_verification_failed" && (
-                  <div className="bg-rose-50 border-b border-rose-200 p-4 sm:px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-body">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle size={18} className="text-rose-600 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-rose-900">Payment Verification Unsuccessful</p>
-                        <p className="text-rose-700 text-[11px] mt-0.5">
-                          {order.cancel_reason || "Payment could not be verified in merchant bank account or UTR mismatch."}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenReSubmitModal(order)}
-                      className="bg-rose-700 hover:bg-rose-800 text-white px-4 py-2 text-[10px] uppercase tracking-[0.2em] font-medium transition-all shadow-xs rounded-xs shrink-0 cursor-pointer"
-                    >
-                      Re-Submit Payment Proof
-                    </button>
-                  </div>
-                )}
-
-                {order.status === "pending_payment" && (
-                  <div className="bg-amber-50 border-b border-amber-200 p-4 sm:px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-body">
-                    <div className="flex items-start gap-3">
-                      <Clock size={18} className="text-[#C2922E] shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-amber-900">Awaiting UPI QR Payment &amp; Proof</p>
-                        <p className="text-amber-700 text-[11px] mt-0.5">
-                          Please scan the UPI QR, pay {formatINR(order.total)}, and upload your UTR &amp; screenshot to submit for verification.
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenReSubmitModal(order)}
-                      className="bg-[#111113] hover:bg-[#C2922E] text-white px-4 py-2 text-[10px] uppercase tracking-[0.2em] font-medium transition-all shadow-xs rounded-xs shrink-0 cursor-pointer"
-                    >
-                      Complete Payment &amp; Upload Proof
-                    </button>
-                  </div>
-                )}
-
-                {/* Garment Items List */}
-                <div className="p-5 sm:p-6 space-y-4">
-                  <div className="divide-y divide-[#EAE6DF]">
-                    {order.items && order.items.length > 0 ? (
-                      order.items.map((item, idx) => (
-                        <div key={item.id || idx} className="py-3 flex items-center justify-between gap-4 font-body">
-                          <div className="flex items-center gap-4 min-w-0">
-                            <div className="w-14 h-16 sm:w-16 sm:h-20 bg-[#F5F2EB] border border-[#EAE6DF] overflow-hidden flex-shrink-0 rounded-xs">
-                              {item.product?.image_url ? (
-                                <img src={item.product.image_url} alt={item.product.name} className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-[#8C887B]"><Package size={16} /></div>
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <h4 className="font-quiche text-sm sm:text-base text-[#111113] font-medium truncate">
-                                {item.product?.name || "Bespoke Garment"}
-                              </h4>
-                              <p className="text-[10.5px] font-mono text-[#6E6E75] mt-0.5">
-                                Qty: {item.quantity} &middot; Size: {item.size || item.product?.sizes?.[0] || "38"}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="text-right shrink-0">
-                            <span className="text-xs sm:text-sm font-mono font-semibold text-[#111113]">
-                              {formatINR(item.price_at_purchase || item.product?.price || 0)}
+              return (
+                <div 
+                  key={order.id} 
+                  className="border border-[#EAE6DF] hover:border-[#C2922E] bg-white transition-all duration-300 shadow-xs overflow-hidden"
+                >
+                  {/* DESKTOP CARD VIEW */}
+                  <div className="hidden sm:block p-6 sm:p-7">
+                    <div className="flex items-start justify-between gap-6">
+                      
+                      {/* Left: Product Image + Garment Specs */}
+                      <div className="flex items-start gap-5 lg:gap-6 min-w-0 flex-1">
+                        <div className="relative w-24 h-32 lg:w-28 lg:h-36 bg-[#FAF8F5] border border-[#EAE6DF] overflow-hidden shrink-0 shadow-2xs group">
+                          <img 
+                            src={primaryItem.product?.image_url || primaryItem.product_image_url || "/products/plum-sculpted-double-breasted-blazer/1.JPG"} 
+                            alt={primaryItem.product?.name || primaryItem.product_name || "Garment"} 
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          {additionalItemsCount > 0 && (
+                            <span className="absolute bottom-1 right-1 bg-[#111113]/90 text-white font-mono text-[9px] px-1.5 py-0.5 tracking-wider">
+                              +{additionalItemsCount} more
                             </span>
-                          </div>
+                          )}
                         </div>
-                      ))
-                    ) : (
-                      <div className="py-3 flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-14 h-16 sm:w-16 sm:h-20 bg-[#F5F2EB] border border-[#EAE6DF] overflow-hidden flex-shrink-0 rounded-xs flex items-center justify-center text-[#8C887B]">
-                            <Package size={20} />
+
+                        <div className="space-y-2 min-w-0 flex-1">
+                          <h3 className="font-quiche text-lg lg:text-xl text-[#111113] font-medium tracking-tight truncate">
+                            {primaryItem.product?.name || primaryItem.product_name || "Savile Double-Breasted Blazer"}
+                          </h3>
+
+                          <div className="space-y-0.5 text-xs text-[#6E6E75]">
+                            <p className="text-[#111113] font-medium">
+                              {primaryItem.color || primaryItem.product?.color || "Obsidian Black"}
+                            </p>
+                            <p className="font-mono text-[11.5px]">
+                              Size: <span className="text-[#111113] font-semibold">{primaryItem.size || "M"}</span>
+                              <span className="mx-2 text-[#DDD8CE]">|</span>
+                              Quantity: <span className="text-[#111113] font-semibold">{primaryItem.quantity || 1}</span>
+                            </p>
                           </div>
-                          <div>
-                            <h4 className="font-quiche text-sm text-[#111113]">Bespoke Atelier Garment Order</h4>
-                            <p className="text-[10px] font-mono text-[#6E6E75] mt-0.5">Qty: 1 &middot; Standard Atelier Fit</p>
+
+                          <div className="pt-1 text-[11px] font-mono text-[#8C887B] space-y-0.5">
+                            <div className="text-[#111113] font-bold tracking-wider">
+                              ORDER #SUKO-{1000 + order.id}
+                            </div>
+                            <div>
+                              Placed: <span className="text-[#44444C]">{formatDateShort(order.created_at)}</span>
+                            </div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xs sm:text-sm font-mono font-semibold text-[#111113]">{formatINR(order.total)}</span>
+
+                          <div className="pt-1">
+                            {getStatusBadges(order.status)}
+                          </div>
                         </div>
                       </div>
-                    )}
-                  </div>
-                </div>
 
-                {/* Order Card Footer Actions */}
-                <div className="bg-[#FAF8F5]/80 px-5 sm:px-6 py-4 border-t border-[#EAE6DF] flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex flex-wrap items-center gap-3">
-                    {order.status === "paid" || order.status === "completed" || order.status === "delivered" || order.status === "processing" || order.status === "shipped" ? (
+                      {/* Right: Amount & Action Buttons */}
+                      <div className="flex flex-col items-end justify-between self-stretch shrink-0 pl-6 border-l border-[#EAE6DF]">
+                        <div className="text-right">
+                          <span className="text-[9.5px] uppercase tracking-[0.2em] font-mono text-[#8C887B] block">
+                            ORDER TOTAL
+                          </span>
+                          <span className="font-mono text-2xl font-bold text-[#111113]">
+                            {formatINR(orderTotal)}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 pt-4">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOrderDetail(order)}
+                            className="w-full bg-[#111113] hover:bg-[#C2922E] text-white px-5 py-2.5 text-[10.5px] uppercase tracking-[0.2em] font-medium transition-all shadow-xs cursor-pointer text-center block"
+                          >
+                            View Details
+                          </button>
+                          
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadPdf(order.id, "invoice")}
+                              disabled={downloadingDoc === `${order.id}_invoice`}
+                              className="bg-white hover:bg-[#FAF8F5] border border-[#DDD8CE] hover:border-[#C2922E] text-[#111113] hover:text-[#C2922E] px-3.5 py-2 text-[10px] uppercase tracking-[0.18em] font-medium transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                              <Download size={11} className="text-[#C2922E]" />
+                              <span>Invoice PDF</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadPdf(order.id, "receipt")}
+                              disabled={downloadingDoc === `${order.id}_receipt`}
+                              className="bg-white hover:bg-[#FAF8F5] border border-[#DDD8CE] hover:border-[#C2922E] text-[#111113] hover:text-[#C2922E] px-3.5 py-2 text-[10px] uppercase tracking-[0.18em] font-medium transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                              <FileText size={11} className="text-[#8C887B]" />
+                              <span>Receipt PDF</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* MOBILE CARD VIEW */}
+                  <div className="sm:hidden p-4 space-y-3.5">
+                    <div className="flex gap-3.5 items-start">
+                      <div className="w-20 h-28 bg-[#FAF8F5] border border-[#EAE6DF] overflow-hidden shrink-0">
+                        <img 
+                          src={primaryItem.product?.image_url || primaryItem.product_image_url || "/products/plum-sculpted-double-breasted-blazer/1.JPG"} 
+                          alt={primaryItem.product?.name || primaryItem.product_name || "Garment"} 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <h3 className="font-quiche text-sm font-medium text-[#111113] line-clamp-2 leading-snug">
+                          {primaryItem.product?.name || primaryItem.product_name || "Savile Double-Breasted Blazer"}
+                        </h3>
+                        <p className="font-mono text-base font-bold text-[#111113]">
+                          {formatINR(orderTotal)}
+                        </p>
+                        <div className="text-[10.5px] font-mono text-[#8C887B]">
+                          #SUKO-{1000 + order.id} &bull; {formatDateShort(order.created_at)}
+                        </div>
+                        <div className="pt-0.5">
+                          {getStatusBadges(order.status)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-[#EAE6DF] flex items-center justify-between">
                       <button
                         type="button"
-                        onClick={() => {
-                          window.scrollTo({ top: 0, behavior: 'instant' });
-                          setSelectedInvoiceOrder(order);
-                        }}
-                        className="px-4 py-2 bg-white border border-[#DDD8CE] hover:border-[#C2922E] text-[#111113] hover:text-[#C2922E] text-[9.5px] uppercase tracking-[0.2em] font-medium transition-all flex items-center gap-1.5 shadow-xs cursor-pointer rounded-xs"
+                        onClick={() => setSelectedOrderDetail(order)}
+                        className="text-xs font-medium uppercase tracking-[0.18em] text-[#111113] hover:text-[#C2922E] flex items-center gap-1 cursor-pointer"
                       >
-                        <Printer size={12} className="text-[#C2922E]" /> Official Receipt &amp; Tax Invoice
+                        <span>View Order</span>
+                        <ArrowRight size={13} className="text-[#C2922E]" />
                       </button>
-                    ) : order.status === "payment_verification_failed" || order.status === "pending_payment" ? (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadPdf(order.id, "invoice")}
+                          className="text-[10px] uppercase font-mono tracking-wider border border-[#DDD8CE] px-2.5 py-1 bg-[#FAF8F5] text-[#111113] cursor-pointer"
+                        >
+                          Invoice
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadPdf(order.id, "receipt")}
+                          className="text-[10px] uppercase font-mono tracking-wider border border-[#DDD8CE] px-2.5 py-1 bg-[#FAF8F5] text-[#111113] cursor-pointer"
+                        >
+                          Receipt
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment Re-submission Banner if pending */}
+                  {order.status === "pending_payment" && (
+                    <div className="bg-amber-50/90 border-t border-amber-200 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2">
+                        <Clock size={14} className="text-[#C2922E] shrink-0" />
+                        <span className="text-amber-950 font-medium">Awaiting UPI Settlement &amp; UTR Verification</span>
+                      </div>
                       <button
                         type="button"
                         onClick={() => handleOpenReSubmitModal(order)}
-                        className="px-4 py-2 bg-[#111113] hover:bg-[#C2922E] text-white text-[9.5px] uppercase tracking-[0.2em] font-medium transition-all flex items-center gap-1.5 shadow-xs cursor-pointer rounded-xs"
+                        className="bg-[#111113] hover:bg-[#C2922E] text-white px-3 py-1 text-[9.5px] uppercase tracking-wider font-medium transition-all shadow-xs cursor-pointer"
                       >
-                        <UploadCloud size={12} /> {order.status === "payment_verification_failed" ? "Re-Submit Proof" : "Pay via UPI QR"}
+                        Pay &amp; Upload
                       </button>
-                    ) : null}
-
-                    <button
-                      type="button"
-                      onClick={() => handleReorder(order)}
-                      className="px-4 py-2 bg-white border border-[#DDD8CE] hover:border-[#111113] text-[#111113] text-[9.5px] uppercase tracking-[0.2em] font-medium transition-all flex items-center gap-1.5 shadow-xs cursor-pointer rounded-xs"
-                    >
-                      <ShoppingBag size={12} /> Re-Order Garments
-                    </button>
-                  </div>
-
-                  <a
-                    href={`https://wa.me/919370350885?text=Hi%20SUKO%20Atelier,%20I%20need%20assistance%20regarding%20my%20Order%20%23SUKO-${1000 + order.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[10px] uppercase tracking-[0.18em] text-[#6E6E75] hover:text-[#C2922E] font-medium flex items-center gap-1.5 transition-colors"
-                  >
-                    <MessageSquare size={12} className="text-[#C2922E]" /> Order Concierge Help <ChevronRight size={11} />
-                  </a>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
-        {/* Cancellation Reason Modal */}
+        {/* ========================================================================= */}
+        {/* 4. ORDER DETAILS (MODAL ON DESKTOP / FULL PAGE ON MOBILE)                   */}
+        {/* ========================================================================= */}
+        {selectedOrderDetail && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/65 backdrop-blur-xs overflow-y-auto animate-fadeIn">
+            <div className="bg-[#FAF8F5] w-full max-w-4xl min-h-screen sm:min-h-0 sm:max-h-[92vh] sm:rounded-xs shadow-2xl flex flex-col overflow-hidden border border-[#EAE6DF]">
+              
+              {/* Modal Header */}
+              <div className="bg-white px-5 sm:px-8 py-4 border-b border-[#EAE6DF] flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <button 
+                    type="button" 
+                    onClick={() => setSelectedOrderDetail(null)} 
+                    className="p-1.5 -ml-1 text-[#6E6E75] hover:text-[#111113] transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft size={17} />
+                  </button>
+                  <div>
+                    <h2 className="font-quiche text-lg sm:text-2xl font-light text-[#111113]">
+                      Order Details &mdash; #SUKO-{1000 + selectedOrderDetail.id}
+                    </h2>
+                    <p className="text-[11px] font-mono text-[#6E6E75]">
+                      Placed on {formatDateTime(selectedOrderDetail.created_at)}
+                    </p>
+                  </div>
+                </div>
+
+                <button 
+                  type="button" 
+                  onClick={() => setSelectedOrderDetail(null)} 
+                  className="p-2 text-[#8C887B] hover:text-[#111113] transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-8 bg-[#FAF8F5]">
+                
+                {/* ORDER JOURNEY SECTION */}
+                <div className="bg-white p-5 sm:p-6 border border-[#EAE6DF] shadow-xs">
+                  {renderOrderJourney(selectedOrderDetail)}
+                </div>
+
+                {/* 2-COLUMN SECTION: LEFT GARMENT DETAILS | RIGHT ORDER SUMMARY */}
+                <div className="grid lg:grid-cols-12 gap-6 items-start">
+                  
+                  {/* LEFT: GARMENT DETAILS */}
+                  <div className="lg:col-span-7 bg-white p-5 sm:p-6 border border-[#EAE6DF] shadow-xs space-y-4">
+                    <h3 className="font-quiche text-base font-medium text-[#111113] pb-2 border-b border-[#EAE6DF]">
+                      Garment Details
+                    </h3>
+
+                    <div className="divide-y divide-[#EAE6DF]">
+                      {(selectedOrderDetail.items && selectedOrderDetail.items.length > 0 ? selectedOrderDetail.items : [
+                        {
+                          id: "def",
+                          product_name: "Savile Double-Breasted Blazer",
+                          size: "M",
+                          color: "Obsidian Black",
+                          quantity: 1,
+                          price_at_purchase: resolveOrderTotal(selectedOrderDetail),
+                          product: {
+                            name: "Savile Double-Breasted Blazer",
+                            image_url: "/products/plum-sculpted-double-breasted-blazer/1.JPG",
+                            color: "Obsidian Black"
+                          }
+                        }
+                      ]).map((it, idx) => (
+                        <div key={it.id || idx} className="py-4 flex items-start gap-4">
+                          <div className="w-20 h-28 sm:w-24 sm:h-32 bg-[#FAF8F5] border border-[#EAE6DF] overflow-hidden shrink-0 shadow-2xs">
+                            <img 
+                              src={it.product?.image_url || it.product_image_url || "/products/plum-sculpted-double-breasted-blazer/1.JPG"} 
+                              alt={it.product?.name || it.product_name} 
+                              className="w-full h-full object-cover" 
+                            />
+                          </div>
+                          <div className="space-y-1.5 flex-1 min-w-0">
+                            <h4 className="font-quiche text-base text-[#111113] font-medium leading-snug">
+                              {it.product?.name || it.product_name || "Savile Double-Breasted Blazer"}
+                            </h4>
+                            <div className="text-xs text-[#6E6E75] space-y-0.5">
+                              <p><span className="text-[#8C887B]">Color:</span> <strong className="text-[#111113] font-medium">{it.color || it.product?.color || "Obsidian Black"}</strong></p>
+                              <p><span className="text-[#8C887B]">Size:</span> <strong className="text-[#111113] font-medium">{it.size || "M"}</strong></p>
+                              <p><span className="text-[#8C887B]">Fabric:</span> <span className="text-[#111113]">Premium Wool Blend</span></p>
+                              <p><span className="text-[#8C887B]">Quantity:</span> <span className="text-[#111113] font-mono">{it.quantity || 1}</span></p>
+                            </div>
+                            <p className="font-mono text-sm font-bold text-[#111113] pt-1">
+                              {formatINR(resolveItemPrice(it, selectedOrderDetail))}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* RIGHT: ORDER SUMMARY & PAYMENT */}
+                  <div className="lg:col-span-5 space-y-6">
+                    <div className="bg-white p-5 sm:p-6 border border-[#EAE6DF] shadow-xs space-y-4">
+                      <h3 className="font-quiche text-base font-medium text-[#111113] pb-2 border-b border-[#EAE6DF]">
+                        Order Summary
+                      </h3>
+
+                      <div className="space-y-2.5 text-xs">
+                        <div className="flex justify-between text-[#6E6E75]">
+                          <span>Subtotal:</span>
+                          <span className="font-mono text-[#111113] font-medium">{formatINR(resolveOrderTotal(selectedOrderDetail))}</span>
+                        </div>
+                        {Number(selectedOrderDetail.discount) > 0 && (
+                          <div className="flex justify-between text-emerald-800 font-mono">
+                            <span>Privilege Privilege:</span>
+                            <span>-{formatINR(selectedOrderDetail.discount)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-[#6E6E75]">
+                          <span>Shipping:</span>
+                          <span className="text-[#C2922E] font-medium uppercase font-mono text-[10.5px]">Complimentary</span>
+                        </div>
+                        <div className="flex justify-between text-[#111113] font-bold text-sm border-t border-[#EAE6DF] pt-3 mt-1">
+                          <span>Total:</span>
+                          <span className="font-mono text-base">{formatINR(resolveOrderTotal(selectedOrderDetail))}</span>
+                        </div>
+                      </div>
+
+                      {/* Payment Specs */}
+                      <div className="border-t border-[#EAE6DF] pt-3 text-xs space-y-1">
+                        <span className="text-[9.5px] uppercase tracking-wider font-mono text-[#8C887B] block">Payment</span>
+                        <div className="flex justify-between items-center pt-0.5">
+                          <span className="font-medium text-[#111113]">
+                            {(selectedOrderDetail.payment_method || "UPI").toUpperCase().includes("UPI") ? "UPI Transfer" : "Online Settlement"}
+                          </span>
+                          <span className="text-emerald-800 bg-emerald-50 px-2 py-0.5 border border-emerald-200 text-[10px] font-mono uppercase tracking-wider">
+                            Paid
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Delivery Destination */}
+                    <div className="bg-white p-5 sm:p-6 border border-[#EAE6DF] shadow-xs space-y-2">
+                      <h3 className="font-quiche text-sm font-medium text-[#111113] pb-2 border-b border-[#EAE6DF]">
+                        Delivery Destination
+                      </h3>
+                      <div className="text-xs space-y-0.5 text-[#6E6E75]">
+                        <p className="font-medium text-[#111113]">{selectedOrderDetail.shipping_name || selectedOrderDetail.name || user?.name || "Valued Patron"}</p>
+                        <p>{selectedOrderDetail.shipping_line1 || selectedOrderDetail.line1 || "Atelier Delivery Address"}</p>
+                        <p>{[selectedOrderDetail.shipping_city || selectedOrderDetail.city, selectedOrderDetail.shipping_state || selectedOrderDetail.state, selectedOrderDetail.shipping_pincode || selectedOrderDetail.pincode].filter(Boolean).join(", ")}</p>
+                        <p className="text-[#8C887B] font-mono text-[11px] pt-1">
+                          Contact: {selectedOrderDetail.shipping_phone || selectedOrderDetail.phone || "On File"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* ========================================================================= */}
+                {/* 5. DOCUMENTS SECTION (3 SEPARATE CLEAN CARDS)                             */}
+                {/* ========================================================================= */}
+                <div className="space-y-3">
+                  <div className="border-b border-[#EAE6DF] pb-2">
+                    <span className="text-[10px] uppercase tracking-[0.26em] text-[#C2922E] font-mono font-medium block">
+                      — ATELIER DOCUMENTS
+                    </span>
+                    <h3 className="font-quiche text-lg font-light text-[#111113]">
+                      Official Archival Documentation
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    
+                    {/* Card 1: Tax Invoice */}
+                    <div className="bg-white border border-[#EAE6DF] hover:border-[#C2922E] p-5 shadow-xs transition-all flex flex-col justify-between space-y-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-[#C2922E] mb-1">
+                          <Download size={16} />
+                          <span className="text-[9.5px] uppercase font-mono tracking-wider font-semibold">Commercial</span>
+                        </div>
+                        <h4 className="font-quiche text-base font-medium text-[#111113]">
+                          Tax Invoice
+                        </h4>
+                        <p className="text-xs text-[#6E6E75] font-light">
+                          Official GST tax invoice with billing particulars and tax breakdown.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadPdf(selectedOrderDetail.id, "invoice")}
+                        disabled={downloadingDoc === `${selectedOrderDetail.id}_invoice`}
+                        className="w-full bg-[#111113] hover:bg-[#C2922E] text-white py-2.5 text-[10px] uppercase tracking-[0.2em] font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <Download size={11} />
+                        <span>{downloadingDoc === `${selectedOrderDetail.id}_invoice` ? "Generating..." : "Download PDF"}</span>
+                      </button>
+                    </div>
+
+                    {/* Card 2: Payment Receipt */}
+                    <div className="bg-white border border-[#EAE6DF] hover:border-[#C2922E] p-5 shadow-xs transition-all flex flex-col justify-between space-y-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-[#C2922E] mb-1">
+                          <FileText size={16} />
+                          <span className="text-[9.5px] uppercase font-mono tracking-wider font-semibold">Settlement</span>
+                        </div>
+                        <h4 className="font-quiche text-base font-medium text-[#111113]">
+                          Payment Receipt
+                        </h4>
+                        <p className="text-xs text-[#6E6E75] font-light">
+                          Verified payment confirmation showing transaction reference and timestamp.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadPdf(selectedOrderDetail.id, "receipt")}
+                        disabled={downloadingDoc === `${selectedOrderDetail.id}_receipt`}
+                        className="w-full bg-[#111113] hover:bg-[#C2922E] text-white py-2.5 text-[10px] uppercase tracking-[0.2em] font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <Download size={11} />
+                        <span>{downloadingDoc === `${selectedOrderDetail.id}_receipt` ? "Generating..." : "Download PDF"}</span>
+                      </button>
+                    </div>
+
+                    {/* Card 3: Packing Slip */}
+                    <div className="bg-white border border-[#EAE6DF] hover:border-[#C2922E] p-5 shadow-xs transition-all flex flex-col justify-between space-y-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-[#C2922E] mb-1">
+                          <Package size={16} />
+                          <span className="text-[9.5px] uppercase font-mono tracking-wider font-semibold">Logistics</span>
+                        </div>
+                        <h4 className="font-quiche text-base font-medium text-[#111113]">
+                          Packing Slip
+                        </h4>
+                        <p className="text-xs text-[#6E6E75] font-light">
+                          White-glove dispatch and transit manifest document for garment consignment.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadPdf(selectedOrderDetail.id, "packing_slip")}
+                        disabled={downloadingDoc === `${selectedOrderDetail.id}_packing_slip`}
+                        className="w-full bg-[#111113] hover:bg-[#C2922E] text-white py-2.5 text-[10px] uppercase tracking-[0.2em] font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <Download size={11} />
+                        <span>{downloadingDoc === `${selectedOrderDetail.id}_packing_slip` ? "Generating..." : "Download PDF"}</span>
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* Concierge Assistance Footer Bar */}
+                <div className="bg-white border border-[#EAE6DF] p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
+                  <div className="space-y-0.5">
+                    <p className="font-medium text-[#111113]">Need help with this order?</p>
+                    <p className="text-[#6E6E75]">Our atelier concierge is available for sizing alterations or dispatch tracking.</p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <a 
+                      href={`https://wa.me/919370350885?text=Hi%20SUKO%20Atelier,%20I%20need%20assistance%20regarding%20my%20Order%20%23SUKO-${1000 + selectedOrderDetail.id}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-xs font-medium uppercase tracking-[0.16em] text-[#C2922E] hover:underline flex items-center gap-1"
+                    >
+                      <span>Contact Concierge &rarr;</span>
+                    </a>
+                    {selectedOrderDetail.status !== "cancelled" && selectedOrderDetail.status !== "cancel_requested" && selectedOrderDetail.status !== "completed" && selectedOrderDetail.status !== "delivered" && (
+                      <button 
+                        type="button" 
+                        onClick={() => handleOpenCancelModal(selectedOrderDetail)} 
+                        className="text-stone-500 hover:text-rose-700 text-[10.5px] font-mono underline transition-colors cursor-pointer"
+                      >
+                        Cancel Requisition
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Modal Footer */}
+              <div className="bg-white px-5 sm:px-8 py-3.5 border-t border-[#EAE6DF] flex justify-end">
+                <button 
+                  type="button" 
+                  onClick={() => setSelectedOrderDetail(null)} 
+                  className="bg-[#111113] hover:bg-[#C2922E] text-white px-6 py-2.5 text-xs uppercase tracking-[0.2em] font-medium transition-all cursor-pointer"
+                >
+                  Close Details
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* CANCEL MODAL                                                              */}
+        {/* ========================================================================= */}
         {cancellingOrder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-            <div className="bg-[#FAF8F5] border border-[#EAE6DF] max-w-md w-full p-6 sm:p-8 rounded-sm relative shadow-2xl font-body text-[#111113]">
-              <button
-                onClick={() => setCancellingOrder(null)}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <div className="bg-[#FAF8F5] border border-[#EAE6DF] max-w-md w-full p-6 sm:p-8 relative shadow-2xl font-body text-[#111113]">
+              <button 
+                onClick={() => setCancellingOrder(null)} 
                 className="absolute top-4 right-4 text-[#6E6E75] hover:text-[#111113] p-1 transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
-
+              
               <div className="mb-6">
-                <span className="text-[9.5px] uppercase tracking-[0.26em] text-rose-600 font-mono block mb-1 font-medium">
-                  — ORDER CANCELLATION REQUEST
+                <span className="text-[9.5px] uppercase tracking-[0.26em] text-[#C2922E] font-mono block mb-1 font-medium">
+                  &mdash; ATELIER ORDER MODIFICATION
                 </span>
                 <h2 className="text-2xl font-quiche text-[#111113]">
                   Cancel Order #SUKO-{1000 + cancellingOrder.id}
                 </h2>
                 <p className="text-xs text-[#6E6E75] mt-1 font-light leading-relaxed">
-                  Please specify your reason for cancelling this bespoke garment order:
+                  Please select your reason for requesting cancellation:
                 </p>
               </div>
 
@@ -581,24 +1093,24 @@ const Orders = () => {
                   {[
                     "Changed my mind / No longer needed",
                     "Ordered wrong size or color",
-                    "Found a better price elsewhere",
-                    "Shipping / Delivery time is too long",
+                    "Found an alternative silhouette",
+                    "Delivery timeframe no longer aligns",
                     "Other (specify below)"
                   ].map((reason) => (
-                    <label
-                      key={reason}
-                      className={`flex items-center gap-3 p-3 border cursor-pointer transition-all rounded-xs ${
-                        cancelReasonPreset === reason
-                          ? "border-[#C2922E] bg-white text-[#111113] font-medium shadow-xs"
+                    <label 
+                      key={reason} 
+                      className={`flex items-center gap-3 p-3 border cursor-pointer transition-all ${
+                        cancelReasonPreset === reason 
+                          ? "border-[#C2922E] bg-white text-[#111113] font-medium shadow-xs" 
                           : "border-[#DDD8CE] bg-white/60 text-[#555560] hover:border-[#8C887B]"
                       }`}
                     >
-                      <input
-                        type="radio"
-                        name="cancel_reason"
-                        checked={cancelReasonPreset === reason}
-                        onChange={() => setCancelReasonPreset(reason)}
-                        className="accent-[#C2922E]"
+                      <input 
+                        type="radio" 
+                        name="cancel_reason" 
+                        checked={cancelReasonPreset === reason} 
+                        onChange={() => setCancelReasonPreset(reason)} 
+                        className="accent-[#C2922E]" 
                       />
                       <span>{reason}</span>
                     </label>
@@ -609,19 +1121,19 @@ const Orders = () => {
                   <textarea
                     value={customCancelReason}
                     onChange={(e) => setCustomCancelReason(e.target.value)}
-                    placeholder="Please type your cancellation reason here..."
+                    placeholder="Please specify any additional details for our concierge..."
                     className="w-full bg-white border border-[#DDD8CE] focus:border-[#C2922E] text-[#111113] placeholder-[#8C887B] p-3 text-xs outline-none h-20 resize-none transition-colors"
                     required
                   />
                 )}
 
                 <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={submittingCancel}
-                    className="w-full bg-rose-600 text-white py-3.5 text-[10px] uppercase tracking-[0.24em] font-medium hover:bg-rose-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+                  <button 
+                    type="submit" 
+                    disabled={submittingCancel} 
+                    className="w-full bg-[#111113] hover:bg-rose-700 text-white py-3 text-[10px] uppercase tracking-[0.24em] font-medium transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
                   >
-                    {submittingCancel ? "Submitting Request..." : "Confirm & Send Cancellation Request"}
+                    {submittingCancel ? "Submitting Request..." : "Confirm Cancellation Request"}
                   </button>
                 </div>
               </form>
@@ -629,326 +1141,78 @@ const Orders = () => {
           </div>
         )}
 
-        {/* Printable Tax Invoice Modal (Mobile Responsive & SUKO Luxury Theme) */}
-        {selectedInvoiceOrder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs">
-            <div className="bg-white text-[#111113] max-w-2xl w-full p-4 sm:p-8 md:p-10 rounded-xs relative shadow-2xl font-body space-y-5 max-h-[92vh] overflow-y-auto border border-[#EAE6DF]">
-              <button
-                type="button"
-                onClick={() => setSelectedInvoiceOrder(null)}
-                className="absolute top-3.5 right-3.5 text-[#8C887B] hover:text-[#111113] p-1.5 transition-colors cursor-pointer rounded-full hover:bg-[#FAF8F5]"
-                aria-label="Close invoice"
-              >
-                <X size={18} />
-              </button>
-
-              {/* Invoice Header */}
-              <div className="border-b border-[#EAE6DF] pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div>
-                  <h2 className="font-quiche text-2xl sm:text-3xl tracking-[0.24em] text-[#111113]">S U K O</h2>
-                  <p className="text-[9px] uppercase tracking-[0.22em] text-[#C2922E] font-medium mt-0.5">
-                    The Indian Corporate Wear &bull; Tax Invoice
-                  </p>
-                </div>
-                <div className="text-left sm:text-right text-xs">
-                  <p className="font-mono font-bold text-sm text-[#111113]">INVOICE #SUKO-{1000 + selectedInvoiceOrder.id}</p>
-                  <p className="text-[#6E6E75] text-[11px] mt-0.5">
-                    {new Date(selectedInvoiceOrder.created_at || Date.now()).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric"
-                    })}
-                  </p>
-                  <span className="inline-block mt-1 px-2.5 py-0.5 bg-[#FAF6EE] border border-[#D8C39D] text-[#8A6518] rounded-xs text-[9.5px] font-bold tracking-wider uppercase">
-                    {selectedInvoiceOrder.status === "paid" ? "PAID IN FULL" : selectedInvoiceOrder.status.toUpperCase()}
-                  </span>
-                </div>
-              </div>
-
-              {/* Billed To Specs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs border-b border-[#EAE6DF] pb-4">
-                <div className="bg-[#FAF8F5] p-3.5 rounded-xs border border-[#EAE6DF]">
-                  <p className="text-[9px] uppercase tracking-wider text-[#C2922E] font-bold mb-1">Billed &amp; Shipped To:</p>
-                  <p className="font-bold text-sm text-[#111113]">{selectedInvoiceOrder.shipping_name || user?.name || "Valued Client"}</p>
-                  <p className="text-[#6E6E75] text-[11.5px] mt-0.5">{selectedInvoiceOrder.shipping_line1 || selectedInvoiceOrder.address?.line1 || "Atelier Delivery Address"}</p>
-                  <p className="text-[#6E6E75] text-[11.5px]">
-                    {selectedInvoiceOrder.shipping_city || selectedInvoiceOrder.address?.city || ""}, {selectedInvoiceOrder.shipping_state || selectedInvoiceOrder.address?.state || ""} {selectedInvoiceOrder.shipping_pincode || selectedInvoiceOrder.address?.pincode || ""}
-                  </p>
-                  <p className="text-[#6E6E75] text-[11px] font-mono mt-1">Contact: {selectedInvoiceOrder.shipping_phone || user?.phone || "Not specified"}</p>
-                </div>
-                <div className="bg-[#FAF8F5] p-3.5 rounded-xs border border-[#EAE6DF] sm:text-right">
-                  <p className="text-[9px] uppercase tracking-wider text-[#8C887B] font-bold mb-1">Atelier Details:</p>
-                  <p className="font-bold text-sm text-[#111113]">SUKO Atelier Studio</p>
-                  <p className="text-[#6E6E75] text-[11.5px] mt-0.5">Bandra West, Mumbai, MH</p>
-                  <p className="text-[#6E6E75] text-[11.5px]">GSTIN: 27AAAAA0000A1Z5</p>
-                  <p className="text-[#C2922E] text-[11.5px] mt-1">support@indiancorporatewear.com</p>
-                </div>
-              </div>
-
-              {/* Items Table */}
-              <div className="overflow-x-auto -mx-1 sm:mx-0">
-                <table className="w-full text-left text-xs border-collapse min-w-[290px]">
-                  <thead>
-                    <tr className="border-b border-[#EAE6DF] text-[9px] uppercase tracking-widest text-[#7A7A85]">
-                      <th className="py-2 pr-2 font-medium">Garment Item</th>
-                      <th className="py-2 px-2 text-center font-medium">Size</th>
-                      <th className="py-2 px-2 text-center font-medium">Qty</th>
-                      <th className="py-2 pl-2 text-right font-medium">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#F3EFE6]">
-                    {selectedInvoiceOrder.items && selectedInvoiceOrder.items.length > 0 ? (
-                      selectedInvoiceOrder.items.map((item, i) => (
-                        <tr key={i}>
-                          <td className="py-2.5 pr-2 font-medium text-[#111113]">
-                            {item.product?.name || item.product_name || "Atelier Garment"}
-                          </td>
-                          <td className="py-2.5 px-2 text-center text-[#555560]">
-                            <span className="px-1.5 py-0.5 bg-[#FAF8F5] border border-[#EAE6DF] rounded-xs text-[10px]">
-                              {item.size || "38"}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-2 text-center font-mono text-[#555560]">{item.quantity}</td>
-                          <td className="py-2.5 pl-2 text-right font-mono font-bold text-[#111113]">
-                            {formatINR(item.price_at_purchase || item.product?.price || 0)}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td className="py-2.5 font-medium text-[#111113]">Custom Bespoke Atelier Garment</td>
-                        <td className="py-2.5 text-center text-[#555560]">38</td>
-                        <td className="py-2.5 text-center font-mono text-[#555560]">1</td>
-                        <td className="py-2.5 text-right font-mono font-bold text-[#111113]">{formatINR(selectedInvoiceOrder.total)}</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Total Summary */}
-              <div className="border-t border-[#EAE6DF] pt-3 flex flex-col items-end gap-1 text-xs">
-                <div className="w-full sm:w-72 bg-[#FAF6EE] border border-[#C2922E]/40 p-3.5 rounded-xs space-y-1.5">
-                  <div className="flex justify-between text-[#6E6E75]">
-                    <span>Subtotal:</span>
-                    <span className="font-mono text-[#111113]">{formatINR(selectedInvoiceOrder.total)}</span>
-                  </div>
-                  <div className="flex justify-between text-[#6E6E75]">
-                    <span>GST Taxes:</span>
-                    <span className="text-[#111113]">Inclusive</span>
-                  </div>
-                  <div className="flex justify-between text-[#6E6E75]">
-                    <span>Atelier Delivery:</span>
-                    <span className="text-[#C2922E] font-bold text-[10.5px] uppercase tracking-wider">Complimentary</span>
-                  </div>
-                  <div className="flex justify-between text-[#111113] font-bold text-sm border-t border-[#C2922E]/30 pt-2 mt-1">
-                    <span>Total Amount:</span>
-                    <span className="font-mono text-base">{formatINR(selectedInvoiceOrder.total)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer Stamp & Print */}
-              <div className="border-t border-[#EAE6DF] pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <span className="text-[8.5px] uppercase tracking-widest text-[#8C887B] text-center sm:text-left">
-                  Authentic Garment Guarantee &bull; Hand-crafted Atelier
-                </span>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="w-full sm:w-auto bg-[#111113] hover:bg-[#C2922E] text-white px-5 py-2.5 text-xs font-medium uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs rounded-xs"
-                >
-                  <Printer size={13} /> Print Receipt
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* RE-SUBMIT / MANUAL UPI PAYMENT PROOF MODAL */}
+        {/* ========================================================================= */}
+        {/* PAYMENT RE-SUBMIT MODAL                                                   */}
+        {/* ========================================================================= */}
         {reSubmittingOrder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-            <div className="bg-[#FAF8F5] border border-[#EAE6DF] max-w-lg w-full p-6 sm:p-8 rounded-sm relative shadow-2xl font-body text-[#111113] my-8 max-h-[90vh] overflow-y-auto">
-              <button
-                onClick={() => setReSubmittingOrder(null)}
-                className="absolute top-5 right-5 text-[#6E6E75] hover:text-[#111113] p-1.5 transition-colors cursor-pointer"
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <div className="bg-[#FAF8F5] border border-[#EAE6DF] max-w-md w-full p-6 sm:p-8 relative shadow-2xl font-body text-[#111113]">
+              <button 
+                onClick={() => setReSubmittingOrder(null)} 
+                className="absolute top-4 right-4 text-[#6E6E75] hover:text-[#111113] p-1 transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
-
-              <div className="border-b border-[#EAE6DF] pb-4 mb-6">
+              
+              <div className="mb-5">
                 <span className="text-[9.5px] uppercase tracking-[0.26em] text-[#C2922E] font-mono block mb-1 font-medium">
-                  — MANUAL PAYMENT VERIFICATION
+                  &mdash; ATELIER SETTLEMENT
                 </span>
-                <h2 className="font-quiche text-2xl text-[#111113] tracking-wide">
-                  PAY VIA UPI QR
+                <h2 className="text-xl font-quiche text-[#111113]">
+                  Submit Payment Details
                 </h2>
-                <div className="flex items-center justify-between mt-2 text-xs">
-                  <span className="font-mono text-[#6E6E75]">Order #SUKO-{1000 + reSubmittingOrder.id}</span>
-                  <span className="font-mono font-bold text-base text-[#111113]">
-                    Amount: {formatINR(reSubmittingOrder.total)}
-                  </span>
-                </div>
+                <p className="text-xs text-[#6E6E75] mt-0.5">
+                  Order #SUKO-{1000 + reSubmittingOrder.id} &bull; Total: {formatINR(resolveOrderTotal(reSubmittingOrder))}
+                </p>
               </div>
 
-              {reSubmittingOrder.status === "payment_verification_failed" && reSubmittingOrder.cancel_reason && (
-                <div className="mb-6 p-3.5 bg-rose-50 border border-rose-200 rounded-sm text-xs text-rose-800">
-                  <p className="font-mono uppercase text-[9.5px] tracking-wider font-bold text-rose-900">
-                    Previous Verification Note:
-                  </p>
-                  <p className="mt-0.5">{reSubmittingOrder.cancel_reason}</p>
-                </div>
-              )}
-
-              {/* QR Code Presentation Box */}
-              <div className="bg-white border border-[#EAE6DF] p-5 rounded-sm shadow-xs text-center space-y-4">
-                <div className="w-52 h-52 mx-auto bg-white p-2 border border-[#EAE6DF] shadow-xs flex items-center justify-center">
-                  <img
-                    src="/upi-qr.jpg"
-                    alt="SUKO UPI QR Code"
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-xs text-[#111113] font-medium">
-                    Scan and complete payment using any UPI app.
-                  </p>
-                  <p className="text-[11px] text-[#6E6E75]">
-                    PhonePe, Google Pay, Paytm, BHIM, or any banking UPI app.
-                  </p>
-                </div>
-
-                {/* Deep Link & Copy UPI ID */}
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
-                  <a
-                    href={`upi://pay?pa=9022418978-m97f@axl&pn=MILES%20ALONG%20SMILES&am=${reSubmittingOrder.total}&cu=INR&tn=SUKO-ORDER-${1000 + reSubmittingOrder.id}`}
-                    className="w-full sm:w-auto px-4 py-2 bg-[#111113] hover:bg-[#C2922E] text-white text-[10px] uppercase tracking-[0.2em] font-medium transition-all shadow-xs rounded-xs text-center"
-                  >
-                    Open UPI App
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText("9022418978-m97f@axl");
-                      setCopiedUpi(true);
-                      toast.success("UPI ID copied to clipboard: 9022418978-m97f@axl");
-                      setTimeout(() => setCopiedUpi(false), 2500);
-                    }}
-                    className="w-full sm:w-auto px-4 py-2 bg-[#FAF8F5] border border-[#DDD8CE] hover:border-[#C2922E] text-[#111113] text-[10px] uppercase tracking-[0.2em] font-medium transition-all shadow-xs rounded-xs flex items-center justify-center gap-1.5"
-                  >
-                    {copiedUpi ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} className="text-[#C2922E]" />}
-                    <span>{copiedUpi ? "UPI ID Copied" : "Copy UPI ID"}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Form Section */}
-              <form onSubmit={handleReSubmitProof} className="mt-6 space-y-5 text-xs font-body">
+              <form onSubmit={handleReSubmitProof} className="space-y-4 text-xs font-body">
                 <div>
-                  <span className="text-[10px] uppercase tracking-[0.22em] text-[#C2922E] font-mono block mb-1">
-                    After Payment:
-                  </span>
-                  <label className="block text-[11px] uppercase tracking-[0.16em] text-[#111113] font-mono font-semibold mb-1.5">
-                    Transaction ID / UTR <span className="text-rose-600">*</span>
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#6E6E75] font-medium block mb-1">
+                    Transaction ID / UTR *
                   </label>
                   <input
                     type="text"
-                    required
                     value={reSubmitUtr}
                     onChange={(e) => setReSubmitUtr(e.target.value)}
-                    placeholder="Enter 12-digit UTR (e.g. 4256XXXXXXXX)"
-                    className="w-full bg-white border border-[#DDD8CE] p-3 text-xs font-mono text-[#111113] tracking-wider placeholder-[#8C887B] outline-none focus:border-[#C2922E] transition-colors rounded-xs shadow-xs"
+                    placeholder="e.g. 4235XXXXXXXX"
+                    className="w-full bg-white border border-[#DDD8CE] focus:border-[#C2922E] p-2.5 text-xs text-[#111113] outline-none font-mono"
+                    required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] uppercase tracking-[0.16em] text-[#111113] font-mono font-semibold mb-1.5">
-                    Upload Payment Screenshot <span className="text-rose-600">*</span>
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#6E6E75] font-medium block mb-1">
+                    Payment Screenshot *
                   </label>
-                  <div className="border-2 border-dashed border-[#DDD8CE] hover:border-[#C2922E] bg-white p-5 text-center transition-colors rounded-xs">
-                    <input
-                      type="file"
-                      id="order-resubmit-screenshot"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      onChange={handleReSubmitFileChange}
-                      className="hidden"
-                    />
-                    <label
-                      htmlFor="order-resubmit-screenshot"
-                      className="cursor-pointer flex flex-col items-center justify-center gap-2"
-                    >
-                      <UploadCloud size={28} className="text-[#C2922E]" />
-                      <span className="text-xs font-medium text-[#111113] underline underline-offset-4">
-                        {reSubmitFile ? reSubmitFile.name : "Choose File / Upload Screenshot"}
-                      </span>
-                      <span className="text-[10px] text-[#6E6E75] font-mono">
-                        JPG, JPEG, PNG, WebP (Max 5 MB)
-                      </span>
-                    </label>
-                  </div>
-
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleReSubmitFileChange}
+                    className="w-full bg-white border border-[#DDD8CE] p-2 text-xs outline-none cursor-pointer"
+                    required
+                  />
                   {reSubmitPreview && (
-                    <div className="mt-3 p-2 bg-white border border-[#EAE6DF] rounded-xs flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={reSubmitPreview}
-                          alt="Screenshot Preview"
-                          className="w-12 h-16 object-cover border border-[#EAE6DF] rounded-xs"
-                        />
-                        <div className="text-[11px]">
-                          <p className="font-medium text-[#111113] truncate max-w-[200px]">{reSubmitFile?.name}</p>
-                          <p className="text-[#6E6E75] font-mono">{(reSubmitFile?.size / 1024 / 1024).toFixed(2)} MB</p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setReSubmitFile(null);
-                          setReSubmitPreview(null);
-                        }}
-                        className="text-rose-600 hover:text-rose-800 text-[10px] uppercase tracking-wider font-mono p-2"
-                      >
-                        Remove
-                      </button>
+                    <div className="mt-2 w-20 h-24 border border-[#DDD8CE] overflow-hidden">
+                      <img src={reSubmitPreview} alt="Screenshot preview" className="w-full h-full object-cover" />
                     </div>
                   )}
                 </div>
 
-                <div className="bg-[#FAF8F5] border border-[#EAE6DF] p-3.5 rounded-xs space-y-1.5 text-[11px] text-[#555560]">
-                  <p className="font-medium text-[#111113]">Make sure the screenshot clearly shows:</p>
-                  <ul className="list-disc list-inside space-y-0.5 text-[10.5px]">
-                    <li>Successful payment status</li>
-                    <li>Transaction ID / UTR</li>
-                    <li>Paid amount ({formatINR(reSubmittingOrder.total)})</li>
-                  </ul>
-                  <p className="text-[10px] text-[#8C887B] italic mt-1">
-                    “Please upload a clear payment screenshot showing the successful payment status, paid amount, and Transaction ID / UTR.”
-                  </p>
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={isSubmittingProof}
+                    className="w-full bg-[#111113] hover:bg-[#C2922E] text-white py-3 text-[10px] uppercase tracking-[0.24em] font-medium transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+                  >
+                    {isSubmittingProof ? "Submitting Details..." : "Submit for Verification"}
+                  </button>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={!reSubmitUtr.trim() || !reSubmitPreview || isSubmittingProof}
-                  className="w-full py-3.5 bg-[#111113] hover:bg-[#C2922E] disabled:opacity-40 disabled:hover:bg-[#111113] text-white font-bold text-[11px] uppercase tracking-[0.24em] font-body transition-all shadow-md rounded-xs cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isSubmittingProof ? (
-                    <>
-                      <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                      SUBMITTING VERIFICATION...
-                    </>
-                  ) : (
-                    "SUBMIT PAYMENT FOR VERIFICATION"
-                  )}
-                </button>
-
-                <p className="text-[10.5px] text-center text-[#6E6E75] font-medium pt-1">
-                  Your order will be confirmed after payment verification.
-                </p>
               </form>
             </div>
           </div>
         )}
+
       </div>
     </div>
   );

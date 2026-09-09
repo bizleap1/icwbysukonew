@@ -97,6 +97,30 @@ export const AuthProvider = ({ children }) => {
     };
   }, [token]);
 
+  const refreshUser = useCallback(async () => {
+    const currentToken = localStorage.getItem("token") || token;
+    if (!currentToken) return null;
+    try {
+      const profile = await apiClient.get('/api/auth/profile');
+      if (profile) {
+        setUser({
+          authenticated: true,
+          userId: profile.id,
+          role: profile.role || 'customer',
+          name: profile.name || '',
+          phone: profile.phone || '',
+          email: profile.email || ''
+        });
+        return profile;
+      }
+    } catch (err) {
+      console.warn("Profile refresh warning:", err.message);
+    }
+    return null;
+  }, [token]);
+
+
+
   const login = async (email, password) => {
     try {
       const data = await apiClient.post('/api/auth/login', {
@@ -195,7 +219,8 @@ export const AuthProvider = ({ children }) => {
       verifyResetOtp,
       resetPassword,
       logout, 
-      loginWithToken 
+      loginWithToken,
+      refreshUser 
     }}>
       {children}
     </AuthContext.Provider>

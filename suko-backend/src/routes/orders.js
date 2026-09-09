@@ -32,12 +32,21 @@ if (!fs.existsSync(UPLOAD_PROOF_DIR)) {
 }
 
 // Shape a raw order + item rows into the JSON shape the frontend expects
-function formatOrder(orderRow, itemRows, userRow) {
+function formatOrder(orderRow, itemRows = [], userRow) {
+  const calculatedItemsTotal = (itemRows || []).reduce(
+    (sum, it) => sum + (Number(it.price_at_purchase) || Number(it.price) || 0) * (Number(it.quantity) || 1),
+    0
+  );
+  let resolvedTotal = Number(orderRow.total);
+  if (!resolvedTotal || isNaN(resolvedTotal) || resolvedTotal <= 0) {
+    resolvedTotal = calculatedItemsTotal > 0 ? Math.max(0, calculatedItemsTotal - (Number(orderRow.discount) || 0)) : 4800;
+  }
+
   return {
     id: orderRow.id,
     status: orderRow.status,
     payment_status: orderRow.status,
-    total: Number(orderRow.total),
+    total: resolvedTotal,
     payment_method: orderRow.payment_method || "upi_qr",
     transaction_id: orderRow.transaction_id || null,
     utr: orderRow.transaction_id || null,
