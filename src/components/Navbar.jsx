@@ -399,11 +399,20 @@ export const Navbar = () => {
 
       {/* Mobile Fullscreen Navigation Overlay */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 bg-[#FAF8F5] text-[#121215] flex flex-col justify-between p-6 sm:p-8 animate-in fade-in duration-300 overflow-y-auto font-body">
-          
-          {/* Top Bar inside Overlay */}
-          <div className="flex items-center justify-between pb-6 border-b border-[#E8E4DC]">
-            <Link to="/" onClick={() => setMobileOpen(false)} className="flex items-center">
+        <div
+          data-lenis-prevent="true"
+          data-lenis-prevent-touch="true"
+          data-lenis-prevent-wheel="true"
+          className="fixed inset-0 z-50 bg-[#FAF8F5] text-[#121215] overflow-y-auto overscroll-contain font-body hide-scrollbar animate-in fade-in duration-300"
+          style={{
+            WebkitOverflowScrolling: "touch",
+            touchAction: "pan-y",
+          }}
+        >
+          <div className="min-h-full flex flex-col justify-between p-6 sm:p-8">
+            {/* Top Bar inside Overlay */}
+            <div className="flex items-center justify-between pb-6 border-b border-[#E8E4DC] shrink-0">
+              <Link to="/" onClick={() => setMobileOpen(false)} className="flex items-center">
               <img src="/logo.png" alt="SUKO" className="h-[40px] sm:h-[48px] w-auto object-contain" />
             </Link>
             <button
@@ -587,7 +596,7 @@ export const Navbar = () => {
             </div>
 
             {/* Bottom House Signature */}
-            <div className="mt-8 pt-4 text-center border-t border-[#E8E4DC]">
+            <div className="mt-8 pt-4 text-center border-t border-[#E8E4DC] shrink-0">
               <span className="text-[9.5px] uppercase tracking-[0.32em] text-[#C2922E] font-medium block mb-1">
                 SUKO
               </span>
@@ -597,6 +606,7 @@ export const Navbar = () => {
             </div>
           </div>
         </div>
+      </div>
       )}
 
       {/* Search Modal */}

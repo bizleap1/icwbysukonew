@@ -102,6 +102,18 @@ body {
     background: #B8B0A2;
 }
 
+/* Hide scrollbar utility - guaranteed no visible bar & full touch momentum */
+.hide-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+.hide-scrollbar {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
 /* Cinematic grain overlay */
 .grain::before {
     content: "";

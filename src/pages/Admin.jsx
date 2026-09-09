@@ -12811,6 +12811,9 @@ const Admin = () => {
 
               {/* 2 Export Format Cards */}
               <div
+                data-lenis-prevent="true"
+                data-lenis-prevent-touch="true"
+                data-lenis-prevent-wheel="true"
                 className="p-4 sm:p-5 flex-1 hide-scrollbar"
                 style={{ overflowY: 'scroll', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
               >
