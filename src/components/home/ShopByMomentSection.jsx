@@ -19,7 +19,7 @@ const HOME_MOMENTS = [
   { 
     id: "boardroom", 
     title: "The Boardroom Edit", 
-    image: "/boardroom_women.webp", 
+    image: "/the_boardroom_edit.webp", 
     position: "object-[50%_18%]" 
   },
   { 
