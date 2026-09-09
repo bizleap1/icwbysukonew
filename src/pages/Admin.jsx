@@ -12746,11 +12746,11 @@ const Admin = () => {
         {/* ============================================================= */}
         {isOrderExportModalOpen && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-5 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
             onClick={() => setIsOrderExportModalOpen(false)}
           >
             <div
-              className="bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden font-body animate-in zoom-in-95 duration-150"
+              className="bg-[#FAF8F5] border border-[#E5DDD1] rounded-t-[4px] sm:rounded-[2px] w-full max-w-3xl max-h-[88vh] sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden font-body animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -12810,7 +12810,7 @@ const Admin = () => {
               </div>
 
               {/* 2 Export Format Cards */}
-              <div className="p-4 sm:p-5 overflow-y-auto">
+              <div className="p-4 sm:p-5 overflow-y-auto flex-1 overscroll-contain">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Option 1: Summary Export */}
                   <div className="p-4 sm:p-4.5 bg-white border border-[#E5DDD1] hover:border-[#C2922E] rounded-[2px] transition-all flex flex-col justify-between group shadow-2xs">
