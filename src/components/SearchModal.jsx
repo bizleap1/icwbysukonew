@@ -52,7 +52,7 @@ const INTENT_MAPPINGS = [
 const MOMENT_PORTRAITS = {
   boardroom: { image: "/the_boardroom_edit.webp", position: "object-[center_18%]" },
   founder: { image: "/founder_women.webp", position: "object-[center_24%]" },
-  presentation: { image: "/presentation_woman.webp", position: "object-[center_40%]" },
+  presentation: { image: "/the_presentation_edit.webp", position: "object-[center_45%]" },
   "after-hours": { image: "/after_hour_woman.webp", position: "object-[center_10%]" },
   essentials: { image: "/executive_woman.webp", position: "object-[center_8%]" },
 };

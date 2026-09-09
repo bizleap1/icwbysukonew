@@ -7,8 +7,8 @@ const HOME_MOMENTS = [
   { 
     id: "presentation", 
     title: "The Presentation Edit", 
-    image: "/presentation_woman.webp", 
-    position: "object-[50%_50%]" 
+    image: "/the_presentation_edit.webp", 
+    position: "object-[50%_45%]" 
   },
   { 
     id: "after-hours", 
@@ -39,7 +39,7 @@ const HOME_MOMENTS = [
 const getObjectPosition = (id) => {
   switch (id) {
     case "presentation":
-      return "object-[50%_50%]";
+      return "object-[50%_45%]";
     case "founder":
       return "object-[50%_24%]";
     case "after-hours":
