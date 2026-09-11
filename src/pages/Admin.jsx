@@ -932,7 +932,7 @@ const Admin = () => {
     }
   });
 
-  const handleSaveNewColor = (colorToSave, silent = false) => {
+  const handleSaveNewColor = (colorToSave, silent = false, explicitHex = null) => {
     if (!colorToSave || typeof colorToSave !== "string") return;
     const clean = colorToSave.trim();
     if (!clean) return;
@@ -944,7 +944,8 @@ const Admin = () => {
         wasAlreadyPresent = true;
         return prev;
       }
-      const updated = [...prev, { name: clean, hex: getAtelierColorHex(clean) }];
+      const resolvedHex = explicitHex || (clean.startsWith("#") ? clean : getAtelierColorHex(clean));
+      const updated = [...prev, { name: clean, hex: resolvedHex, isCustom: true }];
       try {
         localStorage.setItem("suko_saved_atelier_colors", JSON.stringify(updated));
       } catch (e) {
@@ -979,7 +980,7 @@ const Admin = () => {
   const availableColorSwatches = useMemo(() => {
     const colorMap = new Map();
 
-    // 1. Harvest all colors present in actual products
+    // 1. Harvest all colors present in actual products (existing store products)
     products.forEach(p => {
       if (p && p.color && typeof p.color === "string") {
         const clean = p.color.trim();
@@ -993,7 +994,7 @@ const Admin = () => {
       }
     });
 
-    // 2. Add admin-saved custom colors
+    // 2. Add admin-added colors via color wheel or custom input
     savedCustomColors.forEach(c => {
       const clean = typeof c === "string" ? c.trim() : c?.name?.trim();
       if (clean && !colorMap.has(clean.toLowerCase())) {
@@ -1004,17 +1005,6 @@ const Admin = () => {
         });
       }
     });
-
-    // 3. Fallback defaults if no products or saved colors exist yet
-    if (colorMap.size === 0) {
-      ATELIER_PRIMARY_SWATCHES.slice(0, 10).forEach(sw => {
-        colorMap.set(sw.name.toLowerCase(), {
-          name: sw.name,
-          hex: sw.hex,
-          isDefault: true
-        });
-      });
-    }
 
     return Array.from(colorMap.values());
   }, [products, savedCustomColors]);
@@ -6812,6 +6802,7 @@ const Admin = () => {
                                         const nearest = findNearestColorName(hex);
                                         const val = nearest?.name ? nearest.name : hex;
                                         setFormData(prev => ({ ...prev, color: val }));
+                                        handleSaveNewColor(val, true, hex);
                                       }}
                                       className="sr-only"
                                     />
@@ -6836,49 +6827,75 @@ const Admin = () => {
                                   </div>
                                 </div>
 
-                                {/* Curated Atelier Quick Swatches */}
-                                <div className="space-y-1.5">
-                                  <span className="text-[9.5px] uppercase tracking-wider text-[#746F68] font-mono block">
-                                    Curated Atelier Swatches:
-                                  </span>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {[
-                                      { name: "Obsidian Black", hex: "#111113" },
-                                      { name: "Ivory White", hex: "#FAF8F5" },
-                                      { name: "Champagne Gold", hex: "#C2922E" },
-                                      { name: "Midnight Navy", hex: "#1A2536" },
-                                      { name: "Charcoal Slate", hex: "#3A3D42" },
-                                      { name: "Forest Emerald", hex: "#1E382B" },
-                                      { name: "Burgundy Wine", hex: "#4A1E27" },
-                                      { name: "Warm Taupe", hex: "#8A7968" },
-                                      { name: "Camel", hex: "#C19A6B" },
-                                      { name: "Dusty Rose", hex: "#BC8A8E" }
-                                    ].map(swatch => (
-                                      <button
-                                        key={swatch.name}
-                                        type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, color: swatch.name }))}
-                                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-[2px] border text-[9.5px] font-mono transition-all cursor-pointer ${
-                                          formData.color?.toLowerCase() === swatch.name.toLowerCase()
-                                            ? "border-[#111113] bg-[#111113] text-white shadow-xs font-semibold"
-                                            : "border-[#E5DDD1] bg-white text-[#111113] hover:border-[#C2922E]"
-                                        }`}
-                                      >
-                                        <span 
-                                          className="w-2 h-2 rounded-full border border-black/10 shrink-0" 
-                                          style={{ backgroundColor: swatch.hex }}
-                                        />
-                                        <span>{swatch.name}</span>
-                                      </button>
-                                    ))}
+                                {/* Curated Atelier Swatches (From existing products + newly added via color wheel) */}
+                                {availableColorSwatches.length > 0 ? (
+                                  <div className="space-y-1.5">
+                                    <span className="text-[9.5px] uppercase tracking-wider text-[#746F68] font-mono block">
+                                      Atelier Swatches ({availableColorSwatches.length}):
+                                    </span>
+                                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto suko-scrollbar p-1.5 bg-white border border-[#E5DDD1] rounded-[2px]">
+                                      {availableColorSwatches.map(swatch => {
+                                        const isSelected = formData.color?.toLowerCase() === swatch.name.toLowerCase();
+                                        return (
+                                          <div key={swatch.name} className="relative group inline-flex items-center">
+                                            <button
+                                              key={swatch.name}
+                                              type="button"
+                                              onClick={() => setFormData(prev => ({ ...prev, color: swatch.name }))}
+                                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-[2px] border text-[9.5px] font-mono transition-all cursor-pointer ${
+                                                isSelected
+                                                  ? "border-[#111113] bg-[#111113] text-white shadow-xs font-semibold"
+                                                  : "border-[#E5DDD1] bg-white text-[#111113] hover:border-[#C2922E]"
+                                              }`}
+                                            >
+                                              <span 
+                                                className="w-2 h-2 rounded-full border border-black/10 shrink-0" 
+                                                style={{ backgroundColor: swatch.hex }}
+                                              />
+                                              <span>{swatch.name}</span>
+                                            </button>
+                                            {swatch.isCustom && (
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleRemoveCustomColor(swatch.name);
+                                                }}
+                                                title="Remove from saved swatches"
+                                                className="ml-0.5 text-stone-400 hover:text-red-600 text-xs px-1 hover:bg-red-50 rounded"
+                                              >
+                                                &times;
+                                              </button>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
-                                </div>
+                                ) : (
+                                  <div className="p-2.5 bg-white border border-dashed border-[#E5DDD1] rounded-[2px] text-center">
+                                    <p className="text-[10px] font-mono text-[#746F68]">
+                                      No product swatches yet. Pick a color using the Color Wheel above to add swatches.
+                                    </p>
+                                  </div>
+                                )}
 
                                 {/* Custom Color Text Input */}
                                 <div>
-                                  <label className="text-[9.5px] uppercase tracking-wider text-[#746F68] font-mono block mb-1">
-                                    Or type custom color title / hex:
-                                  </label>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <label className="text-[9.5px] uppercase tracking-wider text-[#746F68] font-mono block">
+                                      Or type custom color title / hex:
+                                    </label>
+                                    {formData.color && !availableColorSwatches.some(s => s.name.toLowerCase() === formData.color.trim().toLowerCase()) && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSaveNewColor(formData.color)}
+                                        className="text-[9px] font-mono uppercase tracking-wider text-[#C2922E] hover:text-[#111113] font-semibold cursor-pointer underline"
+                                      >
+                                        + Save To Swatches
+                                      </button>
+                                    )}
+                                  </div>
                                   <input
                                     type="text"
                                     name="color"
@@ -8793,7 +8810,7 @@ const Admin = () => {
                               const nearest = findNearestColorName(hex);
                               const val = nearest?.name ? nearest.name : hex;
                               setEditFormData(prev => ({ ...prev, color: val }));
-                              handleSaveNewColor(val, true);
+                              handleSaveNewColor(val, true, hex);
                             }}
                             className="opacity-0 absolute w-0 h-0 pointer-events-none"
                           />
@@ -8815,7 +8832,7 @@ const Admin = () => {
                               const nearest = findNearestColorName(hex);
                               const val = nearest?.name ? nearest.name : hex;
                               setEditFormData(prev => ({ ...prev, color: val }));
-                              handleSaveNewColor(val, true);
+                              handleSaveNewColor(val, true, hex);
                             }}
                             className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
                           />
