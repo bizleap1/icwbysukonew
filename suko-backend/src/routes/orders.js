@@ -19,6 +19,11 @@ const {
   getOrderDocuments,
   allocateInvoiceNumber
 } = require("../services/brandSettingsService");
+const {
+  uploadImageBuffer,
+  isCloudinaryConfigured
+} = require("../services/cloudinaryService");
+const productService = require("../services/productService");
 
 const router = express.Router();
 
@@ -55,6 +60,7 @@ function formatOrder(orderRow, itemRows = [], userRow) {
     created_at: orderRow.created_at,
     updated_at: orderRow.updated_at,
     cancel_reason: orderRow.cancel_reason,
+    admin_rejection_note: orderRow.admin_rejection_note || null,
     coupon_code: orderRow.coupon_code || null,
     discount: Number(orderRow.discount) || 0,
     address: {
@@ -489,6 +495,17 @@ router.post("/:id/submit-payment-proof", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Transaction ID / UTR is required." });
     }
 
+    // Verify duplicate UTR is not already used across different orders
+    const dupCheck = await pool.query(
+      "SELECT id FROM orders WHERE LOWER(TRIM(transaction_id)) = LOWER($1) AND id != $2 LIMIT 1",
+      [finalTxId, order.id]
+    );
+    if (dupCheck.rows.length > 0) {
+      return res.status(400).json({
+        error: `This Transaction ID / UTR has already been submitted for Order #SUKO-${1000 + dupCheck.rows[0].id}. Please verify your transaction details or contact concierge.`
+      });
+    }
+
     if (!screenshot || typeof screenshot !== "string") {
       return res.status(400).json({ error: "Payment screenshot is required." });
     }
@@ -512,10 +529,30 @@ router.post("/:id/submit-payment-proof", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Screenshot file size exceeds the 5 MB limit." });
     }
 
-    // Save screenshot safely to protected proofs folder
-    const filename = `proof_order_${order.id}_${Date.now()}_${crypto.randomBytes(4).toString("hex")}.${ext}`;
-    const filePath = path.join(UPLOAD_PROOF_DIR, filename);
-    fs.writeFileSync(filePath, fileBuffer);
+    // Upload to Cloudinary for permanent storage, with graceful local disk fallback
+    let permanentProofUrl = null;
+
+    if (isCloudinaryConfigured()) {
+      try {
+        const cloudRes = await uploadImageBuffer(fileBuffer, {
+          folder: "suko/payment_proofs",
+          public_id: `proof-order-${order.id}-${Date.now()}`,
+          tags: ["payment_proof", `order_${order.id}`]
+        });
+        if (cloudRes && cloudRes.url) {
+          permanentProofUrl = cloudRes.url;
+        }
+      } catch (cloudErr) {
+        console.warn("[Orders] Cloudinary proof upload failed, falling back to local disk:", cloudErr.message);
+      }
+    }
+
+    if (!permanentProofUrl) {
+      const filename = `proof_order_${order.id}_${Date.now()}_${crypto.randomBytes(4).toString("hex")}.${ext}`;
+      const filePath = path.join(UPLOAD_PROOF_DIR, filename);
+      fs.writeFileSync(filePath, fileBuffer);
+      permanentProofUrl = filename;
+    }
 
     // Save reference in DB
     await pool.query(
@@ -525,7 +562,7 @@ router.post("/:id/submit-payment-proof", requireAuth, async (req, res) => {
            payment_screenshot_url = $2,
            updated_at = now()
        WHERE id = $3`,
-      [finalTxId, filename, order.id]
+      [finalTxId, permanentProofUrl, order.id]
     );
 
     const updatedOrder = await getOrderWithItems(order.id);
@@ -557,6 +594,11 @@ router.get("/:id/payment-proof", requireAuth, async (req, res) => {
 
     if (!order.payment_screenshot_url) {
       return res.status(404).json({ error: "No payment screenshot found for this order." });
+    }
+
+    // If permanent Cloudinary / remote URL, safely redirect authenticated requests
+    if (order.payment_screenshot_url.startsWith("http://") || order.payment_screenshot_url.startsWith("https://")) {
+      return res.redirect(order.payment_screenshot_url);
     }
 
     const safeFilename = path.basename(order.payment_screenshot_url);
@@ -592,8 +634,10 @@ router.post("/:id/verify-payment", requireAdmin, async (req, res) => {
     const raw = await pool.query("SELECT * FROM orders WHERE id = $1", [orderId]);
     if (raw.rows.length === 0) return res.status(404).json({ error: "Order not found." });
 
+    const currentOrder = raw.rows[0];
+
     await pool.query(
-      "UPDATE orders SET status = 'paid', cancel_reason = NULL, updated_at = now() WHERE id = $1",
+      "UPDATE orders SET status = 'paid', cancel_reason = NULL, admin_rejection_note = NULL, updated_at = now() WHERE id = $1",
       [orderId]
     );
 
@@ -604,6 +648,27 @@ router.post("/:id/verify-payment", requireAdmin, async (req, res) => {
       sendOrderInvoiceEmail(fullOrder).catch((mailErr) => {
         console.warn("⚠️  [EmailService] Paid invoice email dispatch failed:", mailErr.message);
       });
+    }
+
+    // Record administrative audit activity
+    try {
+      await productService.recordActivityLog({
+        admin_email: req.user?.email || "admin@indiancorporatewear.com",
+        action: "payment_verify",
+        target_entity: "orders",
+        affected_count: 1,
+        summary: `Payment verified and order confirmed for Order #SUKO-${1000 + orderId}`,
+        details: {
+          order_id: orderId,
+          order_number: `SUKO-${1000 + orderId}`,
+          amount: fullOrder?.total || currentOrder.total,
+          transaction_id: fullOrder?.transaction_id || currentOrder.transaction_id,
+          payment_method: fullOrder?.payment_method || currentOrder.payment_method || "upi_qr",
+        },
+        ip_address: req.ip || req.connection?.remoteAddress
+      });
+    } catch (logErr) {
+      console.warn("[Orders] Failed to record payment_verify activity log:", logErr.message);
     }
 
     res.json({
@@ -621,18 +686,43 @@ router.post("/:id/verify-payment", requireAdmin, async (req, res) => {
 router.post("/:id/reject-payment", requireAdmin, async (req, res) => {
   try {
     const orderId = parseInt(req.params.id, 10);
-    const { reason } = req.body;
+    const { reason, admin_note, adminNote } = req.body;
     const raw = await pool.query("SELECT * FROM orders WHERE id = $1", [orderId]);
     if (raw.rows.length === 0) return res.status(404).json({ error: "Order not found." });
 
-    const rejectReason = reason || "Payment not found or transaction ID mismatch in merchant account.";
+    const currentOrder = raw.rows[0];
+
+    // Customer-facing clean reason (no internal operational jargon)
+    const customerReason = (reason && String(reason).trim()) || "We couldn't verify this payment. Please review your payment details and submit them again.";
+    const internalNote = (admin_note || adminNote || "").trim() || null;
 
     await pool.query(
-      "UPDATE orders SET status = 'payment_verification_failed', cancel_reason = $1, updated_at = now() WHERE id = $2",
-      [rejectReason, orderId]
+      "UPDATE orders SET status = 'payment_verification_failed', cancel_reason = $1, admin_rejection_note = $2, updated_at = now() WHERE id = $3",
+      [customerReason, internalNote, orderId]
     );
 
     const fullOrder = await getOrderWithItems(orderId);
+
+    // Record administrative audit activity
+    try {
+      await productService.recordActivityLog({
+        admin_email: req.user?.email || "admin@indiancorporatewear.com",
+        action: "payment_reject",
+        target_entity: "orders",
+        affected_count: 1,
+        summary: `Payment proof rejected for Order #SUKO-${1000 + orderId}`,
+        details: {
+          order_id: orderId,
+          order_number: `SUKO-${1000 + orderId}`,
+          customer_reason: customerReason,
+          admin_rejection_note: internalNote,
+          transaction_id: fullOrder?.transaction_id || currentOrder.transaction_id,
+        },
+        ip_address: req.ip || req.connection?.remoteAddress
+      });
+    } catch (logErr) {
+      console.warn("[Orders] Failed to record payment_reject activity log:", logErr.message);
+    }
 
     res.json({
       success: true,

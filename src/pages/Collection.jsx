@@ -195,13 +195,13 @@ export const Collection = () => {
         const selCat = selectedCategory.toLowerCase();
 
         if (selCat === "suits") {
-          const isSuit = cat === "suits" || catName.includes("power suit") || pCatId === "suits";
+          const isSuit = (cat === "suits" || catName.includes("power suit") || pCatId === "suits") && pCatId !== "signatures" && cat !== "signatures";
           if (!isSuit) return false;
         } else if (selCat === "coords" || selCat === "coord" || selCat === "co-ords") {
-          const isCoord = cat === "coords" || cat === "waistcoats" || catName.includes("co-ord") || catName.includes("vests & co-ords") || pCatId === "coords";
+          const isCoord = (cat === "coords" || cat === "waistcoats" || catName.includes("co-ord") || catName.includes("vests & co-ords") || pCatId === "coords") && pCatId !== "signatures" && cat !== "signatures";
           if (!isCoord) return false;
         } else if (selCat === "signatures" || selCat === "signature") {
-          const isSignature = p.badge?.toLowerCase().includes("signature") || (p.price && p.price >= 76000) || pCatId === "signatures";
+          const isSignature = pCatId === "signatures" || cat === "signatures" || p.badge?.toLowerCase().includes("signature") || (p.price && p.price >= 76000);
           if (!isSignature) return false;
         } else if (selCat === "separates" || selCat === "blazers" || selCat === "blazers-vests" || selCat === "tailored-separates") {
           // Strictly standalone Tailored Separates

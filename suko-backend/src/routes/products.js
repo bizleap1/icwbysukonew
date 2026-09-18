@@ -287,7 +287,11 @@ router.post("/", requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "Add at least 1 product image for draft." });
     }
 
-    const newProduct = await productService.createProduct(req.body);
+    const isNewArrival = req.body.is_new_arrival === true || req.body.is_new_arrival === "true" || req.body.is_new_arrival === 1 || req.body.is_new_arrival === "1";
+    const newProduct = await productService.createProduct({
+      ...req.body,
+      is_new_arrival: isNewArrival
+    });
     await productService.recordActivityLog({
       admin_email: req.user?.email || "admin@indiancorporatewear.com",
       action: "product_create",
@@ -393,7 +397,8 @@ router.post(
         seo_keywords,
         seo_schema,
         gallery: rawGallery,
-        existing_images: rawExistingImages
+        existing_images: rawExistingImages,
+        is_new_arrival
       } = req.body;
 
       if (!name || !price) {
@@ -500,7 +505,8 @@ router.post(
         seo_title: seo_title || undefined,
         seo_description: seo_description || undefined,
         seo_keywords: seo_keywords || undefined,
-        seo_schema: parsedSeoSchema || undefined
+        seo_schema: parsedSeoSchema || undefined,
+        is_new_arrival: is_new_arrival === true || is_new_arrival === "true" || is_new_arrival === 1 || is_new_arrival === "1"
       });
 
       res.status(201).json({
@@ -599,6 +605,9 @@ router.put("/:id", requireAdmin, handleOptionalMultipart, async (req, res) => {
     if (seo_description !== undefined) updateData.seo_description = seo_description;
     if (seo_keywords !== undefined) updateData.seo_keywords = seo_keywords;
     if (parsedSeoSchema !== undefined) updateData.seo_schema = parsedSeoSchema;
+    if (req.body.is_new_arrival !== undefined) {
+      updateData.is_new_arrival = req.body.is_new_arrival === true || req.body.is_new_arrival === "true" || req.body.is_new_arrival === 1 || req.body.is_new_arrival === "1";
+    }
 
     if (parsedSizeStock && typeof parsedSizeStock === "object" && Object.keys(parsedSizeStock).length > 0) {
       updateData.size_stock = parsedSizeStock;
@@ -771,6 +780,42 @@ router.put("/:id", requireAdmin, handleOptionalMultipart, async (req, res) => {
   } catch (err) {
     console.error("Update product error:", err);
     res.status(500).json({ error: err.message || "Failed to update product" });
+  }
+});
+
+// PATCH /api/products/:id/toggle-new-arrival -- toggle New Arrival merchandising flag (Admin)
+router.patch("/:id/toggle-new-arrival", requireAdmin, async (req, res) => {
+  try {
+    const updated = await productService.toggleProductNewArrival(req.params.id);
+    if (!updated) return res.status(404).json({ error: "Product not found" });
+
+    await productService.recordActivityLog({
+      admin_email: req.user?.email || "admin@indiancorporatewear.com",
+      action: "product_edit",
+      target_entity: "products",
+      affected_count: 1,
+      details: {
+        product_id: updated.id,
+        product_name: updated.name,
+        is_new_arrival: updated.is_new_arrival
+      },
+      summary: updated.is_new_arrival
+        ? `Featured "${updated.name}" in New Arrivals`
+        : `Removed "${updated.name}" from New Arrivals`,
+      status: "success"
+    });
+
+    res.json({
+      success: true,
+      message: updated.is_new_arrival 
+        ? `"${updated.name}" is now featured in New Arrivals`
+        : `"${updated.name}" removed from New Arrivals`,
+      product: updated,
+      is_new_arrival: updated.is_new_arrival
+    });
+  } catch (err) {
+    console.error("Toggle new arrival error:", err);
+    res.status(500).json({ error: err.message || "Failed to toggle New Arrival status" });
   }
 });
 

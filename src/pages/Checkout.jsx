@@ -103,6 +103,13 @@ const Checkout = () => {
   const [verificationSubmittedOrder, setVerificationSubmittedOrder] = useState(null);
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [isDraggingScreenshot, setIsDraggingScreenshot] = useState(false);
+  const [qrCropFailed, setQrCropFailed] = useState(false);
+
+  const handleRemoveScreenshot = () => {
+    setScreenshotFile(null);
+    setScreenshotPreview("");
+    setScreenshotError("");
+  };
 
   // Address & Contact Form State
   const [form, setForm] = useState(() => {
@@ -280,7 +287,7 @@ const Checkout = () => {
   const handleCopyUpiId = () => {
     navigator.clipboard.writeText(MERCHANT_UPI_ID);
     setCopiedUpi(true);
-    toast.success("Merchant UPI ID copied to clipboard.");
+    toast.success("UPI ID copied to clipboard.");
     setTimeout(() => setCopiedUpi(false), 2500);
   };
 
@@ -448,10 +455,13 @@ const Checkout = () => {
               UPI PAYMENT ACKNOWLEDGMENT
             </span>
             <h1 className="font-quiche text-2xl sm:text-3xl md:text-4xl font-light text-[#111113] tracking-tight mb-2">
-              Payment details received for verification.
+              Payment details submitted.
             </h1>
+            <p className="text-[13px] uppercase tracking-[0.2em] text-[#C2922E] font-medium max-w-lg mx-auto mb-3">
+              Your payment is being verified.
+            </p>
             <p className="text-[13px] text-[#6E6E75] font-light max-w-lg mx-auto mb-8 leading-relaxed">
-              Thank you, {verificationSubmittedOrder.shipping_name || form.firstName || "Client"}. Our atelier concierge is reviewing your transaction with our merchant account.
+              Thank you, {verificationSubmittedOrder.shipping_name || form.firstName || "Client"}. Your payment details have been received and are being verified.
             </p>
 
             {/* Clean Details Box */}
@@ -507,10 +517,10 @@ const Checkout = () => {
               {/* Notice */}
               <div className="bg-white border border-[#EAE6DF] p-3.5 text-xs text-[#6E6E75] leading-relaxed">
                 <p className="text-[#111113] font-medium text-[11px] uppercase tracking-wider mb-0.5">
-                  Your order will be confirmed after payment verification.
+                  PAYMENT DETAILS RECEIVED
                 </p>
                 <p className="text-[11.5px]">
-                  Once our admin reconciles your payment with our merchant bank account, your order status will be updated to confirmed and an official tax invoice will be sent to your email.
+                  Your payment is being verified. Your order confirmation and invoice will be shared once verification is complete.
                 </p>
               </div>
             </div>
@@ -1045,50 +1055,69 @@ const Checkout = () => {
                   <div className="flex items-center gap-2 mb-2.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]" />
                     <span className="text-[10px] uppercase tracking-[0.28em] text-[#C2922E] font-medium font-sans">
-                      ORDER #SUKO-{1000 + upiOrder.id}
+                      SUKO ATELIER &bull; SECURE UPI PAYMENT
                     </span>
                   </div>
                   <h1 className="font-quiche text-2xl sm:text-3xl lg:text-[34px] font-light text-[#111113] tracking-tight">
-                    PAYMENT VERIFICATION
+                    Complete Your Payment
                   </h1>
                   <p className="text-[13px] sm:text-[13.5px] text-[#6E6E75] font-light mt-2 max-w-xl leading-relaxed">
-                    Complete your payment securely through UPI. Your order will be confirmed after verification.
+                    Order #SUKO-{1000 + upiOrder.id} &bull; Scan the QR code below using any UPI app to complete your payment.
                   </p>
                 </div>
 
                 {/* 2. Refined QR Payment Card */}
-                <div className="bg-white border border-[#EAE6DF] p-8 sm:p-10 md:p-12 shadow-[0_2px_16px_rgba(0,0,0,0.02)]">
-                  <div className="text-center max-w-md mx-auto space-y-7">
+                <div className="bg-white border border-[#EAE6DF] p-6 sm:p-10 md:p-12 shadow-[0_2px_16px_rgba(0,0,0,0.02)]">
+                  <div className="text-center max-w-md mx-auto space-y-6 sm:space-y-7">
                     
                     {/* Amount prominently displayed */}
                     <div>
                       <span className="text-[10px] uppercase tracking-[0.28em] text-[#8C887B] block mb-1.5 font-medium">
-                        AMOUNT PAYABLE
+                        TOTAL AMOUNT PAYABLE
                       </span>
                       <div className="font-quiche text-3xl sm:text-4xl lg:text-[42px] font-normal text-[#111113] tracking-tight">
                         {formatINR(upiOrder.total)}
                       </div>
                       <p className="text-[11px] text-[#8C887B] font-light mt-1">
-                        Exact payable total &bull; Inclusive of all taxes
+                        Exact payable total &bull; Inclusive of all taxes &amp; shipping
                       </p>
                     </div>
 
                     {/* Hairline Divider */}
                     <div className="w-12 h-px bg-[#EAE6DF] mx-auto" />
 
-                    {/* Large Centered QR with Minimalist Canvas */}
-                    <div className="inline-block bg-[#FAF8F5] p-3 sm:p-4 border border-[#EAE6DF]">
-                      <img
-                        src="/upi-qr.jpg"
-                        alt="SUKO UPI QR Code"
-                        className="w-[230px] sm:w-[260px] md:w-[280px] h-auto mx-auto object-contain block"
-                      />
+                    {/* CLIENT QR — SAFE NON-DESTRUCTIVE DISPLAY CROP */}
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="relative w-[240px] h-[240px] sm:w-[270px] sm:h-[270px] md:w-[280px] md:h-[280px] bg-white border border-[#EAE6DF] shadow-xs overflow-hidden mx-auto select-none">
+                        {!qrCropFailed ? (
+                          <img
+                            src="/upi-qr.jpg"
+                            alt="SUKO Atelier UPI QR Code"
+                            onError={() => setQrCropFailed(true)}
+                            className="absolute max-w-none select-none pointer-events-none"
+                            style={{
+                              width: `${(549 / 468) * 100}%`,
+                              left: `-${(40 / 468) * 100}%`,
+                              top: `-${(340 / 468) * 100}%`,
+                              height: "auto",
+                              display: "block",
+                            }}
+                          />
+                        ) : (
+                          /* Safe fallback to original image if crop viewport fails */
+                          <img
+                            src="/upi-qr.jpg"
+                            alt="SUKO Atelier UPI QR Code"
+                            className="w-full h-full object-contain p-2"
+                          />
+                        )}
+                      </div>
                     </div>
 
                     {/* Quiet Instructions */}
                     <div className="space-y-1">
                       <p className="text-[12.5px] font-medium text-[#111113] tracking-wide">
-                        Scan and complete payment using any UPI app
+                        Scan using your UPI app
                       </p>
                       <p className="text-[11px] text-[#8C887B] font-light">
                         PhonePe &bull; Google Pay &bull; Paytm &bull; BHIM &bull; CRED &bull; Mobile Banking
@@ -1130,7 +1159,7 @@ const Checkout = () => {
                 </div>
 
                 {/* 3. Payment Confirmation Card */}
-                <div className="bg-white border border-[#EAE6DF] p-8 sm:p-10 md:p-12 shadow-[0_2px_16px_rgba(0,0,0,0.02)] space-y-8">
+                <div className="bg-white border border-[#EAE6DF] p-6 sm:p-10 md:p-12 shadow-[0_2px_16px_rgba(0,0,0,0.02)] space-y-7 sm:space-y-8">
                   
                   {/* Heading */}
                   <div className="border-b border-[#EAE6DF] pb-5">
@@ -1146,14 +1175,14 @@ const Checkout = () => {
                     {/* Transaction ID / UTR input */}
                     <div>
                       <label className="text-[10.5px] uppercase tracking-[0.20em] text-[#111113] block mb-2 font-medium">
-                        TRANSACTION ID / UTR <span className="text-[#C2922E]">*</span>
+                        UTR / TRANSACTION ID <span className="text-[#C2922E]">*</span>
                       </label>
                       <input
                         type="text"
                         required
                         value={transactionId}
                         onChange={(e) => setTransactionId(e.target.value.trim().toUpperCase())}
-                        placeholder="Enter 12-digit UTR or Reference Number"
+                        placeholder="Enter 12-digit UTR or Transaction ID"
                         className="w-full bg-[#FAF8F5]/40 border border-[#DDD8CE] focus:border-[#C2922E] focus:bg-white focus:outline-none px-4 py-3.5 text-[13px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-mono tracking-wider"
                       />
                     </div>
@@ -1204,34 +1233,46 @@ const Checkout = () => {
                           </label>
                         </div>
                       ) : (
-                        /* Attached File Preview */
-                        <div className="border border-[#EAE6DF] bg-[#FAF8F5]/60 p-4 sm:p-5 flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-3.5">
-                            <img
-                              src={screenshotPreview}
-                              alt="Payment screenshot preview"
-                              className="w-14 h-14 sm:w-16 sm:h-16 object-cover border border-[#EAE6DF] bg-white"
-                            />
-                            <div className="space-y-1">
-                              <p className="text-[12.5px] font-medium text-[#111113] truncate max-w-[200px] sm:max-w-[280px]">
+                        /* Attached File Preview with Replace & Remove */
+                        <div className="border border-[#EAE6DF] bg-[#FAF8F5]/80 p-4 sm:p-5 flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 border border-[#EAE6DF] bg-white overflow-hidden flex items-center justify-center">
+                              <img
+                                src={screenshotPreview}
+                                alt="Payment screenshot preview"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="min-w-0 space-y-1">
+                              <p className="text-[12.5px] font-medium text-[#111113] truncate max-w-[180px] sm:max-w-[260px]">
                                 {screenshotFile?.name || "Payment Screenshot Attached"}
                               </p>
                               <p className="text-[11px] text-emerald-800 flex items-center gap-1 font-light">
-                                <Check size={11} className="text-emerald-700" />
-                                <span>File attached ({screenshotFile ? (screenshotFile.size / 1024 / 1024).toFixed(2) : "1.2"} MB)</span>
+                                <Check size={12} className="text-emerald-700 shrink-0" />
+                                <span>File uploaded ({screenshotFile ? (screenshotFile.size / 1024 / 1024).toFixed(2) : "1.0"} MB)</span>
                               </p>
                             </div>
                           </div>
 
-                          <label className="text-[10.5px] uppercase tracking-[0.18em] text-[#C2922E] hover:text-[#111113] font-medium underline underline-offset-4 cursor-pointer">
-                            Change File
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/jpg,image/png,image/webp"
-                              onChange={handleScreenshotChange}
-                              className="hidden"
-                            />
-                          </label>
+                          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+                            <label className="text-[10.5px] uppercase tracking-[0.16em] text-[#C2922E] hover:text-[#111113] font-medium underline underline-offset-4 cursor-pointer transition-colors">
+                              Replace
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/webp"
+                                onChange={handleScreenshotChange}
+                                className="hidden"
+                              />
+                            </label>
+                            <span className="text-[#DDD8CE] text-xs">|</span>
+                            <button
+                              type="button"
+                              onClick={handleRemoveScreenshot}
+                              className="text-[10.5px] uppercase tracking-[0.16em] text-[#8C887B] hover:text-rose-700 font-medium cursor-pointer transition-colors"
+                            >
+                              Remove
+                            </button>
+                          </div>
                         </div>
                       )}
 
@@ -1241,28 +1282,27 @@ const Checkout = () => {
                         </p>
                       )}
 
-                      {/* Helper text as explicitly specified */}
                       <p className="text-[11.5px] text-[#6E6E75] font-light mt-2.5 leading-relaxed">
                         Screenshot must clearly show successful payment status, transaction ID and paid amount.
                       </p>
                     </div>
 
-                    {/* 4. Primary CTA */}
+                    {/* 4. Primary CTA: SUBMIT PAYMENT */}
                     <div className="pt-2">
                       <button
                         type="button"
                         onClick={handleSubmitPaymentProof}
                         disabled={!transactionId.trim() || !screenshotPreview || isSubmittingProof}
-                        className="group w-full bg-[#111113] hover:bg-[#C2922E] text-white py-4 px-8 text-[11.5px] uppercase tracking-[0.24em] font-medium flex items-center justify-center gap-3 transition-colors duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed rounded-none"
+                        className="group w-full bg-[#111113] hover:bg-[#C2922E] text-white py-4 px-8 text-[11.5px] uppercase tracking-[0.24em] font-medium flex items-center justify-center gap-3 transition-colors duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed rounded-none shadow-xs"
                       >
                         {isSubmittingProof ? (
                           <>
                             <Loader2 size={15} className="animate-spin text-[#C2922E] group-hover:text-white transition-colors" />
-                            <span>Submitting for Verification...</span>
+                            <span>SUBMITTING...</span>
                           </>
                         ) : (
                           <>
-                            <span>SUBMIT PAYMENT FOR VERIFICATION</span>
+                            <span>SUBMIT PAYMENT</span>
                             <span>&rarr;</span>
                           </>
                         )}

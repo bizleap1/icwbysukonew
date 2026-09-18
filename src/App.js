@@ -185,6 +185,7 @@ const AnimatedRoutes = () => {
           <Route path="/collection" element={<PageWrapper><Collection /></PageWrapper>} />
           <Route path="/collections" element={<PageWrapper><Collection /></PageWrapper>} />
           <Route path="/new-in" element={<PageWrapper><NewIn /></PageWrapper>} />
+          <Route path="/new-arrivals" element={<PageWrapper><NewIn /></PageWrapper>} />
           <Route path="/collection/:category" element={<PageWrapper><NewIn /></PageWrapper>} />
           <Route path="/product/:slug" element={<PageWrapper><ProductDetail /></PageWrapper>} />
           <Route path="/wishlist" element={<PageWrapper><Wishlist /></PageWrapper>} />

@@ -6,17 +6,17 @@ import { getCardImage } from "../../utils/mediaUtils";
 
 const supportingSlugs = [
   {
-    slug: "the-plum-sculpted-suit",
+    slug: "the-dusty-rose-embroidered-farchi-set",
     number: "02",
     position: "object-[50%_25%]"
   },
   {
-    slug: "the-aubergine-tailored-suit",
+    slug: "the-plum-sculpted-suit",
     number: "03",
     position: "object-[50%_25%]"
   },
   {
-    slug: "the-lilac-flare-suit",
+    slug: "the-midnight-peplum-set",
     number: "04",
     position: "object-[50%_25%]"
   }
@@ -26,16 +26,16 @@ export const SignaturePiecesSection = () => {
   const { products } = useProducts();
 
   const heroProduct = useMemo(() => {
-    return (products || []).find((p) => p.slug === "the-noir-tailored-suit") || products?.[0];
+    return (products || []).find((p) => p.slug === "the-midnight-sculpted-vest-set") || products?.[0];
   }, [products]);
 
   const SIGNATURE_HERO = useMemo(() => ({
-    id: heroProduct?.id || "w-08",
-    slug: heroProduct?.slug || "the-noir-tailored-suit",
-    name: heroProduct?.name || "Noir Tailored Set",
-    category: heroProduct?.sub_category || "Single-Breasted Blazer & Wide-Leg Trousers",
-    price: heroProduct?.price ? formatINR(heroProduct.price) : "₹4,550",
-    image: "/the_boardroom_edit.webp",
+    id: heroProduct?.id || "w-02",
+    slug: heroProduct?.slug || "the-midnight-sculpted-vest-set",
+    name: heroProduct?.name || "Midnight Sculpted Vest Set",
+    category: heroProduct?.sub_category || heroProduct?.setType || "Sculpted Vest & Column Skirt",
+    price: heroProduct?.price ? formatINR(heroProduct.price) : "₹4,998",
+    image: heroProduct?.images?.[0] || "/products/midnight-sculpted-vest-set/1.png",
     position: "object-[50%_15%]"
   }), [heroProduct]);
 

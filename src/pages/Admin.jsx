@@ -917,7 +917,8 @@ const Admin = () => {
     silhouette: "",
     fit: "Tailored",
     occasion: "Business Formal",
-    status: "active"
+    status: "active",
+    is_new_arrival: false
   };
   const [formData, setFormData] = useState(initialGarmentForm);
   const [applicableSizes, setApplicableSizes] = useState(["38", "40", "42", "44", "46"]);
@@ -1032,6 +1033,17 @@ const Admin = () => {
   const [zoomedScreenshot, setZoomedScreenshot] = useState(null);
   const [verifyingOrderId, setVerifyingOrderId] = useState(null);
   const [rejectingOrderId, setRejectingOrderId] = useState(null);
+
+  // Custom SUKO Atelier Payment Verification Modals State
+  const [verifyPaymentModalOrder, setVerifyPaymentModalOrder] = useState(null);
+  const [rejectPaymentModalOrder, setRejectPaymentModalOrder] = useState(null);
+  const [rejectSelectedReason, setRejectSelectedReason] = useState("Payment not received");
+  const [rejectCustomReason, setRejectCustomReason] = useState("");
+  const [rejectAdminNote, setRejectAdminNote] = useState("");
+  const [isProcessingPaymentAction, setIsProcessingPaymentAction] = useState(false);
+
+  // Reusable SUKO Atelier Confirmation Modal (Eliminating native window.confirm)
+  const [confirmModalConfig, setConfirmModalConfig] = useState(null);
   const inspectModalRef = useRef(null);
 
   useEffect(() => {
@@ -1186,9 +1198,7 @@ const Admin = () => {
     }
   }, [editingOrder]);
 
-  const handleDeleteOrder = async (orderId) => {
-    if (!window.confirm(`Are you sure you want to permanently delete Order #SUKO-${1000 + orderId}? This action cannot be undone.`)) return;
-
+  const executeDeleteOrder = async (orderId) => {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}`, {
@@ -1212,6 +1222,17 @@ const Admin = () => {
     } catch (err) {
       toast.error(err.message);
     }
+  };
+
+  const handleDeleteOrder = (orderId) => {
+    setConfirmModalConfig({
+      title: "Delete Atelier Order",
+      metadata: "ATELIER GOVERNANCE",
+      message: `Are you sure you want to permanently delete Order #SUKO-${1000 + orderId}? This action cannot be undone.`,
+      confirmLabel: "PERMANENTLY DELETE",
+      isDestructive: true,
+      onConfirm: () => executeDeleteOrder(orderId)
+    });
   };
 
   const handleOpenEditOrder = (o) => {
@@ -1295,7 +1316,8 @@ const Admin = () => {
     occasion: "Business Formal",
     description: "",
     sizes: "",
-    status: "active"
+    status: "active",
+    is_new_arrival: false
   });
   const [editApplicableSizes, setEditApplicableSizes] = useState(["38", "40", "42", "44", "46"]);
   const [editSizeStockMap, setEditSizeStockMap] = useState({});
@@ -1350,7 +1372,8 @@ const Admin = () => {
       fit: p.fit || "Tailored",
       occasion: p.occasion || "Business Formal",
       description: p.description || "",
-      status: p.status || "active"
+      status: p.status || "active",
+      is_new_arrival: Boolean(p.is_new_arrival ?? p.isNew ?? false)
     });
     setEditSizeStockMap(initialMap);
 
@@ -1381,6 +1404,7 @@ const Admin = () => {
       if (editFormData.category_id) data.append("category_id", editFormData.category_id);
       if (editFormData.sub_category) data.append("sub_category", editFormData.sub_category);
       data.append("status", editFormData.status || "active");
+      data.append("is_new_arrival", String(Boolean(editFormData.is_new_arrival)));
       data.append("color", editFormData.color || "");
       data.append("secondary_color", editFormData.secondary_color || "");
       data.append("fabric", editFormData.fabric || "");
@@ -1437,6 +1461,30 @@ const Admin = () => {
       toast.error(err.message || "Failed to update product");
     } finally {
       setUpdatingProduct(false);
+    }
+  };
+
+  const handleToggleProductNewArrival = async (productId) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/products/${productId}/toggle-new-arrival`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.error || "Failed to toggle new arrival status");
+
+      toast.success(
+        data.is_new_arrival
+          ? `"${data.product?.name || "Silhouette"}" is now featured in New Arrivals!`
+          : `"${data.product?.name || "Silhouette"}" removed from New Arrivals (remains in Collections).`
+      );
+      fetchDashboardData();
+      refreshGlobalProducts();
+    } catch (err) {
+      toast.error(err.message || "Failed to update new arrival merchandising status");
     }
   };
 
@@ -1824,6 +1872,7 @@ const Admin = () => {
       if (formData.category_id) data.append("category_id", formData.category_id);
       if (formData.sub_category) data.append("sub_category", formData.sub_category);
       data.append("status", finalStatus);
+      data.append("is_new_arrival", String(Boolean(formData.is_new_arrival)));
       data.append("color", formData.color || "");
       data.append("secondary_color", formData.secondary_color || "");
       data.append("fabric", formData.fabric || "");
@@ -1938,7 +1987,8 @@ const Admin = () => {
       silhouette: prod.silhouette || "",
       fit: prod.fit || "Tailored",
       occasion: prod.occasion || "Business Formal",
-      status: prod.status || "active"
+      status: prod.status || "active",
+      is_new_arrival: Boolean(prod.is_new_arrival ?? prod.isNew ?? false)
     });
 
     let appSizes = [];
@@ -2250,8 +2300,7 @@ const Admin = () => {
     }
   };
 
-  const handleResetBrandSettings = async () => {
-    if (!window.confirm("Reset brand and invoice settings to default SUKO Atelier identity?")) return;
+  const executeResetBrandSettings = async () => {
     setSavingBrandSettings(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/settings/brand/reset`, {
@@ -2270,6 +2319,17 @@ const Admin = () => {
     } finally {
       setSavingBrandSettings(false);
     }
+  };
+
+  const handleResetBrandSettings = () => {
+    setConfirmModalConfig({
+      title: "Reset Brand Identity",
+      metadata: "BRAND GOVERNANCE",
+      message: "Reset brand, typography, and invoice configuration back to default SUKO Atelier identity?",
+      confirmLabel: "RESET TO DEFAULT",
+      isDestructive: false,
+      onConfirm: executeResetBrandSettings
+    });
   };
 
   const handleCreateCouponSubmit = async (e) => {
@@ -2349,8 +2409,7 @@ const Admin = () => {
     }
   };
 
-  const handleDeleteCoupon = async (id, code) => {
-    if (!window.confirm(`Are you sure you want to permanently delete coupon "${code || id}"?`)) return;
+  const executeDeleteCoupon = async (id, code) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/coupons/${id}`, {
         method: "DELETE",
@@ -2362,6 +2421,17 @@ const Admin = () => {
     } catch (err) {
       toast.error(err.message);
     }
+  };
+
+  const handleDeleteCoupon = (id, code) => {
+    setConfirmModalConfig({
+      title: "Delete Atelier Coupon",
+      metadata: "PRIVILEGE CODES",
+      message: `Are you sure you want to permanently delete coupon "${code || id}"? This will deactivate the privilege discount code.`,
+      confirmLabel: "DELETE COUPON",
+      isDestructive: true,
+      onConfirm: () => executeDeleteCoupon(id, code)
+    });
   };
 
   const handleSendEmailSubmit = async (e) => {
@@ -2445,8 +2515,7 @@ const Admin = () => {
     }
   };
 
-  const handleDeleteReview = async (id) => {
-    if (!window.confirm("Are you sure you want to permanently delete this customer review?")) return;
+  const executeDeleteReview = async (id) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/reviews/${id}`, {
         method: "DELETE",
@@ -2462,6 +2531,17 @@ const Admin = () => {
     } catch (err) {
       toast.error(err.message);
     }
+  };
+
+  const handleDeleteReview = (id) => {
+    setConfirmModalConfig({
+      title: "Delete Customer Review",
+      metadata: "CLIENT ENDORSEMENTS",
+      message: "Are you sure you want to permanently delete this customer review from the atelier ledger?",
+      confirmLabel: "DELETE REVIEW",
+      isDestructive: true,
+      onConfirm: () => executeDeleteReview(id)
+    });
   };
 
   const closeDeleteGarmentModal = () => closeModal("deleteGarmentModal");
@@ -3236,8 +3316,18 @@ const Admin = () => {
     }
   };
 
-  const handleVerifyPayment = async (orderId) => {
-    if (!window.confirm(`Verify and approve UPI Payment for Order #SUKO-${1000 + orderId}?\n\nThis will confirm the payment, mark the order as PAID, and dispatch the official tax invoice to the client.`)) return;
+  const handleVerifyPayment = (orderOrId) => {
+    let order = null;
+    if (orderOrId && typeof orderOrId === "object") {
+      order = orderOrId;
+    } else {
+      order = orders.find(o => o.id === orderOrId) || (selectedOrderDetails?.id === orderOrId ? selectedOrderDetails : { id: orderOrId });
+    }
+    setVerifyPaymentModalOrder(order);
+  };
+
+  const executeVerifyPayment = async (orderId) => {
+    setIsProcessingPaymentAction(true);
     setVerifyingOrderId(orderId);
     try {
       const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/verify-payment`, {
@@ -3246,22 +3336,52 @@ const Admin = () => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to verify payment");
-      toast.success(`Payment verified for Order #SUKO-${1000 + orderId}! Official tax invoice dispatched.`);
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "paid" } : o));
+      toast.success("Payment verified. Order confirmed.");
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "paid", cancel_reason: null, admin_rejection_note: null } : o));
       if (selectedOrderDetails && selectedOrderDetails.id === orderId) {
-        setSelectedOrderDetails(prev => ({ ...prev, status: "paid" }));
+        setSelectedOrderDetails(prev => ({ ...prev, status: "paid", cancel_reason: null, admin_rejection_note: null }));
       }
+      setVerifyPaymentModalOrder(null);
       fetchDashboardData();
     } catch (err) {
       toast.error(err.message);
     } finally {
+      setIsProcessingPaymentAction(false);
       setVerifyingOrderId(null);
     }
   };
 
-  const handleRejectPayment = async (orderId) => {
-    const reason = window.prompt("Reason for rejecting payment proof (will be shown to the client):", "Payment not reflected in merchant bank account / UTR mismatch");
-    if (reason === null) return;
+  const handleRejectPayment = (orderOrId) => {
+    let order = null;
+    if (orderOrId && typeof orderOrId === "object") {
+      order = orderOrId;
+    } else {
+      order = orders.find(o => o.id === orderOrId) || (selectedOrderDetails?.id === orderOrId ? selectedOrderDetails : { id: orderOrId });
+    }
+    setRejectSelectedReason("Payment not received");
+    setRejectCustomReason("");
+    setRejectAdminNote("");
+    setRejectPaymentModalOrder(order);
+  };
+
+  const executeRejectPayment = async (orderId) => {
+    const rawReason = rejectSelectedReason === "Other" ? rejectCustomReason.trim() : rejectSelectedReason;
+    if (!rawReason) {
+      toast.error("Please provide a rejection reason.");
+      return;
+    }
+
+    // Customer-safe phrasing (no internal operational jargon)
+    const customerReasonMap = {
+      "Payment not received": "We couldn't verify this payment. Payment details were not received.",
+      "UTR / Transaction ID mismatch": "Transaction ID could not be verified with payment details.",
+      "Amount mismatch": "Payment amount does not match the order total.",
+      "Payment screenshot unclear": "Payment screenshot could not be verified. Please provide a clear receipt."
+    };
+    const customerReason = customerReasonMap[rawReason] || rawReason;
+    const adminNote = rejectAdminNote.trim();
+
+    setIsProcessingPaymentAction(true);
     setRejectingOrderId(orderId);
     try {
       const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/reject-payment`, {
@@ -3270,19 +3390,37 @@ const Admin = () => {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ reason: reason.trim() || "Payment verification failed" })
+        body: JSON.stringify({
+          reason: customerReason,
+          admin_note: adminNote
+        })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to reject payment");
-      toast.warning(`Order #SUKO-${1000 + orderId} payment marked as rejected. Customer can re-submit.`);
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "payment_verification_failed", cancel_reason: reason.trim() } : o));
+      toast.warning("Payment proof rejected.");
+      setOrders(prev => prev.map(o => o.id === orderId ? {
+        ...o,
+        status: "payment_verification_failed",
+        cancel_reason: customerReason,
+        admin_rejection_note: adminNote
+      } : o));
       if (selectedOrderDetails && selectedOrderDetails.id === orderId) {
-        setSelectedOrderDetails(prev => ({ ...prev, status: "payment_verification_failed", cancel_reason: reason.trim() }));
+        setSelectedOrderDetails(prev => ({
+          ...prev,
+          status: "payment_verification_failed",
+          cancel_reason: customerReason,
+          admin_rejection_note: adminNote
+        }));
       }
+      setRejectPaymentModalOrder(null);
+      setRejectSelectedReason("Payment not received");
+      setRejectCustomReason("");
+      setRejectAdminNote("");
       fetchDashboardData();
     } catch (err) {
       toast.error(err.message);
     } finally {
+      setIsProcessingPaymentAction(false);
       setRejectingOrderId(null);
     }
   };
@@ -6229,6 +6367,11 @@ const Admin = () => {
                                     }`}>
                                       {p.status || "active"}
                                     </span>
+                                    {Boolean(p.is_new_arrival) && (
+                                      <span className="text-[9px] uppercase tracking-wider font-mono text-[#C2922E] border border-[#C2922E]/40 bg-[#C2922E]/15 px-2 py-0.5 rounded-[2px] font-medium">
+                                        NEW ARRIVAL
+                                      </span>
+                                    )}
                                     {p.category && (
                                       <span className="text-[9px] uppercase tracking-wider font-mono text-[#C2922E] border border-[#C2922E]/30 bg-[#C2922E]/10 px-2 py-0.5 rounded-[2px]">
                                         {typeof p.category === 'object' ? p.category.name : (p.categoryName || p.category)}
@@ -6280,6 +6423,21 @@ const Admin = () => {
                                 {/* Inspection & Individual Row Actions */}
                                 <td className="p-3.5 text-right whitespace-nowrap">
                                   <div className="flex items-center justify-end gap-1.5">
+                                    {/* 1-Click New Arrival Toggle */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleProductNewArrival(p.id)}
+                                      className={`inline-flex items-center gap-1 px-2.5 py-1.5 border rounded-[2px] text-[10px] uppercase tracking-[0.14em] font-mono font-medium transition-all cursor-pointer shadow-xs ${
+                                        p.is_new_arrival
+                                          ? "bg-[#C2922E] text-white border-[#C2922E] hover:bg-[#a97e24]"
+                                          : "bg-white hover:bg-[#FAF8F5] text-[#746F68] hover:text-[#111113] border-[#E5DDD1] hover:border-[#111113]"
+                                      }`}
+                                      title={p.is_new_arrival ? "Remove from New Arrivals (remains in Collections)" : "Feature in New Arrivals"}
+                                    >
+                                      <Sparkles size={11} className={p.is_new_arrival ? "text-white" : "text-[#C2922E]"} />
+                                      <span className="hidden sm:inline">{p.is_new_arrival ? "New In" : "+ New In"}</span>
+                                    </button>
+
                                     {/* 1-Click Duplicate Garment */}
                                     <button
                                       type="button"
@@ -6854,9 +7012,16 @@ const Admin = () => {
                                                 className="w-9 h-9 object-cover rounded-[1px] border border-[#E5DDD1] shrink-0"
                                               />
                                               <div className="min-w-0">
-                                                <p className="text-xs font-serif font-medium text-[#111113] truncate">
-                                                  {piece.name}
-                                                </p>
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                  <p className="text-xs font-serif font-medium text-[#111113] truncate">
+                                                    {piece.name}
+                                                  </p>
+                                                  {Boolean(piece.is_new_arrival) && (
+                                                    <span className="text-[8px] uppercase font-mono px-1.5 py-0.2 rounded-[2px] bg-[#C2922E]/15 text-[#C2922E] border border-[#C2922E]/30 font-medium tracking-wider shrink-0">
+                                                      NEW ARRIVAL
+                                                    </span>
+                                                  )}
+                                                </div>
                                                 <p className="text-[10px] font-mono text-[#746F68]">
                                                   {formatINR(piece.price)} &middot; {piece.stock ?? 0} in stock &middot;{" "}
                                                   <span className={piece.status === "draft" ? "text-amber-700" : "text-emerald-700 font-medium"}>
@@ -6865,17 +7030,31 @@ const Admin = () => {
                                                 </p>
                                               </div>
                                             </div>
-                                            <button
-                                              type="button"
-                                              onClick={() => handleStartEditGarment(piece)}
-                                              className={`text-[9.5px] uppercase font-mono px-2 py-1 rounded-[2px] border transition-colors shrink-0 ml-2 cursor-pointer ${
-                                                editingGarmentId === piece.id 
-                                                  ? "bg-[#C2922E] text-white border-[#C2922E]" 
-                                                  : "border-[#E5DDD1] hover:border-[#111113] text-[#111113] bg-white"
-                                              }`}
-                                            >
-                                              {editingGarmentId === piece.id ? "Editing" : "Edit Product ✎"}
-                                            </button>
+                                            <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                              <button
+                                                type="button"
+                                                onClick={() => handleToggleProductNewArrival(piece.id)}
+                                                className={`text-[9px] uppercase font-mono px-2 py-1 rounded-[2px] border transition-colors cursor-pointer ${
+                                                  piece.is_new_arrival
+                                                    ? "bg-[#C2922E] text-white border-[#C2922E]"
+                                                    : "border-[#E5DDD1] hover:border-[#111113] text-[#746F68] bg-white"
+                                                }`}
+                                                title={piece.is_new_arrival ? "Remove from New Arrivals" : "Feature in New Arrivals"}
+                                              >
+                                                {piece.is_new_arrival ? "★ New In" : "+ New In"}
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleStartEditGarment(piece)}
+                                                className={`text-[9.5px] uppercase font-mono px-2 py-1 rounded-[2px] border transition-colors cursor-pointer ${
+                                                  editingGarmentId === piece.id 
+                                                    ? "bg-[#111113] text-white border-[#111113]" 
+                                                    : "border-[#E5DDD1] hover:border-[#111113] text-[#111113] bg-white"
+                                                }`}
+                                              >
+                                                {editingGarmentId === piece.id ? "Editing" : "Edit ✎"}
+                                              </button>
+                                            </div>
                                           </div>
                                         ))}
                                       </div>
@@ -7695,6 +7874,54 @@ const Admin = () => {
                                 </select>
                               </div>
 
+                              {/* FEATURE IN NEW ARRIVALS — Merchandising Control */}
+                              <div className="bg-white border border-[#E5DDD1] p-3.5 sm:p-4 rounded-[2px] space-y-2">
+                                <div className="flex items-center justify-between gap-3">
+                                  <div>
+                                    <span className="text-[10.5px] uppercase tracking-[0.16em] text-[#111113] font-mono font-semibold block">
+                                      FEATURE IN NEW ARRIVALS
+                                    </span>
+                                    <p className="text-[11px] text-[#746F68] font-sans mt-0.5 leading-relaxed">
+                                      {formData.is_new_arrival 
+                                        ? "Featured: Appears in Collections + New Arrivals page + Homepage New Arrivals."
+                                        : "Standard: Appears in Collections master catalogue only."}
+                                    </p>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setFormData(prev => ({ ...prev, is_new_arrival: !prev.is_new_arrival }))}
+                                    className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                      formData.is_new_arrival ? "bg-[#C2922E]" : "bg-[#D8D2C6]"
+                                    }`}
+                                    role="switch"
+                                    aria-checked={Boolean(formData.is_new_arrival)}
+                                    title="Toggle feature in New Arrivals"
+                                  >
+                                    <span
+                                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                        formData.is_new_arrival ? "translate-x-6" : "translate-x-0"
+                                      }`}
+                                    />
+                                  </button>
+                                </div>
+
+                                <div className="flex items-center gap-2 pt-1 border-t border-[#E5DDD1]/60">
+                                  <span className={`text-[9px] uppercase font-mono px-2 py-0.5 rounded-[2px] font-medium tracking-wider ${
+                                    formData.is_new_arrival 
+                                      ? "bg-[#C2922E]/15 text-[#C2922E] border border-[#C2922E]/40" 
+                                      : "bg-[#FAF8F5] text-[#746F68] border border-[#E5DDD1]"
+                                  }`}>
+                                    {formData.is_new_arrival ? "NEW ARRIVAL: ON" : "NEW ARRIVAL: OFF"}
+                                  </span>
+                                  <span className="text-[10px] text-[#746F68] font-mono">
+                                    {formData.is_new_arrival 
+                                      ? "Eligible for homepage top-4 & /new-arrivals edit" 
+                                      : "Collections master catalogue only"}
+                                  </span>
+                                </div>
+                              </div>
+
                               {/* Dual Actions: Draft vs Publish OR Save Changes */}
                               <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
                                 {editingGarmentId ? (
@@ -7960,7 +8187,7 @@ const Admin = () => {
                                   <div className="flex items-center gap-1.5">
                                     <button
                                       type="button"
-                                      onClick={() => handleVerifyPayment(o.id)}
+                                      onClick={() => handleVerifyPayment(o)}
                                       disabled={verifyingOrderId === o.id}
                                       className="text-[9.5px] font-mono font-medium bg-[#111113] hover:bg-[#C2922E] text-white px-2 py-0.5 rounded-[2px] transition-colors disabled:opacity-50 cursor-pointer"
                                       title="Verify & Confirm Payment"
@@ -7969,7 +8196,7 @@ const Admin = () => {
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => handleRejectPayment(o.id)}
+                                      onClick={() => handleRejectPayment(o)}
                                       disabled={rejectingOrderId === o.id}
                                       className="text-[9.5px] font-mono font-medium text-[#8B3A3A] hover:text-[#111113] border border-[#D9A4A4] px-2 py-0.5 rounded-[2px] transition-colors disabled:opacity-50 cursor-pointer bg-transparent hover:bg-[#D9A4A4]/15"
                                       title="Reject Payment Proof"
@@ -8180,7 +8407,7 @@ const Admin = () => {
                             <div className="pt-1 flex items-center gap-2">
                               <button
                                 type="button"
-                                onClick={() => handleVerifyPayment(o.id)}
+                                onClick={() => handleVerifyPayment(o)}
                                 disabled={verifyingOrderId === o.id}
                                 className="flex-1 py-1.5 bg-[#111113] hover:bg-[#C2922E] text-white text-[11px] font-mono uppercase tracking-wider rounded-[2px] transition-colors disabled:opacity-50 cursor-pointer"
                               >
@@ -8188,7 +8415,7 @@ const Admin = () => {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleRejectPayment(o.id)}
+                                onClick={() => handleRejectPayment(o)}
                                 disabled={rejectingOrderId === o.id}
                                 className="flex-1 py-1.5 border border-[#D9A4A4] text-[#8B3A3A] hover:bg-[#D9A4A4]/15 text-[11px] font-mono uppercase tracking-wider rounded-[2px] transition-colors disabled:opacity-50 cursor-pointer"
                               >
@@ -8821,7 +9048,7 @@ const Admin = () => {
                               <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-[#E5DDD1]">
                                 <button
                                   type="button"
-                                  onClick={() => handleVerifyPayment(order.id)}
+                                  onClick={() => handleVerifyPayment(order)}
                                   disabled={verifyingOrderId === order.id}
                                   className="flex-1 min-w-[140px] bg-emerald-700 hover:bg-emerald-800 text-white py-2.5 px-4 rounded-xl text-[10.5px] uppercase tracking-[0.16em] font-semibold transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                                 >
@@ -8832,14 +9059,14 @@ const Admin = () => {
                                     </>
                                   ) : (
                                     <>
-                                      <CheckCircle size={14} /> Approve & Confirm
+                                      <CheckCircle size={14} /> Approve &amp; Confirm
                                     </>
                                   )}
                                 </button>
 
                                 <button
                                   type="button"
-                                  onClick={() => handleRejectPayment(order.id)}
+                                  onClick={() => handleRejectPayment(order)}
                                   disabled={rejectingOrderId === order.id}
                                   className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 py-2.5 px-4 rounded-xl text-[10.5px] uppercase tracking-[0.16em] font-semibold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
                                 >
@@ -9099,6 +9326,15 @@ const Admin = () => {
                         }`}>
                           Status: {editingProduct.status || "active"}
                         </span>
+                        {Boolean(editingProduct.is_new_arrival) ? (
+                          <span className="text-[9.5px] uppercase font-mono tracking-wider text-[#C2922E] bg-[#C2922E]/15 border border-[#C2922E]/40 px-2 py-0.5 rounded-[2px] font-medium">
+                            NEW ARRIVAL: ON
+                          </span>
+                        ) : (
+                          <span className="text-[9.5px] uppercase font-mono tracking-wider text-[#746F68] bg-[#FAF8F5] border border-[#E5DDD1] px-2 py-0.5 rounded-[2px]">
+                            NEW ARRIVAL: OFF
+                          </span>
+                        )}
                         <span className="text-[9.5px] uppercase font-mono tracking-wider text-[#C2922E] bg-[#C2922E]/10 border border-[#C2922E]/25 px-2 py-0.5 rounded-[2px]">
                           Collection: {typeof editingProduct.category === 'object' ? (editingProduct.category?.name || "Atelier Silhouette") : (categories.find(c => c.id === editingProduct.category_id || c.slug === editingProduct.category_id)?.name || editingProduct.categoryName || "Atelier Silhouette")}
                         </span>
@@ -9247,6 +9483,34 @@ const Admin = () => {
                           <option value="archived">Archived (Retired)</option>
                         </select>
                       </div>
+                    </div>
+
+                    {/* FEATURE IN NEW ARRIVALS — Merchandising Control in Edit Drawer */}
+                    <div className="bg-[#FAF8F5] border border-[#E5DDD1] p-3 rounded-[2px] flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] uppercase tracking-[0.14em] text-[#111113] font-mono font-semibold block">
+                          FEATURE IN NEW ARRIVALS
+                        </span>
+                        <span className="text-[10px] text-[#746F68] font-mono block mt-0.5">
+                          {editFormData.is_new_arrival ? "ON · In New Arrivals & Homepage" : "OFF · Collections Catalogue Only"}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditFormData(prev => ({ ...prev, is_new_arrival: !prev.is_new_arrival }))}
+                        className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          editFormData.is_new_arrival ? "bg-[#C2922E]" : "bg-[#D8D2C6]"
+                        }`}
+                        role="switch"
+                        aria-checked={Boolean(editFormData.is_new_arrival)}
+                        title="Toggle Feature in New Arrivals"
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                            editFormData.is_new_arrival ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
                     </div>
 
                     {/* COLOR PALETTE SUITE (EDIT DRAWER) */}
@@ -9757,7 +10021,7 @@ const Admin = () => {
                       <>
                         <button
                           type="button"
-                          onClick={() => handleVerifyPayment(selectedOrderDetails.id)}
+                          onClick={() => handleVerifyPayment(selectedOrderDetails)}
                           disabled={selectedOrderDetails.status === "paid" || verifyingOrderId === selectedOrderDetails.id}
                           className="group flex-1 bg-[#111113] hover:bg-[#C2922E] disabled:opacity-40 text-[#FAF8F5] font-medium text-[10.5px] uppercase tracking-[0.14em] font-mono py-2.5 px-4 rounded-[2px] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                         >
@@ -9766,7 +10030,7 @@ const Admin = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleRejectPayment(selectedOrderDetails.id)}
+                          onClick={() => handleRejectPayment(selectedOrderDetails)}
                           disabled={selectedOrderDetails.status === "paid" || rejectingOrderId === selectedOrderDetails.id}
                           className="flex-1 bg-transparent hover:bg-rose-500/10 text-rose-800 hover:text-rose-900 border border-rose-300 disabled:opacity-40 font-medium text-[10.5px] uppercase tracking-[0.14em] font-mono py-2.5 px-4 rounded-[2px] transition-colors flex items-center justify-center gap-2 cursor-pointer"
                         >
@@ -11874,6 +12138,341 @@ const Admin = () => {
                   className="px-4 py-1.5 rounded-[2px] border border-[#E5DDD1] text-[11px] font-mono uppercase tracking-wider text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] transition-colors cursor-pointer"
                 >
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* 1. SUKO ATELIER APPROVE PAYMENT MODAL                         */}
+        {/* ============================================================= */}
+        {verifyPaymentModalOrder && (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-5 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+            onClick={() => !isProcessingPaymentAction && setVerifyPaymentModalOrder(null)}
+          >
+            <div
+              className="bg-[#FAF8F5] border border-[#E5DDD1] rounded-t-xl sm:rounded-[2px] w-full max-w-[500px] max-h-[92vh] flex flex-col shadow-2xl font-body animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="shrink-0 px-5 sm:px-6 py-4 border-b border-[#E5DDD1] bg-white flex items-center justify-between">
+                <div>
+                  <span className="text-[9.5px] uppercase tracking-[0.2em] text-[#C2922E] font-mono font-semibold block">
+                    PAYMENT VERIFICATION
+                  </span>
+                  <h3 className="font-serif text-xl font-medium text-[#111113] mt-0.5">
+                    Approve Payment
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  disabled={isProcessingPaymentAction}
+                  onClick={() => setVerifyPaymentModalOrder(null)}
+                  className="w-8 h-8 flex items-center justify-center text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] rounded-[2px] transition-colors cursor-pointer disabled:opacity-40"
+                  title="Close Modal"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto">
+                {/* Dynamic Order Details Box */}
+                <div className="bg-white border border-[#E5DDD1] p-4 rounded-[2px] space-y-2.5">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#F0EBE1]">
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-[#746F68]">Order Number</span>
+                    <span className="text-xs font-mono font-semibold text-[#111113]">
+                      #SUKO-{1000 + verifyPaymentModalOrder.id}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between pb-2 border-b border-[#F0EBE1]">
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-[#746F68]">Final Amount</span>
+                    <span className="font-mono text-base font-semibold text-[#111113]">
+                      {formatINR(verifyPaymentModalOrder.total || 0)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between pb-2 border-b border-[#F0EBE1]">
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-[#746F68]">Payment Method</span>
+                    <span className="text-xs font-mono text-[#111113]">
+                      {verifyPaymentModalOrder.payment_method === "upi_qr" ? "UPI QR / Direct Transfer" : (verifyPaymentModalOrder.payment_method || "UPI Transfer")}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-[#746F68]">UTR / Transaction ID</span>
+                    <span className="text-xs font-mono font-medium text-[#A77B1E] select-all">
+                      {verifyPaymentModalOrder.transaction_id || verifyPaymentModalOrder.utr || "Not provided"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Confirmation Copy */}
+                <div className="space-y-1.5 text-center px-2">
+                  <p className="text-xs text-[#111113] font-medium leading-relaxed">
+                    Confirm that the payment details have been verified before approving this order.
+                  </p>
+                  <p className="text-[11px] font-mono text-[#746F68]">
+                    This will mark the payment as verified and confirm the order.
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="shrink-0 px-5 sm:px-6 py-3.5 border-t border-[#E5DDD1] bg-white flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  disabled={isProcessingPaymentAction}
+                  onClick={() => setVerifyPaymentModalOrder(null)}
+                  className="flex-1 sm:flex-initial px-5 py-2.5 rounded-[2px] border border-[#E5DDD1] text-[11px] font-mono uppercase tracking-wider text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] transition-colors cursor-pointer disabled:opacity-40"
+                >
+                  CANCEL
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessingPaymentAction}
+                  onClick={() => executeVerifyPayment(verifyPaymentModalOrder.id)}
+                  className="flex-1 sm:flex-initial px-6 py-2.5 rounded-[2px] bg-[#111113] hover:bg-[#C2922E] text-white text-[11px] font-mono uppercase tracking-wider font-semibold transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
+                >
+                  {isProcessingPaymentAction ? (
+                    <>
+                      <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      <span>VERIFYING...</span>
+                    </>
+                  ) : (
+                    <span>VERIFY &amp; CONFIRM</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* 2. SUKO ATELIER REJECT PAYMENT PROOF MODAL                   */}
+        {/* ============================================================= */}
+        {rejectPaymentModalOrder && (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-5 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+            onClick={() => !isProcessingPaymentAction && setRejectPaymentModalOrder(null)}
+          >
+            <div
+              className="bg-[#FAF8F5] border border-[#E5DDD1] rounded-t-xl sm:rounded-[2px] w-full max-w-[520px] max-h-[92vh] flex flex-col shadow-2xl font-body animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="shrink-0 px-5 sm:px-6 py-4 border-b border-[#E5DDD1] bg-white flex items-center justify-between">
+                <div>
+                  <span className="text-[9.5px] uppercase tracking-[0.2em] text-[#A77B1E] font-mono font-semibold block">
+                    PAYMENT VERIFICATION
+                  </span>
+                  <h3 className="font-serif text-xl font-medium text-[#111113] mt-0.5">
+                    Reject Payment Proof
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  disabled={isProcessingPaymentAction}
+                  onClick={() => setRejectPaymentModalOrder(null)}
+                  className="w-8 h-8 flex items-center justify-center text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] rounded-[2px] transition-colors cursor-pointer disabled:opacity-40"
+                  title="Close Modal"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto">
+                {/* Dynamic Order Summary Row */}
+                <div className="bg-white border border-[#E5DDD1] p-3 rounded-[2px] grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#746F68] block">Order</span>
+                    <span className="text-xs font-mono font-semibold text-[#111113] mt-0.5 block">
+                      #SUKO-{1000 + rejectPaymentModalOrder.id}
+                    </span>
+                  </div>
+                  <div className="border-x border-[#F0EBE1]">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#746F68] block">Amount</span>
+                    <span className="text-xs font-mono font-semibold text-[#111113] mt-0.5 block">
+                      {formatINR(rejectPaymentModalOrder.total || 0)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#746F68] block">UTR</span>
+                    <span className="text-xs font-mono font-medium text-[#A77B1E] mt-0.5 block truncate px-1" title={rejectPaymentModalOrder.transaction_id || rejectPaymentModalOrder.utr}>
+                      {rejectPaymentModalOrder.transaction_id || rejectPaymentModalOrder.utr || "N/A"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Reason Selection */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-mono uppercase tracking-[0.14em] text-[#111113] font-semibold">
+                      REASON FOR REJECTION <span className="text-rose-600">*</span>
+                    </label>
+                    <span className="text-[10px] font-mono text-[#746F68]">Select one</span>
+                  </div>
+
+                  <div className="space-y-1.5 bg-white border border-[#E5DDD1] p-3 rounded-[2px]">
+                    {[
+                      "Payment not received",
+                      "UTR / Transaction ID mismatch",
+                      "Amount mismatch",
+                      "Payment screenshot unclear",
+                      "Other"
+                    ].map((r) => (
+                      <label
+                        key={r}
+                        className="flex items-center gap-2.5 p-1.5 rounded-[2px] hover:bg-[#FAF8F5] cursor-pointer transition-colors text-xs text-[#111113]"
+                      >
+                        <input
+                          type="radio"
+                          name="rejectionReason"
+                          value={r}
+                          checked={rejectSelectedReason === r}
+                          onChange={() => setRejectSelectedReason(r)}
+                          className="accent-[#111113] cursor-pointer"
+                        />
+                        <span className="font-sans">{r}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  {/* Conditional "Other" custom reason field */}
+                  {rejectSelectedReason === "Other" && (
+                    <div className="space-y-1.5 animate-in fade-in duration-150">
+                      <label className="text-[10.5px] font-mono uppercase tracking-wider text-[#746F68]">
+                        SPECIFY CUSTOM REASON <span className="text-rose-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={rejectCustomReason}
+                        onChange={(e) => setRejectCustomReason(e.target.value)}
+                        placeholder="e.g. Transaction date does not align with order placement"
+                        className="w-full px-3 py-2 bg-white border border-[#E5DDD1] focus:border-[#111113] outline-none text-xs text-[#111113] rounded-[2px] font-sans"
+                      />
+                    </div>
+                  )}
+
+                  <p className="text-[10.5px] font-mono text-[#746F68] flex items-center gap-1.5 italic">
+                    <span>&bull;</span>
+                    <span>This message may be shown to the customer.</span>
+                  </p>
+                </div>
+
+                {/* Additional Internal Note */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10.5px] font-mono uppercase tracking-[0.14em] text-[#111113] font-medium">
+                      ADDITIONAL NOTE (INTERNAL)
+                    </label>
+                    <span className="text-[#A3A096] font-normal text-[9.5px]">Private to admin</span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={rejectAdminNote}
+                    onChange={(e) => setRejectAdminNote(e.target.value)}
+                    placeholder="Optional internal remark for studio reconciliation records..."
+                    className="w-full px-3 py-2 bg-white border border-[#E5DDD1] focus:border-[#111113] outline-none text-xs text-[#111113] rounded-[2px] font-sans resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="shrink-0 px-5 sm:px-6 py-3.5 border-t border-[#E5DDD1] bg-white flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  disabled={isProcessingPaymentAction}
+                  onClick={() => setRejectPaymentModalOrder(null)}
+                  className="flex-1 sm:flex-initial px-5 py-2.5 rounded-[2px] border border-[#E5DDD1] text-[11px] font-mono uppercase tracking-wider text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] transition-colors cursor-pointer disabled:opacity-40"
+                >
+                  CANCEL
+                </button>
+                <button
+                  type="button"
+                  disabled={
+                    isProcessingPaymentAction ||
+                    (rejectSelectedReason === "Other" && !rejectCustomReason.trim())
+                  }
+                  onClick={() => executeRejectPayment(rejectPaymentModalOrder.id)}
+                  className="flex-1 sm:flex-initial px-6 py-2.5 rounded-[2px] bg-[#3B1F22] hover:bg-[#52292D] text-[#FAF8F5] border border-[#52292D] text-[11px] font-mono uppercase tracking-wider font-medium transition-colors cursor-pointer disabled:opacity-40 flex items-center justify-center gap-2 shadow-xs"
+                >
+                  {isProcessingPaymentAction ? (
+                    <>
+                      <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      <span>REJECTING...</span>
+                    </>
+                  ) : (
+                    <span>REJECT PAYMENT</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* 3. SUKO GENERAL ATELIER CONFIRMATION MODAL (NO WINDOW.CONFIRM)*/}
+        {/* ============================================================= */}
+        {confirmModalConfig && (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-5 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+            onClick={() => setConfirmModalConfig(null)}
+          >
+            <div
+              className="bg-[#FAF8F5] border border-[#E5DDD1] rounded-t-xl sm:rounded-[2px] w-full max-w-[460px] flex flex-col shadow-2xl font-body animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-5 sm:px-6 py-4 border-b border-[#E5DDD1] bg-white flex items-center justify-between">
+                <div>
+                  <span className="text-[9.5px] uppercase tracking-[0.2em] text-[#C2922E] font-mono font-semibold block">
+                    {confirmModalConfig.metadata || "ATELIER GOVERNANCE"}
+                  </span>
+                  <h3 className="font-serif text-lg font-medium text-[#111113] mt-0.5">
+                    {confirmModalConfig.title || "Confirm Action"}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setConfirmModalConfig(null)}
+                  className="w-8 h-8 flex items-center justify-center text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] rounded-[2px] transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-5 sm:p-6">
+                <p className="text-xs text-[#111113] font-sans leading-relaxed">
+                  {confirmModalConfig.message}
+                </p>
+              </div>
+
+              <div className="px-5 sm:px-6 py-3.5 border-t border-[#E5DDD1] bg-white flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModalConfig(null)}
+                  className="flex-1 sm:flex-initial px-4 py-2 rounded-[2px] border border-[#E5DDD1] text-[10.5px] font-mono uppercase tracking-wider text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] transition-colors cursor-pointer"
+                >
+                  CANCEL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const fn = confirmModalConfig.onConfirm;
+                    setConfirmModalConfig(null);
+                    if (fn) fn();
+                  }}
+                  className={`flex-1 sm:flex-initial px-5 py-2 rounded-[2px] text-[10.5px] font-mono uppercase tracking-wider font-semibold transition-colors cursor-pointer shadow-xs ${
+                    confirmModalConfig.isDestructive
+                      ? "bg-[#3B1F22] hover:bg-[#52292D] text-white border border-[#52292D]"
+                      : "bg-[#111113] hover:bg-[#C2922E] text-white"
+                  }`}
+                >
+                  {confirmModalConfig.confirmLabel || "CONFIRM"}
                 </button>
               </div>
             </div>

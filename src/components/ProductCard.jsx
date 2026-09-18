@@ -54,6 +54,8 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
   const isNewInPage = 
     location.pathname === "/new-in" || 
     location.pathname.startsWith("/new-in") ||
+    location.pathname === "/new-arrivals" || 
+    location.pathname.startsWith("/new-arrivals") ||
     location.pathname === "/shop" ||
     location.pathname.startsWith("/shop") ||
     location.pathname.startsWith("/collection/");
@@ -188,8 +190,8 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
       <Link to={`/product/${product.slug}`} className="block h-full flex flex-col justify-between">
         {/* Crisp Luxury Rectangular Image Container (Solid Background Crossfade - No Ghosting) */}
         <div
-          className={`relative overflow-hidden aspect-[3/4] ${
-            isFeatured ? "lg:aspect-auto lg:min-h-[460px] lg:flex-1" : ""
+          className={`relative overflow-hidden ${
+            isFeatured ? "aspect-[4/5] lg:aspect-auto lg:min-h-[460px] lg:flex-1" : "aspect-[3/4]"
           } bg-[#FAF8F5] dark:bg-[#18181D] rounded-none w-full`}
           onMouseEnter={() => {
             setHover(true);

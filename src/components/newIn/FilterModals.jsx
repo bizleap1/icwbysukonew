@@ -8,6 +8,7 @@ import { useProducts } from "../../context/ProductContext";
 export const FilterDrawer = ({
   isOpen,
   onClose,
+  categories,
   selectedCategory,
   setSelectedCategory,
   selectedSubCategory = "all",
@@ -20,7 +21,9 @@ export const FilterDrawer = ({
   resultsCount
 }) => {
   const { categories: contextCategories } = useProducts();
-  const activeCategories = (contextCategories && contextCategories.length > 0) ? contextCategories : FALLBACK_CATEGORIES;
+  const activeCategories = categories && categories.length > 0
+    ? categories.filter(c => c.id !== "all")
+    : (contextCategories && contextCategories.length > 0 ? contextCategories : FALLBACK_CATEGORIES);
   if (typeof document === "undefined") return null;
 
   return createPortal(
@@ -111,7 +114,7 @@ export const FilterDrawer = ({
                             : "bg-[#F3EFE6] text-[#555560] border-[#E8E4DC] hover:border-[#111113]"
                         }`}
                       >
-                        {cat.name}
+                        {cat.name || cat.label}
                       </button>
                     );
                   })}

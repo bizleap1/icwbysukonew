@@ -194,7 +194,7 @@ const Orders = () => {
         transactionId: reSubmitUtr.trim(),
         screenshotBase64: reSubmitPreview
       });
-      toast.success("Payment details submitted for concierge verification!");
+      toast.success("Payment details submitted. Your payment is being verified.");
       setReSubmittingOrder(null);
       setReSubmitUtr("");
       setReSubmitFile(null);
@@ -271,6 +271,20 @@ const Orders = () => {
       return (
         <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[10px] px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
           <AlertCircle size={11} className="text-[#C2922E]" /> Cancellation Requested
+        </span>
+      );
+    }
+    if (st === "payment_verification_pending") {
+      return (
+        <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[10px] px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
+          <Clock size={11} className="text-[#C2922E]" /> Verification Pending
+        </span>
+      );
+    }
+    if (st === "payment_verification_failed") {
+      return (
+        <span className="bg-rose-50 border border-rose-200 text-rose-800 text-[10px] px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1.5 font-medium">
+          <AlertCircle size={11} className="text-rose-600" /> Verification Action Required
         </span>
       );
     }
@@ -753,7 +767,7 @@ const Orders = () => {
                     <div className="bg-amber-50/90 border-t border-amber-200 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 text-xs">
                       <div className="flex items-center gap-2">
                         <Clock size={14} className="text-[#C2922E] shrink-0" />
-                        <span className="text-amber-950 font-medium">Awaiting UPI Settlement &amp; UTR Verification</span>
+                        <span className="text-amber-950 font-medium">Awaiting UPI Payment &amp; Submission</span>
                       </div>
                       <button
                         type="button"
@@ -761,6 +775,29 @@ const Orders = () => {
                         className="bg-[#111113] hover:bg-[#C2922E] text-white px-3 py-1 text-[9.5px] uppercase tracking-wider font-medium transition-all shadow-xs cursor-pointer"
                       >
                         Pay &amp; Upload
+                      </button>
+                    </div>
+                  )}
+                  {order.status === "payment_verification_pending" && (
+                    <div className="bg-amber-50/90 border-t border-amber-200 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2">
+                        <Clock size={14} className="text-[#C2922E] shrink-0" />
+                        <span className="text-amber-950 font-medium">Payment details received. Your payment is being verified.</span>
+                      </div>
+                    </div>
+                  )}
+                  {order.status === "payment_verification_failed" && (
+                    <div className="bg-rose-50 border-t border-rose-200 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle size={14} className="text-rose-600 shrink-0" />
+                        <span className="text-rose-950 font-medium">Payment verification required. Please re-submit transaction details.</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenReSubmitModal(order)}
+                        className="bg-rose-900 hover:bg-rose-800 text-white px-3 py-1 text-[9.5px] uppercase tracking-wider font-medium transition-all shadow-xs cursor-pointer"
+                      >
+                        Re-submit
                       </button>
                     </div>
                   )}

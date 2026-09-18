@@ -36,9 +36,9 @@
       "slug": "the-plum-sculpted-suit",
       "categoryType": "set",
       "gender": "female",
-      "category": "suits",
-      "categoryName": "Power Suits & Sets",
-      "categoryLabel": "POWER SUITS & SETS",
+      "category": "signatures",
+      "categoryName": "Signature Pieces",
+      "categoryLabel": "SIGNATURE PIECES",
       "shortType": "Sculpted Double-Breasted Suit",
       "setType": "Sculpted Double-Breasted Suit",
       "moment": "founder",
@@ -120,14 +120,15 @@
         "/products/the-plum-sculpted-suit/6.png",
         "/products/the-plum-sculpted-suit/7.png"
       ],
-      "badge": null,
+      "badge": "Signature Piece",
       "isNew": true,
       "separates": [
         {
           "slug": "the-plum-sculpted-trousers",
           "label": "Plum Sculpted Trousers"
         }
-      ]
+      ],
+      "is_new_arrival": true
     },
     {
       "id": "w-27",
@@ -210,7 +211,8 @@
       ],
       "badge": "New Arrival",
       "isNew": true,
-      "separates": []
+      "separates": [],
+      "is_new_arrival": false
     },
     {
       "id": "w-21",
@@ -292,7 +294,8 @@
       ],
       "badge": "New Arrival",
       "isNew": true,
-      "separates": []
+      "separates": [],
+      "is_new_arrival": false
     },
     {
       "id": "w-01",
@@ -300,9 +303,9 @@
       "slug": "the-midnight-peplum-set",
       "categoryType": "set",
       "gender": "female",
-      "category": "coords",
-      "categoryName": "Vests & Co-ords",
-      "categoryLabel": "EXECUTIVE CO-ORDS",
+      "category": "signatures",
+      "categoryName": "Signature Pieces",
+      "categoryLabel": "SIGNATURE PIECES",
       "shortType": "Peplum Jacket & Fishtail Skirt",
       "setType": "Peplum Jacket & Fishtail Skirt",
       "moment": "after-hours",
@@ -379,14 +382,15 @@
         "/products/midnight-peplum-fishtail-set/6.png",
         "/products/midnight-peplum-fishtail-set/7.png"
       ],
-      "badge": null,
+      "badge": "Signature Piece",
       "isNew": true,
       "separates": [
         {
           "slug": "the-midnight-flare-skirt",
           "label": "Midnight Flare Skirt"
         }
-      ]
+      ],
+      "is_new_arrival": true
     },
     {
       "id": "w-26",
@@ -468,7 +472,8 @@
       ],
       "badge": "New Arrival",
       "isNew": true,
-      "separates": []
+      "separates": [],
+      "is_new_arrival": false
     },
     {
       "id": "w-25",
@@ -550,7 +555,8 @@
       ],
       "badge": "New Arrival",
       "isNew": true,
-      "separates": []
+      "separates": [],
+      "is_new_arrival": false
     },
     {
       "id": "w-08",
@@ -647,7 +653,9 @@
           "slug": "the-noir-tailored-trousers",
           "label": "Noir Tailored Trousers"
         }
-      ]
+      ],
+      "is_new_arrival": true,
+      "category_id": "suits"
     },
     {
       "id": "w-28",
@@ -727,7 +735,8 @@
       ],
       "badge": "New Arrival",
       "isNew": true,
-      "separates": []
+      "separates": [],
+      "is_new_arrival": false
     },
     {
       "id": "w-22",
@@ -809,7 +818,8 @@
       ],
       "badge": "New Arrival",
       "isNew": true,
-      "separates": []
+      "separates": [],
+      "is_new_arrival": false
     },
     {
       "id": "w-05",
@@ -899,7 +909,9 @@
       ],
       "badge": null,
       "isNew": true,
-      "separates": []
+      "separates": [],
+      "is_new_arrival": true,
+      "category_id": "suits"
     },
     {
       "id": "w-04",
@@ -993,7 +1005,9 @@
           "slug": "the-aubergine-tailored-wide-leg-trousers",
           "label": "Aubergine Tailored Wide-Leg Trousers"
         }
-      ]
+      ],
+      "is_new_arrival": true,
+      "category_id": "suits"
     },
     {
       "id": "w-02",
@@ -1001,9 +1015,9 @@
       "slug": "the-midnight-sculpted-vest-set",
       "categoryType": "set",
       "gender": "female",
-      "category": "coords",
-      "categoryName": "Vests & Co-ords",
-      "categoryLabel": "EXECUTIVE CO-ORDS",
+      "category": "signatures",
+      "categoryName": "Signature Pieces",
+      "categoryLabel": "SIGNATURE PIECES",
       "shortType": "Sculpted Vest & Column Skirt",
       "setType": "Sculpted Vest & Column Skirt",
       "moment": "essentials",
@@ -1080,14 +1094,15 @@
         "/products/midnight-sculpted-vest-set/6.png",
         "/products/midnight-sculpted-vest-set/7.png"
       ],
-      "badge": null,
+      "badge": "Signature Piece",
       "isNew": true,
       "separates": [
         {
           "slug": "the-midnight-column-skirt",
           "label": "Midnight Column Skirt"
         }
-      ]
+      ],
+      "is_new_arrival": false
     },
     {
       "id": "w-03",
@@ -1095,9 +1110,9 @@
       "slug": "the-aubergine-draped-set",
       "categoryType": "set",
       "gender": "female",
-      "category": "coords",
-      "categoryName": "Vests & Co-ords",
-      "categoryLabel": "EXECUTIVE CO-ORDS",
+      "category": "suits",
+      "categoryName": "Power Suits & Sets",
+      "categoryLabel": "POWER SUITS & SETS",
       "shortType": "Draped Vest & Tailored Mini Skirt",
       "setType": "Draped Vest & Tailored Mini Skirt",
       "moment": "after-hours",
@@ -1180,7 +1195,9 @@
           "slug": "the-aubergine-tailored-mini-skirt",
           "label": "Aubergine Tailored Mini Skirt"
         }
-      ]
+      ],
+      "is_new_arrival": false,
+      "category_id": "suits"
     },
     {
       "id": "w-07",
@@ -1188,9 +1205,9 @@
       "slug": "the-dusty-rose-embroidered-farchi-set",
       "categoryType": "set",
       "gender": "female",
-      "category": "coords",
-      "categoryName": "Vests & Co-ords",
-      "categoryLabel": "EXECUTIVE CO-ORDS",
+      "category": "signatures",
+      "categoryName": "Signature Pieces",
+      "categoryLabel": "SIGNATURE PIECES",
       "shortType": "Embroidered Tunic & Flared Trousers",
       "setType": "Embroidered Farchi Tunic & Flared Trousers",
       "moment": "after-hours",
@@ -1266,10 +1283,11 @@
         "/products/the-dusty-rose-embroidered-farchi-set/6.png",
         "/products/the-dusty-rose-embroidered-farchi-set/7.png"
       ],
-      "badge": null,
+      "badge": "Signature Piece",
       "isNew": true,
       "separates": [],
-      "image_url": "/products/the-dusty-rose-embroidered-farchi-set/1.png"
+      "image_url": "/products/the-dusty-rose-embroidered-farchi-set/1.png",
+      "is_new_arrival": false
     },
     {
       "id": "w-29",
@@ -1367,14 +1385,100 @@
         "/products/noir-sculpted-vest-set/6.png",
         "/products/noir-sculpted-vest-set/7.png"
       ],
-      "badge": "New Arrival",
+      "badge": null,
       "isNew": true,
       "separates": [
         {
           "slug": "the-noir-tailored-trousers",
           "label": "Noir Tailored Trousers"
         }
-      ]
+      ],
+      "is_new_arrival": true,
+      "category_id": "suits"
+    },
+    {
+      "id": "w-30",
+      "name": "Noir Layered Vest Set",
+      "slug": "noir-layered-vest-set",
+      "category_id": "suits",
+      "sub_category": "Layered Tailored Vest & Trouser Set",
+      "description": "A refined layered vest and trouser tailoring set crafted in obsidian black. Featuring structural layered vest styling over fluid wide-leg trousers for a balance of architectural precision and fluid movement.",
+      "price": 5400,
+      "stock": 25,
+      "status": "archived",
+      "sku": "SUKO-SET-NLV-01",
+      "gender": "female",
+      "fabric": "Structured suiting twill blend with smooth tonal interior lining.",
+      "color": "Obsidian Black",
+      "secondary_color": "",
+      "pattern": "Solid",
+      "finish": "Matte",
+      "silhouette": "Tailored Layered Set",
+      "fit": "Tailored",
+      "occasion": "Executive Essentials",
+      "moment": "essentials",
+      "moments": [
+        "essentials",
+        "presentation"
+      ],
+      "moment_name": "Executive Essentials",
+      "image_url": "/products/noir-layered-vest-set/1.png",
+      "images": [
+        "/products/noir-layered-vest-set/1.png",
+        "/products/noir-layered-vest-set/2.png",
+        "/products/noir-layered-vest-set/3.png",
+        "/products/noir-layered-vest-set/4.png",
+        "/products/noir-layered-vest-set/5.png",
+        "/products/noir-layered-vest-set/6.png",
+        "/products/noir-layered-vest-set/7.png"
+      ],
+      "gallery": [
+        {
+          "url": "/products/noir-layered-vest-set/1.png",
+          "type": "model_front"
+        },
+        {
+          "url": "/products/noir-layered-vest-set/2.png",
+          "type": "model_three_quarter"
+        },
+        {
+          "url": "/products/noir-layered-vest-set/3.png",
+          "type": "model_side"
+        },
+        {
+          "url": "/products/noir-layered-vest-set/4.png",
+          "type": "detail"
+        },
+        {
+          "url": "/products/noir-layered-vest-set/5.png",
+          "type": "model_back"
+        },
+        {
+          "url": "/products/noir-layered-vest-set/6.png",
+          "type": "garment_front"
+        },
+        {
+          "url": "/products/noir-layered-vest-set/7.png",
+          "type": "detail"
+        }
+      ],
+      "sizes": [
+        "38",
+        "40",
+        "42",
+        "44",
+        "46"
+      ],
+      "size_stock": {
+        "38": 5,
+        "40": 5,
+        "42": 5,
+        "44": 5,
+        "46": 5
+      },
+      "is_new_arrival": false,
+      "badge": "New Arrival",
+      "category": "suits"
     }
   ]
 }
