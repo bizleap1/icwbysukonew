@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Heart, ShoppingBag, Check } from "lucide-react";
@@ -108,9 +108,24 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
 
   const wishlisted = isInWishlist ? isInWishlist(product.id) : false;
 
-  const availableSizes = Array.isArray(product.sizes) && product.sizes.length > 0 
-    ? product.sizes 
-    : (product.gender === "male" ? ["38R", "40R", "42R", "44R"] : ["XS", "S", "M", "L", "XL"]);
+  const availableSizes = useMemo(() => {
+    if (product.size_stock && typeof product.size_stock === "object" && Object.keys(product.size_stock).length > 0) {
+      return Object.keys(product.size_stock);
+    }
+    if (Array.isArray(product.sizes) && product.sizes.length > 0) {
+      return product.sizes;
+    }
+    if (typeof product.sizes === "string") {
+      try {
+        const parsed = JSON.parse(product.sizes);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+      if (product.sizes.trim()) {
+        return product.sizes.split(",").map(s => s.trim()).filter(Boolean);
+      }
+    }
+    return ["38", "40", "42", "44", "46"];
+  }, [product]);
 
   const handleWishlistClick = (e) => {
     e.preventDefault();
@@ -337,18 +352,31 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
                       ✕
                     </button>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {availableSizes.map((sz) => (
-                      <button
-                        key={sz}
-                        type="button"
-                        onClick={(e) => handleSelectSizeAndAdd(e, sz)}
-                        className="px-2 py-1 text-[9.5px] uppercase font-mono tracking-wider border border-[#D8D4CC] bg-white text-[#111113] hover:border-[#C2922E] hover:text-[#C2922E] transition-all cursor-pointer shadow-xs"
-                      >
-                        {sz}
-                      </button>
-                    ))}
-                  </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {availableSizes.map((sz) => {
+                        const szStock = (product.size_stock && typeof product.size_stock === "object" && product.size_stock[sz] !== undefined)
+                          ? Number(product.size_stock[sz])
+                          : (product.stock !== undefined ? Number(product.stock) : 10);
+                        const isSzOutOfStock = szStock <= 0;
+
+                        return (
+                          <button
+                            key={sz}
+                            type="button"
+                            disabled={isSzOutOfStock}
+                            onClick={(e) => !isSzOutOfStock && handleSelectSizeAndAdd(e, sz)}
+                            className={`px-2 py-1 text-[9.5px] uppercase font-mono tracking-wider border transition-all shadow-xs ${
+                              isSzOutOfStock
+                                ? "border-[#EAE6DF] bg-[#F5F2EC] text-[#9999A0] line-through cursor-not-allowed opacity-50"
+                                : "border-[#D8D4CC] bg-white text-[#111113] hover:border-[#C2922E] hover:text-[#C2922E] cursor-pointer"
+                            }`}
+                            title={isSzOutOfStock ? `${sz} is Out of Stock` : `${sz} (${szStock} in stock)`}
+                          >
+                            {sz}
+                          </button>
+                        );
+                      })}
+                    </div>
                 </div>
               ) : (
                 <button

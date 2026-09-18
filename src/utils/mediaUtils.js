@@ -32,11 +32,23 @@ export const getCloudinaryTransformedUrl = (url, transform) => {
   return url.replace('/upload/', `/upload/${transform}/`);
 };
 
+export const getCroppedCloudinaryUrl = (url, crop) => {
+  if (!isCloudinaryUrl(url)) return url;
+  if (!crop) return getCardImage(url);
+  if (crop.width && crop.height && typeof crop.x === 'number' && typeof crop.y === 'number') {
+    return getCloudinaryTransformedUrl(
+      url,
+      `c_crop,x_${Math.round(crop.x)},y_${Math.round(crop.y)},w_${Math.round(crop.width)},h_${Math.round(crop.height)}/c_fill,ar_4:5,w_800,q_auto,f_auto`
+    );
+  }
+  return getCloudinaryTransformedUrl(url, 'c_fill,ar_4:5,g_auto,q_auto,f_auto');
+};
+
 export const getCardImage = (url) => {
   if (!url || typeof url !== 'string') return url || '/placeholder.png';
   if (isBrandAsset(url)) return url;
   if (isCloudinaryUrl(url)) {
-    return getCloudinaryTransformedUrl(url, 'c_fill,w_800,q_auto,f_auto');
+    return getCloudinaryTransformedUrl(url, 'c_fill,ar_4:5,w_800,q_auto,f_auto');
   }
   if (isRemoteUrl(url)) return url;
   if (/\.(png|jpe?g)$/i.test(url)) {
@@ -49,7 +61,7 @@ export const getThumbImage = (url) => {
   if (!url || typeof url !== 'string') return url || '/placeholder.png';
   if (isBrandAsset(url)) return url;
   if (isCloudinaryUrl(url)) {
-    return getCloudinaryTransformedUrl(url, 'c_fill,w_300,q_auto,f_auto');
+    return getCloudinaryTransformedUrl(url, 'c_fill,ar_4:5,w_300,q_auto,f_auto');
   }
   if (isRemoteUrl(url)) return url;
   if (/\.(png|jpe?g)$/i.test(url)) {
@@ -74,8 +86,8 @@ export const getHighResImage = (url) => {
 export const getImageSrcSet = (url) => {
   if (!url || typeof url !== 'string' || isBrandAsset(url)) return undefined;
   if (isCloudinaryUrl(url)) {
-    const card800 = getCloudinaryTransformedUrl(url, 'c_fill,w_800,q_auto,f_auto');
-    const full1600 = getCloudinaryTransformedUrl(url, 'c_fill,w_1600,q_auto,f_auto');
+    const card800 = getCloudinaryTransformedUrl(url, 'c_fill,ar_4:5,w_800,q_auto,f_auto');
+    const full1600 = getCloudinaryTransformedUrl(url, 'c_fill,ar_4:5,w_1600,q_auto,f_auto');
     return `${card800} 800w, ${full1600} 1600w`;
   }
   if (isRemoteUrl(url)) return undefined;

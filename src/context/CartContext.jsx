@@ -17,17 +17,23 @@ export const sanitizeQuantity = (qty, maxStock = 10) => {
 
 // Helper to resolve available stock for a product / variant
 export const resolveItemStock = (itemOrProduct) => {
-  if (!itemOrProduct) return 10;
+  if (!itemOrProduct) return 0;
   const size = itemOrProduct.size;
-  if (itemOrProduct.size_stock && typeof itemOrProduct.size_stock === "object" && size && itemOrProduct.size_stock[size] !== undefined) {
-    const s = Number(itemOrProduct.size_stock[size]);
-    if (!isNaN(s) && s >= 0) return Math.max(1, s);
+  if (itemOrProduct.size_stock && typeof itemOrProduct.size_stock === "object" && Object.keys(itemOrProduct.size_stock).length > 0) {
+    if (size && itemOrProduct.size_stock[size] !== undefined) {
+      const s = Number(itemOrProduct.size_stock[size]);
+      return isNaN(s) ? 0 : Math.max(0, s);
+    }
+    if (!size) {
+      return Object.values(itemOrProduct.size_stock).reduce((acc, v) => acc + (Math.max(0, Number(v)) || 0), 0);
+    }
+    return 0;
   }
   if (itemOrProduct.stock !== undefined) {
     const s = Number(itemOrProduct.stock);
-    if (!isNaN(s) && s >= 0) return Math.max(1, s);
+    if (!isNaN(s)) return Math.max(0, s);
   }
-  return 10;
+  return 0;
 };
 
 export const CartProvider = ({ children }) => {
@@ -180,7 +186,15 @@ export const CartProvider = ({ children }) => {
     const chosenImage = typeof rawImg === "string" ? rawImg : rawImg.url || "/placeholder.png";
     const key = `${product.id}__${size || "default"}`;
     const itemStock = resolveItemStock({ ...product, size });
+    if (itemStock <= 0) {
+      toast.error(size ? `Size ${size} is currently out of stock.` : "This silhouette is currently out of stock.");
+      return;
+    }
     const addQty = sanitizeQuantity(qty, itemStock);
+    if (addQty <= 0) {
+      toast.error(size ? `Size ${size} is currently out of stock.` : "This silhouette is currently out of stock.");
+      return;
+    }
 
     setItems((prev) => {
       const idx = prev.findIndex((i) => i.key === key);

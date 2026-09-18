@@ -99,6 +99,9 @@ export const ProductProvider = ({ children }) => {
 
         // Map database products cleanly
         const mappedProducts = productsList.map(bp => {
+          const targetSlug = cleanSlug(bp.slug);
+          const matchedFallback = FALLBACK_PRODUCTS.find(fp => cleanSlug(fp.slug) === targetSlug || String(fp.id) === String(bp.id));
+
           const imagesList = (Array.isArray(bp.images) && bp.images.length > 1)
             ? bp.images 
             : (matchedFallback?.images && matchedFallback.images.length > 0)
@@ -114,7 +117,7 @@ export const ProductProvider = ({ children }) => {
           const catId = bp.category_id || bp.category?.slug || bp.category?.id || (bp.category && typeof bp.category === 'string' ? bp.category : 'suits');
           const catName = bp.category?.name || bp.categoryName || (catId.charAt(0).toUpperCase() + catId.slice(1));
 
-          const rawSizes = Array.isArray(bp.sizes) && bp.sizes.length > 0 ? bp.sizes : ['XS', 'S', 'M', 'L', 'XL'];
+          const rawSizes = Array.isArray(bp.sizes) && bp.sizes.length > 0 ? bp.sizes : ['38', '40', '42', '44', '46'];
           let parsedSizeStock = bp.size_stock;
           if (typeof parsedSizeStock === 'string') {
             try { parsedSizeStock = JSON.parse(parsedSizeStock); } catch (e) { parsedSizeStock = {}; }
@@ -138,12 +141,6 @@ export const ProductProvider = ({ children }) => {
           if (!Array.isArray(rawMoments) || rawMoments.length === 0) {
             rawMoments = bp.moment ? [bp.moment] : [];
           }
-
-          const matchedFallback = FALLBACK_PRODUCTS.find(fp => 
-            fp.slug === bp.slug || 
-            cleanSlug(fp.slug) === cleanSlug(bp.slug) ||
-            String(fp.id) === String(bp.id)
-          );
 
           const finalMoment = bp.moment || (rawMoments && rawMoments[0]) || matchedFallback?.moment || 'boardroom';
           const finalMoments = (rawMoments && rawMoments.length > 0)

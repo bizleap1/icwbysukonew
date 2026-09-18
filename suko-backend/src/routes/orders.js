@@ -250,17 +250,98 @@ router.post("/", requireAuth, validateCreateOrder, async (req, res) => {
     const order = orderRes.rows[0];
 
     for (const it of items) {
+      const itemQty = Math.max(1, Number(it.quantity) || 1);
+      const itemSize = it.size || "";
+      const productId = String(it.product_id || "");
+
+      // Enforce size inventory deduction and recalculate total product stock
+      if (productId) {
+        if (pool.isMock) {
+          const storePath = path.join(__dirname, "..", "data", "dev-store.json");
+          if (fs.existsSync(storePath)) {
+            try {
+              const store = JSON.parse(fs.readFileSync(storePath, "utf-8"));
+              const prod = (store.products || []).find(p => String(p.id) === productId || p.slug === productId);
+              if (prod) {
+                if (prod.size_stock && typeof prod.size_stock === "object" && itemSize && prod.size_stock[itemSize] !== undefined) {
+                  const avail = Number(prod.size_stock[itemSize]) || 0;
+                  if (avail < itemQty) {
+                    await client.query("ROLLBACK");
+                    return res.status(400).json({
+                      error: `Insufficient stock for "${prod.name}" (Size ${itemSize}). Available: ${avail}, Requested: ${itemQty}`
+                    });
+                  }
+                  prod.size_stock[itemSize] = Math.max(0, avail - itemQty);
+                  prod.stock = Object.values(prod.size_stock).reduce((acc, q) => acc + (Number(q) || 0), 0);
+                } else {
+                  const avail = Number(prod.stock) || 0;
+                  if (avail < itemQty) {
+                    await client.query("ROLLBACK");
+                    return res.status(400).json({
+                      error: `Insufficient stock for "${prod.name}". Available: ${avail}, Requested: ${itemQty}`
+                    });
+                  }
+                  prod.stock = Math.max(0, avail - itemQty);
+                }
+                fs.writeFileSync(storePath, JSON.stringify(store, null, 2), "utf-8");
+              }
+            } catch (e) {}
+          }
+        } else {
+          // Real PostgreSQL mode with row-level lock
+          const prodCheck = await client.query(
+            "SELECT id, name, stock, size_stock FROM products WHERE id = $1 FOR UPDATE",
+            [productId]
+          );
+          if (prodCheck.rows.length > 0) {
+            const prodRow = prodCheck.rows[0];
+            let sStock = prodRow.size_stock;
+            if (typeof sStock === "string") {
+              try { sStock = JSON.parse(sStock); } catch (e) { sStock = null; }
+            }
+
+            if (sStock && typeof sStock === "object" && itemSize && sStock[itemSize] !== undefined) {
+              const avail = Number(sStock[itemSize]) || 0;
+              if (avail < itemQty) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({
+                  error: `Insufficient stock for "${prodRow.name}" (Size ${itemSize}). Available: ${avail}, Requested: ${itemQty}`
+                });
+              }
+              sStock[itemSize] = Math.max(0, avail - itemQty);
+              const newTotalStock = Object.values(sStock).reduce((acc, q) => acc + (Number(q) || 0), 0);
+              await client.query(
+                "UPDATE products SET size_stock = $1, stock = $2 WHERE id = $3",
+                [JSON.stringify(sStock), newTotalStock, prodRow.id]
+              );
+            } else {
+              const avail = Number(prodRow.stock) || 0;
+              if (avail < itemQty) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({
+                  error: `Insufficient stock for "${prodRow.name}". Available: ${avail}, Requested: ${itemQty}`
+                });
+              }
+              await client.query(
+                "UPDATE products SET stock = GREATEST(0, stock - $1) WHERE id = $2",
+                [itemQty, prodRow.id]
+              );
+            }
+          }
+        }
+      }
+
       await client.query(
         `INSERT INTO order_items (order_id, product_id, product_name, product_image_url, category_name, size, quantity, price_at_purchase)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
           order.id,
-          String(it.product_id || ""),
+          productId,
           it.name || "Atelier Garment",
           it.image_url || it.image || null,
           it.category_name || null,
-          it.size || "",
-          Number(it.quantity) || 1,
+          itemSize,
+          itemQty,
           Number(it.price) || 0,
         ]
       );

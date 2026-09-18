@@ -65,11 +65,32 @@ function synchronizeGalleryAndImages(galleryInput, imagesInput, imageUrlInput) {
           type: CANONICAL_GALLERY_TYPES[idx] || "detail"
         };
       }
+      const rawUrl = (item.url || item.secure_url || item.image || item.preview || "").trim();
+      const finalUrl = (rawUrl && !rawUrl.startsWith("blob:") && !rawUrl.startsWith("data:"))
+        ? rawUrl
+        : (Array.isArray(imagesInput) && imagesInput[idx]
+            ? (typeof imagesInput[idx] === "string" ? imagesInput[idx] : (imagesInput[idx].url || "")).trim()
+            : "");
+
       return {
-        url: (item.url || item.secure_url || item.image || item.preview || "").trim(),
-        type: item.type || CANONICAL_GALLERY_TYPES[idx] || "detail"
+        url: finalUrl,
+        type: item.type || CANONICAL_GALLERY_TYPES[idx] || "detail",
+        ...(item.crop ? { crop: item.crop } : {})
       };
     }).filter(g => Boolean(g.url));
+
+    // If imagesInput has more items than galleryInput, append remaining items
+    if (Array.isArray(imagesInput) && imagesInput.length > gallery.length) {
+      for (let i = gallery.length; i < imagesInput.length; i++) {
+        const extraUrl = (typeof imagesInput[i] === "string" ? imagesInput[i] : (imagesInput[i]?.url || "")).trim();
+        if (extraUrl && !gallery.some(g => g.url === extraUrl)) {
+          gallery.push({
+            url: extraUrl,
+            type: CANONICAL_GALLERY_TYPES[i] || "detail"
+          });
+        }
+      }
+    }
   }
 
   // 2. If gallery was empty but images array provided
@@ -77,7 +98,11 @@ function synchronizeGalleryAndImages(galleryInput, imagesInput, imageUrlInput) {
     gallery = imagesInput.map((item, idx) => {
       const url = (typeof item === "string" ? item : (item.url || "")).trim();
       const type = (typeof item === "object" && item.type) ? item.type : (CANONICAL_GALLERY_TYPES[idx] || "detail");
-      return { url, type };
+      return {
+        url,
+        type,
+        ...(typeof item === "object" && item.crop ? { crop: item.crop } : {})
+      };
     }).filter(g => Boolean(g.url));
   }
 
@@ -331,8 +356,19 @@ function ensureProductSizeStock(p) {
     ).catch(() => {});
   }
 
+  // Size inventory is the primary source of truth for sized garments
+  let computedStock = typeof p.stock !== "undefined" ? Number(p.stock) : 15;
+  let computedSizes = Array.isArray(p.sizes) ? p.sizes : [];
+
+  if (sizeStock && typeof sizeStock === "object" && Object.keys(sizeStock).length > 0) {
+    computedStock = Object.values(sizeStock).reduce((acc, qty) => acc + (Number(qty) || 0), 0);
+    computedSizes = Object.keys(sizeStock);
+  }
+
   return {
     ...p,
+    stock: computedStock,
+    sizes: computedSizes,
     image_url: syncMedia.imageUrl,
     images: syncMedia.images,
     gallery: syncMedia.gallery,
@@ -435,12 +471,18 @@ async function createProduct(productData) {
 
   const price = Number(productData.price) || 0;
   const discountPrice = productData.discount_price ? Number(productData.discount_price) : null;
-  const stock = typeof productData.stock !== "undefined" ? Number(productData.stock) : 10;
-  const status = productData.status || "active";
-  const sizes = Array.isArray(productData.sizes) && productData.sizes.length > 0 
-    ? productData.sizes 
-    : ["XS", "S", "M", "L", "XL"];
   const sizeStock = productData.size_stock || {};
+  let stock = typeof productData.stock !== "undefined" ? Number(productData.stock) : 10;
+  let sizes = Array.isArray(productData.sizes) && productData.sizes.length > 0 
+    ? productData.sizes 
+    : ["38", "40", "42", "44", "46"];
+
+  // Size inventory is the primary source of truth
+  if (sizeStock && typeof sizeStock === "object" && Object.keys(sizeStock).length > 0) {
+    stock = Object.values(sizeStock).reduce((acc, qty) => acc + (Number(qty) || 0), 0);
+    sizes = Object.keys(sizeStock);
+  }
+  const status = productData.status || "active";
   const syncMedia = synchronizeGalleryAndImages(productData.gallery, productData.images, productData.image_url);
   const images = syncMedia.images;
   const gallery = syncMedia.gallery;
@@ -547,6 +589,12 @@ async function createProduct(productData) {
 }
 
 async function updateProduct(id, updateData) {
+  // If size_stock is updated, automatically recalculate stock as sum of enabled sizes
+  if (updateData.size_stock && typeof updateData.size_stock === "object" && Object.keys(updateData.size_stock).length > 0) {
+    updateData.stock = Object.values(updateData.size_stock).reduce((acc, qty) => acc + (Number(qty) || 0), 0);
+    updateData.sizes = Object.keys(updateData.size_stock);
+  }
+
   if (pool.isMock) {
     const store = ensureDevStoreProducts();
     const idx = store.products.findIndex(p => String(p.id) === String(id) || p.slug === String(id));
@@ -899,10 +947,16 @@ async function deleteProduct(id, options = {}) {
 
   const res = await pool.query("DELETE FROM products WHERE id = $1 RETURNING id", [product.id]);
 
-  // Clean up disk images, preserving any referenced in order_items
-  const allProdsRes = await pool.query("SELECT id, image_url, images FROM products");
-  const ordItemsRes = await pool.query("SELECT product_image_url FROM order_items WHERE product_image_url IS NOT NULL");
-  cleanupOrphanedProductImages(allImages, product.id, allProdsRes.rows, ordItemsRes.rows);
+  // Clean up disk images asynchronously in background so client receives instant response
+  setImmediate(async () => {
+    try {
+      const allProdsRes = await pool.query("SELECT id, image_url, images FROM products");
+      const ordItemsRes = await pool.query("SELECT product_image_url FROM order_items WHERE product_image_url IS NOT NULL");
+      cleanupOrphanedProductImages(allImages, product.id, allProdsRes.rows, ordItemsRes.rows);
+    } catch (cleanupErr) {
+      console.warn("[ProductService] Async image cleanup error:", cleanupErr.message);
+    }
+  });
 
   return { 
     success: res.rowCount > 0, 

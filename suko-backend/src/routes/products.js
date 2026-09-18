@@ -468,16 +468,21 @@ router.post(
         combinedUrls[0]
       );
 
+      const activeSizes = Object.keys(parsedSizeStock || {});
+      const effectiveStock = activeSizes.length > 0 
+        ? Object.values(parsedSizeStock).reduce((a, b) => a + (Number(b) || 0), 0)
+        : (typeof stock !== "undefined" ? Number(stock) : 10);
+
       const newProduct = await productService.createProduct({
         name,
         price: Number(price),
         discount_price: discount_price ? Number(discount_price) : null,
-        stock: typeof stock !== "undefined" ? Number(stock) : 10,
+        stock: effectiveStock,
         description,
         category_id,
         sub_category,
         size_stock: parsedSizeStock,
-        sizes: Object.keys(parsedSizeStock).length > 0 ? Object.keys(parsedSizeStock) : ["38", "40", "42", "44", "46"],
+        sizes: activeSizes.length > 0 ? activeSizes : ["38", "40", "42", "44", "46"],
         image_url: syncMedia.imageUrl,
         images: syncMedia.images,
         gallery: syncMedia.gallery,
@@ -595,9 +600,11 @@ router.put("/:id", requireAdmin, handleOptionalMultipart, async (req, res) => {
     if (seo_keywords !== undefined) updateData.seo_keywords = seo_keywords;
     if (parsedSeoSchema !== undefined) updateData.seo_schema = parsedSeoSchema;
 
-    if (parsedSizeStock) {
+    if (parsedSizeStock && typeof parsedSizeStock === "object" && Object.keys(parsedSizeStock).length > 0) {
       updateData.size_stock = parsedSizeStock;
-      updateData.sizes = Object.keys(parsedSizeStock);
+      const activeSizes = Object.keys(parsedSizeStock);
+      updateData.sizes = activeSizes;
+      updateData.stock = activeSizes.reduce((a, b) => a + (Number(parsedSizeStock[b]) || 0), 0);
     } else if (Array.isArray(sizes)) {
       updateData.sizes = sizes;
     }
@@ -839,7 +846,8 @@ router.delete("/:id", requireAdmin, async (req, res) => {
     const result = await productService.deleteProduct(req.params.id, { permanent, force });
     if (!result) return res.status(404).json({ error: "Product not found" });
 
-    await productService.recordActivityLog({
+    // Log activity in background without blocking response
+    productService.recordActivityLog({
       admin_email: req.user?.email || "admin@indiancorporatewear.com",
       action: result.archived ? "product_archive" : "product_delete",
       target_entity: "products",
@@ -855,7 +863,7 @@ router.delete("/:id", requireAdmin, async (req, res) => {
         ? `Safely archived "${current?.name || req.params.id}" to Private Archive`
         : `Permanently purged "${current?.name || req.params.id}" from catalogue registry`,
       status: "success"
-    });
+    }).catch(() => {});
 
     res.json({
       success: true,

@@ -1428,17 +1428,25 @@ export const ALL_RAW_PRODUCTS = [
     ],
     "momentName": "Executive Essentials",
     "price": 5945,
+    "stock": 25,
     "color": "Obsidian Black",
     "availableColors": [
       "Obsidian Black"
     ],
     "sizes": [
-      "XS",
-      "S",
-      "M",
-      "L",
-      "XL"
+      "38",
+      "40",
+      "42",
+      "44",
+      "46"
     ],
+    "size_stock": {
+      "38": 5,
+      "40": 5,
+      "42": 5,
+      "44": 5,
+      "46": 5
+    },
     "includedPieces": [
       "Noir Sculpted Vest",
       "Noir Tailored Trousers"

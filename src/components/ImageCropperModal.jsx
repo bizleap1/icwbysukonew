@@ -1,265 +1,434 @@
-import React, { useState, useRef, useEffect } from "react";
-import { X, RotateCw, ZoomIn, ZoomOut, Check, Crop, Move, Maximize2 } from "lucide-react";
+import React, { useState, useCallback, useRef } from "react";
+import Cropper from "react-easy-crop";
+import {
+  X,
+  RotateCw,
+  ZoomIn,
+  ZoomOut,
+  Check,
+  RotateCcw,
+  Sparkles,
+  Eye,
+  Sliders,
+  Move
+} from "lucide-react";
 
-const ImageCropperModal = ({ imageSrc, onSave, onCancel }) => {
-  const [zoom, setZoom] = useState(1);
-  const [rotation, setRotation] = useState(0);
-  const [cropPreset, setCropPreset] = useState("3:4"); // '3:4', '1:1', 'free'
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-
-  const canvasRef = useRef(null);
-  const imageRef = useRef(null);
-
-  useEffect(() => {
+/**
+ * Utility function to generate a cropped image Blob and DataURL from canvas
+ */
+async function getCroppedImg(imageSrc, pixelCrop, rotation = 0) {
+  const image = await new Promise((resolve, reject) => {
     const img = new Image();
+    img.crossOrigin = "anonymous";
     img.src = imageSrc;
-    img.onload = () => {
-      imageRef.current = img;
-      setPan({ x: 0, y: 0 });
-      drawCanvas();
-    };
-  }, [imageSrc]);
+    img.onload = () => resolve(img);
+    img.onerror = (err) => reject(err);
+  });
 
-  useEffect(() => {
-    if (imageRef.current) {
-      drawCanvas();
-    }
-  }, [zoom, rotation, cropPreset, pan]);
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
 
-  const drawCanvas = () => {
-    const canvas = canvasRef.current;
-    const img = imageRef.current;
-    if (!canvas || !img) return;
+  if (!ctx) {
+    throw new Error("Could not get canvas 2D context");
+  }
 
-    const ctx = canvas.getContext("2d");
+  const rotRad = (rotation * Math.PI) / 180;
 
-    let targetW = 400;
-    let targetH = 533; // 3:4 default
-
-    if (cropPreset === "1:1") {
-      targetW = 400;
-      targetH = 400;
-    } else if (cropPreset === "free") {
-      targetW = 440;
-      targetH = Math.round(440 * (img.height / img.width));
-    }
-
-    canvas.width = targetW;
-    canvas.height = targetH;
-
-    // Luxury Warm canvas background
-    ctx.fillStyle = "#FAF8F5";
-    ctx.fillRect(0, 0, targetW, targetH);
-
-    ctx.save();
-    ctx.translate(targetW / 2 + pan.x, targetH / 2 + pan.y);
-    ctx.rotate((rotation * Math.PI) / 180);
-    ctx.scale(zoom, zoom);
-
-    const scale = Math.max(targetW / img.width, targetH / img.height);
-    const drawW = img.width * scale;
-    const drawH = img.height * scale;
-
-    ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
-    ctx.restore();
-
-    // Draw Crop Selection Grid Box Overlay in luxury gold
-    ctx.save();
-    ctx.strokeStyle = "#C2922E"; // Suko Gold crop box
-    ctx.lineWidth = 2;
-    ctx.setLineDash([6, 4]);
-    ctx.strokeRect(2, 2, targetW - 4, targetH - 4);
-
-    // Rule of thirds grid lines
-    ctx.strokeStyle = "rgba(194, 146, 46, 0.35)";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    // Vertical grid
-    ctx.moveTo(targetW / 3, 0); ctx.lineTo(targetW / 3, targetH);
-    ctx.moveTo((targetW * 2) / 3, 0); ctx.lineTo((targetW * 2) / 3, targetH);
-    // Horizontal grid
-    ctx.moveTo(0, targetH / 3); ctx.lineTo(targetW, targetH / 3);
-    ctx.moveTo(0, (targetH * 2) / 3); ctx.lineTo(targetW, (targetH * 2) / 3);
-    ctx.stroke();
-
-    ctx.restore();
+  // Calculate bounding box of rotated image
+  const { width: bBoxWidth, height: bBoxHeight } = {
+    width: Math.abs(Math.cos(rotRad) * image.width) + Math.abs(Math.sin(rotRad) * image.height),
+    height: Math.abs(Math.sin(rotRad) * image.width) + Math.abs(Math.cos(rotRad) * image.height)
   };
 
-  const handleMouseDown = (e) => {
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
-  };
+  canvas.width = bBoxWidth;
+  canvas.height = bBoxHeight;
 
-  const handleMouseMove = (e) => {
-    if (!isDragging) return;
-    setPan({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y
-    });
-  };
+  ctx.translate(bBoxWidth / 2, bBoxHeight / 2);
+  ctx.rotate(rotRad);
+  ctx.translate(-image.width / 2, -image.height / 2);
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  ctx.drawImage(image, 0, 0);
+
+  // Extract the cropped portion into a new canvas
+  const cropCanvas = document.createElement("canvas");
+  const cropCtx = cropCanvas.getContext("2d");
+
+  cropCanvas.width = pixelCrop.width;
+  cropCanvas.height = pixelCrop.height;
+
+  // Fill warm ivory background in case of transparent padding
+  cropCtx.fillStyle = "#FAF8F5";
+  cropCtx.fillRect(0, 0, cropCanvas.width, cropCanvas.height);
+
+  cropCtx.drawImage(
+    canvas,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  );
+
+  return new Promise((resolve) => {
+    cropCanvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          resolve({ blob: null, dataUrl: imageSrc });
+          return;
+        }
+        const dataUrl = cropCanvas.toDataURL("image/jpeg", 0.92);
+        const croppedFile = new File([blob], "suko-editorial-4-5.jpg", {
+          type: "image/jpeg",
+          lastModified: Date.now()
+        });
+        resolve({
+          file: croppedFile,
+          blob,
+          dataUrl,
+          width: pixelCrop.width,
+          height: pixelCrop.height
+        });
+      },
+      "image/jpeg",
+      0.92
+    );
+  });
+}
+
+const ImageCropperModal = ({
+  imageSrc,
+  initialCrop = { x: 0, y: 0 },
+  initialZoom = 1,
+  aspectRatio = 4 / 5,
+  imageRole = "model_front",
+  onSave,
+  onCancel
+}) => {
+  const [crop, setCrop] = useState(initialCrop);
+  const [zoom, setZoom] = useState(initialZoom);
+  const [rotation, setRotation] = useState(0);
+  const [aspect, setAspect] = useState(aspectRatio || 4 / 5);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [croppedAreaPercent, setCroppedAreaPercent] = useState(null);
+  const [activeTab, setActiveTab] = useState("crop"); // 'crop' | 'preview' (for mobile sheet)
+  const [saving, setSaving] = useState(false);
+
+  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+    setCroppedAreaPercent(croppedArea);
+  }, []);
+
+  const handleReset = () => {
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setRotation(0);
+    setAspect(4 / 5);
   };
 
   const handleRotate = () => {
     setRotation((prev) => (prev + 90) % 360);
   };
 
-  const handleSave = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    // Export cropped canvas to JPEG blob / dataURL
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-    
-    // Convert to File
-    const arr = dataUrl.split(",");
-    const mime = arr[0].match(/:(.*?);/)[1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
+  const handleApplyCrop = async () => {
+    if (!croppedAreaPixels) return;
+    setSaving(true);
+    try {
+      const croppedResult = await getCroppedImg(imageSrc, croppedAreaPixels, rotation);
+      if (onSave) {
+        onSave({
+          ...croppedResult,
+          cropArea: croppedAreaPercent,
+          cropAreaPixels: croppedAreaPixels,
+          zoom,
+          rotation,
+          aspect
+        });
+      }
+    } catch (err) {
+      console.error("Error cropping image:", err);
+    } finally {
+      setSaving(false);
     }
-    const croppedFile = new File([u8arr], "cropped-product.jpg", { type: mime });
+  };
 
-    onSave({
-      file: croppedFile,
-      preview: dataUrl,
-      width: canvas.width,
-      height: canvas.height
-    });
+  const roleLabels = {
+    model_front: "Front / Main Look",
+    model_three_quarter: "3/4 Profile Angle",
+    model_back: "Back Silhouette",
+    model_side: "Side Profile",
+    garment_front: "Garment Flat / Front",
+    detail: "Bespoke Detail / Fabric"
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-white border border-[#E8E4DC] max-w-lg w-full p-6 sm:p-7 rounded-2xl relative shadow-2xl space-y-5 text-[#121215]">
-        {/* Close Button */}
-        <button
-          onClick={onCancel}
-          className="absolute top-5 right-5 text-[#888890] hover:text-[#121215] p-1.5 rounded-lg hover:bg-[#FAF8F5] transition-all"
-        >
-          <X size={18} />
-        </button>
-
-        {/* Header */}
-        <div className="border-b border-[#E8E4DC] pb-3">
-          <span className="text-[10px] uppercase tracking-[0.25em] text-[#C2922E] font-mono block mb-1">
-            — EDITORIAL RATIO ALIGNMENT
-          </span>
-          <h2 className="font-quiche text-2xl font-light text-[#121215]">
-            Precision Image Cropper
-          </h2>
-          <p className="text-xs text-[#555560] font-body mt-1">
-            Drag to pan & reposition the garment. Fits luxury high-res catalog displays.
-          </p>
-        </div>
-
-        {/* Canvas Display Viewport */}
-        <div 
-          className="flex items-center justify-center bg-[#FAF8F5] p-3 border border-[#E8E4DC] rounded-xl overflow-hidden cursor-grab active:cursor-grabbing relative select-none"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          <canvas
-            ref={canvasRef}
-            className="max-h-[380px] w-auto shadow-md rounded-lg"
-          />
-          <div className="absolute bottom-3 right-3 bg-[#121215]/80 backdrop-blur-md text-white text-[9px] font-mono px-2 py-1 rounded-md border border-white/15 flex items-center gap-1.5">
-            <Move size={10} className="text-[#C2922E]" /> Click & Drag to Align
-          </div>
-        </div>
-
-        {/* Crop Frame Presets */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-[10.5px] uppercase tracking-[0.2em] text-[#555560] font-mono">Crop Frame Preset</label>
-            <span className="text-[10px] font-mono text-[#888890]">
-              {cropPreset === "3:4" ? "400 x 533 px" : cropPreset === "1:1" ? "400 x 400 px" : "Free Custom"}
-            </span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-[#FAF8F5] border border-[#EAE6DF] max-w-4xl w-full h-[95vh] sm:h-auto max-h-[92vh] rounded-[2px] shadow-2xl flex flex-col text-[#111113] overflow-hidden">
+        {/* TOP BAR */}
+        <div className="px-5 py-3.5 border-b border-[#EAE6DF] bg-white flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#C2922E]" />
+            <div>
+              <h2 className="text-xs uppercase tracking-[0.16em] font-mono font-semibold text-[#111113]">
+                4:5 Product Crop
+              </h2>
+              <p className="text-[10px] text-[#746F68] font-mono mt-0.5">
+                Drag to reposition &middot; Scroll/pinch to zoom
+              </p>
+            </div>
           </div>
 
-          <div className="flex gap-2">
-            {[
-              { id: "3:4", label: "3:4 Luxury Portrait" },
-              { id: "1:1", label: "1:1 Square" },
-              { id: "free", label: "Free Custom" }
-            ].map(preset => (
+          <div className="flex items-center gap-2">
+            {/* Mobile Tab Toggle */}
+            <div className="md:hidden flex border border-[#EAE6DF] rounded-[2px] overflow-hidden p-0.5 bg-[#FAF8F5]">
               <button
-                key={preset.id}
                 type="button"
-                onClick={() => setCropPreset(preset.id)}
-                className={`flex-1 py-2 text-[10px] uppercase tracking-wider font-body rounded-xl border transition-all ${
-                  cropPreset === preset.id 
-                    ? "bg-[#121215] text-[#C2922E] font-bold border-[#C2922E]/40 shadow-sm" 
-                    : "text-[#555560] border-[#E8E4DC] hover:border-[#C2922E] hover:text-[#121215] bg-[#FAF8F5]"
+                onClick={() => setActiveTab("crop")}
+                className={`px-2.5 py-1 text-[9.5px] font-mono uppercase tracking-wider rounded-[1px] ${
+                  activeTab === "crop" ? "bg-[#111113] text-white" : "text-[#746F68]"
                 }`}
               >
-                {preset.label}
+                Crop
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Controls */}
-        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[#E8E4DC]">
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono">Zoom ({zoom.toFixed(1)}x)</label>
-              <div className="flex gap-1">
-                <button type="button" onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} className="p-1 rounded border border-[#E8E4DC] text-[#555560] hover:text-[#121215] hover:border-[#C2922E]">
-                  <ZoomOut size={12} />
-                </button>
-                <button type="button" onClick={() => setZoom(z => Math.min(3, z + 0.1))} className="p-1 rounded border border-[#E8E4DC] text-[#555560] hover:text-[#121215] hover:border-[#C2922E]">
-                  <ZoomIn size={12} />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("preview")}
+                className={`px-2.5 py-1 text-[9.5px] font-mono uppercase tracking-wider rounded-[1px] ${
+                  activeTab === "preview" ? "bg-[#111113] text-white" : "text-[#746F68]"
+                }`}
+              >
+                Storefront
+              </button>
             </div>
-            <input
-              type="range"
-              min="0.5"
-              max="3"
-              step="0.05"
-              value={zoom}
-              onChange={(e) => setZoom(parseFloat(e.target.value))}
-              className="w-full accent-[#C2922E] cursor-pointer"
-            />
-          </div>
 
-          <div className="space-y-1 flex flex-col justify-between">
-            <label className="text-[10px] uppercase tracking-[0.2em] text-[#555560] font-mono">Rotate</label>
             <button
               type="button"
-              onClick={handleRotate}
-              className="w-full py-2 border border-[#E8E4DC] rounded-xl text-xs font-body flex items-center justify-center gap-2 hover:bg-[#FAF8F5] hover:border-[#C2922E] transition-all text-[#121215]"
+              onClick={onCancel}
+              className="p-1.5 text-[#746F68] hover:text-[#111113] hover:bg-[#FAF8F5] border border-transparent hover:border-[#EAE6DF] rounded-[2px] transition-colors cursor-pointer"
+              title="Close editor"
             >
-              <RotateCw size={14} className="text-[#C2922E]" /> Rotate 90° ({rotation}°)
+              <X size={16} />
             </button>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 pt-4 border-t border-[#E8E4DC]">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex-1 py-3 border border-[#E8E4DC] rounded-xl text-[10px] uppercase tracking-[0.2em] font-body text-[#555560] hover:text-[#121215] hover:bg-[#FAF8F5] transition-all"
+        {/* MAIN BODY */}
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-[#FAF8F5]">
+          {/* CROP VIEWPORT AREA */}
+          <div
+            className={`flex-1 relative flex flex-col items-center justify-center p-4 bg-[#111113] overflow-hidden ${
+              activeTab === "preview" ? "hidden md:flex" : "flex"
+            }`}
           >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="flex-1 py-3 bg-[#121215] hover:bg-[#C2922E] text-white font-bold text-[10px] uppercase tracking-[0.2em] font-body rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+            {/* Cropper Container */}
+            <div className="relative w-full h-[52vh] sm:h-[55vh] md:h-[60vh] max-w-md mx-auto rounded-[2px] overflow-hidden border border-[#C2922E]/40 shadow-2xl">
+              <Cropper
+                image={imageSrc}
+                crop={crop}
+                zoom={zoom}
+                rotation={rotation}
+                aspect={aspect}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+                cropShape="rect"
+                showGrid={true}
+                classes={{
+                  containerClassName: "bg-[#09090b]",
+                  cropAreaClassName: "border-2 border-[#C2922E] shadow-[0_0_0_9999px_rgba(0,0,0,0.65)]"
+                }}
+              />
+              <div className="absolute top-2 left-2 z-10 bg-black/75 backdrop-blur-xs text-[#C2922E] text-[8.5px] font-mono px-2 py-0.5 rounded-[1px] border border-[#C2922E]/30 uppercase tracking-widest flex items-center gap-1">
+                <Sparkles size={10} /> 4:5 Portrait Frame
+              </div>
+              <div className="absolute bottom-2 right-2 z-10 bg-black/75 backdrop-blur-xs text-white/80 text-[8.5px] font-mono px-2 py-0.5 rounded-[1px] border border-white/10 uppercase tracking-widest flex items-center gap-1 pointer-events-none">
+                <Move size={10} className="text-[#C2922E]" /> Drag &amp; Pinch to Pan
+              </div>
+            </div>
+
+            {/* Quick helper tip */}
+            <p className="text-[10px] text-white/60 font-mono mt-3 text-center">
+              Drag to reposition &middot; Scroll or pinch to zoom
+            </p>
+          </div>
+
+          {/* SIDEBAR: CONTROLS & STOREFRONT PREVIEW */}
+          <div
+            className={`w-full md:w-80 lg:w-96 border-t md:border-t-0 md:border-l border-[#EAE6DF] bg-white flex flex-col justify-between overflow-y-auto ${
+              activeTab === "crop" ? "hidden md:flex" : "flex"
+            }`}
           >
-            <Check size={14} className="text-[#C2922E]" /> Apply Crop & Save
-          </button>
+            <div className="p-5 space-y-5">
+              {/* Aspect Ratio Options */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#746F68] font-medium flex items-center gap-1.5">
+                    <Sliders size={12} className="text-[#C2922E]" /> Aspect Ratio
+                  </label>
+                  <span className="text-[9px] font-mono text-[#C2922E] font-bold uppercase">
+                    {aspect === 4 / 5 ? "4:5 (Standard)" : aspect === 1 ? "1:1 (Square)" : "Free"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setAspect(4 / 5)}
+                    className={`py-2 px-2 text-[10px] font-mono uppercase tracking-wider rounded-[2px] border transition-all text-center ${
+                      aspect === 4 / 5
+                        ? "bg-[#111113] text-white border-[#111113] font-semibold shadow-xs"
+                        : "bg-[#FAF8F5] text-[#746F68] border-[#EAE6DF] hover:border-[#111113]"
+                    }`}
+                  >
+                    4:5 Editorial
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAspect(1)}
+                    className={`py-2 px-2 text-[10px] font-mono uppercase tracking-wider rounded-[2px] border transition-all text-center ${
+                      aspect === 1
+                        ? "bg-[#111113] text-white border-[#111113] font-semibold shadow-xs"
+                        : "bg-[#FAF8F5] text-[#746F68] border-[#EAE6DF] hover:border-[#111113]"
+                    }`}
+                  >
+                    1:1 Square
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAspect(undefined)}
+                    className={`py-2 px-2 text-[10px] font-mono uppercase tracking-wider rounded-[2px] border transition-all text-center ${
+                      aspect === undefined
+                        ? "bg-[#111113] text-white border-[#111113] font-semibold shadow-xs"
+                        : "bg-[#FAF8F5] text-[#746F68] border-[#EAE6DF] hover:border-[#111113]"
+                    }`}
+                  >
+                    Free Crop
+                  </button>
+                </div>
+              </div>
+
+              {/* Zoom & Alignment Controls */}
+              <div className="space-y-3 pt-3 border-t border-[#EAE6DF]">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#746F68] font-medium">
+                    Zoom ({zoom.toFixed(2)}x)
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setZoom((z) => Math.max(1, +(z - 0.1).toFixed(2)))}
+                      className="p-1 rounded-[2px] border border-[#EAE6DF] hover:border-[#111113] text-[#746F68] hover:text-[#111113] bg-[#FAF8F5]"
+                      title="Zoom out"
+                    >
+                      <ZoomOut size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setZoom((z) => Math.min(3, +(z + 0.1).toFixed(2)))}
+                      className="p-1 rounded-[2px] border border-[#EAE6DF] hover:border-[#111113] text-[#746F68] hover:text-[#111113] bg-[#FAF8F5]"
+                      title="Zoom in"
+                    >
+                      <ZoomIn size={12} />
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="0.05"
+                  value={zoom}
+                  onChange={(e) => setZoom(parseFloat(e.target.value))}
+                  className="w-full h-1.5 bg-[#EAE6DF] rounded-lg appearance-none cursor-pointer accent-[#C2922E]"
+                />
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleRotate}
+                    className="flex-1 py-2 px-3 border border-[#EAE6DF] hover:border-[#111113] rounded-[2px] text-[10px] font-mono uppercase tracking-wider text-[#111113] bg-[#FAF8F5] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <RotateCw size={12} className="text-[#C2922E]" /> Rotate 90&deg;
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="py-2 px-3 border border-[#EAE6DF] hover:border-rose-400 rounded-[2px] text-[10px] font-mono uppercase tracking-wider text-[#746F68] hover:text-rose-700 bg-[#FAF8F5] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    title="Reset to default alignment"
+                  >
+                    <RotateCcw size={12} /> Reset
+                  </button>
+                </div>
+              </div>
+
+              {/* LIVE STOREFRONT CARD PREVIEW */}
+              <div className="space-y-2 pt-3 border-t border-[#EAE6DF]">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#746F68] font-medium flex items-center gap-1">
+                    <Eye size={12} className="text-[#C2922E]" /> Storefront Preview
+                  </span>
+                  <span className="text-[9px] font-mono text-[#746F68]">Collections Card</span>
+                </div>
+
+                {/* Card Mockup */}
+                <div className="bg-[#FAF8F5] border border-[#EAE6DF] p-3 rounded-[2px] shadow-xs">
+                  <div className="relative aspect-[4/5] bg-[#111113] rounded-[1px] overflow-hidden border border-[#EAE6DF]/60">
+                    <div
+                      className="w-full h-full bg-cover bg-no-repeat transition-all"
+                      style={{
+                        backgroundImage: `url(${imageSrc})`,
+                        backgroundPosition: `${50 - (crop.x / 4)}% ${50 - (crop.y / 4)}%`,
+                        backgroundSize: `${zoom * 100}%`
+                      }}
+                    />
+                    <div className="absolute top-1.5 left-1.5 bg-[#111113]/85 backdrop-blur-xs text-[#C2922E] text-[7.5px] font-mono uppercase px-1.5 py-0.5 rounded-[1px] tracking-widest font-bold">
+                      SUKO ATELIER
+                    </div>
+                  </div>
+                  <div className="pt-2 space-y-0.5">
+                    <p className="text-[10px] uppercase font-mono tracking-wider font-semibold text-[#111113] truncate">
+                      Atelier Bespoke Silhouette
+                    </p>
+                    <p className="text-[9px] text-[#746F68] font-mono flex items-center justify-between">
+                      <span>4:5 Aspect Ratio</span>
+                      <span className="text-[#C2922E] font-medium">&bull; Live Ready</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ACTION BUTTONS (STICKY BOTTOM) */}
+            <div className="p-4 border-t border-[#EAE6DF] bg-white flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={saving}
+                className="flex-1 py-2.5 px-4 border border-[#EAE6DF] hover:border-[#111113] text-[#746F68] hover:text-[#111113] rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors cursor-pointer bg-white disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyCrop}
+                disabled={saving}
+                className="flex-1 py-2.5 px-4 bg-[#111113] hover:bg-[#C2922E] text-white rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                {saving ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Applying...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check size={13} className="text-[#C2922E]" />
+                    <span>Apply Crop</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

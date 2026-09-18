@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Heart, ChevronLeft, ChevronRight, Maximize2, MessageCircle, Sparkles, Check, HelpCircle } from "lucide-react";
 import { useLenis } from "lenis/react";
@@ -36,6 +36,60 @@ export const ProductDetail = () => {
   const [reviewsData, setReviewsData] = useState({ total: 0, averageRating: 5.0, reviews: [] });
   
   const buyButtonRef = useRef(null);
+
+  // Applicable sizes resolution: strictly honor product size_stock / sizes
+  const applicableSizes = useMemo(() => {
+    if (!product) return [];
+    if (product.size_stock && typeof product.size_stock === "object" && Object.keys(product.size_stock).length > 0) {
+      return Object.keys(product.size_stock);
+    }
+    if (Array.isArray(product.sizes) && product.sizes.length > 0) {
+      return product.sizes;
+    }
+    if (typeof product.sizes === "string") {
+      try {
+        const parsed = JSON.parse(product.sizes);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+      if (product.sizes.trim()) {
+        return product.sizes.split(",").map(s => s.trim()).filter(Boolean);
+      }
+    }
+    return ["38", "40", "42", "44", "46"];
+  }, [product]);
+
+  // Size stock lookup
+  const getSizeStock = useCallback((s) => {
+    if (!product) return 0;
+    if (product.size_stock && typeof product.size_stock === "object" && product.size_stock[s] !== undefined) {
+      return Math.max(0, Number(product.size_stock[s]) || 0);
+    }
+    if (product.stock !== undefined) {
+      return Math.max(0, Number(product.stock) || 0);
+    }
+    return 0;
+  }, [product]);
+
+  // Total available product units (strictly from size_stock if present)
+  const totalInventory = useMemo(() => {
+    if (!product) return 0;
+    if (product.size_stock && typeof product.size_stock === "object" && Object.keys(product.size_stock).length > 0) {
+      return Object.values(product.size_stock).reduce((acc, v) => acc + (Math.max(0, Number(v)) || 0), 0);
+    }
+    return Math.max(0, Number(product.stock) || 0);
+  }, [product]);
+
+  const isProductOutOfStock = totalInventory === 0;
+  const currentSizeStock = size ? getSizeStock(size) : 0;
+  const isSelectedSizeOutOfStock = size ? currentSizeStock === 0 : isProductOutOfStock;
+
+  // Auto-select first in-stock size on product mount
+  useEffect(() => {
+    if (applicableSizes.length > 0) {
+      const firstAvailable = applicableSizes.find(s => getSizeStock(s) > 0);
+      setSize(firstAvailable || applicableSizes[0]);
+    }
+  }, [applicableSizes, getSizeStock]);
 
   useEffect(() => {
     if (product) {
@@ -193,10 +247,14 @@ export const ProductDetail = () => {
       toast.error("Please select a size before adding to bag");
       return;
     }
+    if (getSizeStock(size) <= 0) {
+      toast.error(`Size ${size} is currently out of stock`);
+      return;
+    }
     addItem({ ...product, color: selectedColor, garmentLabel: garmentTypeLabel }, size, qty);
   };
 
-  const isOutOfStock = product.stock === 0;
+  const isOutOfStock = isProductOutOfStock || isSelectedSizeOutOfStock;
 
   const categoryType = product.categoryType || (product.category === "suits" || product.category === "coords" ? "set" : "blazer");
   const isFullSet = categoryType === "set";
@@ -346,21 +404,34 @@ export const ProductDetail = () => {
         </div>
 
         {/* Size Buttons Grid */}
-        <div className="grid grid-cols-5 gap-2">
-          {(product.sizes || SIZES.slice(0, 5)).map((s) => {
+        <div className="flex flex-wrap gap-2">
+          {applicableSizes.map((s) => {
             const isSelected = size === s;
+            const szStock = getSizeStock(s);
+            const isSzOutOfStock = szStock === 0;
+
             return (
               <button
                 key={s}
                 type="button"
                 onClick={() => setSize(s)}
-                className={`py-2 text-[10.5px] uppercase tracking-[0.2em] font-medium transition-all cursor-pointer ${
+                className={`relative px-3.5 py-2 min-w-[48px] text-[10.5px] uppercase tracking-[0.2em] font-medium transition-all cursor-pointer ${
                   isSelected
                     ? "bg-[#111113] text-white border border-[#111113] shadow-sm"
+                    : isSzOutOfStock
+                    ? "bg-[#FAF8F5] text-[#9999A0] border border-[#E5DDD1] hover:border-[#746F68]"
                     : "bg-transparent text-[#111113] border border-[#DDD8CE] hover:border-[#111113]"
                 }`}
+                title={isSzOutOfStock ? `Size ${s} is Out of Stock` : `Size ${s} (${szStock} available)`}
               >
-                {s}
+                <span className={isSzOutOfStock && !isSelected ? "line-through opacity-70" : ""}>
+                  {s}
+                </span>
+                {isSzOutOfStock && (
+                  <span className="block text-[7.5px] tracking-tight font-mono text-rose-500 font-normal leading-none mt-0.5">
+                    Sold Out
+                  </span>
+                )}
               </button>
             );
           })}
@@ -375,13 +446,17 @@ export const ProductDetail = () => {
             data-testid="add-to-cart-btn"
             onClick={handleAdd}
             disabled={isOutOfStock}
-            className={`flex-1 py-3.5 px-6 text-[10.5px] sm:text-[11px] uppercase tracking-[0.24em] font-medium transition-all shadow-sm active:scale-[0.99] cursor-pointer ${
+            className={`flex-1 py-3.5 px-6 text-[10.5px] sm:text-[11px] uppercase tracking-[0.24em] font-medium transition-all shadow-sm active:scale-[0.99] ${
               isOutOfStock
                 ? "bg-[#EAE6DF] text-[#9999A0] cursor-not-allowed"
-                : "bg-[#111113] text-white hover:bg-[#C2922E]"
+                : "bg-[#111113] text-white hover:bg-[#C2922E] cursor-pointer"
             }`}
           >
-            {isOutOfStock ? "SOLD OUT" : `ADD TO BAG · ${formatINR(product.price)}`}
+            {isProductOutOfStock 
+              ? "SOLD OUT" 
+              : isSelectedSizeOutOfStock 
+              ? `SIZE ${size} · OUT OF STOCK` 
+              : `ADD TO BAG · ${formatINR(product.price)}`}
           </button>
 
           <button

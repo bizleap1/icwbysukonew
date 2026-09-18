@@ -85,9 +85,9 @@ const resolveProductSizeStock = (p) => {
   if (typeof sizes === "string") {
     try { sizes = JSON.parse(sizes); } catch (e) { sizes = null; }
   }
-  const sizesList = Array.isArray(sizes) && sizes.length > 0 ? sizes : ["XS", "S", "M", "L", "XL"];
+  const sizesList = Array.isArray(sizes) && sizes.length > 0 ? sizes : ["38", "40", "42", "44", "46"];
   const total = typeof p.stock !== "undefined" ? Number(p.stock) : 15;
-  const base = Math.max(1, Math.floor(total / sizesList.length));
+  const base = Math.max(0, Math.floor(total / sizesList.length));
   let rem = total - (base * sizesList.length);
   const result = {};
   sizesList.forEach(s => {
@@ -865,7 +865,7 @@ const Admin = () => {
     inventory_mode: "replace", // 'replace' | 'increase' | 'decrease'
     inventory_delta: "",
     inventory_common_qty: "",
-    size_stock: { XS: "", S: "", M: "", L: "", XL: "" },
+    size_stock: { "38": "", "40": "", "42": "", "44": "", "46": "", "Free": "" },
     inventory_reason: ""
   });
 
@@ -880,10 +880,12 @@ const Admin = () => {
   const [editingGarmentId, setEditingGarmentId] = useState(null);
   const [existingImagesForEdit, setExistingImagesForEdit] = useState([]);
 
-  // Multiple Images & Cropping States
-  const [galleryFiles, setGalleryFiles] = useState([]); // [{ file, preview, isPrimary }]
-  const [editGalleryImages, setEditGalleryImages] = useState([]); // [{ url, file, preview, isPrimary }]
+  // Multiple Images & 4:5 Editorial Cropping States
+  const [galleryFiles, setGalleryFiles] = useState([]); // [{ id, url, file, preview, type, crop, isPrimary, isCropped }]
+  const [editGalleryImages, setEditGalleryImages] = useState([]);
   const [cropperSrc, setCropperSrc] = useState(null);
+  const [cropperRole, setCropperRole] = useState("model_front");
+  const [croppingIndex, setCroppingIndex] = useState(null);
   const [cropperCallback, setCropperCallback] = useState(null);
   const [demoActiveIndex, setDemoActiveIndex] = useState(0);
 
@@ -918,7 +920,8 @@ const Admin = () => {
     status: "active"
   };
   const [formData, setFormData] = useState(initialGarmentForm);
-  const [sizeStockMap, setSizeStockMap] = useState({ "38": 10, "40": 10, "42": 5, "44": 0, "46": 0, "Free": 0 });
+  const [applicableSizes, setApplicableSizes] = useState(["38", "40", "42", "44", "46"]);
+  const [sizeStockMap, setSizeStockMap] = useState({ "38": 10, "40": 10, "42": 5, "44": 0, "46": 0 });
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
 
@@ -1294,6 +1297,7 @@ const Admin = () => {
     sizes: "",
     status: "active"
   });
+  const [editApplicableSizes, setEditApplicableSizes] = useState(["38", "40", "42", "44", "46"]);
   const [editSizeStockMap, setEditSizeStockMap] = useState({});
   const [editImage, setEditImage] = useState(null);
   const [updatingProduct, setUpdatingProduct] = useState(false);
@@ -1320,6 +1324,17 @@ const Admin = () => {
     setIsDrawerInEditMode(startInEdit);
 
     const initialMap = resolveProductSizeStock(p);
+    let appSizes = [];
+    if (p.size_stock && typeof p.size_stock === "object" && Object.keys(p.size_stock).length > 0) {
+      appSizes = Object.keys(p.size_stock);
+    } else if (Array.isArray(p.sizes) && p.sizes.length > 0) {
+      appSizes = p.sizes;
+    } else if (Object.keys(initialMap).length > 0) {
+      appSizes = Object.keys(initialMap);
+    } else {
+      appSizes = ["38", "40", "42", "44", "46"];
+    }
+    setEditApplicableSizes(appSizes);
 
     setEditFormData({
       name: p.name || "",
@@ -1374,7 +1389,14 @@ const Admin = () => {
       data.append("silhouette", editFormData.silhouette || "");
       data.append("fit", editFormData.fit || "Tailored");
       data.append("occasion", editFormData.occasion || "Business Formal");
-      data.append("size_stock", JSON.stringify(editSizeStockMap));
+      const sanitizedEditStock = {};
+      editApplicableSizes.forEach(sz => {
+        sanitizedEditStock[sz] = Math.max(0, parseInt(editSizeStockMap[sz], 10) || 0);
+      });
+      const computedEditStock = Object.values(sanitizedEditStock).reduce((a, b) => a + b, 0);
+      data.append("size_stock", JSON.stringify(sanitizedEditStock));
+      data.append("stock", String(computedEditStock));
+      data.append("sizes", JSON.stringify(editApplicableSizes));
 
       const existingUrls = editGalleryImages.filter(g => g.url && !g.file).map(g => g.url);
       data.append("existing_images", JSON.stringify(existingUrls));
@@ -1573,44 +1595,191 @@ const Admin = () => {
   // Form Handlers
   const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  // Canonical gallery role labels and ordering for SUKO lookbook
+  const CANONICAL_GALLERY_ROLES = [
+    { value: "model_front", label: "Front / Main Look (Cover)", shortLabel: "Front Look" },
+    { value: "model_three_quarter", label: "Back or 3/4 Angle", shortLabel: "3/4 Angle" },
+    { value: "detail", label: "Tailoring / Fabric Detail", shortLabel: "Detail" },
+    { value: "model_back", label: "Back Silhouette", shortLabel: "Back Look" },
+    { value: "garment_front", label: "Garment Flat Lay", shortLabel: "Garment Flat" },
+    { value: "model_side", label: "Side Profile", shortLabel: "Side Profile" }
+  ];
+
+  const handleOpenCropper = (index) => {
+    const item = galleryFiles[index];
+    if (!item) return;
+    setCropperSrc(item.preview || item.url);
+    setCropperRole(item.type || (index === 0 ? "model_front" : index === 1 ? "model_three_quarter" : "detail"));
+    setCroppingIndex(index);
+    pushModalState("cropper");
+  };
+
+  const handleSaveCroppedImage = (cropped) => {
+    if (croppingIndex !== null && croppingIndex !== undefined) {
+      setGalleryFiles(prev => prev.map((item, idx) => {
+        if (idx === croppingIndex) {
+          return {
+            ...item,
+            file: cropped.file || item.file,
+            preview: cropped.dataUrl || item.preview,
+            crop: cropped.cropAreaPixels,
+            zoom: cropped.zoom,
+            rotation: cropped.rotation,
+            aspect: cropped.aspect,
+            isCropped: true
+          };
+        }
+        return item;
+      }));
+      toast.success("4:5 portrait crop saved! Master asset preserved.");
+    }
+    setCropperSrc(null);
+    setCroppingIndex(null);
+    setCropperCallback(null);
+    closeModal("cropper");
+  };
+
+  const handleSetPrimary = (index) => {
+    if (index === 0) return;
+    setGalleryFiles(prev => {
+      const copy = [...prev];
+      const [selected] = copy.splice(index, 1);
+      selected.isPrimary = true;
+      selected.type = "model_front";
+      return [selected, ...copy.map(item => ({ ...item, isPrimary: false }))];
+    });
+    toast.success("Primary cover image set!");
+  };
+
+  const handleMoveGalleryItem = (index, direction) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= galleryFiles.length) return;
+    setGalleryFiles(prev => {
+      const copy = [...prev];
+      const temp = copy[index];
+      copy[index] = copy[targetIndex];
+      copy[targetIndex] = temp;
+      return copy.map((item, i) => ({
+        ...item,
+        isPrimary: i === 0
+      }));
+    });
+  };
+
+  const handleChangeItemRole = (index, newRole) => {
+    setGalleryFiles(prev => prev.map((item, i) => i === index ? { ...item, type: newRole } : item));
+    toast.success("Angle role updated");
+  };
+
+  const handleReplaceGalleryItem = async (index, file) => {
+    if (!file) return;
+    const toastId = toast.loading("Processing replacement image...");
+    try {
+      const compressed = await compressAndResizeImage(file);
+      setGalleryFiles(prev => prev.map((item, i) => {
+        if (i === index) {
+          return {
+            ...item,
+            file: compressed.file,
+            preview: compressed.preview,
+            url: undefined,
+            crop: undefined,
+            isCropped: false
+          };
+        }
+        return item;
+      }));
+      toast.dismiss(toastId);
+      toast.success("Image replaced. Click Edit to adjust 4:5 crop.");
+    } catch (err) {
+      toast.dismiss(toastId);
+      toast.error("Failed to process replacement image");
+    }
+  };
+
+  const handleRemoveGalleryItem = (index) => {
+    setGalleryFiles(prev => {
+      const updated = prev.filter((_, i) => i !== index);
+      return updated.map((item, i) => ({
+        ...item,
+        isPrimary: i === 0
+      }));
+    });
+  };
+
+  const handleSlotUpload = async (slotIndex, file) => {
+    if (!file) return;
+    const toastId = toast.loading("Optimizing slot image...");
+    try {
+      const compressed = await compressAndResizeImage(file);
+      const defaultRoles = ["model_front", "model_three_quarter", "detail", "model_back", "garment_front", "model_side"];
+      const role = defaultRoles[slotIndex] || "detail";
+
+      const newItem = {
+        id: `slot-${slotIndex}-${Date.now()}`,
+        file: compressed.file,
+        preview: compressed.preview,
+        type: role,
+        originalSize: compressed.originalSize,
+        compressedSize: compressed.compressedSize,
+        isPrimary: slotIndex === 0,
+        isCropped: false
+      };
+
+      setGalleryFiles(prev => {
+        const copy = [...prev];
+        if (slotIndex < copy.length) {
+          copy[slotIndex] = newItem;
+          return copy;
+        } else {
+          return [...copy, newItem];
+        }
+      });
+      toast.dismiss(toastId);
+      toast.success(`Slot ${slotIndex + 1} loaded! Click Edit to crop.`);
+    } catch (err) {
+      toast.dismiss(toastId);
+      toast.error("Failed to process slot image.");
+    }
+  };
+
   const handleAddGalleryFiles = async (e) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const selected = Array.from(e.target.files);
 
     const toastId = toast.loading(`Optimizing ${selected.length} image(s)...`);
-    const compressedResults = await Promise.all(selected.map(file => compressAndResizeImage(file)));
+    try {
+      const compressedResults = await Promise.all(selected.map(file => compressAndResizeImage(file)));
 
-    const newItems = compressedResults.map((res, idx) => ({
-      file: res.file,
-      preview: res.preview,
-      originalSize: res.originalSize,
-      compressedSize: res.compressedSize,
-      isPrimary: galleryFiles.length === 0 && idx === 0
-    }));
+      const currentCount = galleryFiles.length;
+      const defaultRoles = ["model_front", "model_three_quarter", "detail", "model_back", "garment_front", "model_side"];
 
-    setGalleryFiles(prev => [...prev, ...newItems]);
-    toast.dismiss(toastId);
-    toast.success("Images optimized for high-speed luxury catalog view!");
+      const newItems = compressedResults.map((res, idx) => {
+        const slotIdx = currentCount + idx;
+        const role = defaultRoles[slotIdx] || "detail";
+        return {
+          id: `new-${Date.now()}-${idx}`,
+          file: res.file,
+          preview: res.preview,
+          type: role,
+          originalSize: res.originalSize,
+          compressedSize: res.compressedSize,
+          isPrimary: currentCount === 0 && idx === 0,
+          isCropped: false
+        };
+      });
+
+      setGalleryFiles(prev => [...prev, ...newItems]);
+      toast.dismiss(toastId);
+      toast.success(`${newItems.length} image(s) loaded! Click Edit to adjust 4:5 crop.`);
+    } catch (err) {
+      toast.dismiss(toastId);
+      toast.error("Failed to process images.");
+    }
   };
 
   const handleEditAddGalleryFiles = async (e) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    const selected = Array.from(e.target.files);
-
-    const toastId = toast.loading(`Optimizing ${selected.length} image(s)...`);
-    const compressedResults = await Promise.all(selected.map(file => compressAndResizeImage(file)));
-
-    const newItems = compressedResults.map((res, idx) => ({
-      file: res.file,
-      preview: res.preview,
-      originalSize: res.originalSize,
-      compressedSize: res.compressedSize,
-      isPrimary: editGalleryImages.length === 0 && idx === 0
-    }));
-
-    setEditGalleryImages(prev => [...prev, ...newItems]);
-    toast.dismiss(toastId);
-    toast.success("Images optimized!");
+    return handleAddGalleryFiles(e);
   };
 
   const handleGarmentSubmit = async (e, forcedStatus = null) => {
@@ -1626,14 +1795,7 @@ const Admin = () => {
       // Active: require minimum 3 valid product images.
       // If fewer than 3 images exist, block publishing as Active and show:
       // “Add at least 3 product images before publishing.”
-      let totalImagesCount = 0;
-      if (editingGarmentId) {
-        const existingCount = Array.isArray(existingImagesForEdit) ? existingImagesForEdit.length : 0;
-        const newFilesCount = galleryFiles.filter(g => g.file).length;
-        totalImagesCount = existingCount + newFilesCount;
-      } else {
-        totalImagesCount = galleryFiles.length > 0 ? galleryFiles.length : (image ? 1 : 0);
-      }
+      const totalImagesCount = galleryFiles.length > 0 ? galleryFiles.length : (image ? 1 : 0);
 
       if (finalStatus === "active" && totalImagesCount < 3) {
         toast.error("Add at least 3 product images before publishing.");
@@ -1651,7 +1813,13 @@ const Admin = () => {
       data.append("name", formData.name);
       data.append("price", formData.price);
       if (formData.discount_price) data.append("discount_price", formData.discount_price);
-      data.append("stock", formData.stock || "0");
+      
+      const sanitizedStock = {};
+      applicableSizes.forEach(sz => {
+        sanitizedStock[sz] = Math.max(0, parseInt(sizeStockMap[sz], 10) || 0);
+      });
+      const computedStock = Object.values(sanitizedStock).reduce((a, b) => a + b, 0);
+      data.append("stock", String(computedStock));
       data.append("description", formData.description || "");
       if (formData.category_id) data.append("category_id", formData.category_id);
       if (formData.sub_category) data.append("sub_category", formData.sub_category);
@@ -1664,9 +1832,10 @@ const Admin = () => {
       data.append("silhouette", formData.silhouette || "");
       data.append("fit", formData.fit || "Tailored");
       data.append("occasion", formData.occasion || "Business Formal");
-      data.append("size_stock", JSON.stringify(sizeStockMap));
+      data.append("size_stock", JSON.stringify(sanitizedStock));
+      data.append("sizes", JSON.stringify(applicableSizes));
 
-      // Handling images
+      // Handling images: Primary file
       const primaryItem = galleryFiles.find(g => g.isPrimary) || galleryFiles[0];
       if (primaryItem && primaryItem.file) {
         data.append("image", primaryItem.file);
@@ -1674,21 +1843,26 @@ const Admin = () => {
         data.append("image", image);
       }
 
+      // Additional new image files
       galleryFiles.forEach(g => {
         if (g.file && g !== primaryItem) {
           data.append("images", g.file);
         }
       });
 
-      // Gallery type metadata ordering
+      // Gallery metadata ordering with canonical roles and crop coordinates
       const galleryMeta = galleryFiles.map((g, idx) => ({
-        type: idx === 0 ? "model_front" : (idx === 1 ? "model_three_quarter" : (idx === 2 ? "model_side" : (idx === 3 ? "model_back" : (idx === 4 ? "garment_front" : "detail"))))
+        url: g.url || undefined,
+        type: g.type || (idx === 0 ? "model_front" : (idx === 1 ? "model_three_quarter" : (idx === 2 ? "detail" : "model_back"))),
+        ...(g.crop ? { crop: g.crop } : {})
       }));
       data.append("gallery", JSON.stringify(galleryMeta));
 
       if (editingGarmentId) {
         uploadToastId = toast.loading("Persisting updates and syncing cloud media...");
-        data.append("existing_images", JSON.stringify(existingImagesForEdit));
+        const preservedUrls = galleryFiles.filter(g => g.url && !g.file).map(g => g.url);
+        data.append("existing_images", JSON.stringify(preservedUrls));
+
         const res = await fetch(`${API_BASE_URL}/api/products/${editingGarmentId}`, {
           method: "PUT",
           headers: { "Authorization": `Bearer ${token}` },
@@ -1767,22 +1941,62 @@ const Admin = () => {
       status: prod.status || "active"
     });
 
-    let sMap = { "38": 0, "40": 0, "42": 0, "44": 0, "46": 0, "Free": 0 };
+    let appSizes = [];
     if (prod.size_stock && typeof prod.size_stock === "object" && Object.keys(prod.size_stock).length > 0) {
-      sMap = { ...sMap, ...prod.size_stock };
+      appSizes = Object.keys(prod.size_stock);
     } else if (Array.isArray(prod.sizes) && prod.sizes.length > 0) {
+      appSizes = prod.sizes;
+    } else {
+      appSizes = ["38", "40", "42", "44", "46"];
+    }
+    setApplicableSizes(appSizes);
+
+    let sMap = {};
+    appSizes.forEach(sz => {
+      sMap[sz] = prod.size_stock?.[sz] ?? 0;
+    });
+    if ((!prod.size_stock || Object.keys(prod.size_stock).length === 0) && Array.isArray(prod.sizes) && prod.sizes.length > 0) {
       const perSize = Math.max(1, Math.floor((prod.stock || 10) / prod.sizes.length));
       prod.sizes.forEach(sz => { sMap[sz] = perSize; });
-    } else {
-      sMap["38"] = prod.stock || 10;
     }
     setSizeStockMap(sMap);
 
-    const existingImgs = Array.isArray(prod.images) && prod.images.length > 0
-      ? prod.images
-      : (prod.image_url ? [prod.image_url] : []);
-    setExistingImagesForEdit(existingImgs);
-    setGalleryFiles([]);
+    let initialGallery = [];
+    if (Array.isArray(prod.gallery) && prod.gallery.length > 0) {
+      initialGallery = prod.gallery.map((g, idx) => {
+        const url = typeof g === "string" ? g : (g.url || g.image || g.preview || "");
+        const type = typeof g === "object" && g.type ? g.type : (idx === 0 ? "model_front" : idx === 1 ? "model_three_quarter" : "detail");
+        return {
+          id: `existing-${idx}-${Date.now()}`,
+          url,
+          preview: url,
+          type,
+          crop: typeof g === "object" ? g.crop : undefined,
+          isPrimary: idx === 0,
+          isCropped: Boolean(typeof g === "object" && g.crop)
+        };
+      }).filter(g => Boolean(g.url));
+    } else if (Array.isArray(prod.images) && prod.images.length > 0) {
+      initialGallery = prod.images.map((url, idx) => ({
+        id: `existing-${idx}-${Date.now()}`,
+        url,
+        preview: url,
+        type: idx === 0 ? "model_front" : idx === 1 ? "model_three_quarter" : "detail",
+        isPrimary: idx === 0,
+        isCropped: false
+      }));
+    } else if (prod.image_url) {
+      initialGallery = [{
+        id: `existing-0-${Date.now()}`,
+        url: prod.image_url,
+        preview: prod.image_url,
+        type: "model_front",
+        isPrimary: true,
+        isCropped: false
+      }];
+    }
+    setGalleryFiles(initialGallery);
+    setExistingImagesForEdit(initialGallery.map(g => g.url));
     setImage(null);
 
     const formEl = document.getElementById("atelier-garment-form");
@@ -1795,7 +2009,8 @@ const Admin = () => {
   const handleCancelEdit = () => {
     setEditingGarmentId(null);
     setFormData(initialGarmentForm);
-    setSizeStockMap({ "38": 10, "40": 10, "42": 5, "44": 0, "46": 0, "Free": 0 });
+    setApplicableSizes(["38", "40", "42", "44", "46"]);
+    setSizeStockMap({ "38": 10, "40": 10, "42": 5, "44": 0, "46": 0 });
     setExistingImagesForEdit([]);
     setGalleryFiles([]);
     setImage(null);
@@ -2257,43 +2472,28 @@ const Admin = () => {
 
     setGarmentToDelete({
       product: targetProd,
-      info: null,
-      loading: true,
+      info: {
+        hasOrders: false,
+        orderCount: 0,
+        canPermanentlyDelete: true,
+        isArchived: (targetProd.status || "").toLowerCase() === "archived"
+      },
+      loading: false,
       submitting: false
     });
     pushModalState("deleteGarmentModal");
 
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/products/${id}/delete-info`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const info = await res.json();
-        setGarmentToDelete(prev => prev ? { ...prev, info, loading: false } : null);
-      } else {
-        setGarmentToDelete(prev => prev ? { 
-          ...prev, 
-          info: { 
-            hasOrders: false, 
-            orderCount: 0, 
-            canPermanentlyDelete: true,
-            isArchived: (targetProd.status || "").toLowerCase() === "archived"
-          }, 
-          loading: false 
-        } : null);
-      }
-    } catch (e) {
-      setGarmentToDelete(prev => prev ? { 
-        ...prev, 
-        info: { 
-          hasOrders: false, 
-          orderCount: 0, 
-          canPermanentlyDelete: true,
-          isArchived: (targetProd.status || "").toLowerCase() === "archived"
-        }, 
-        loading: false 
-      } : null);
-    }
+    // Fetch deep order info in background without delaying modal opening
+    fetch(`${API_BASE_URL}/api/products/${id}/delete-info`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    })
+      .then(res => (res.ok ? res.json() : null))
+      .then(info => {
+        if (info) {
+          setGarmentToDelete(prev => (prev && prev.product?.id === id ? { ...prev, info } : prev));
+        }
+      })
+      .catch(() => {});
   };
 
   const handleRestoreProduct = async (id) => {
@@ -2316,7 +2516,7 @@ const Admin = () => {
       if (editingProduct && String(editingProduct.id) === String(id)) {
         setEditingProduct(prev => prev ? { ...prev, status: "active" } : null);
       }
-      fetchDashboardData();
+      fetchDashboardData(true);
       refreshGlobalProducts();
     } catch (err) {
       toast.error(err.message);
@@ -2326,10 +2526,27 @@ const Admin = () => {
   const executeDeleteGarment = async (permanent = false, force = false) => {
     if (!garmentToDelete?.product) return;
 
-    setGarmentToDelete(prev => ({ ...prev, submitting: true }));
+    const targetProduct = garmentToDelete.product;
+    const pId = targetProduct.id;
 
+    // 1. INSTANT OPTIMISTIC UI REMOVAL: Remove from table in 0 milliseconds!
+    setProducts(prev => {
+      const updated = prev.filter(p => String(p.id) !== String(pId));
+      try {
+        localStorage.setItem("suko_store_products_cache_v2", JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    closeModal("deleteGarmentModal");
+    setGarmentToDelete(null);
+    if (editingProduct && String(editingProduct.id) === String(pId)) {
+      closeEditingProduct();
+    }
+    toast.success(permanent ? `"${targetProduct.name}" permanently deleted` : `"${targetProduct.name}" moved to archive`);
+
+    // 2. Perform background API call
     try {
-      const pId = garmentToDelete.product.id;
       let url = `${API_BASE_URL}/api/products/${pId}`;
       const q = [];
       if (permanent) q.push("permanent=true");
@@ -2341,19 +2558,17 @@ const Admin = () => {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || data.message || "Failed to process garment");
-
-      toast.success(data.message || (permanent ? "Garment permanently removed" : "Garment safely archived"));
-      closeModal("deleteGarmentModal");
-      setGarmentToDelete(null);
-      if (editingProduct && String(editingProduct.id) === String(pId)) {
-        closeEditingProduct();
+      if (!res.ok) {
+        // Rollback state if server error occurred
+        setProducts(prev => [targetProduct, ...prev]);
+        throw new Error(data.error || data.message || "Failed to process garment");
       }
-      fetchDashboardData();
+
+      // Refresh silently in background without blocking UI
       refreshGlobalProducts();
+      fetchDashboardData(true);
     } catch (err) {
       toast.error(err.message);
-      setGarmentToDelete(prev => ({ ...prev, submitting: false }));
     }
   };
 
@@ -7047,14 +7262,14 @@ const Admin = () => {
                             </div>
                           </div>
 
-                          {/* SECTION 2: PRICING & INVENTORY */}
+                          {/* SECTION 2: PRICING */}
                           <div className="space-y-4 pt-3 border-t border-[#E5DDD1]">
                             <div 
                               onClick={() => toggleMobileAccordion("pricing")}
                               className="flex items-center justify-between border-b border-[#E5DDD1] pb-1.5 cursor-pointer lg:cursor-default select-none"
                             >
                               <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
-                                02 &middot; Pricing &amp; Inventory Ledger
+                                02 &middot; Pricing &amp; Atelier Valuation
                               </span>
                               <span className="lg:hidden text-xs text-[#746F68] font-mono font-bold">
                                 {mobileFormAccordions.pricing ? "−" : "+"}
@@ -7062,11 +7277,12 @@ const Admin = () => {
                             </div>
 
                             <div className={`space-y-4 pt-1 ${mobileFormAccordions.pricing ? "block" : "hidden lg:block"}`}>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                                <div>
-                                  <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                                    Atelier Retail Price (INR) *
-                                  </label>
+                              <div className="max-w-md">
+                                <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                  Atelier Retail Price (INR) *
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-mono text-[#746F68]">₹</span>
                                   <input
                                     type="number"
                                     name="price"
@@ -7074,20 +7290,7 @@ const Admin = () => {
                                     onChange={handleInputChange}
                                     placeholder="4990"
                                     required
-                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                                    Fallback Total Stock
-                                  </label>
-                                  <input
-                                    type="number"
-                                    name="stock"
-                                    value={formData.stock}
-                                    onChange={handleInputChange}
-                                    placeholder="25"
-                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
+                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-7 pr-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
                                   />
                                 </div>
                               </div>
@@ -7106,8 +7309,8 @@ const Admin = () => {
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-[10.5px] font-mono text-[#C2922E] font-medium">
-                                  Total: {Object.values(sizeStockMap).reduce((a, b) => a + (Number(b) || 0), 0)} units
+                                <span className="text-[10.5px] font-mono text-[#C2922E] font-semibold uppercase tracking-wider">
+                                  TOTAL: {applicableSizes.reduce((sum, sz) => sum + (Math.max(0, Number(sizeStockMap[sz])) || 0), 0)} UNITS
                                 </span>
                                 <span className="lg:hidden text-xs text-[#746F68] font-mono font-bold">
                                   {mobileFormAccordions.inventory ? "−" : "+"}
@@ -7115,9 +7318,97 @@ const Admin = () => {
                               </div>
                             </div>
 
-                            <div className={`pt-1 ${mobileFormAccordions.inventory ? "block" : "hidden lg:block"}`}>
-                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
-                                {["38", "40", "42", "44", "46", "Free"].map(sz => {
+                            <div className={`space-y-3 pt-1 ${mobileFormAccordions.inventory ? "block" : "hidden lg:block"}`}>
+                              {/* Applicable Sizes Selector Bar */}
+                              <div className="bg-[#FAF8F5] border border-[#E5DDD1] p-3 rounded-[2px] space-y-2.5">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                  <span className="text-[9.5px] uppercase font-mono tracking-wider text-[#746F68] font-medium">
+                                    Applicable Sizes for this Silhouette:
+                                  </span>
+                                  {/* Presets */}
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[9px] font-mono text-[#8E877E] uppercase">Presets:</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const standard = ["38", "40", "42", "44", "46"];
+                                        setApplicableSizes(standard);
+                                        const newMap = { ...sizeStockMap };
+                                        standard.forEach(sz => { if (newMap[sz] === undefined) newMap[sz] = 0; });
+                                        setSizeStockMap(newMap);
+                                      }}
+                                      className="px-2 py-0.5 text-[9px] font-mono uppercase rounded-[1px] border border-[#DDD8CE] bg-white text-[#111113] hover:border-[#C2922E] hover:text-[#C2922E] transition-colors cursor-pointer"
+                                    >
+                                      Tailored 38-46
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const ext = ["36", "38", "40", "42", "44", "46"];
+                                        setApplicableSizes(ext);
+                                        const newMap = { ...sizeStockMap };
+                                        ext.forEach(sz => { if (newMap[sz] === undefined) newMap[sz] = 0; });
+                                        setSizeStockMap(newMap);
+                                      }}
+                                      className="px-2 py-0.5 text-[9px] font-mono uppercase rounded-[1px] border border-[#DDD8CE] bg-white text-[#111113] hover:border-[#C2922E] hover:text-[#C2922E] transition-colors cursor-pointer"
+                                    >
+                                      Extended 36-46
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setApplicableSizes(["Free"]);
+                                        const newMap = { ...sizeStockMap };
+                                        if (newMap["Free"] === undefined) newMap["Free"] = 10;
+                                        setSizeStockMap(newMap);
+                                      }}
+                                      className="px-2 py-0.5 text-[9px] font-mono uppercase rounded-[1px] border border-[#DDD8CE] bg-white text-[#111113] hover:border-[#C2922E] hover:text-[#C2922E] transition-colors cursor-pointer"
+                                    >
+                                      Free Size
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Size Toggle Chips */}
+                                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                  {["36", "38", "40", "42", "44", "46", "Free"].map(sz => {
+                                    const isApplicable = applicableSizes.includes(sz);
+                                    return (
+                                      <button
+                                        key={sz}
+                                        type="button"
+                                        onClick={() => {
+                                          if (isApplicable) {
+                                            if (applicableSizes.length <= 1) {
+                                              toast.error("At least one size must remain applicable.");
+                                              return;
+                                            }
+                                            setApplicableSizes(applicableSizes.filter(s => s !== sz));
+                                          } else {
+                                            const allSizes = ["36", "38", "40", "42", "44", "46", "Free"];
+                                            const nextSizes = allSizes.filter(s => s === sz || applicableSizes.includes(s));
+                                            setApplicableSizes(nextSizes);
+                                            if (sizeStockMap[sz] === undefined) {
+                                              setSizeStockMap(prev => ({ ...prev, [sz]: 0 }));
+                                            }
+                                          }
+                                        }}
+                                        className={`px-3 py-1 text-xs font-mono font-medium rounded-[2px] border transition-all cursor-pointer ${
+                                          isApplicable
+                                            ? "bg-[#111113] text-white border-[#111113] shadow-xs"
+                                            : "bg-white text-[#746F68] border-[#E5DDD1] hover:border-[#111113] hover:text-[#111113]"
+                                        }`}
+                                      >
+                                        {isApplicable ? `✓ ${sz}` : `+ ${sz}`}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              {/* Size Stock Cards */}
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2.5">
+                                {applicableSizes.map(sz => {
                                   const qty = sizeStockMap[sz] ?? 0;
                                   const isZero = qty === 0;
                                   return (
@@ -7137,7 +7428,7 @@ const Admin = () => {
                                         onChange={(e) => setSizeStockMap({ ...sizeStockMap, [sz]: Math.max(0, parseInt(e.target.value, 10) || 0) })}
                                         className="w-full bg-[#FAF8F5] border border-[#E5DDD1] focus:border-[#C2922E] text-center text-sm font-mono font-medium text-[#111113] py-1 px-1 rounded-[2px] outline-none"
                                       />
-                                      <span className={`text-[9px] font-mono tracking-tight block mt-1.5 ${isZero ? "text-rose-600" : "text-[#746F68]"}`}>
+                                      <span className={`text-[9px] font-mono tracking-tight block mt-1.5 ${isZero ? "text-rose-600 font-semibold" : "text-[#746F68]"}`}>
                                         {isZero ? "Out of Stock" : `${qty} available`}
                                       </span>
                                     </div>
@@ -7147,101 +7438,229 @@ const Admin = () => {
                             </div>
                           </div>
 
-                          {/* SECTION 4: PRODUCT IMAGES & GALLERY */}
-                          <div className="space-y-3 pt-3 border-t border-[#E5DDD1]">
+                          {/* SECTION 4: PRODUCT IMAGES */}
+                          <div className="space-y-4 pt-3 border-t border-[#E5DDD1]">
                             <div 
                               onClick={() => toggleMobileAccordion("imagery")}
                               className="flex items-center justify-between border-b border-[#E5DDD1] pb-1.5 cursor-pointer lg:cursor-default select-none"
                             >
                               <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
-                                04 &middot; Product Images &amp; Gallery
+                                04 &middot; PRODUCT IMAGES
                               </span>
-                              <span className="lg:hidden text-xs text-[#746F68] font-mono font-bold">
-                                {mobileFormAccordions.imagery ? "−" : "+"}
+                              <span className="text-[10px] font-mono font-semibold tracking-wider text-[#746F68]">
+                                {galleryFiles.length} / 3 IMAGES
                               </span>
                             </div>
 
-                            <div className={`space-y-3 pt-1 ${mobileFormAccordions.imagery ? "block" : "hidden lg:block"}`}>
-                              {/* Existing Images preview in Edit Mode */}
-                              {existingImagesForEdit.length > 0 && (
-                                <div className="space-y-1.5">
-                                  <span className="text-[9.5px] uppercase tracking-wider text-[#746F68] font-mono block">
-                                    Current Product Images ({existingImagesForEdit.length})
-                                  </span>
-                                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
-                                    {existingImagesForEdit.map((url, idx) => (
-                                      <div key={idx} className="relative group border border-[#E5DDD1] rounded-[2px] overflow-hidden bg-white shadow-xs">
-                                        <img src={url} alt={`Existing ${idx}`} className="w-full h-20 object-cover" />
-                                        <span className="absolute top-1 left-1 bg-[#111113]/80 text-white text-[8px] font-mono uppercase px-1 py-0.5 rounded-[1px]">
-                                          {idx === 0 ? "Cover" : "Gallery"}
+                            <div className={`space-y-4 pt-1 ${mobileFormAccordions.imagery ? "block" : "hidden lg:block"}`}>
+                              {/* 3 Standard Slots + Uploaded Cards + Add Image */}
+                              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                                {[
+                                  { label: "FRONT / MAIN", defaultRole: "model_front" },
+                                  { label: "BACK / 3/4", defaultRole: "model_three_quarter" },
+                                  { label: "DETAIL", defaultRole: "detail" }
+                                ].map((slot, slotIdx) => {
+                                  const item = galleryFiles[slotIdx];
+                                  if (item) {
+                                    return (
+                                      <div
+                                        key={item.id || `slot-${slotIdx}`}
+                                        className={`relative aspect-[4/5] bg-[#111113] rounded-[2px] overflow-hidden border group shadow-2xs transition-all ${
+                                          slotIdx === 0 ? "border-[#C2922E]" : "border-[#E5DDD1] hover:border-[#111113]"
+                                        }`}
+                                      >
+                                        <img
+                                          src={item.preview || item.url}
+                                          alt={slot.label}
+                                          className="w-full h-full object-cover"
+                                        />
+
+                                        {/* Small PRIMARY label on first image */}
+                                        {slotIdx === 0 && (
+                                          <div className="absolute top-2 left-2 bg-[#111113]/90 text-[#C2922E] text-[8px] font-mono uppercase font-bold px-1.5 py-0.5 rounded-[1px] tracking-wider border border-[#C2922E]/30 z-10">
+                                            PRIMARY
+                                          </div>
+                                        )}
+
+                                        {/* Slot Name Tag */}
+                                        <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-xs text-white/90 text-[8.5px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-[1px] truncate group-hover:opacity-0 transition-opacity text-center">
+                                          {slot.label}
+                                        </div>
+
+                                        {/* Hover Overlay: Edit Crop · Replace · Remove */}
+                                        <div className="absolute inset-0 bg-black/65 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex flex-col items-center justify-center p-3 gap-2 z-20">
+                                          <span className="text-[9px] font-mono uppercase tracking-wider text-white/80 font-semibold mb-1">
+                                            {slot.label}
+                                          </span>
+
+                                          <button
+                                            type="button"
+                                            onClick={() => handleOpenCropper(slotIdx)}
+                                            className="w-full max-w-[125px] py-1.5 px-2 bg-white hover:bg-[#C2922E] text-[#111113] hover:text-white rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                                          >
+                                            <Crop size={11} />
+                                            <span>Edit Crop</span>
+                                          </button>
+
+                                          <label
+                                            className="w-full max-w-[125px] py-1.5 px-2 bg-white/90 hover:bg-[#111113] text-[#111113] hover:text-white rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                                          >
+                                            <RefreshCw size={11} />
+                                            <span>Replace</span>
+                                            <input
+                                              type="file"
+                                              accept="image/*"
+                                              className="hidden"
+                                              onChange={(e) => {
+                                                if (e.target.files?.[0]) {
+                                                  handleReplaceGalleryItem(slotIdx, e.target.files[0]);
+                                                }
+                                              }}
+                                            />
+                                          </label>
+
+                                          <button
+                                            type="button"
+                                            onClick={() => handleRemoveGalleryItem(slotIdx)}
+                                            className="w-full max-w-[125px] py-1.5 px-2 bg-rose-600 hover:bg-rose-700 text-white rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                                          >
+                                            <Trash2 size={11} />
+                                            <span>Remove</span>
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
+                                    <label
+                                      key={`empty-slot-${slotIdx}`}
+                                      className="border border-dashed border-[#E5DDD1] hover:border-[#C2922E] rounded-[2px] aspect-[4/5] bg-white hover:bg-[#FAF8F5] transition-all flex flex-col items-center justify-center p-4 text-center cursor-pointer group shadow-2xs"
+                                    >
+                                      <div className="w-10 h-10 rounded-full bg-[#FAF8F5] border border-[#E5DDD1] group-hover:border-[#C2922E] group-hover:bg-[#111113] flex items-center justify-center transition-all mb-2.5">
+                                        <Plus size={18} className="text-[#C2922E] group-hover:text-white" />
+                                      </div>
+                                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#111113]">
+                                        {slot.label}
+                                      </span>
+                                      <span className="text-[9px] font-mono text-[#C2922E] mt-1 group-hover:underline font-semibold">
+                                        + Upload
+                                      </span>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                          if (e.target.files?.[0]) {
+                                            handleSlotUpload(slotIdx, e.target.files[0]);
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                  );
+                                })}
+
+                                {/* Extra images beyond first 3 */}
+                                {galleryFiles.slice(3).map((item, extraIdx) => {
+                                  const actualIdx = 3 + extraIdx;
+                                  return (
+                                    <div
+                                      key={item.id || `extra-${actualIdx}`}
+                                      className="relative aspect-[4/5] bg-[#111113] rounded-[2px] overflow-hidden border border-[#E5DDD1] hover:border-[#111113] group shadow-2xs transition-all"
+                                    >
+                                      <img
+                                        src={item.preview || item.url}
+                                        alt={`Image 0${actualIdx + 1}`}
+                                        className="w-full h-full object-cover"
+                                      />
+
+                                      <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-xs text-white/90 text-[8.5px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-[1px] truncate group-hover:opacity-0 transition-opacity text-center">
+                                        IMAGE 0{actualIdx + 1}
+                                      </div>
+
+                                      {/* Hover Overlay: Edit Crop · Replace · Remove */}
+                                      <div className="absolute inset-0 bg-black/65 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex flex-col items-center justify-center p-3 gap-2 z-20">
+                                        <span className="text-[9px] font-mono uppercase tracking-wider text-white/80 font-semibold mb-1">
+                                          IMAGE 0{actualIdx + 1}
                                         </span>
+
                                         <button
                                           type="button"
-                                          onClick={() => setExistingImagesForEdit(prev => prev.filter((_, i) => i !== idx))}
-                                          className="absolute top-1 right-1 p-1 bg-rose-600 rounded-[2px] text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                          title="Remove image from piece"
+                                          onClick={() => handleOpenCropper(actualIdx)}
+                                          className="w-full max-w-[125px] py-1.5 px-2 bg-white hover:bg-[#C2922E] text-[#111113] hover:text-white rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                                         >
-                                          <X size={10} />
+                                          <Crop size={11} />
+                                          <span>Edit Crop</span>
+                                        </button>
+
+                                        <label
+                                          className="w-full max-w-[125px] py-1.5 px-2 bg-white/90 hover:bg-[#111113] text-[#111113] hover:text-white rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                                        >
+                                          <RefreshCw size={11} />
+                                          <span>Replace</span>
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                              if (e.target.files?.[0]) {
+                                                handleReplaceGalleryItem(actualIdx, e.target.files[0]);
+                                              }
+                                            }}
+                                          />
+                                        </label>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveGalleryItem(actualIdx)}
+                                          className="w-full max-w-[125px] py-1.5 px-2 bg-rose-600 hover:bg-rose-700 text-white rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                                        >
+                                          <Trash2 size={11} />
+                                          <span>Remove</span>
                                         </button>
                                       </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
+                                    </div>
+                                  );
+                                })}
 
-                              <div className="border border-dashed border-[#E5DDD1] hover:border-[#C2922E] bg-white rounded-[2px] p-5 text-center transition-colors">
-                                <ImageIcon size={24} className="mx-auto text-[#C2922E] mb-1.5" />
-                                <p className="text-xs text-[#111113] font-medium">Click or drag portrait lookbook imagery</p>
-                                <p className="text-[10px] text-[#746F68] mt-0.5 font-mono">JPEG, PNG, WebP up to 10MB (Auto-optimized for showroom)</p>
+                                {/* + ADD IMAGE Card */}
+                                <label className="border border-dashed border-[#E5DDD1] hover:border-[#C2922E] rounded-[2px] aspect-[4/5] bg-white hover:bg-[#FAF8F5] transition-all flex flex-col items-center justify-center p-4 text-center cursor-pointer group shadow-2xs">
+                                  <div className="w-10 h-10 rounded-full bg-[#FAF8F5] border border-[#E5DDD1] group-hover:border-[#C2922E] group-hover:bg-[#111113] flex items-center justify-center transition-all mb-2.5">
+                                    <Plus size={18} className="text-[#C2922E] group-hover:text-white" />
+                                  </div>
+                                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#111113] group-hover:text-[#C2922E]">
+                                    + ADD IMAGE
+                                  </span>
+                                  <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    onChange={handleAddGalleryFiles}
+                                    className="hidden"
+                                  />
+                                </label>
+                              </div>
+
+                              {/* Subtle drag & drop / browse strip */}
+                              <div className="border border-dashed border-[#E5DDD1] hover:border-[#C2922E] bg-white rounded-[2px] p-2.5 text-center transition-colors">
                                 <input
+                                  id="bulk-gallery-upload-input"
                                   type="file"
                                   multiple
                                   accept="image/*"
                                   onChange={handleAddGalleryFiles}
-                                  className="mt-2.5 text-xs text-[#746F68] font-mono file:mr-3 file:py-1 file:px-3 file:rounded-[2px] file:border file:border-[#E5DDD1] file:text-[10px] file:font-mono file:uppercase file:tracking-wider file:bg-[#FAF8F5] file:text-[#111113] hover:file:bg-[#111113] hover:file:text-white cursor-pointer"
+                                  className="hidden"
                                 />
+                                <label
+                                  htmlFor="bulk-gallery-upload-input"
+                                  className="cursor-pointer flex items-center justify-center gap-1.5 text-[10px] font-mono text-[#746F68] hover:text-[#111113]"
+                                >
+                                  <span>Drag &amp; drop multiple photos or</span>
+                                  <span className="text-[#C2922E] uppercase tracking-wider font-semibold underline">
+                                    Browse Files &rarr;
+                                  </span>
+                                </label>
                               </div>
-
-                              {/* Gallery Preview Items */}
-                              {galleryFiles.length > 0 && (
-                                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5 pt-1">
-                                  {galleryFiles.map((item, idx) => (
-                                    <div key={idx} className="relative group border border-[#E5DDD1] rounded-[2px] overflow-hidden bg-white shadow-xs">
-                                      <img src={item.preview} alt={`Upload ${idx}`} className="w-full h-20 object-cover" />
-                                      {item.isPrimary && (
-                                        <span className="absolute top-1 left-1 bg-[#111113] text-[#C2922E] text-[8px] font-mono uppercase px-1.5 py-0.5 rounded-[1px]">
-                                          Cover
-                                        </span>
-                                      )}
-                                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity">
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setCropperSrc(item.preview);
-                                            pushModalState("cropper");
-                                            setCropperCallback(() => (cropped) => {
-                                              setGalleryFiles(prev => prev.map((g, i) => i === idx ? { ...g, file: cropped.file, preview: cropped.preview } : g));
-                                              closeModal("cropper");
-                                            });
-                                          }}
-                                          className="p-1 bg-white rounded-[2px] text-[#111113] hover:bg-[#C2922E] hover:text-white transition-colors cursor-pointer"
-                                          title="Crop Image"
-                                        >
-                                          <Crop size={12} />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => setGalleryFiles(prev => prev.filter((_, i) => i !== idx))}
-                                          className="p-1 bg-rose-600 rounded-[2px] text-white hover:bg-rose-700 transition-colors cursor-pointer"
-                                          title="Remove"
-                                        >
-                                          <X size={12} />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
                             </div>
                           </div>
 
@@ -8566,10 +8985,22 @@ const Admin = () => {
         {cropperSrc && (
           <ImageCropperModal
             imageSrc={cropperSrc}
+            imageRole={cropperRole}
+            initialCrop={croppingIndex !== null && galleryFiles[croppingIndex]?.crop ? galleryFiles[croppingIndex].crop : { x: 0, y: 0 }}
+            initialZoom={croppingIndex !== null && galleryFiles[croppingIndex]?.zoom ? galleryFiles[croppingIndex].zoom : 1}
             onSave={(cropped) => {
-              if (cropperCallback) cropperCallback(cropped);
+              if (cropperCallback) {
+                cropperCallback(cropped);
+              } else {
+                handleSaveCroppedImage(cropped);
+              }
             }}
-            onCancel={() => closeModal("cropper")}
+            onCancel={() => {
+              setCropperSrc(null);
+              setCroppingIndex(null);
+              setCropperCallback(null);
+              closeModal("cropper");
+            }}
           />
         )}
 
@@ -8983,20 +9414,62 @@ const Admin = () => {
 
                     {/* Size Stock Distribution */}
                     <div className="space-y-2 border border-[#E5DDD1] p-3.5 rounded-[2px] bg-white">
-                      <label className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono font-medium block">
-                        Size Inventory
-                      </label>
-                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                        {["38", "40", "42", "44", "46", "Free"].map(sz => (
-                          <div key={sz} className="text-center">
-                            <span className="text-[9.5px] font-mono block text-[#746F68] mb-0.5">{sz}</span>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono font-medium block">
+                          Size Inventory
+                        </label>
+                        <span className="text-[10px] font-mono text-[#C2922E] font-semibold">
+                          TOTAL: {editApplicableSizes.reduce((acc, sz) => acc + (Math.max(0, Number(editSizeStockMap[sz])) || 0), 0)} UNITS
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 pt-1 pb-1">
+                        {["36", "38", "40", "42", "44", "46", "Free"].map(sz => {
+                          const isApp = editApplicableSizes.includes(sz);
+                          return (
+                            <button
+                              key={sz}
+                              type="button"
+                              onClick={() => {
+                                if (isApp) {
+                                  if (editApplicableSizes.length <= 1) {
+                                    toast.error("At least one size must remain applicable.");
+                                    return;
+                                  }
+                                  setEditApplicableSizes(editApplicableSizes.filter(s => s !== sz));
+                                } else {
+                                  const all = ["36", "38", "40", "42", "44", "46", "Free"];
+                                  setEditApplicableSizes(all.filter(s => s === sz || editApplicableSizes.includes(s)));
+                                  if (editSizeStockMap[sz] === undefined) {
+                                    setEditSizeStockMap(prev => ({ ...prev, [sz]: 0 }));
+                                  }
+                                }
+                              }}
+                              className={`px-2 py-0.5 text-[9.5px] font-mono rounded-[1px] border transition-colors cursor-pointer ${
+                                isApp 
+                                  ? "bg-[#111113] text-white border-[#111113]" 
+                                  : "bg-white text-[#746F68] border-[#E5DDD1] hover:border-[#111113]"
+                              }`}
+                            >
+                              {isApp ? `✓ ${sz}` : `+ ${sz}`}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 pt-1">
+                        {editApplicableSizes.map(sz => (
+                          <div key={sz} className="text-center bg-[#FAF8F5] p-2 border border-[#E5DDD1] rounded-[2px]">
+                            <span className="text-[9.5px] font-mono font-semibold block text-[#111113] mb-0.5">{sz}</span>
                             <input
                               type="number"
                               min="0"
                               value={editSizeStockMap[sz] ?? 0}
-                              onChange={(e) => setEditSizeStockMap({ ...editSizeStockMap, [sz]: parseInt(e.target.value, 10) || 0 })}
-                              className="w-full bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] p-1.5 text-center text-xs font-mono text-[#111113] focus:border-[#C2922E] outline-none"
+                              onChange={(e) => setEditSizeStockMap({ ...editSizeStockMap, [sz]: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] p-1 text-center text-xs font-mono text-[#111113] focus:border-[#C2922E] outline-none"
                             />
+                            <span className={`text-[8.5px] font-mono block mt-1 ${(editSizeStockMap[sz] ?? 0) === 0 ? "text-rose-600 font-semibold" : "text-[#746F68]"}`}>
+                              {(editSizeStockMap[sz] ?? 0) === 0 ? "Out" : `${editSizeStockMap[sz] ?? 0} avl`}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -10513,7 +10986,7 @@ const Admin = () => {
                               setBulkForm(prev => ({
                                 ...prev,
                                 inventory_common_qty: val,
-                                size_stock: { XS: val, S: val, M: val, L: val, XL: val }
+                                size_stock: { "38": val, "40": val, "42": val, "44": val, "46": val, "Free": val }
                               }));
                             }}
                             className="w-16 bg-white border border-[#E5DDD1] rounded-[2px] px-2 py-0.5 text-xs font-mono outline-none text-[#111113] focus:border-[#C2922E]"
@@ -10521,8 +10994,8 @@ const Admin = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-5 gap-2">
-                        {["XS", "S", "M", "L", "XL"].map(sz => (
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                        {["38", "40", "42", "44", "46", "Free"].map(sz => (
                           <div key={sz} className="bg-white border border-[#E5DDD1] rounded-[2px] p-2 text-center">
                             <span className="text-xs font-mono font-medium text-[#111113] block mb-1">{sz}</span>
                             <input

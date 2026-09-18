@@ -11,11 +11,11 @@ async function resolveMaxStock(productId, size) {
     if (!product) return 10;
     if (product.size_stock && typeof product.size_stock === 'object' && size && product.size_stock[size] !== undefined) {
       const szStock = Number(product.size_stock[size]);
-      if (!isNaN(szStock) && szStock >= 0) return Math.max(1, szStock);
+      if (!isNaN(szStock)) return Math.max(0, szStock);
     }
     if (product.stock !== undefined) {
       const totalStock = Number(product.stock);
-      if (!isNaN(totalStock) && totalStock >= 0) return Math.max(1, totalStock);
+      if (!isNaN(totalStock)) return Math.max(0, totalStock);
     }
     return 10;
   } catch (e) {
@@ -104,6 +104,9 @@ router.post("/", requireAuth, async (req, res) => {
 
     const itemSize = size || "default";
     const maxStock = await resolveMaxStock(product_id, itemSize);
+    if (maxStock <= 0) {
+      return res.status(400).json({ error: "Selected size is currently out of stock." });
+    }
     const qty = sanitizeQuantity(quantity, maxStock);
 
     if (pool.isMock) {
