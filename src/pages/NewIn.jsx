@@ -263,7 +263,7 @@ const NewIn = () => {
       feature: "the-plum-sculpted-suit",
       small: [
         "the-plum-sculpted-trousers",
-        "the-lilac-flare-trousers",
+        "the-aubergine-tailored-wide-leg-trousers",
         "the-aubergine-draped-set",
         "the-aubergine-tailored-mini-skirt"
       ]
@@ -290,8 +290,8 @@ const NewIn = () => {
       feature: "the-lilac-flare-suit",
       small: [
         "noir-layered-vest-set",
-        "the-lilac-flare-trousers",
-        "the-dusty-rose-trousers",
+        "the-dusty-rose-embroidered-farchi-set",
+        "the-midnight-column-skirt",
         "the-plum-sculpted-trousers"
       ]
     }

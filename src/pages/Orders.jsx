@@ -583,8 +583,8 @@ const Orders = () => {
                   quantity: 1,
                   price_at_purchase: orderTotal,
                   product: {
-                    name: "Savile Double-Breasted Blazer",
-                    image_url: "/products/plum-sculpted-double-breasted-blazer/1.JPG",
+                    name: "The Noir Tailored Suit",
+                    image_url: "/products/the-noir-tailored-suit/1.webp",
                     color: "Obsidian Black",
                     price: orderTotal
                   }
@@ -606,7 +606,7 @@ const Orders = () => {
                       <div className="flex items-start gap-5 lg:gap-6 min-w-0 flex-1">
                         <div className="relative w-24 h-32 lg:w-28 lg:h-36 bg-[#FAF8F5] border border-[#EAE6DF] overflow-hidden shrink-0 shadow-2xs group">
                           <img 
-                            src={primaryItem.product?.image_url || primaryItem.product_image_url || "/products/plum-sculpted-double-breasted-blazer/1.JPG"} 
+                            src={primaryItem.product?.image_url || primaryItem.product_image_url || "/products/the-noir-tailored-suit/1.webp"} 
                             alt={primaryItem.product?.name || primaryItem.product_name || "Garment"} 
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                           />
@@ -699,7 +699,7 @@ const Orders = () => {
                     <div className="flex gap-3.5 items-start">
                       <div className="w-20 h-28 bg-[#FAF8F5] border border-[#EAE6DF] overflow-hidden shrink-0">
                         <img 
-                          src={primaryItem.product?.image_url || primaryItem.product_image_url || "/products/plum-sculpted-double-breasted-blazer/1.JPG"} 
+                          src={primaryItem.product?.image_url || primaryItem.product_image_url || "/products/the-noir-tailored-suit/1.webp"} 
                           alt={primaryItem.product?.name || primaryItem.product_name || "Garment"} 
                           className="w-full h-full object-cover"
                         />
@@ -833,8 +833,8 @@ const Orders = () => {
                           quantity: 1,
                           price_at_purchase: resolveOrderTotal(selectedOrderDetail),
                           product: {
-                            name: "Savile Double-Breasted Blazer",
-                            image_url: "/products/plum-sculpted-double-breasted-blazer/1.JPG",
+                            name: "The Noir Tailored Suit",
+                            image_url: "/products/the-noir-tailored-suit/1.webp",
                             color: "Obsidian Black"
                           }
                         }
@@ -842,7 +842,7 @@ const Orders = () => {
                         <div key={it.id || idx} className="py-4 flex items-start gap-4">
                           <div className="w-20 h-28 sm:w-24 sm:h-32 bg-[#FAF8F5] border border-[#EAE6DF] overflow-hidden shrink-0 shadow-2xs">
                             <img 
-                              src={it.product?.image_url || it.product_image_url || "/products/plum-sculpted-double-breasted-blazer/1.JPG"} 
+                              src={it.product?.image_url || it.product_image_url || "/products/the-noir-tailored-suit/1.webp"} 
                               alt={it.product?.name || it.product_name} 
                               className="w-full h-full object-cover" 
                             />
