@@ -1364,23 +1364,23 @@ export const ALL_RAW_PRODUCTS = [
       },
       {
         "url": "/products/the-dusty-rose-embroidered-farchi-set/2.png",
-        "type": "model_side"
-      },
-      {
-        "url": "/products/the-dusty-rose-embroidered-farchi-set/3.png",
-        "type": "detail"
-      },
-      {
-        "url": "/products/the-dusty-rose-embroidered-farchi-set/4.png",
-        "type": "model_back"
-      },
-      {
-        "url": "/products/the-dusty-rose-embroidered-farchi-set/5.png",
         "type": "garment_front"
       },
       {
+        "url": "/products/the-dusty-rose-embroidered-farchi-set/3.png",
+        "type": "garment_front"
+      },
+      {
+        "url": "/products/the-dusty-rose-embroidered-farchi-set/4.png",
+        "type": "model_front"
+      },
+      {
+        "url": "/products/the-dusty-rose-embroidered-farchi-set/5.png",
+        "type": "model_front"
+      },
+      {
         "url": "/products/the-dusty-rose-embroidered-farchi-set/6.png",
-        "type": "garment_detail"
+        "type": "model_back"
       },
       {
         "url": "/products/the-dusty-rose-embroidered-farchi-set/7.png",
@@ -1456,23 +1456,23 @@ export const ALL_RAW_PRODUCTS = [
       },
       {
         "url": "/products/noir-sculpted-vest-set/2.png",
-        "type": "model_three_quarter"
+        "type": "garment_front"
       },
       {
         "url": "/products/noir-sculpted-vest-set/3.png",
-        "type": "model_side"
+        "type": "garment_front"
       },
       {
         "url": "/products/noir-sculpted-vest-set/4.png",
-        "type": "detail"
+        "type": "model_three_quarter"
       },
       {
         "url": "/products/noir-sculpted-vest-set/5.png",
-        "type": "model_back"
+        "type": "model_side"
       },
       {
         "url": "/products/noir-sculpted-vest-set/6.png",
-        "type": "garment_front"
+        "type": "model_back"
       },
       {
         "url": "/products/noir-sculpted-vest-set/7.png",
@@ -1496,102 +1496,6 @@ export const ALL_RAW_PRODUCTS = [
       "/products/noir-sculpted-vest-set/5.png",
       "/products/noir-sculpted-vest-set/6.png",
       "/products/noir-sculpted-vest-set/7.png"
-    ],
-    "badge": "New Arrival",
-    "isNew": true,
-    "separates": [
-      {
-        "slug": "the-noir-tailored-trousers",
-        "label": "Noir Tailored Trousers"
-      }
-    ]
-  },
-  {
-    "id": "w-30",
-    "name": "Noir Layered Vest Set",
-    "slug": "noir-layered-vest-set",
-    "categoryType": "set",
-    "gender": "female",
-    "category": "suits",
-    "categoryName": "Power Suits & Sets",
-    "categoryLabel": "POWER SUITS & SETS",
-    "shortType": "Layered Tailored Vest & Trouser Set",
-    "setType": "Noir Layered Vest Set",
-    "moment": "essentials",
-    "moments": [
-      "essentials",
-      "presentation"
-    ],
-    "momentName": "Executive Essentials",
-    "price": 5400,
-    "color": "Obsidian Black",
-    "availableColors": [
-      "Obsidian Black"
-    ],
-    "sizes": [
-      "XS",
-      "S",
-      "M",
-      "L",
-      "XL"
-    ],
-    "includedPieces": [
-      "Noir Layered Longline Vest",
-      "Noir Tailored Trousers"
-    ],
-    "coordinates": [
-      {
-        "slug": "the-noir-tailored-trousers",
-        "label": "Matching Tailored Trousers"
-      }
-    ],
-    "gallery": [
-      {
-        "url": "/products/noir-layered-vest-set/1.png",
-        "type": "model_front"
-      },
-      {
-        "url": "/products/noir-layered-vest-set/2.png",
-        "type": "model_three_quarter"
-      },
-      {
-        "url": "/products/noir-layered-vest-set/3.png",
-        "type": "model_side"
-      },
-      {
-        "url": "/products/noir-layered-vest-set/4.png",
-        "type": "detail"
-      },
-      {
-        "url": "/products/noir-layered-vest-set/5.png",
-        "type": "model_back"
-      },
-      {
-        "url": "/products/noir-layered-vest-set/6.png",
-        "type": "garment_front"
-      },
-      {
-        "url": "/products/noir-layered-vest-set/7.png",
-        "type": "detail"
-      }
-    ],
-    "pieces": "Includes Layered Longline Vest + Coordinated Tailored Wide-Leg Trousers.",
-    "description": "A refined layered vest and trouser tailoring set crafted in obsidian black. Featuring structural layered vest styling over fluid wide-leg trousers for a balance of architectural precision and fluid movement.",
-    "story": "Designed for versatile multi-schedule executive days, offering effortless polish between boardrooms and transit.",
-    "stylingNotes": "Pair with minimalist jewelry and pointed loafers for an effortless commanding look.",
-    "sizeFit": "Upper silhouette is structured with a clean, elongated trouser cut. True to size. Model wears size S.",
-    "fabricCare": {
-      "fabric": "Structured suiting twill blend with smooth tonal interior lining.",
-      "care": "Dry clean only."
-    },
-    "images": [
-      "/products/noir-layered-vest-set/1.png",
-      "/products/noir-layered-vest-set/2.png",
-      "/products/noir-layered-vest-set/3.png",
-      "/products/noir-layered-vest-set/4.png",
-      "/products/noir-layered-vest-set/5.png",
-      "/products/noir-layered-vest-set/6.png",
-      "/products/noir-layered-vest-set/7.png"
     ],
     "badge": "New Arrival",
     "isNew": true,
@@ -1627,6 +1531,8 @@ export const REMOVED_PRODUCT_SLUGS = new Set([
   "lilac-flare-trousers",
   "the-dusty-rose-trousers",
   "dusty-rose-trousers",
+  "the-noir-layered-vest-set",
+  "noir-layered-vest-set",
   "w-11",
   "w-12",
   "w-13",
@@ -1637,7 +1543,8 @@ export const REMOVED_PRODUCT_SLUGS = new Set([
   "w-19",
   "w-20",
   "w-23",
-  "w-24"
+  "w-24",
+  "w-30"
 ]);
 
 export const PRODUCTS = ALL_RAW_PRODUCTS

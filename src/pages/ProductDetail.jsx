@@ -434,35 +434,6 @@ export const ProductDetail = () => {
             </p>
           )}
 
-          {/* Inline Link to Individual Pieces if Sold Separately */}
-          {separateItems.length > 0 && (
-            <div className="mt-3 pt-2.5 border-t border-[#E0D9CB]/80">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[9.5px] uppercase tracking-[0.22em] font-semibold text-[#111113]">
-                  PREFER SEPARATES?
-                </span>
-                <span className="text-[9px] uppercase tracking-wider text-[#C2922E] font-medium">
-                  Shop Individually
-                </span>
-              </div>
-              <div className="space-y-1.5">
-                {separateItems.map(({ product: sep, customLabel }) => (
-                  <Link
-                    key={sep.id}
-                    to={`/product/${sep.slug}`}
-                    className="group flex items-center justify-between py-1 text-xs text-[#111113] hover:text-[#C2922E] transition-colors"
-                  >
-                    <span className="font-medium underline underline-offset-2 group-hover:text-[#C2922E]">
-                      {customLabel || sep.name}
-                    </span>
-                    <span className="text-[11px] text-[#666672] font-mono group-hover:text-[#C2922E]">
-                      {formatINR(sep.price)} &rarr;
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       ) : (
         <div className="p-3.5 bg-[#F2EDE2] border border-[#E0D9CB]">
@@ -716,93 +687,6 @@ export const ProductDetail = () => {
 
       </div>
 
-      {/* 1. Full Set PDP: SHOP SEPARATELY Gallery Section */}
-      {isFullSet && separateItems.length > 0 && (
-        <section className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-12 xl:px-16 mb-12 sm:mb-16 font-body">
-          <div className="bg-[#F5F2EB] py-6 px-5 sm:py-9 sm:px-8 lg:px-12 border border-[#E8E4DC]">
-            <div className="max-w-4xl mx-auto mb-6 sm:mb-8 text-left sm:text-center">
-              <div className="inline-flex items-center gap-2 mb-2">
-                <span className="w-5 h-[1px] bg-[#C2922E]" />
-                <span className="text-[10px] uppercase tracking-[0.28em] text-[#C2922E] font-medium font-body">
-                  INDIVIDUAL PIECES
-                </span>
-                <span className="w-5 h-[1px] bg-[#C2922E] hidden sm:inline-block" />
-              </div>
-              <h3 className="font-quiche text-2xl sm:text-3xl lg:text-4xl font-light text-[#121215] mb-2.5">
-                SHOP SEPARATELY
-              </h3>
-              <p className="text-xs sm:text-[13px] text-[#555562] font-light max-w-xl sm:mx-auto leading-relaxed">
-                The Pieces Within The Set.
-              </p>
-            </div>
-
-            {/* Centered Editorial Cards Layout */}
-            <div className="flex flex-wrap justify-center gap-6 sm:gap-8 max-w-4xl mx-auto">
-              {separateItems.map(({ product: item, customLabel }) => {
-                const isItemSep = item.category === "separates" || item.categoryName?.toLowerCase().includes("separates");
-                const ghostImg = item.images?.find((img) => typeof img === "string" && (img.includes("2.png") || img.includes("2.webp") || img.includes("2.JPG") || img.includes("2.jpg")))
-                  || item.gallery?.find((g) => g.type === "garment_front" || (typeof g.url === "string" && (g.url.includes("2.png") || g.url.includes("2.webp") || g.url.includes("2.JPG"))))?.url;
-                const displayImg = (isItemSep && ghostImg)
-                  ? ghostImg
-                  : (typeof item.images[0] === "string" ? item.images[0] : item.images[0]?.url);
-
-                const sub = (item.subCategory || "").toLowerCase();
-                let roleLabel = "STANDALONE SEPARATE";
-                let actionLabel = "VIEW PIECE \u2192";
-                if (sub.includes("blazer")) { roleLabel = "TAILORED BLAZER"; actionLabel = "VIEW BLAZER \u2192"; }
-                else if (sub.includes("trouser") || sub.includes("pant")) { roleLabel = "TAILORED TROUSERS"; actionLabel = "VIEW TROUSERS \u2192"; }
-                else if (sub.includes("vest")) { roleLabel = "STRUCTURED VEST"; actionLabel = "VIEW VEST \u2192"; }
-                else if (sub.includes("skirt")) { roleLabel = "TAILORED SKIRT"; actionLabel = "VIEW SKIRT \u2192"; }
-                else if (sub.includes("jacket")) { roleLabel = "CONTOUR JACKET"; actionLabel = "VIEW JACKET \u2192"; }
-                else if (sub.includes("tunic")) { roleLabel = "EMBROIDERED TUNIC"; actionLabel = "VIEW TUNIC \u2192"; }
-
-                return (
-                  <Link
-                    key={item.id}
-                    to={`/product/${item.slug}`}
-                    className="group w-full sm:w-[320px] md:w-[360px] bg-[#FAF8F5] border border-[#E8E4DC] hover:border-[#C2922E]/80 transition-all duration-300 flex flex-col overflow-hidden hover:shadow-md"
-                  >
-                    {/* Direct Full-Bleed Card Image (No inner white spacing) */}
-                    <div className="w-full aspect-[3/4] bg-[#EAE6DF] border-b border-[#E8E4DC] relative overflow-hidden">
-                      <img
-                        src={displayImg}
-                        alt={item.name}
-                        className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700 ease-out"
-                      />
-                    </div>
-
-                    {/* Card Content */}
-                    <div className="p-5 sm:p-6 flex flex-col flex-1 justify-between bg-[#FAF8F5]">
-                      <div>
-                        <span className="text-[9.5px] uppercase tracking-[0.24em] text-[#C2922E] font-medium block mb-1.5">
-                          {roleLabel}
-                        </span>
-                        <h4 className="font-quiche text-lg sm:text-xl font-light text-[#121215] mb-1.5 group-hover:text-[#C2922E] transition-colors leading-snug">
-                          {item.name}
-                        </h4>
-                        {customLabel && (
-                          <p className="text-xs text-[#666672] italic font-light mb-2 line-clamp-1">
-                            {customLabel}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="pt-3 border-t border-[#E8E4DC]/80 flex items-center justify-between mt-3">
-                        <p className="font-quiche text-base text-[#121215] font-normal">
-                          {formatINR(item.price)}
-                        </p>
-                        <span className="text-[10.5px] uppercase tracking-[0.22em] font-medium text-[#121215] group-hover:text-[#C2922E] underline underline-offset-4 decoration-[#121215]/40 group-hover:decoration-[#C2922E] transition-all">
-                          {actionLabel}
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* 2. Separates PDP: COMPLETE THE SET Coordinating Gallery Section */}
       {!isFullSet && coordinateItems.length > 0 && (

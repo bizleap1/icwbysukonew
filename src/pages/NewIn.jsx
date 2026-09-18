@@ -289,7 +289,7 @@ const NewIn = () => {
     {
       feature: "the-lilac-flare-suit",
       small: [
-        "noir-layered-vest-set",
+        "noir-sculpted-vest-set",
         "the-dusty-rose-embroidered-farchi-set",
         "the-midnight-column-skirt",
         "the-plum-sculpted-trousers"
