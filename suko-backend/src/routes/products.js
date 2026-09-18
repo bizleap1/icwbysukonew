@@ -41,6 +41,18 @@ if (multer) {
   };
 }
 
+// GET /api/products/media-config -- check cloud media configuration status safely (NEVER prints secret)
+router.get("/media-config", (req, res) => {
+  const { isCloudinaryConfigured, getCloudinaryConfig } = require("../config/cloudinary");
+  const config = getCloudinaryConfig();
+  res.json({
+    configured: isCloudinaryConfigured(),
+    cloudName: config.cloudName || null,
+    hasApiKey: config.hasApiKey,
+    hasApiSecret: config.hasApiSecret
+  });
+});
+
 // GET /api/products -- list all products
 router.get("/", async (req, res) => {
   try {
@@ -119,6 +131,15 @@ router.post("/bulk-update", requireAdmin, async (req, res) => {
     const { ids, updates } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ error: "No garment IDs provided for bulk update" });
+    }
+    if (updates && updates.status === "active") {
+      for (const id of ids) {
+        const prod = await productService.getProductById(id);
+        const imgCount = prod?.images?.length || (prod?.image_url ? 1 : 0);
+        if (imgCount < 3) {
+          return res.status(400).json({ error: "Add at least 3 product images before publishing." });
+        }
+      }
     }
     const result = await productService.bulkUpdateProducts(ids, updates, req.user?.email);
     res.json({
@@ -255,6 +276,15 @@ router.post("/", requireAdmin, async (req, res) => {
     const { name, price } = req.body;
     if (!name || typeof price === "undefined") {
       return res.status(400).json({ error: "Garment name and price are required." });
+    }
+
+    const targetStatus = req.body.status || "active";
+    const imgCount = Array.isArray(req.body.images) ? req.body.images.length : (req.body.image_url ? 1 : 0);
+    if (targetStatus === "active" && imgCount < 3) {
+      return res.status(400).json({ error: "Add at least 3 product images before publishing." });
+    }
+    if (targetStatus === "draft" && imgCount < 1) {
+      return res.status(400).json({ error: "Add at least 1 product image for draft." });
     }
 
     const newProduct = await productService.createProduct(req.body);
@@ -423,8 +453,12 @@ router.post(
         combinedUrls.push(req.body.image_url);
       }
 
-      if (combinedUrls.length === 0) {
-        return res.status(400).json({ error: "At least 1 product image must be uploaded." });
+      const targetStatus = status || "active";
+      if (targetStatus === "active" && combinedUrls.length < 3) {
+        return res.status(400).json({ error: "Add at least 3 product images before publishing." });
+      }
+      if (targetStatus === "draft" && combinedUrls.length < 1) {
+        return res.status(400).json({ error: "Add at least 1 product image for draft." });
       }
 
       // 4. Synchronize canonical gallery [{ url, type }] and images: string[]
@@ -610,6 +644,20 @@ router.put("/:id", requireAdmin, handleOptionalMultipart, async (req, res) => {
     }
 
     const current = await productService.getProductById(req.params.id);
+    if (!current) return res.status(404).json({ error: "Product not found" });
+
+    const targetStatus = status || current.status || "active";
+    const effectiveImages = combinedImages.length > 0 
+      ? combinedImages 
+      : (current.images?.length ? current.images : (current.image_url ? [current.image_url] : []));
+
+    if (targetStatus === "active" && effectiveImages.length < 3) {
+      return res.status(400).json({ error: "Add at least 3 product images before publishing." });
+    }
+    if (targetStatus === "draft" && effectiveImages.length < 1) {
+      return res.status(400).json({ error: "Add at least 1 product image for draft." });
+    }
+
     const updated = await productService.updateProduct(req.params.id, updateData);
     if (!updated) return res.status(404).json({ error: "Product not found" });
 

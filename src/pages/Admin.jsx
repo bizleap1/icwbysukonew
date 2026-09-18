@@ -1620,6 +1620,33 @@ const Admin = () => {
 
     try {
       const finalStatus = forcedStatus || formData.status || "active";
+
+      // Publishing rule validation:
+      // Draft: allow 1 or more images.
+      // Active: require minimum 3 valid product images.
+      // If fewer than 3 images exist, block publishing as Active and show:
+      // “Add at least 3 product images before publishing.”
+      let totalImagesCount = 0;
+      if (editingGarmentId) {
+        const existingCount = Array.isArray(existingImagesForEdit) ? existingImagesForEdit.length : 0;
+        const newFilesCount = galleryFiles.filter(g => g.file).length;
+        totalImagesCount = existingCount + newFilesCount;
+      } else {
+        totalImagesCount = galleryFiles.length > 0 ? galleryFiles.length : (image ? 1 : 0);
+      }
+
+      if (finalStatus === "active" && totalImagesCount < 3) {
+        toast.error("Add at least 3 product images before publishing.");
+        setUploading(false);
+        return;
+      }
+
+      if (finalStatus === "draft" && totalImagesCount < 1) {
+        toast.error("Add at least 1 product image for draft.");
+        setUploading(false);
+        return;
+      }
+
       const data = new FormData();
       data.append("name", formData.name);
       data.append("price", formData.price);
@@ -2504,7 +2531,17 @@ const Admin = () => {
       const updates = {};
       if (bulkForm.category_id) updates.category_id = bulkForm.category_id;
       if (bulkForm.sub_category) updates.sub_category = bulkForm.sub_category;
-      if (bulkForm.status) updates.status = bulkForm.status;
+      if (bulkForm.status) {
+        if (bulkForm.status === "active") {
+          const invalidProd = (products || []).find(p => selectedProductIds.includes(p.id) && (p.images?.length || (p.image_url ? 1 : 0)) < 3);
+          if (invalidProd) {
+            toast.error("Add at least 3 product images before publishing.");
+            setBulkSubmitting(false);
+            return;
+          }
+        }
+        updates.status = bulkForm.status;
+      }
       if (bulkForm.color) updates.color = bulkForm.color;
       if (bulkForm.moment) updates.moment = bulkForm.moment;
 
