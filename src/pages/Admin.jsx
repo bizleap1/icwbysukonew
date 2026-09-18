@@ -1354,8 +1354,11 @@ const Admin = () => {
     e.preventDefault();
     if (!editingProduct) return;
     setUpdatingProduct(true);
+    let uploadToastId = null;
 
     try {
+      uploadToastId = toast.loading("Persisting updates & syncing cloud media...");
+
       const data = new FormData();
       data.append("name", editFormData.name);
       data.append("price", editFormData.price);
@@ -1402,12 +1405,14 @@ const Admin = () => {
         handleSaveNewColor(editFormData.color, true);
       }
 
+      if (uploadToastId) toast.dismiss(uploadToastId);
       toast.success(`"${editFormData.name}" updated successfully!`);
       closeEditingProduct();
       fetchDashboardData();
       refreshGlobalProducts();
     } catch (err) {
-      toast.error(err.message);
+      if (uploadToastId) toast.dismiss(uploadToastId);
+      toast.error(err.message || "Failed to update product");
     } finally {
       setUpdatingProduct(false);
     }
@@ -1611,6 +1616,7 @@ const Admin = () => {
   const handleGarmentSubmit = async (e, forcedStatus = null) => {
     if (e && e.preventDefault) e.preventDefault();
     setUploading(true);
+    let uploadToastId = null;
 
     try {
       const finalStatus = forcedStatus || formData.status || "active";
@@ -1647,8 +1653,14 @@ const Admin = () => {
         }
       });
 
+      // Gallery type metadata ordering
+      const galleryMeta = galleryFiles.map((g, idx) => ({
+        type: idx === 0 ? "model_front" : (idx === 1 ? "model_three_quarter" : (idx === 2 ? "model_side" : (idx === 3 ? "model_back" : (idx === 4 ? "garment_front" : "detail"))))
+      }));
+      data.append("gallery", JSON.stringify(galleryMeta));
+
       if (editingGarmentId) {
-        // In edit mode
+        uploadToastId = toast.loading("Persisting updates and syncing cloud media...");
         data.append("existing_images", JSON.stringify(existingImagesForEdit));
         const res = await fetch(`${API_BASE_URL}/api/products/${editingGarmentId}`, {
           method: "PUT",
@@ -1663,6 +1675,7 @@ const Admin = () => {
           handleSaveNewColor(formData.color, true);
         }
 
+        if (uploadToastId) toast.dismiss(uploadToastId);
         toast.success(`"${formData.name}" successfully updated in catalog!`);
         handleCancelEdit();
       } else {
@@ -1671,6 +1684,8 @@ const Admin = () => {
           throw new Error("Please select at least 1 image for the product");
         }
 
+        uploadToastId = toast.loading("Uploading imagery to persistent cloud storage & registering atelier silhouette...");
+
         const res = await fetch(`${API_BASE_URL}/api/products/upload`, {
           method: "POST",
           headers: { "Authorization": `Bearer ${token}` },
@@ -1678,15 +1693,16 @@ const Admin = () => {
         });
 
         const result = await res.json();
-        if (!res.ok) throw new Error(result.message || result.error || "Failed to upload product");
+        if (!res.ok) throw new Error(result.message || result.error || "Failed to upload product to cloud storage");
 
         if (formData.color) {
           handleSaveNewColor(formData.color, true);
         }
 
+        if (uploadToastId) toast.dismiss(uploadToastId);
         toast.success(finalStatus === "draft" 
           ? "Product saved to internal drafts!" 
-          : "Product successfully published to showroom!"
+          : "Product successfully published to showroom with cloud imagery!"
         );
         handleCancelEdit();
       }
@@ -1694,7 +1710,8 @@ const Admin = () => {
       fetchDashboardData();
       refreshGlobalProducts();
     } catch (err) {
-      toast.error(err.message);
+      if (uploadToastId) toast.dismiss(uploadToastId);
+      toast.error(err.message || "Failed to complete product media upload");
     } finally {
       setUploading(false);
     }
@@ -1805,6 +1822,11 @@ const Admin = () => {
     const name = newCategoryName?.trim();
     if (!name) {
       toast.error("Please enter a collection name");
+      return;
+    }
+    if (categories.some(c => c.name?.toLowerCase() === name.toLowerCase())) {
+      toast.info(`Collection "${name}" already exists.`);
+      setShowAddCategoryInline(false);
       return;
     }
     try {
@@ -2277,39 +2299,7 @@ const Admin = () => {
   const executeDeleteGarment = async (permanent = false, force = false) => {
     if (!garmentToDelete?.product) return;
 
-    // Critical Action Protection: Require administrator password re-authentication for permanent deletion
-    if (permanent) {
-      const password = window.prompt("Security Re-Authentication Required:\nPlease enter your administrator password to authorize permanent deletion:");
-      if (!password) {
-        toast.error("Deletion cancelled: Administrator password verification is required.");
-        return;
-      }
-
-      setGarmentToDelete(prev => ({ ...prev, submitting: true }));
-      try {
-        const reauthRes = await fetch(`${API_BASE_URL}/api/auth/reauthenticate`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            password,
-            actionDescription: `Permanent Deletion of Garment: ${garmentToDelete.product.name} (ID: ${garmentToDelete.product.id})`
-          })
-        });
-        const reauthData = await reauthRes.json().catch(() => ({}));
-        if (!reauthRes.ok || !reauthData.valid) {
-          throw new Error(reauthData.error || "Incorrect administrator password. Deletion blocked.");
-        }
-      } catch (authErr) {
-        toast.error(authErr.message);
-        setGarmentToDelete(prev => ({ ...prev, submitting: false }));
-        return;
-      }
-    } else {
-      setGarmentToDelete(prev => ({ ...prev, submitting: true }));
-    }
+    setGarmentToDelete(prev => ({ ...prev, submitting: true }));
 
     try {
       const pId = garmentToDelete.product.id;
@@ -6496,17 +6486,21 @@ const Admin = () => {
                       {/* Compact Luxury Cards Collection List */}
                       <div className="space-y-3">
                         {categories
+                          .slice()
+                          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
                           .filter(cat => cat.name?.toLowerCase().includes(collectionSearch.toLowerCase().trim()))
                           .map((cat, idx) => {
                             const linkedPieces = products.filter(p => 
-                              String(p.category_id) === String(cat.id) || 
-                              String(p.category_id) === String(cat.slug) || 
-                              String(p.category) === String(cat.slug) || 
-                              String(p.category) === String(cat.id) ||
-                              String(p.category?.id) === String(cat.id) ||
-                              String(p.category?.slug) === String(cat.slug) ||
-                              (p.categoryName && p.categoryName.toLowerCase() === cat.name?.toLowerCase()) ||
-                              (typeof p.category === 'object' && p.category?.name?.toLowerCase() === cat.name?.toLowerCase())
+                              p.status !== "archived" && (
+                                String(p.category_id) === String(cat.id) || 
+                                String(p.category_id) === String(cat.slug) || 
+                                String(p.category) === String(cat.slug) || 
+                                String(p.category) === String(cat.id) ||
+                                String(p.category?.id) === String(cat.id) ||
+                                String(p.category?.slug) === String(cat.slug) ||
+                                (p.categoryName && p.categoryName.toLowerCase() === cat.name?.toLowerCase()) ||
+                                (typeof p.category === 'object' && p.category?.name?.toLowerCase() === cat.name?.toLowerCase())
+                              )
                             );
                             const linkedCount = linkedPieces.length;
                             const isExpanded = expandedCollectionId === cat.id;

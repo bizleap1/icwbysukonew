@@ -10,34 +10,27 @@ try {
 }
 const { requireAdmin } = require("../auth");
 const productService = require("../services/productService");
+const cloudinaryService = require("../services/cloudinaryService");
 
 const router = express.Router();
 
-// Setup Multer for product photography
-const uploadDir = path.join(__dirname, "..", "..", "uploads", "products");
-if (!fs.existsSync(uploadDir)) {
-  try {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  } catch (err) {
-    // ignore
-  }
-}
-
+// Setup Multer for in-memory product photography processing
+// Media is streamed directly to Cloudinary; no local filesystem persistence.
 let upload;
 if (multer) {
-  const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
-      cb(null, `garment-${uniqueSuffix}${ext}`);
+  const storage = multer.memoryStorage();
+  const fileFilter = (req, file, cb) => {
+    const allowedMime = ["image/jpeg", "image/png", "image/webp", "image/jpg", "image/avif"];
+    if (allowedMime.includes((file.mimetype || "").toLowerCase())) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Invalid image type: ${file.mimetype}. Only JPEG, PNG, WebP, and AVIF are permitted.`));
     }
-  });
+  };
 
   upload = multer({
     storage,
+    fileFilter,
     limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit per image
   });
 } else {
@@ -73,6 +66,7 @@ router.get("/", async (req, res) => {
       }
     }
 
+    res.set("Cache-Control", "public, max-age=60, s-maxage=180, stale-while-revalidate=86400");
     res.json(products);
   } catch (err) {
     console.error("Fetch products error:", err);
@@ -292,7 +286,49 @@ router.post("/", requireAdmin, async (req, res) => {
   }
 });
 
-// POST /api/products/upload -- add new garment with multipart photos (Admin)
+// POST /api/products/upload-images -- standalone cloud upload for immediate permanent preview (Admin)
+router.post(
+  "/upload-images",
+  requireAdmin,
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "images", maxCount: 10 }
+  ]),
+  async (req, res) => {
+    try {
+      const primaryFile = req.files?.image?.[0] || null;
+      const galleryFiles = req.files?.images || [];
+
+      if (!primaryFile && galleryFiles.length === 0) {
+        return res.status(400).json({ error: "No image files provided for cloud upload." });
+      }
+
+      const uploadResult = await cloudinaryService.uploadProductMediaAtomic({
+        primaryFile,
+        galleryFiles
+      });
+
+      const syncMedia = productService.synchronizeGalleryAndImages(
+        [],
+        uploadResult.allUrls,
+        uploadResult.primaryUrl
+      );
+
+      res.status(200).json({
+        success: true,
+        message: `Successfully uploaded ${uploadResult.allUrls.length} image(s) to Cloudinary`,
+        primaryUrl: syncMedia.imageUrl,
+        urls: syncMedia.images,
+        gallery: syncMedia.gallery
+      });
+    } catch (err) {
+      console.error("[Products] Standalone cloud image upload error:", err);
+      res.status(500).json({ error: err.message || "Failed to upload images to cloud storage" });
+    }
+  }
+);
+
+// POST /api/products/upload -- add new garment with cloud-stored photos (Admin)
 router.post(
   "/upload",
   requireAdmin,
@@ -325,7 +361,9 @@ router.post(
         seo_title,
         seo_description,
         seo_keywords,
-        seo_schema
+        seo_schema,
+        gallery: rawGallery,
+        existing_images: rawExistingImages
       } = req.body;
 
       if (!name || !price) {
@@ -350,16 +388,51 @@ router.post(
         }
       }
 
-      // Collect uploaded files
-      const images = [];
-      if (req.files?.image && req.files.image.length > 0) {
-        images.push(`/uploads/products/${req.files.image[0].filename}`);
-      }
-      if (req.files?.images && req.files.images.length > 0) {
-        req.files.images.forEach(f => images.push(`/uploads/products/${f.filename}`));
+      // 1. Upload new binary files directly to Cloudinary
+      const primaryFile = req.files?.image?.[0] || null;
+      const galleryFiles = req.files?.images || [];
+      let newUploadedUrls = [];
+
+      if (primaryFile || galleryFiles.length > 0) {
+        const uploadResult = await cloudinaryService.uploadProductMediaAtomic({
+          primaryFile,
+          galleryFiles
+        });
+        newUploadedUrls = uploadResult.allUrls;
       }
 
-      const imageUrl = images[0] || req.body.image_url || "/placeholder.png";
+      // 2. Parse any pre-uploaded or existing image URLs
+      let existingUrls = [];
+      if (rawExistingImages) {
+        try {
+          const parsed = typeof rawExistingImages === "string" ? JSON.parse(rawExistingImages) : rawExistingImages;
+          if (Array.isArray(parsed)) existingUrls = parsed.filter(Boolean);
+        } catch (e) {}
+      }
+
+      let parsedGallery = [];
+      if (rawGallery) {
+        try {
+          parsedGallery = typeof rawGallery === "string" ? JSON.parse(rawGallery) : rawGallery;
+        } catch (e) {}
+      }
+
+      // 3. Combine into permanent HTTPS image list
+      const combinedUrls = [...existingUrls, ...newUploadedUrls];
+      if (combinedUrls.length === 0 && req.body.image_url) {
+        combinedUrls.push(req.body.image_url);
+      }
+
+      if (combinedUrls.length === 0) {
+        return res.status(400).json({ error: "At least 1 product image must be uploaded." });
+      }
+
+      // 4. Synchronize canonical gallery [{ url, type }] and images: string[]
+      const syncMedia = productService.synchronizeGalleryAndImages(
+        parsedGallery,
+        combinedUrls,
+        combinedUrls[0]
+      );
 
       const newProduct = await productService.createProduct({
         name,
@@ -371,8 +444,9 @@ router.post(
         sub_category,
         size_stock: parsedSizeStock,
         sizes: Object.keys(parsedSizeStock).length > 0 ? Object.keys(parsedSizeStock) : ["38", "40", "42", "44", "46"],
-        image_url: imageUrl,
-        images: images.length > 0 ? images : [imageUrl],
+        image_url: syncMedia.imageUrl,
+        images: syncMedia.images,
+        gallery: syncMedia.gallery,
         status: status || "active",
         sku: sku || undefined,
         gender: gender || "female",
@@ -392,11 +466,11 @@ router.post(
 
       res.status(201).json({
         success: true,
-        message: "Garment successfully registered in atelier archive",
+        message: "Garment successfully registered in atelier archive with persistent cloud imagery",
         product: newProduct
       });
     } catch (err) {
-      console.error("Upload product error:", err);
+      console.error("[Products] Upload product error:", err);
       res.status(500).json({ error: err.message || "Failed to upload garment" });
     }
   }
@@ -502,20 +576,37 @@ router.put("/:id", requireAdmin, handleOptionalMultipart, async (req, res) => {
       } catch (e) {}
     }
 
-    const newUploadedFiles = [];
-    if (req.files?.image && req.files.image.length > 0) {
-      newUploadedFiles.push(`/uploads/products/${req.files.image[0].filename}`);
-    }
-    if (req.files?.images && req.files.images.length > 0) {
-      req.files.images.forEach(f => newUploadedFiles.push(`/uploads/products/${f.filename}`));
+    const primaryFile = req.files?.image?.[0] || null;
+    const galleryFiles = req.files?.images || [];
+    let newUploadedUrls = [];
+
+    if (primaryFile || galleryFiles.length > 0) {
+      const uploadResult = await cloudinaryService.uploadProductMediaAtomic({
+        primaryFile,
+        galleryFiles
+      });
+      newUploadedUrls = uploadResult.allUrls;
     }
 
-    const combinedImages = [...parsedExisting, ...newUploadedFiles];
+    const combinedImages = [...parsedExisting, ...newUploadedUrls];
     if (combinedImages.length > 0) {
-      updateData.images = combinedImages;
-      updateData.image_url = combinedImages[0];
+      const syncMedia = productService.synchronizeGalleryAndImages(
+        req.body.gallery,
+        combinedImages,
+        combinedImages[0]
+      );
+      updateData.images = syncMedia.images;
+      updateData.gallery = syncMedia.gallery;
+      updateData.image_url = syncMedia.imageUrl;
     } else if (req.body.image_url) {
-      updateData.image_url = req.body.image_url;
+      const syncMedia = productService.synchronizeGalleryAndImages(
+        req.body.gallery,
+        [req.body.image_url],
+        req.body.image_url
+      );
+      updateData.images = syncMedia.images;
+      updateData.gallery = syncMedia.gallery;
+      updateData.image_url = syncMedia.imageUrl;
     }
 
     const current = await productService.getProductById(req.params.id);

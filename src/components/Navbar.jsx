@@ -385,8 +385,8 @@ export const Navbar = () => {
               >
                 <ShoppingBag size={19} strokeWidth={1.05} />
                 {count > 0 && (
-                  <span className="absolute -top-1 -right-1.5 w-4 h-4 bg-[#C2922E] text-white text-[9px] font-medium flex items-center justify-center rounded-full leading-none">
-                    {count}
+                  <span className="absolute -top-1 -right-1.5 min-w-[16px] h-4 px-1 bg-[#C2922E] text-white text-[9px] font-medium flex items-center justify-center rounded-full leading-none">
+                    {count > 99 ? "99+" : count}
                   </span>
                 )}
               </button>

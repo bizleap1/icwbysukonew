@@ -60,6 +60,7 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_title VARCHAR(255);
 ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_description TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_keywords TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_schema JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS gallery JSONB DEFAULT '[]'::jsonb;
 
 CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
 CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku);

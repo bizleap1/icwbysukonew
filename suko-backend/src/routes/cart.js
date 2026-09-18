@@ -4,6 +4,33 @@ const { pool } = require("../db");
 const { requireAuth } = require("../auth");
 const productService = require("../services/productService");
 
+// Helper to safely determine available stock for a product & size
+async function resolveMaxStock(productId, size) {
+  try {
+    const product = await productService.getProductById(productId);
+    if (!product) return 10;
+    if (product.size_stock && typeof product.size_stock === 'object' && size && product.size_stock[size] !== undefined) {
+      const szStock = Number(product.size_stock[size]);
+      if (!isNaN(szStock) && szStock >= 0) return Math.max(1, szStock);
+    }
+    if (product.stock !== undefined) {
+      const totalStock = Number(product.stock);
+      if (!isNaN(totalStock) && totalStock >= 0) return Math.max(1, totalStock);
+    }
+    return 10;
+  } catch (e) {
+    return 10;
+  }
+}
+
+// Helper to sanitize quantity to a finite positive integer bounded by maxStock
+function sanitizeQuantity(qty, maxStock = 10) {
+  const parsed = parseInt(qty, 10);
+  if (isNaN(parsed) || !Number.isFinite(parsed) || parsed < 1) return 1;
+  const limit = Math.max(1, maxStock || 10);
+  return Math.min(limit, parsed);
+}
+
 // Helper to format a cart item row with embedded product details
 async function formatCartItem(row) {
   const product = await productService.getProductById(row.product_id);
@@ -47,6 +74,16 @@ router.get("/", requireAuth, async (req, res) => {
       [userId]
     );
 
+    // Self-healing: if any row has quantity exceeding maxStock or < 1, auto-repair it
+    for (const r of rows) {
+      const maxStock = await resolveMaxStock(r.product_id, r.size);
+      const safeQty = sanitizeQuantity(r.quantity, maxStock);
+      if (safeQty !== Number(r.quantity)) {
+        await pool.query("UPDATE cart_items SET quantity = $1, updated_at = now() WHERE id = $2", [safeQty, r.id]);
+        r.quantity = safeQty;
+      }
+    }
+
     const formatted = await Promise.all(rows.map(formatCartItem));
     res.json(formatted);
   } catch (err) {
@@ -65,8 +102,9 @@ router.post("/", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Product ID required." });
     }
 
-    const qty = Math.max(1, Number(quantity) || 1);
     const itemSize = size || "default";
+    const maxStock = await resolveMaxStock(product_id, itemSize);
+    const qty = sanitizeQuantity(quantity, maxStock);
 
     if (pool.isMock) {
       return res.status(201).json({ success: true, message: "Added to cart" });
@@ -80,7 +118,8 @@ router.post("/", requireAuth, async (req, res) => {
 
     let savedRow;
     if (existing.rows.length > 0) {
-      const newQty = existing.rows[0].quantity + qty;
+      const currentQty = Number(existing.rows[0].quantity) || 1;
+      const newQty = Math.min(maxStock, currentQty + qty);
       const upd = await pool.query(
         "UPDATE cart_items SET quantity = $1, updated_at = now() WHERE id = $2 RETURNING *",
         [newQty, existing.rows[0].id]
@@ -98,7 +137,7 @@ router.post("/", requireAuth, async (req, res) => {
           product?.name || "Atelier Garment",
           product?.price || 0,
           itemSize,
-          qty,
+          Math.min(maxStock, qty),
           product?.image_url || null
         ]
       );
@@ -119,18 +158,21 @@ router.put("/:id", requireAuth, async (req, res) => {
     const userId = req.user.userId;
     const cartItemId = req.params.id;
     const { quantity } = req.body;
-    const safeQty = Math.max(1, Number(quantity) || 1);
 
     if (pool.isMock) {
       return res.json({ success: true });
     }
 
+    const cur = await pool.query("SELECT * FROM cart_items WHERE id = $1 AND user_id = $2", [cartItemId, userId]);
+    if (cur.rows.length === 0) return res.status(404).json({ error: "Cart item not found." });
+
+    const maxStock = await resolveMaxStock(cur.rows[0].product_id, cur.rows[0].size);
+    const safeQty = sanitizeQuantity(quantity, maxStock);
+
     const { rows } = await pool.query(
       "UPDATE cart_items SET quantity = $1, updated_at = now() WHERE id = $2 AND user_id = $3 RETURNING *",
       [safeQty, cartItemId, userId]
     );
-
-    if (rows.length === 0) return res.status(404).json({ error: "Cart item not found." });
 
     const formatted = await formatCartItem(rows[0]);
     res.json(formatted);
@@ -158,7 +200,7 @@ router.delete("/:id", requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/cart/merge -- merge guest cart on customer login
+// POST /api/cart/merge -- merge guest cart on customer login (strictly bounded & idempotent)
 router.post("/merge", requireAuth, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -168,7 +210,8 @@ router.post("/merge", requireAuth, async (req, res) => {
       for (const it of items) {
         if (!it.product_id) continue;
         const size = it.size || "default";
-        const qty = Math.max(1, Number(it.quantity) || 1);
+        const maxStock = await resolveMaxStock(it.product_id, size);
+        const incomingQty = sanitizeQuantity(it.quantity, maxStock);
 
         const existing = await pool.query(
           "SELECT * FROM cart_items WHERE user_id = $1 AND product_id = $2 AND size = $3",
@@ -176,9 +219,12 @@ router.post("/merge", requireAuth, async (req, res) => {
         );
 
         if (existing.rows.length > 0) {
+          // Idempotent merge: Take maximum of existing or incoming, never blind duplicate addition
+          const currentQty = Number(existing.rows[0].quantity) || 1;
+          const mergedQty = Math.min(maxStock, Math.max(currentQty, incomingQty));
           await pool.query(
-            "UPDATE cart_items SET quantity = quantity + $1, updated_at = now() WHERE id = $2",
-            [qty, existing.rows[0].id]
+            "UPDATE cart_items SET quantity = $1, updated_at = now() WHERE id = $2",
+            [mergedQty, existing.rows[0].id]
           );
         } else {
           const product = await productService.getProductById(it.product_id);
@@ -191,7 +237,7 @@ router.post("/merge", requireAuth, async (req, res) => {
               product?.name || "Atelier Silhouette",
               product?.price || 0,
               size,
-              qty,
+              Math.min(maxStock, incomingQty),
               product?.image_url || null
             ]
           );
@@ -199,13 +245,21 @@ router.post("/merge", requireAuth, async (req, res) => {
       }
     }
 
-    // Return the updated server cart
+    // Return the updated, clamped server cart
     let fullCart = [];
     if (!pool.isMock) {
       const { rows } = await pool.query(
         "SELECT * FROM cart_items WHERE user_id = $1 ORDER BY created_at ASC",
         [userId]
       );
+      for (const r of rows) {
+        const maxStock = await resolveMaxStock(r.product_id, r.size);
+        const safeQty = sanitizeQuantity(r.quantity, maxStock);
+        if (safeQty !== Number(r.quantity)) {
+          await pool.query("UPDATE cart_items SET quantity = $1, updated_at = now() WHERE id = $2", [safeQty, r.id]);
+          r.quantity = safeQty;
+        }
+      }
       fullCart = await Promise.all(rows.map(formatCartItem));
     }
 
@@ -221,3 +275,4 @@ router.post("/merge", requireAuth, async (req, res) => {
 });
 
 module.exports = router;
+

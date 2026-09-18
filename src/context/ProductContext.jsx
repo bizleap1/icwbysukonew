@@ -6,19 +6,79 @@ const ProductContext = createContext();
 
 export const useProducts = () => useContext(ProductContext);
 
+const mapFallbackProduct = (fp) => {
+  const catId = fp.category || 'suits';
+  const catName = fp.categoryName || (catId.charAt(0).toUpperCase() + catId.slice(1));
+  const rawSizes = Array.isArray(fp.sizes) && fp.sizes.length > 0 ? fp.sizes : ['XS', 'S', 'M', 'L', 'XL'];
+  return {
+    ...fp,
+    id: String(fp.id),
+    backendId: fp.id,
+    category: catId,
+    categoryName: catName,
+    category_id: catId,
+    sub_category: fp.sub_category || fp.shortType || fp.setType || 'Atelier Silhouette',
+    images: fp.images || (fp.image ? [fp.image] : ['/placeholder.png']),
+    gallery: fp.gallery || [],
+    image_url: fp.images?.[0] || fp.image || '/placeholder.png',
+    sizes: rawSizes,
+    status: fp.status || 'active',
+    sku: fp.sku || `SUKO-${String(fp.id).toUpperCase()}`,
+    moment: fp.moment || 'boardroom',
+    moments: Array.isArray(fp.moments) ? fp.moments : [fp.moment || 'boardroom'],
+    momentName: fp.momentName || 'The Boardroom Edit',
+    moment_name: fp.momentName || 'The Boardroom Edit'
+  };
+};
+
+const getInitialProducts = () => {
+  try {
+    const cached = localStorage.getItem('suko_store_products_cache_v2');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return FALLBACK_PRODUCTS.map(mapFallbackProduct);
+};
+
+const getInitialCategories = () => {
+  try {
+    const cached = localStorage.getItem('suko_store_categories_cache_v2');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return FALLBACK_CATEGORIES;
+};
+
 export const ProductProvider = ({ children }) => {
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState(getInitialProducts);
+  const [categories, setCategories] = useState(getInitialCategories);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchStoreData = useCallback(async () => {
-    try {
+  const fetchStoreData = useCallback(async (options = {}) => {
+    const { silent = true } = options;
+    if (!silent && products.length === 0) {
       setLoading(true);
+    }
+
+    // 7-second abort controller prevents live site from hanging on Render cold boots
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
+
+    try {
       const [prodRes, catRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/products`),
-        fetch(`${API_BASE_URL}/api/categories`)
+        fetch(`${API_BASE_URL}/api/products`, { signal: controller.signal }),
+        fetch(`${API_BASE_URL}/api/categories`, { signal: controller.signal })
       ]);
+      clearTimeout(timeoutId);
 
       if (prodRes.ok) {
         const rawProducts = await prodRes.json();
@@ -185,21 +245,18 @@ export const ProductProvider = ({ children }) => {
         setCategories(mappedCategories);
         setProducts(mergedProducts);
         setError(null);
+        try {
+          localStorage.setItem('suko_store_products_cache_v2', JSON.stringify(mergedProducts));
+          localStorage.setItem('suko_store_categories_cache_v2', JSON.stringify(mappedCategories));
+        } catch (e) {}
       } else {
         throw new Error(`Failed to load products: ${prodRes.status}`);
       }
     } catch (err) {
-      console.warn('[ProductContext] Error fetching products from backend, using catalog fallback:', err.message);
-      setProducts(FALLBACK_PRODUCTS.map(fp => ({
-        ...fp,
-        id: String(fp.id),
-        categoryName: fp.categoryName || (fp.category ? fp.category.charAt(0).toUpperCase() + fp.category.slice(1) : 'Collection'),
-        moment: fp.moment || 'boardroom',
-        moments: Array.isArray(fp.moments) ? fp.moments : [fp.moment || 'boardroom'],
-        momentName: fp.momentName || 'The Boardroom Edit',
-        moment_name: fp.momentName || 'The Boardroom Edit'
-      })));
-      setCategories(FALLBACK_CATEGORIES);
+      console.warn('[ProductContext] Background product sync notice:', err.message);
+      // Keep existing populated products, never wipe out to empty
+      setProducts(prev => (prev && prev.length > 0 ? prev : FALLBACK_PRODUCTS.map(mapFallbackProduct)));
+      setCategories(prev => (prev && prev.length > 0 ? prev : FALLBACK_CATEGORIES));
       setError(null);
     } finally {
       setLoading(false);

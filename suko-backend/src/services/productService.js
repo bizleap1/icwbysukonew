@@ -31,6 +31,77 @@ function getSeedData() {
   return { products: [], categories: [] };
 }
 
+const CANONICAL_GALLERY_TYPES = [
+  "model_front",
+  "model_three_quarter",
+  "model_side",
+  "model_back",
+  "garment_front",
+  "detail"
+];
+
+/**
+ * Ensures strict synchronization between gallery [{url, type}], images string[], and image_url.
+ * Prevents desynchronization across Storefront, PDP, Collections, and Admin.
+ */
+function synchronizeGalleryAndImages(galleryInput, imagesInput, imageUrlInput) {
+  let gallery = [];
+  let images = [];
+
+  // 0. Parse if JSON strings
+  if (typeof galleryInput === "string") {
+    try { galleryInput = JSON.parse(galleryInput); } catch (e) { galleryInput = null; }
+  }
+  if (typeof imagesInput === "string") {
+    try { imagesInput = JSON.parse(imagesInput); } catch (e) { imagesInput = null; }
+  }
+
+  // 1. If gallery is provided as array
+  if (Array.isArray(galleryInput) && galleryInput.length > 0) {
+    gallery = galleryInput.map((item, idx) => {
+      if (typeof item === "string") {
+        return {
+          url: item.trim(),
+          type: CANONICAL_GALLERY_TYPES[idx] || "detail"
+        };
+      }
+      return {
+        url: (item.url || item.secure_url || item.image || item.preview || "").trim(),
+        type: item.type || CANONICAL_GALLERY_TYPES[idx] || "detail"
+      };
+    }).filter(g => Boolean(g.url));
+  }
+
+  // 2. If gallery was empty but images array provided
+  if (gallery.length === 0 && Array.isArray(imagesInput) && imagesInput.length > 0) {
+    gallery = imagesInput.map((item, idx) => {
+      const url = (typeof item === "string" ? item : (item.url || "")).trim();
+      const type = (typeof item === "object" && item.type) ? item.type : (CANONICAL_GALLERY_TYPES[idx] || "detail");
+      return { url, type };
+    }).filter(g => Boolean(g.url));
+  }
+
+  // 3. If still empty but image_url provided
+  if (gallery.length === 0 && imageUrlInput && typeof imageUrlInput === "string" && imageUrlInput.trim() !== "/placeholder.png") {
+    gallery = [{ url: imageUrlInput.trim(), type: "model_front" }];
+  }
+
+  // 4. Default fallback
+  if (gallery.length === 0) {
+    gallery = [{ url: imageUrlInput || "/placeholder.png", type: "model_front" }];
+  }
+
+  // 5. Strictly derive synchronized images string[]
+  images = gallery.map(g => g.url);
+  const primaryImageUrl = gallery[0]?.url || images[0] || imageUrlInput || "/placeholder.png";
+
+  return {
+    gallery,
+    images,
+    imageUrl: primaryImageUrl
+  };
+}
+
 // Ensure dev store has products and categories initialized
 function ensureDevStoreProducts() {
   try {
@@ -84,6 +155,7 @@ function ensureDevStoreProducts() {
           description: p.description || "",
           image_url: p.images?.[0] || p.image || p.image_url || "/placeholder.png",
           images: p.images || (p.image_url ? [p.image_url] : []),
+          gallery: p.gallery || (p.images ? p.images.map((url, i) => ({ url, type: CANONICAL_GALLERY_TYPES[i] || 'detail' })) : []),
           sizes: defaultSizes,
           size_stock: initialSizeStock,
           moment: p.moment || "boardroom",
@@ -248,8 +320,22 @@ function ensureProductSizeStock(p) {
   const moment = p.moment || moments[0] || "boardroom";
   const momentName = p.moment_name || p.momentName || "The Boardroom Edit";
 
+  // Parse and synchronize gallery & images
+  const syncMedia = synchronizeGalleryAndImages(p.gallery, p.images, p.image_url);
+
+  // If Postgres DB record has empty gallery, silently backfill in background
+  if (!pool.isMock && p.id && (!p.gallery || (Array.isArray(p.gallery) && p.gallery.length === 0))) {
+    pool.query(
+      "UPDATE products SET gallery = $1 WHERE id = $2 AND (gallery IS NULL OR gallery = '[]'::jsonb)",
+      [JSON.stringify(syncMedia.gallery), String(p.id)]
+    ).catch(() => {});
+  }
+
   return {
     ...p,
+    image_url: syncMedia.imageUrl,
+    images: syncMedia.images,
+    gallery: syncMedia.gallery,
     moment,
     moments,
     moment_name: momentName,
@@ -355,10 +441,10 @@ async function createProduct(productData) {
     ? productData.sizes 
     : ["XS", "S", "M", "L", "XL"];
   const sizeStock = productData.size_stock || {};
-  const images = Array.isArray(productData.images) && productData.images.length > 0 
-    ? productData.images 
-    : (productData.image_url ? [productData.image_url] : ["/placeholder.png"]);
-  const imageUrl = productData.image_url || images[0] || "/placeholder.png";
+  const syncMedia = synchronizeGalleryAndImages(productData.gallery, productData.images, productData.image_url);
+  const images = syncMedia.images;
+  const gallery = syncMedia.gallery;
+  const imageUrl = syncMedia.imageUrl;
 
   const sku = productData.sku || await generateUniqueSKU(productData.category_id || "suits", productData.name);
   const seoTitle = productData.seo_title || `${productData.name} | SUKO Atelier`;
@@ -387,6 +473,7 @@ async function createProduct(productData) {
       description: productData.description || "",
       image_url: imageUrl,
       images,
+      gallery,
       sizes,
       size_stock: sizeStock,
       status,
@@ -418,8 +505,8 @@ async function createProduct(productData) {
 
   // Real Postgres mode
   const res = await pool.query(
-    `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric, color, secondary_color, pattern, finish, silhouette, fit, occasion, moment, moments, moment_name, seo_title, seo_description, seo_keywords, seo_schema)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)
+    `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric, color, secondary_color, pattern, finish, silhouette, fit, occasion, moment, moments, moment_name, seo_title, seo_description, seo_keywords, seo_schema, gallery)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
      RETURNING *`,
     [
       newId,
@@ -452,10 +539,11 @@ async function createProduct(productData) {
       seoTitle,
       seoDescription,
       seoKeywords,
-      JSON.stringify(seoSchema)
+      JSON.stringify(seoSchema),
+      JSON.stringify(gallery)
     ]
   );
-  return res.rows[0];
+  return ensureProductSizeStock(res.rows[0]);
 }
 
 async function updateProduct(id, updateData) {
@@ -476,6 +564,17 @@ async function updateProduct(id, updateData) {
       if (hasOrders) {
         throw new Error("SKU is locked: Cannot modify SKU after customer orders or invoices have referenced this garment.");
       }
+    }
+
+    if (updateData.gallery || updateData.images || updateData.image_url) {
+      const syncMedia = synchronizeGalleryAndImages(
+        updateData.gallery || current.gallery,
+        updateData.images || current.images,
+        updateData.image_url || current.image_url
+      );
+      updateData.gallery = syncMedia.gallery;
+      updateData.images = syncMedia.images;
+      updateData.image_url = syncMedia.imageUrl;
     }
 
     const updated = {
@@ -508,7 +607,7 @@ async function updateProduct(id, updateData) {
 
     store.products[idx] = updated;
     fs.writeFileSync(DEV_STORE_FILE, JSON.stringify(store, null, 2), "utf-8");
-    return updated;
+    return ensureProductSizeStock(updated);
   }
 
   // Real Postgres mode: fetch current to check SKU and order locks
@@ -524,6 +623,17 @@ async function updateProduct(id, updateData) {
     if (checkOrders.rows.length > 0) {
       throw new Error("SKU is locked: Cannot modify SKU after customer orders or invoices have referenced this garment.");
     }
+  }
+
+  if (updateData.gallery || updateData.images || updateData.image_url) {
+    const syncMedia = synchronizeGalleryAndImages(
+      updateData.gallery || current.gallery,
+      updateData.images || current.images,
+      updateData.image_url || current.image_url
+    );
+    updateData.gallery = syncMedia.gallery;
+    updateData.images = syncMedia.images;
+    updateData.image_url = syncMedia.imageUrl;
   }
 
   const res = await pool.query(
@@ -547,17 +657,18 @@ async function updateProduct(id, updateData) {
          occasion = COALESCE($17, occasion),
          image_url = COALESCE($18, image_url),
          images = COALESCE($19, images),
-         sizes = COALESCE($20, sizes),
-         moment = COALESCE($21, moment),
-         moments = COALESCE($22, moments),
-         moment_name = COALESCE($23, moment_name),
-         seo_title = COALESCE($24, seo_title),
-         seo_description = COALESCE($25, seo_description),
-         seo_keywords = COALESCE($26, seo_keywords),
-         seo_schema = COALESCE($27, seo_schema),
-         sku = COALESCE($28, sku),
+         gallery = COALESCE($20, gallery),
+         sizes = COALESCE($21, sizes),
+         moment = COALESCE($22, moment),
+         moments = COALESCE($23, moments),
+         moment_name = COALESCE($24, moment_name),
+         seo_title = COALESCE($25, seo_title),
+         seo_description = COALESCE($26, seo_description),
+         seo_keywords = COALESCE($27, seo_keywords),
+         seo_schema = COALESCE($28, seo_schema),
+         sku = COALESCE($29, sku),
          updated_at = now()
-     WHERE id = $29 OR slug = $29
+     WHERE id = $30 OR slug = $30
      RETURNING *`,
     [
       updateData.name !== undefined ? updateData.name : null,
@@ -579,6 +690,7 @@ async function updateProduct(id, updateData) {
       updateData.occasion !== undefined ? updateData.occasion : null,
       updateData.image_url !== undefined ? updateData.image_url : null,
       updateData.images ? JSON.stringify(updateData.images) : null,
+      updateData.gallery ? JSON.stringify(updateData.gallery) : null,
       updateData.sizes ? JSON.stringify(updateData.sizes) : null,
       updateData.moment !== undefined ? updateData.moment : null,
       updateData.moments ? JSON.stringify(updateData.moments) : null,
@@ -591,7 +703,7 @@ async function updateProduct(id, updateData) {
       String(id)
     ]
   );
-  return res.rows[0];
+  return ensureProductSizeStock(res.rows[0]);
 }
 
 function cleanupOrphanedProductImages(imagePaths, excludedProductId, allProducts, orderItems = []) {
@@ -850,9 +962,28 @@ async function getAllCategories(options = {}) {
 async function createCategory(data) {
   const name = typeof data === "string" ? data : (data?.name || "");
   const cleanName = name.trim();
-  const slug = (typeof data === "object" && data.slug 
-    ? data.slug.trim() 
-    : cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')) || `cat-${Date.now()}`;
+
+  // Canonical slug resolution to prevent duplicate collections (e.g., "Power Suits & Sets" -> "suits")
+  const CANONICAL_SLUG_MAP = {
+    "power suits & sets": "suits",
+    "power suits and sets": "suits",
+    "power suits": "suits",
+    "power-suits-sets": "suits",
+    "suits": "suits",
+    "executive co-ords": "coords",
+    "vests & co-ords": "coords",
+    "co-ords": "coords",
+    "coords": "coords",
+    "tailored separates": "separates",
+    "separates": "separates",
+    "signature pieces": "signatures",
+    "signatures": "signatures"
+  };
+
+  const nameKey = cleanName.toLowerCase();
+  const slug = (typeof data === "object" && data.slug)
+    ? data.slug.trim()
+    : (CANONICAL_SLUG_MAP[nameKey] || cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')) || `cat-${Date.now()}`;
   const id = slug;
   const tagline = (typeof data === "object" && data.tagline) || `${cleanName} Collection`;
   const description = (typeof data === "object" && data.description) || "";
@@ -861,7 +992,7 @@ async function createCategory(data) {
 
   if (pool.isMock) {
     const store = ensureDevStoreProducts();
-    const existing = store.categories.find(c => c.name.toLowerCase() === cleanName.toLowerCase() || c.slug === slug);
+    const existing = store.categories.find(c => c.name.toLowerCase() === cleanName.toLowerCase() || c.slug === slug || c.id === id);
     if (existing) return existing;
 
     const newCat = {
@@ -880,7 +1011,15 @@ async function createCategory(data) {
     return newCat;
   }
 
-  // Real Postgres mode
+  // Real Postgres mode: Check if category with matching name, id or slug already exists
+  const existingRes = await pool.query(
+    "SELECT * FROM categories WHERE LOWER(name) = LOWER($1) OR id = $2 OR slug = $2 LIMIT 1",
+    [cleanName, slug]
+  );
+  if (existingRes.rows.length > 0) {
+    return existingRes.rows[0];
+  }
+
   const res = await pool.query(
     `INSERT INTO categories (id, name, slug, tagline, description, cover_image_url, sort_order, is_archived)
      VALUES ($1, $2, $3, $4, $5, $6, $7, false)
@@ -1000,14 +1139,23 @@ async function seedCatalog(force = false) {
 
   // 1. Seed categories first to satisfy foreign key constraints
   if (Array.isArray(seed.categories)) {
-    for (const c of seed.categories) {
+    for (let i = 0; i < seed.categories.length; i++) {
+      const c = seed.categories[i];
       await pool.query(
-        `INSERT INTO categories (id, name, slug, tagline)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, tagline = EXCLUDED.tagline`,
-        [c.slug, c.name, c.slug, c.tagline || `${c.name} Collection`]
+        `INSERT INTO categories (id, name, slug, tagline, sort_order, is_archived)
+         VALUES ($1, $2, $3, $4, $5, false)
+         ON CONFLICT (id) DO UPDATE SET 
+           name = EXCLUDED.name, 
+           slug = EXCLUDED.slug,
+           tagline = EXCLUDED.tagline,
+           sort_order = EXCLUDED.sort_order,
+           is_archived = false`,
+        [c.slug, c.name, c.slug, c.tagline || `${c.name} Collection`, i + 1]
       );
     }
+    // Self-healing: Merge duplicate power-suits-sets if present
+    await pool.query("UPDATE products SET category_id = 'suits' WHERE category_id = 'power-suits-sets'").catch(() => {});
+    await pool.query("DELETE FROM categories WHERE id = 'power-suits-sets' OR slug = 'power-suits-sets'").catch(() => {});
   }
 
   // 2. Seed / Upsert products with moment and all atelier attributes
@@ -1018,15 +1166,22 @@ async function seedCatalog(force = false) {
     const moments = Array.isArray(p.moments) ? p.moments : [moment];
     const momentName = p.momentName || p.moment_name || "The Boardroom Edit";
 
+    const syncMedia = synchronizeGalleryAndImages(p.gallery, p.images, p.images?.[0]);
+
     const res = await pool.query(
       `INSERT INTO products (
         id, name, slug, price, discount_price, stock, category_id, sub_category,
         description, image_url, images, sizes, size_stock, status, sku, gender,
         fabric, color, secondary_color, pattern, finish, silhouette, fit, occasion,
-        moment, moments, moment_name
+        gallery, moment, moments, moment_name
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
       ON CONFLICT (id) DO UPDATE SET
+        gallery = CASE 
+          WHEN products.gallery IS NULL OR products.gallery = '[]'::jsonb 
+          THEN EXCLUDED.gallery 
+          ELSE products.gallery 
+        END,
         moment = COALESCE(products.moment, EXCLUDED.moment),
         moments = CASE 
           WHEN products.moments IS NULL OR products.moments = '[]'::jsonb 
@@ -1049,8 +1204,8 @@ async function seedCatalog(force = false) {
         catId,
         p.sub_category || p.shortType || "Atelier Silhouette",
         p.description || "",
-        p.images?.[0] || "/placeholder.png",
-        JSON.stringify(p.images || []),
+        syncMedia.imageUrl,
+        JSON.stringify(syncMedia.images),
         JSON.stringify(p.sizes || []),
         JSON.stringify(p.size_stock || {}),
         p.status || "active",
@@ -1064,6 +1219,7 @@ async function seedCatalog(force = false) {
         p.silhouette || "",
         p.fit || "",
         p.occasion || "",
+        JSON.stringify(syncMedia.gallery),
         moment,
         JSON.stringify(moments),
         momentName
@@ -1775,5 +1931,7 @@ module.exports = {
   bulkRestoreProducts,
   bulkMoveProducts,
   bulkDeleteProducts,
-  resolveProductSizeStock
+  resolveProductSizeStock,
+  synchronizeGalleryAndImages,
+  CANONICAL_GALLERY_TYPES
 };

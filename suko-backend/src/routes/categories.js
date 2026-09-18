@@ -9,6 +9,7 @@ router.get("/", async (req, res) => {
   try {
     const includeArchived = req.query.includeArchived === "true";
     const categories = await productService.getAllCategories({ includeArchived });
+    res.set("Cache-Control", "public, max-age=120, s-maxage=300, stale-while-revalidate=86400");
     res.json(categories);
   } catch (err) {
     console.error("Fetch categories error:", err);

@@ -140,13 +140,18 @@ const CartDrawer = () => {
                             >
                               <Minus size={11} strokeWidth={1.3} />
                             </button>
-                            <span className="w-8 text-center text-xs font-medium text-[#111113] font-body select-none">
+                            <span className="w-8 sm:w-10 text-center text-xs font-medium text-[#111113] font-body select-none truncate px-0.5">
                               {item.qty}
                             </span>
                             <button
                               data-testid={`cart-increase-${item.id}`}
                               onClick={() => updateQty(item.key, item.qty + 1)}
-                              className="w-7 h-7 flex items-center justify-center text-[#111113]/70 hover:bg-[#F3EFE6] hover:text-[#C2922E] transition-colors"
+                              disabled={Boolean(item.stock && item.qty >= item.stock)}
+                              className={`w-7 h-7 flex items-center justify-center transition-colors ${
+                                Boolean(item.stock && item.qty >= item.stock)
+                                  ? "text-[#111113]/25 cursor-not-allowed"
+                                  : "text-[#111113]/70 hover:bg-[#F3EFE6] hover:text-[#C2922E]"
+                              }`}
                               aria-label="Increase quantity"
                             >
                               <Plus size={11} strokeWidth={1.3} />

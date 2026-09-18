@@ -1634,7 +1634,12 @@ const Checkout = () => {
                             <button
                               type="button"
                               onClick={() => updateQty(item.key, item.qty + 1)}
-                              className="w-5 h-5 border border-[#DDD8CE] flex items-center justify-center hover:border-[#111113] transition-colors cursor-pointer"
+                              disabled={Boolean(item.stock && item.qty >= item.stock)}
+                              className={`w-5 h-5 border border-[#DDD8CE] flex items-center justify-center transition-colors ${
+                                Boolean(item.stock && item.qty >= item.stock)
+                                  ? "opacity-30 cursor-not-allowed"
+                                  : "hover:border-[#111113] cursor-pointer"
+                              }`}
                               title="Increase quantity"
                             >
                               +
