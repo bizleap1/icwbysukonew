@@ -270,6 +270,25 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+// Helper to prevent homepage position collisions between products
+async function checkHomepagePositionConflict(targetPosition, excludeProductId = null) {
+  if (!targetPosition) return null;
+  const pos = parseInt(targetPosition, 10);
+  if (isNaN(pos) || pos < 1 || pos > 4) {
+    throw new Error("Homepage New Arrival position must be between 1 and 4.");
+  }
+  const allProds = await productService.getAllProducts({ status: "all", includeArchived: false });
+  const conflict = allProds.find(p => {
+    if (excludeProductId && (String(p.id) === String(excludeProductId) || String(p.slug) === String(excludeProductId))) {
+      return false;
+    }
+    const status = (p.status || "active").toLowerCase();
+    if (status === "archived") return false;
+    return Boolean(p.show_on_homepage_new_arrivals) && Number(p.homepage_new_arrival_position) === pos;
+  });
+  return conflict || null;
+}
+
 // POST /api/products -- create garment via JSON payload (Admin)
 router.post("/", requireAdmin, async (req, res) => {
   try {
@@ -288,9 +307,28 @@ router.post("/", requireAdmin, async (req, res) => {
     }
 
     const isNewArrival = req.body.is_new_arrival === true || req.body.is_new_arrival === "true" || req.body.is_new_arrival === 1 || req.body.is_new_arrival === "1";
+    const isShowOnHomepage = req.body.show_on_homepage_new_arrivals === true || req.body.show_on_homepage_new_arrivals === "true" || req.body.show_on_homepage_new_arrivals === 1 || req.body.show_on_homepage_new_arrivals === "1";
+    let homepagePos = null;
+
+    if (isShowOnHomepage) {
+      if (!req.body.homepage_new_arrival_position) {
+        return res.status(400).json({ error: "Please select a Homepage New Arrival Position (1, 2, 3, or 4)." });
+      }
+      homepagePos = parseInt(req.body.homepage_new_arrival_position, 10);
+      if (isNaN(homepagePos) || homepagePos < 1 || homepagePos > 4) {
+        return res.status(400).json({ error: "Homepage New Arrival Position must be between 1 and 4." });
+      }
+      const conflict = await checkHomepagePositionConflict(homepagePos);
+      if (conflict) {
+        return res.status(400).json({ error: `Position conflict: "${conflict.name}" is already assigned to Homepage Position ${homepagePos}. Please reassign or clear that product first.` });
+      }
+    }
+
     const newProduct = await productService.createProduct({
       ...req.body,
-      is_new_arrival: isNewArrival
+      is_new_arrival: isNewArrival,
+      show_on_homepage_new_arrivals: isShowOnHomepage,
+      homepage_new_arrival_position: isShowOnHomepage ? homepagePos : null
     });
     await productService.recordActivityLog({
       admin_email: req.user?.email || "admin@indiancorporatewear.com",
@@ -398,11 +436,30 @@ router.post(
         seo_schema,
         gallery: rawGallery,
         existing_images: rawExistingImages,
-        is_new_arrival
+        is_new_arrival,
+        show_on_homepage_new_arrivals,
+        homepage_new_arrival_position
       } = req.body;
 
       if (!name || !price) {
         return res.status(400).json({ error: "Garment name and price are required." });
+      }
+
+      const isShowOnHomepage = show_on_homepage_new_arrivals === true || show_on_homepage_new_arrivals === "true" || show_on_homepage_new_arrivals === 1 || show_on_homepage_new_arrivals === "1";
+      let homepagePos = null;
+
+      if (isShowOnHomepage) {
+        if (!homepage_new_arrival_position) {
+          return res.status(400).json({ error: "Please select a Homepage New Arrival Position (1, 2, 3, or 4)." });
+        }
+        homepagePos = parseInt(homepage_new_arrival_position, 10);
+        if (isNaN(homepagePos) || homepagePos < 1 || homepagePos > 4) {
+          return res.status(400).json({ error: "Homepage New Arrival Position must be between 1 and 4." });
+        }
+        const conflict = await checkHomepagePositionConflict(homepagePos);
+        if (conflict) {
+          return res.status(400).json({ error: `Position conflict: "${conflict.name}" is already assigned to Homepage Position ${homepagePos}. Please reassign or clear that product first.` });
+        }
       }
 
       let parsedSizeStock = {};
@@ -506,7 +563,9 @@ router.post(
         seo_description: seo_description || undefined,
         seo_keywords: seo_keywords || undefined,
         seo_schema: parsedSeoSchema || undefined,
-        is_new_arrival: is_new_arrival === true || is_new_arrival === "true" || is_new_arrival === 1 || is_new_arrival === "1"
+        is_new_arrival: is_new_arrival === true || is_new_arrival === "true" || is_new_arrival === 1 || is_new_arrival === "1",
+        show_on_homepage_new_arrivals: isShowOnHomepage,
+        homepage_new_arrival_position: isShowOnHomepage ? homepagePos : null
       });
 
       res.status(201).json({
@@ -607,6 +666,28 @@ router.put("/:id", requireAdmin, handleOptionalMultipart, async (req, res) => {
     if (parsedSeoSchema !== undefined) updateData.seo_schema = parsedSeoSchema;
     if (req.body.is_new_arrival !== undefined) {
       updateData.is_new_arrival = req.body.is_new_arrival === true || req.body.is_new_arrival === "true" || req.body.is_new_arrival === 1 || req.body.is_new_arrival === "1";
+    }
+
+    if (req.body.show_on_homepage_new_arrivals !== undefined) {
+      const isShowOnHomepage = req.body.show_on_homepage_new_arrivals === true || req.body.show_on_homepage_new_arrivals === "true" || req.body.show_on_homepage_new_arrivals === 1 || req.body.show_on_homepage_new_arrivals === "1";
+      updateData.show_on_homepage_new_arrivals = isShowOnHomepage;
+      if (isShowOnHomepage) {
+        const pos = req.body.homepage_new_arrival_position;
+        if (!pos) {
+          return res.status(400).json({ error: "Please select a Homepage New Arrival Position (1, 2, 3, or 4)." });
+        }
+        const posNum = parseInt(pos, 10);
+        if (isNaN(posNum) || posNum < 1 || posNum > 4) {
+          return res.status(400).json({ error: "Homepage New Arrival Position must be between 1 and 4." });
+        }
+        const conflict = await checkHomepagePositionConflict(posNum, req.params.id);
+        if (conflict) {
+          return res.status(400).json({ error: `Position conflict: "${conflict.name}" is already assigned to Homepage Position ${posNum}. Please reassign or clear that product first.` });
+        }
+        updateData.homepage_new_arrival_position = posNum;
+      } else {
+        updateData.homepage_new_arrival_position = null;
+      }
     }
 
     if (parsedSizeStock && typeof parsedSizeStock === "object" && Object.keys(parsedSizeStock).length > 0) {

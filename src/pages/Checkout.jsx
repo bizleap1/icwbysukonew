@@ -96,19 +96,24 @@ const Checkout = () => {
   // Manual UPI QR Payment States
   const [upiOrder, setUpiOrder] = useState(null);
   const [transactionId, setTransactionId] = useState("");
+  const [transactionIdTouched, setTransactionIdTouched] = useState(false);
   const [screenshotFile, setScreenshotFile] = useState(null);
   const [screenshotPreview, setScreenshotPreview] = useState("");
   const [screenshotError, setScreenshotError] = useState("");
+  const [screenshotTouched, setScreenshotTouched] = useState(false);
   const [isSubmittingProof, setIsSubmittingProof] = useState(false);
   const [verificationSubmittedOrder, setVerificationSubmittedOrder] = useState(null);
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [isDraggingScreenshot, setIsDraggingScreenshot] = useState(false);
   const [qrCropFailed, setQrCropFailed] = useState(false);
+  const [utrDuplicateWarning, setUtrDuplicateWarning] = useState("");
+  const [isCheckingUtr, setIsCheckingUtr] = useState(false);
 
   const handleRemoveScreenshot = () => {
     setScreenshotFile(null);
     setScreenshotPreview("");
     setScreenshotError("");
+    setScreenshotTouched(true);
   };
 
   // Address & Contact Form State
@@ -168,6 +173,62 @@ const Checkout = () => {
       });
     }
   }, [user, token]);
+
+  // Restore active order on refresh if customer was in payment or verification state
+  useEffect(() => {
+    if (user?.authenticated && token && !upiOrder && !verificationSubmittedOrder) {
+      try {
+        const saved = sessionStorage.getItem(SESSION_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.order_id) {
+            apiClient.get(`/api/orders/${parsed.order_id}`).then((existingOrder) => {
+              if (existingOrder && existingOrder.id) {
+                if (existingOrder.status === "payment_verification_pending") {
+                  setVerificationSubmittedOrder(existingOrder);
+                } else if (existingOrder.status === "pending_payment" || existingOrder.status === "payment_pending") {
+                  setUpiOrder(existingOrder);
+                  setActiveOrder(existingOrder);
+                  if (existingOrder.transaction_id) {
+                    setTransactionId(existingOrder.transaction_id);
+                  }
+                }
+              }
+            }).catch(() => {});
+          }
+        }
+      } catch (e) {}
+    }
+  }, [user, token, upiOrder, verificationSubmittedOrder]);
+
+  // Real-time UTR Duplicate Pre-check
+  useEffect(() => {
+    const trimmed = transactionId.trim();
+    if (!trimmed || trimmed.length < 6 || !upiOrder) {
+      setUtrDuplicateWarning("");
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setIsCheckingUtr(true);
+        const res = await apiClient.get(
+          `/api/orders/check-utr?utr=${encodeURIComponent(trimmed)}&order_id=${upiOrder.id}`
+        );
+        if (res && res.is_duplicate) {
+          setUtrDuplicateWarning(res.message || "This Transaction ID has already been submitted for an earlier order. Our team will verify it.");
+        } else {
+          setUtrDuplicateWarning("");
+        }
+      } catch (e) {
+        // silent fail on non-critical check
+      } finally {
+        setIsCheckingUtr(false);
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [transactionId, upiOrder]);
 
   const selectSavedAddress = (addr) => {
     setSelectedAddrId(addr.id);
@@ -245,10 +306,15 @@ const Checkout = () => {
   // Handle Screenshot Selection and Validation (JPG, JPEG, PNG, WebP & max 5 MB)
   const processScreenshotFile = (file) => {
     if (!file) return;
+    setScreenshotTouched(true);
     setScreenshotError("");
 
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-    if (!allowedTypes.includes(file.type.toLowerCase())) {
+    const ext = file.name ? file.name.split(".").pop().toLowerCase() : "";
+    const allowedExts = ["jpg", "jpeg", "png", "webp"];
+
+    const isTypeValid = (file.type && allowedTypes.includes(file.type.toLowerCase())) || allowedExts.includes(ext);
+    if (!isTypeValid) {
       setScreenshotError("Only JPG, JPEG, PNG, or WebP image formats are permitted.");
       return;
     }
@@ -262,6 +328,10 @@ const Checkout = () => {
     const reader = new FileReader();
     reader.onload = () => {
       setScreenshotPreview(reader.result);
+      setScreenshotError("");
+    };
+    reader.onerror = () => {
+      setScreenshotError("Failed to read image file. Please try another image.");
     };
     reader.readAsDataURL(file);
   };
@@ -374,14 +444,22 @@ const Checkout = () => {
     if (e && e.preventDefault) e.preventDefault();
     if (!upiOrder) return;
 
+    setTransactionIdTouched(true);
+    setScreenshotTouched(true);
+
     const trimmedTx = transactionId.trim();
     if (!trimmedTx) {
-      toast.error("Transaction ID / UTR is required.");
+      toast.error("Please enter your transaction ID.");
+      return;
+    }
+
+    if (trimmedTx.length < 6) {
+      toast.error("Transaction ID / UTR must be at least 6 characters.");
       return;
     }
 
     if (!screenshotPreview) {
-      toast.error("Payment screenshot is required.");
+      toast.error("Please upload payment screenshot.");
       return;
     }
 
@@ -1174,24 +1252,72 @@ const Checkout = () => {
                   <div className="space-y-6">
                     {/* Transaction ID / UTR input */}
                     <div>
-                      <label className="text-[10.5px] uppercase tracking-[0.20em] text-[#111113] block mb-2 font-medium">
-                        UTR / TRANSACTION ID <span className="text-[#C2922E]">*</span>
-                      </label>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-[10.5px] uppercase tracking-[0.20em] text-[#111113] block font-medium">
+                          UTR / TRANSACTION ID <span className="text-[#C2922E]">*</span>
+                        </label>
+                        {transactionId.trim() && (
+                          <span className="text-[10px] font-mono text-emerald-700 flex items-center gap-1">
+                            <Check size={11} /> Entered
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="text"
                         required
                         value={transactionId}
-                        onChange={(e) => setTransactionId(e.target.value.trim().toUpperCase())}
+                        onChange={(e) => {
+                          setTransactionId(e.target.value.trim().toUpperCase());
+                          setTransactionIdTouched(true);
+                        }}
+                        onBlur={() => setTransactionIdTouched(true)}
                         placeholder="Enter 12-digit UTR or Transaction ID"
-                        className="w-full bg-[#FAF8F5]/40 border border-[#DDD8CE] focus:border-[#C2922E] focus:bg-white focus:outline-none px-4 py-3.5 text-[13px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-mono tracking-wider"
+                        className={`w-full bg-[#FAF8F5]/40 border ${
+                          transactionIdTouched && !transactionId.trim()
+                            ? "border-rose-400 bg-rose-50/20"
+                            : "border-[#DDD8CE] focus:border-[#C2922E]"
+                        } focus:bg-white focus:outline-none px-4 py-3.5 text-[13px] text-[#111113] placeholder-[#A3A096] rounded-none transition-colors font-mono tracking-wider`}
                       />
+
+                      {/* UTR Validation Messages */}
+                      {transactionIdTouched && !transactionId.trim() && (
+                        <p className="text-[11px] text-rose-600 mt-1.5 flex items-center gap-1.5">
+                          <AlertCircle size={12} /> Please enter your transaction ID.
+                        </p>
+                      )}
+
+                      {transactionIdTouched && transactionId.trim().length > 0 && transactionId.trim().length < 6 && (
+                        <p className="text-[11px] text-amber-600 mt-1.5 flex items-center gap-1.5">
+                          <AlertCircle size={12} /> Transaction ID / UTR must be at least 6 characters.
+                        </p>
+                      )}
+
+                      {/* Duplicate UTR Alert Warning */}
+                      {utrDuplicateWarning && (
+                        <div className="p-3 bg-amber-50/90 border border-amber-200 text-amber-900 mt-2 text-[11.5px] flex items-start gap-2 leading-relaxed">
+                          <AlertCircle size={14} className="shrink-0 text-amber-700 mt-0.5" />
+                          <div>
+                            <span className="font-medium block text-[10.5px] uppercase tracking-wider text-amber-800">
+                              Duplicate UTR Notice
+                            </span>
+                            <span>{utrDuplicateWarning}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Payment Screenshot upload */}
                     <div>
-                      <label className="text-[10.5px] uppercase tracking-[0.20em] text-[#111113] block mb-2 font-medium">
-                        PAYMENT SCREENSHOT <span className="text-[#C2922E]">*</span>
-                      </label>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-[10.5px] uppercase tracking-[0.20em] text-[#111113] block font-medium">
+                          PAYMENT SCREENSHOT <span className="text-[#C2922E]">*</span>
+                        </label>
+                        {screenshotPreview && (
+                          <span className="text-[10px] font-mono text-emerald-700 flex items-center gap-1">
+                            <Check size={11} /> Uploaded
+                          </span>
+                        )}
+                      </div>
 
                       {!screenshotPreview ? (
                         /* Premium Drag/Drop Box */
@@ -1208,6 +1334,8 @@ const Checkout = () => {
                           className={`border border-dashed transition-all duration-200 p-8 sm:p-10 text-center flex flex-col items-center justify-center cursor-pointer group ${
                             isDraggingScreenshot
                               ? "border-[#C2922E] bg-[#FAF6EE]"
+                              : screenshotTouched && !screenshotPreview
+                              ? "border-rose-400 bg-rose-50/20"
                               : "border-[#DDD8CE] hover:border-[#C2922E] bg-[#FAF8F5]/40 hover:bg-[#FAF8F5]"
                           }`}
                         >
@@ -1276,6 +1404,13 @@ const Checkout = () => {
                         </div>
                       )}
 
+                      {/* Screenshot Validation Messages */}
+                      {screenshotTouched && !screenshotPreview && (
+                        <p className="text-[11px] text-rose-600 mt-2 flex items-center gap-1.5">
+                          <AlertCircle size={12} /> Please upload payment screenshot.
+                        </p>
+                      )}
+
                       {screenshotError && (
                         <p className="text-[11px] text-rose-600 mt-2 flex items-center gap-1.5">
                           <AlertCircle size={12} /> {screenshotError}
@@ -1289,20 +1424,35 @@ const Checkout = () => {
 
                     {/* 4. Primary CTA: SUBMIT PAYMENT */}
                     <div className="pt-2">
+                      {/* Validation Helper Messages before CTA */}
+                      {!transactionId.trim() && !screenshotPreview ? (
+                        <p className="text-[11px] text-[#8C887B] text-center font-light mb-2.5">
+                          Please enter your transaction ID and upload payment screenshot to confirm.
+                        </p>
+                      ) : !transactionId.trim() ? (
+                        <p className="text-[11px] text-rose-600 text-center font-medium mb-2.5 flex items-center justify-center gap-1">
+                          <AlertCircle size={12} /> Please enter your transaction ID.
+                        </p>
+                      ) : !screenshotPreview ? (
+                        <p className="text-[11px] text-rose-600 text-center font-medium mb-2.5 flex items-center justify-center gap-1">
+                          <AlertCircle size={12} /> Please upload payment screenshot.
+                        </p>
+                      ) : null}
+
                       <button
                         type="button"
                         onClick={handleSubmitPaymentProof}
-                        disabled={!transactionId.trim() || !screenshotPreview || isSubmittingProof}
+                        disabled={!transactionId.trim() || transactionId.trim().length < 6 || !screenshotPreview || isSubmittingProof}
                         className="group w-full bg-[#111113] hover:bg-[#C2922E] text-white py-4 px-8 text-[11.5px] uppercase tracking-[0.24em] font-medium flex items-center justify-center gap-3 transition-colors duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed rounded-none shadow-xs"
                       >
                         {isSubmittingProof ? (
                           <>
                             <Loader2 size={15} className="animate-spin text-[#C2922E] group-hover:text-white transition-colors" />
-                            <span>SUBMITTING...</span>
+                            <span>SUBMITTING FOR VERIFICATION...</span>
                           </>
                         ) : (
                           <>
-                            <span>SUBMIT PAYMENT</span>
+                            <span>CONFIRM &amp; SUBMIT PAYMENT</span>
                             <span>&rarr;</span>
                           </>
                         )}
@@ -1310,7 +1460,7 @@ const Checkout = () => {
 
                       {/* Note below CTA */}
                       <p className="text-[11.5px] text-[#6E6E75] text-center font-light mt-3">
-                        Your order will be confirmed after payment verification.
+                        Status after submission: <span className="font-medium text-[#111113]">Payment Verification Pending</span>. Final confirmation follows atelier admin review.
                       </p>
                     </div>
                   </div>

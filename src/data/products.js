@@ -261,6 +261,9 @@ export const ALL_RAW_PRODUCTS = [
     ],
     "badge": null,
     "isNew": true,
+    "is_new_arrival": true,
+    "show_on_homepage_new_arrivals": true,
+    "homepage_new_arrival_position": 1,
     "separates": [
       {
         "slug": "the-plum-sculpted-trousers",
@@ -1038,6 +1041,9 @@ export const ALL_RAW_PRODUCTS = [
     ],
     "badge": null,
     "isNew": true,
+    "is_new_arrival": true,
+    "show_on_homepage_new_arrivals": true,
+    "homepage_new_arrival_position": 3,
     "separates": []
   },
   {
@@ -1127,6 +1133,9 @@ export const ALL_RAW_PRODUCTS = [
     ],
     "badge": null,
     "isNew": true,
+    "is_new_arrival": true,
+    "show_on_homepage_new_arrivals": true,
+    "homepage_new_arrival_position": 2,
     "separates": [
       {
         "slug": "the-aubergine-tailored-wide-leg-trousers",
@@ -1507,6 +1516,9 @@ export const ALL_RAW_PRODUCTS = [
     ],
     "badge": "New Arrival",
     "isNew": true,
+    "is_new_arrival": true,
+    "show_on_homepage_new_arrivals": true,
+    "homepage_new_arrival_position": 4,
     "separates": [
       {
         "slug": "the-noir-tailored-trousers",

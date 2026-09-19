@@ -9,7 +9,8 @@ const {
   sendOrderInvoiceEmail,
   sendOrderConfirmationEmail,
   sendPaymentReceiptEmail,
-  sendShippingUpdateEmail
+  sendShippingUpdateEmail,
+  sendBroadcastEmail
 } = require("../services/emailService");
 const {
   renderDocumentHtml,
@@ -47,15 +48,25 @@ function formatOrder(orderRow, itemRows = [], userRow) {
     resolvedTotal = calculatedItemsTotal > 0 ? Math.max(0, calculatedItemsTotal - (Number(orderRow.discount) || 0)) : 4800;
   }
 
+  const resolvedPaymentStatus = orderRow.payment_status || (
+    orderRow.status === "paid" || orderRow.status === "completed"
+      ? "verified"
+      : (orderRow.status === "payment_verification_failed"
+          ? "rejected"
+          : "pending_verification")
+  );
+
   return {
     id: orderRow.id,
     status: orderRow.status,
-    payment_status: orderRow.status,
+    payment_status: resolvedPaymentStatus,
     total: resolvedTotal,
-    payment_method: orderRow.payment_method || "upi_qr",
+    payment_method: orderRow.payment_method || "manual_upi",
     transaction_id: orderRow.transaction_id || null,
     utr: orderRow.transaction_id || null,
     payment_screenshot_url: orderRow.payment_screenshot_url || null,
+    is_duplicate_utr: Boolean(orderRow.is_duplicate_utr),
+    duplicate_utr_order_id: orderRow.duplicate_utr_order_id || null,
     invoice_number: orderRow.invoice_number || null,
     created_at: orderRow.created_at,
     updated_at: orderRow.updated_at,
@@ -144,16 +155,38 @@ async function getOrderWithItems(orderId) {
     );
   }
 
-  let user = null;
-  if (order.user_id) {
-    const userRes = await pool.query(
-      "SELECT id, name, email, phone FROM users WHERE id = $1",
-      [order.user_id]
-    );
-    user = userRes.rows[0] || null;
+  let isDup = Boolean(order.is_duplicate_utr);
+  let dupOrderId = order.duplicate_utr_order_id || null;
+  if (order.transaction_id && String(order.transaction_id).trim()) {
+    try {
+      const dupCheck = await pool.query(
+        "SELECT id FROM orders WHERE LOWER(TRIM(transaction_id)) = LOWER($1) AND id != $2 AND status != 'cancelled' LIMIT 1",
+        [String(order.transaction_id).trim(), order.id]
+      );
+      if (dupCheck.rows.length > 0) {
+        isDup = true;
+        dupOrderId = dupCheck.rows[0].id;
+      }
+    } catch (e) {}
   }
 
-  return formatOrder(order, itemsRes.rows, user);
+  let user = null;
+  if (order.user_id) {
+    try {
+      const userRes = await pool.query(
+        "SELECT id, name, email, phone FROM users WHERE id = $1",
+        [order.user_id]
+      );
+      user = userRes.rows[0] || null;
+    } catch (uErr) {}
+  }
+
+  const formatted = formatOrder(order, itemsRes.rows, user);
+  return {
+    ...formatted,
+    is_duplicate_utr: isDup,
+    duplicate_utr_order_id: dupOrderId,
+  };
 }
 
 // POST /api/orders  -- create a new order (checkout)
@@ -236,8 +269,8 @@ router.post("/", requireAuth, validateCreateOrder, async (req, res) => {
     await client.query("BEGIN");
 
     const orderRes = await client.query(
-      `INSERT INTO orders (user_id, status, total, payment_method, name, phone, email, line1, city, state, pincode, coupon_code, discount)
-       VALUES ($1, 'pending_payment', $2, 'upi_qr', $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO orders (user_id, status, payment_status, total, payment_method, name, phone, email, line1, city, state, pincode, coupon_code, discount)
+       VALUES ($1, 'pending_payment', 'pending_verification', $2, 'manual_upi', $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
       [
         req.user.userId,
@@ -357,8 +390,8 @@ router.post("/", requireAuth, validateCreateOrder, async (req, res) => {
 
     const fullOrder = await getOrderWithItems(order.id);
 
-    // Asynchronously dispatch instant luxury order confirmation email
-    if (fullOrder) {
+    // Dispatch instant luxury order confirmation email only if already verified/paid
+    if (fullOrder && (fullOrder.status === "paid" || fullOrder.status === "completed")) {
       sendOrderConfirmationEmail(fullOrder).catch((e) => {
         console.warn("⚠️  [EmailService] Order confirmation email dispatch failed:", e.message);
       });
@@ -418,9 +451,32 @@ async function getOrdersWithItemsBatch(orderRows) {
     itemsByOrderId[it.order_id].push(it);
   });
 
-  return orderRows.map((order) =>
-    formatOrder(order, itemsByOrderId[order.id] || [], usersMap[order.user_id] || null)
-  );
+  // Batch duplicate UTR detection
+  const utrCounts = {};
+  const firstOrderByUtr = {};
+  orderRows.forEach((o) => {
+    const rawTx = (o.transaction_id || "").trim().toLowerCase();
+    if (rawTx && rawTx.length >= 4) {
+      if (!utrCounts[rawTx]) {
+        utrCounts[rawTx] = 0;
+        firstOrderByUtr[rawTx] = o.id;
+      }
+      utrCounts[rawTx]++;
+    }
+  });
+
+  return orderRows.map((order) => {
+    const rawTx = (order.transaction_id || "").trim().toLowerCase();
+    const isDup = Boolean(order.is_duplicate_utr || (rawTx && utrCounts[rawTx] > 1));
+    const dupOrderId = order.duplicate_utr_order_id || (isDup && firstOrderByUtr[rawTx] !== order.id ? firstOrderByUtr[rawTx] : null);
+
+    const formatted = formatOrder(order, itemsByOrderId[order.id] || [], usersMap[order.user_id] || null);
+    return {
+      ...formatted,
+      is_duplicate_utr: isDup,
+      duplicate_utr_order_id: dupOrderId,
+    };
+  });
 }
 
 // GET /api/orders -- current customer's own orders
@@ -447,6 +503,42 @@ router.get("/all", requireAdmin, async (req, res) => {
   } catch (err) {
     console.error("List all orders error:", err);
     res.status(500).json({ error: "Failed to load orders." });
+  }
+});
+
+// GET /api/orders/check-utr?utr=...&order_id=... -- check if UTR is already in use by another order
+router.get("/check-utr", requireAuth, async (req, res) => {
+  try {
+    const rawUtr = String(req.query.utr || "").trim();
+    const excludeOrderId = parseInt(req.query.order_id, 10) || 0;
+
+    if (!rawUtr || rawUtr.length < 4) {
+      return res.json({ is_duplicate: false, matched_order_id: null });
+    }
+
+    const check = await pool.query(
+      `SELECT id, status, created_at FROM orders 
+       WHERE LOWER(TRIM(transaction_id)) = LOWER($1) 
+         AND id != $2 
+         AND status != 'cancelled' 
+       ORDER BY id DESC LIMIT 1`,
+      [rawUtr, excludeOrderId]
+    );
+
+    if (check.rows.length > 0) {
+      const match = check.rows[0];
+      return res.json({
+        is_duplicate: true,
+        matched_order_id: match.id,
+        matched_order_number: `SUKO-${1000 + match.id}`,
+        message: `This Transaction ID / UTR was already submitted for Order #SUKO-${1000 + match.id}.`,
+      });
+    }
+
+    return res.json({ is_duplicate: false, matched_order_id: null });
+  } catch (err) {
+    console.error("Check UTR error:", err);
+    res.status(500).json({ error: "Failed to check UTR status." });
   }
 });
 
@@ -488,30 +580,26 @@ router.post("/:id/submit-payment-proof", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Order has already been verified and paid." });
     }
 
-    const { transaction_id, utr, screenshot } = req.body;
-    const finalTxId = (transaction_id || utr || "").trim();
+    const { transaction_id, utr, transactionId, screenshot, screenshotBase64 } = req.body;
+    const finalTxId = String(transaction_id || utr || transactionId || "").trim();
+    const finalScreenshot = screenshot || screenshotBase64;
 
+    // Strict Validation: Transaction ID / UTR
     if (!finalTxId) {
-      return res.status(400).json({ error: "Transaction ID / UTR is required." });
+      return res.status(400).json({ error: "Please enter your transaction ID." });
     }
 
-    // Verify duplicate UTR is not already used across different orders
-    const dupCheck = await pool.query(
-      "SELECT id FROM orders WHERE LOWER(TRIM(transaction_id)) = LOWER($1) AND id != $2 LIMIT 1",
-      [finalTxId, order.id]
-    );
-    if (dupCheck.rows.length > 0) {
-      return res.status(400).json({
-        error: `This Transaction ID / UTR has already been submitted for Order #SUKO-${1000 + dupCheck.rows[0].id}. Please verify your transaction details or contact concierge.`
-      });
+    if (finalTxId.length < 6) {
+      return res.status(400).json({ error: "Transaction ID / UTR must be at least 6 characters." });
     }
 
-    if (!screenshot || typeof screenshot !== "string") {
-      return res.status(400).json({ error: "Payment screenshot is required." });
+    // Strict Validation: Payment Screenshot
+    if (!finalScreenshot || typeof finalScreenshot !== "string") {
+      return res.status(400).json({ error: "Please upload payment screenshot." });
     }
 
     // Validate screenshot format: JPG, JPEG, PNG, WebP
-    const match = screenshot.match(/^data:(image\/(jpeg|jpg|png|webp));base64,(.+)$/i);
+    const match = finalScreenshot.match(/^data:(image\/(jpeg|jpg|png|webp));base64,(.+)$/i);
     if (!match) {
       return res.status(400).json({
         error: "Invalid screenshot format. Allowed formats: JPG, JPEG, PNG, WebP.",
@@ -527,6 +615,22 @@ router.post("/:id/submit-payment-proof", requireAuth, async (req, res) => {
     const fileBuffer = Buffer.from(base64Data, "base64");
     if (fileBuffer.length > 5 * 1024 * 1024) {
       return res.status(400).json({ error: "Screenshot file size exceeds the 5 MB limit." });
+    }
+
+    // Check for duplicate UTR across existing orders
+    let isDuplicateUtr = false;
+    let duplicateOrderId = null;
+    const dupCheck = await pool.query(
+      `SELECT id, status, name, created_at FROM orders 
+       WHERE LOWER(TRIM(transaction_id)) = LOWER($1) 
+         AND id != $2 
+         AND status != 'cancelled' 
+       ORDER BY id DESC LIMIT 1`,
+      [finalTxId, order.id]
+    );
+    if (dupCheck.rows.length > 0) {
+      isDuplicateUtr = true;
+      duplicateOrderId = dupCheck.rows[0].id;
     }
 
     // Upload to Cloudinary for permanent storage, with graceful local disk fallback
@@ -554,23 +658,48 @@ router.post("/:id/submit-payment-proof", requireAuth, async (req, res) => {
       permanentProofUrl = filename;
     }
 
-    // Save reference in DB
+    // Save reference in DB with strict status: payment_verification_pending
     await pool.query(
       `UPDATE orders
        SET status = 'payment_verification_pending',
+           payment_status = 'pending_verification',
+           payment_method = 'manual_upi',
            transaction_id = $1,
            payment_screenshot_url = $2,
+           is_duplicate_utr = $3,
+           duplicate_utr_order_id = $4,
            updated_at = now()
-       WHERE id = $3`,
-      [finalTxId, permanentProofUrl, order.id]
+       WHERE id = $5`,
+      [finalTxId, permanentProofUrl, isDuplicateUtr, duplicateOrderId, order.id]
     );
 
     const updatedOrder = await getOrderWithItems(order.id);
 
+    // Notify Atelier Admin Concierge via verified email
+    const orderNumberStr = `#SUKO-${1000 + order.id}`;
+    const dupFlagText = isDuplicateUtr ? ` ⚠️ [DUPLICATE UTR DETECTED - Used in #SUKO-${1000 + duplicateOrderId}]` : "";
+    const adminAlertSubject = `🔔 [PAYMENT PROOF SUBMITTED] ${orderNumberStr}${dupFlagText} (₹${order.total})`;
+    const adminAlertMsg = `Payment proof received for Order ${orderNumberStr}.\n\nPatron: ${order.name || "Patron"}\nAmount: ₹${order.total}\nUTR / Transaction ID: ${finalTxId}${isDuplicateUtr ? `\n\n⚠️ SECURITY NOTICE: This UTR matches Order #SUKO-${1000 + duplicateOrderId}! Flagged for manual audit.` : ""}\n\nPlease review the attached receipt in the SUKO Admin Dashboard before confirming.`;
+    
+    sendBroadcastEmail({
+      to: "indiancorporatewearbysuko@gmail.com",
+      subject: adminAlertSubject,
+      message: adminAlertMsg,
+      recipientName: "Atelier Operations",
+      ctaText: "Open Admin Dashboard",
+      ctaUrl: "https://indiancorporatewear.com/admin"
+    }).catch((e) => {
+      console.warn("[Orders] Admin payment proof alert dispatch failed:", e.message);
+    });
+
     return res.json({
       success: true,
-      message: "Payment details received for verification.",
+      message: isDuplicateUtr
+        ? `Payment details received for verification. Note: UTR ${finalTxId} was flagged for administrative review.`
+        : "Payment details received for verification.",
       order: updatedOrder,
+      is_duplicate_utr: isDuplicateUtr,
+      duplicate_utr_order_id: duplicateOrderId,
     });
   } catch (err) {
     console.error("Submit payment proof error:", err);
@@ -637,14 +766,17 @@ router.post("/:id/verify-payment", requireAdmin, async (req, res) => {
     const currentOrder = raw.rows[0];
 
     await pool.query(
-      "UPDATE orders SET status = 'paid', cancel_reason = NULL, admin_rejection_note = NULL, updated_at = now() WHERE id = $1",
+      "UPDATE orders SET status = 'paid', payment_status = 'verified', cancel_reason = NULL, admin_rejection_note = NULL, updated_at = now() WHERE id = $1",
       [orderId]
     );
 
     const fullOrder = await getOrderWithItems(orderId);
 
-    // Asynchronously dispatch luxury paid tax invoice email
+    // Asynchronously dispatch luxury order confirmation & paid tax invoice emails
     if (fullOrder) {
+      sendOrderConfirmationEmail(fullOrder).catch((mailErr) => {
+        console.warn("⚠️  [EmailService] Order confirmation email dispatch failed:", mailErr.message);
+      });
       sendOrderInvoiceEmail(fullOrder).catch((mailErr) => {
         console.warn("⚠️  [EmailService] Paid invoice email dispatch failed:", mailErr.message);
       });
@@ -663,7 +795,7 @@ router.post("/:id/verify-payment", requireAdmin, async (req, res) => {
           order_number: `SUKO-${1000 + orderId}`,
           amount: fullOrder?.total || currentOrder.total,
           transaction_id: fullOrder?.transaction_id || currentOrder.transaction_id,
-          payment_method: fullOrder?.payment_method || currentOrder.payment_method || "upi_qr",
+          payment_method: fullOrder?.payment_method || currentOrder.payment_method || "manual_upi",
         },
         ip_address: req.ip || req.connection?.remoteAddress
       });
@@ -697,11 +829,27 @@ router.post("/:id/reject-payment", requireAdmin, async (req, res) => {
     const internalNote = (admin_note || adminNote || "").trim() || null;
 
     await pool.query(
-      "UPDATE orders SET status = 'payment_verification_failed', cancel_reason = $1, admin_rejection_note = $2, updated_at = now() WHERE id = $3",
+      "UPDATE orders SET status = 'payment_verification_failed', payment_status = 'rejected', cancel_reason = $1, admin_rejection_note = $2, updated_at = now() WHERE id = $3",
       [customerReason, internalNote, orderId]
     );
 
     const fullOrder = await getOrderWithItems(orderId);
+
+    // Notify customer of payment rejection with clear instructions to re-submit proof
+    const targetEmail = fullOrder?.user?.email || fullOrder?.email || currentOrder.email;
+    if (targetEmail) {
+      const orderNumber = `#SUKO-${1000 + orderId}`;
+      sendBroadcastEmail({
+        to: targetEmail,
+        subject: `Payment Verification Notice: ${orderNumber} | SUKO Atelier`,
+        message: `Dear ${fullOrder?.user?.name || fullOrder?.name || "Patron"},\n\nWe could not verify the payment proof submitted for Order ${orderNumber}.\n\nReason: ${customerReason}\n\nPlease visit your SUKO account orders page to review and re-submit your payment details so our atelier can verify your order.\n\nWarm regards,\nSUKO Atelier Concierge`,
+        recipientName: fullOrder?.user?.name || fullOrder?.name || "Patron",
+        ctaText: "Re-submit Payment Details",
+        ctaUrl: "https://indiancorporatewear.com/orders"
+      }).catch((mailErr) => {
+        console.warn("⚠️  [EmailService] Rejection notice email failed:", mailErr.message);
+      });
+    }
 
     // Record administrative audit activity
     try {

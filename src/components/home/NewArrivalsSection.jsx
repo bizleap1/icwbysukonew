@@ -6,36 +6,46 @@ import { useProducts } from "../../context/ProductContext";
 export const NewArrivalsSection = () => {
   const { products } = useProducts();
 
-  // Dynamically select the latest 4 Active products where is_new_arrival = true
+  // Manually curated Homepage New Arrivals:
+  // Strictly filter products where show_on_homepage_new_arrivals === true,
+  // sort by homepage_new_arrival_position (1, 2, 3, 4), and display maximum 4 products.
   const displayedProducts = useMemo(() => {
     if (!products || products.length === 0) return [];
 
-    // Filter strictly Active storefront products flagged as is_new_arrival
-    const activeNewArrivals = products.filter((p) => {
+    // Filter active storefront products manually flagged for Homepage New Arrivals
+    const curatedHomepageProducts = products.filter((p) => {
       const status = (p.status || "active").toLowerCase();
       const isActive = status === "active" || status === "published";
-      const isNewArrival = Boolean(p.is_new_arrival ?? p.isNew);
-      return isActive && isNewArrival;
+      const isCuratedForHomepage = Boolean(p.show_on_homepage_new_arrivals);
+      return isActive && isCuratedForHomepage;
     });
 
-    // Sort newest first (by created_at or sort_order if present)
-    const sorted = [...activeNewArrivals].sort((a, b) => {
-      if (a.sort_order !== undefined && b.sort_order !== undefined && a.sort_order !== b.sort_order) {
-        return a.sort_order - b.sort_order;
-      }
-      const timeA = new Date(a.created_at || a.createdAt || 0).getTime();
-      const timeB = new Date(b.created_at || b.createdAt || 0).getTime();
-      return timeB - timeA;
+    // Sort strictly by manual position: 1 -> 2 -> 3 -> 4
+    const sortedCurated = [...curatedHomepageProducts].sort((a, b) => {
+      const posA = Number(a.homepage_new_arrival_position) || 999;
+      const posB = Number(b.homepage_new_arrival_position) || 999;
+      return posA - posB;
     });
 
-    // Take top 4, with graceful fallback to newest active products if fewer than 4 are flagged
-    if (sorted.length >= 4) {
-      return sorted.slice(0, 4);
+    if (sortedCurated.length > 0) {
+      return sortedCurated.slice(0, 4);
     }
-    const fallbackActive = products
-      .filter((p) => (p.status || "active").toLowerCase() === "active")
-      .filter((p) => !sorted.some((s) => s.id === p.id));
-    return [...sorted, ...fallbackActive].slice(0, 4);
+
+    // Graceful backward-compatible fallback if admin has not yet curated any products:
+    // Display latest 4 active is_new_arrival products so the homepage section is never broken/empty.
+    const fallbackNewArrivals = products
+      .filter((p) => {
+        const status = (p.status || "active").toLowerCase();
+        const isActive = status === "active" || status === "published";
+        return isActive && Boolean(p.is_new_arrival ?? p.isNew);
+      })
+      .sort((a, b) => {
+        const timeA = new Date(a.created_at || a.createdAt || 0).getTime();
+        const timeB = new Date(b.created_at || b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+
+    return fallbackNewArrivals.slice(0, 4);
   }, [products]);
 
   return (

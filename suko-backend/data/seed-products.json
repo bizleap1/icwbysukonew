@@ -128,7 +128,9 @@
           "label": "Plum Sculpted Trousers"
         }
       ],
-      "is_new_arrival": true
+      "is_new_arrival": true,
+      "show_on_homepage_new_arrivals": true,
+      "homepage_new_arrival_position": 1
     },
     {
       "id": "w-27",
@@ -212,7 +214,9 @@
       "badge": "New Arrival",
       "isNew": true,
       "separates": [],
-      "is_new_arrival": false
+      "is_new_arrival": false,
+      "show_on_homepage_new_arrivals": false,
+      "homepage_new_arrival_position": null
     },
     {
       "id": "w-21",
@@ -295,7 +299,9 @@
       "badge": "New Arrival",
       "isNew": true,
       "separates": [],
-      "is_new_arrival": false
+      "is_new_arrival": false,
+      "show_on_homepage_new_arrivals": false,
+      "homepage_new_arrival_position": null
     },
     {
       "id": "w-01",
@@ -390,7 +396,9 @@
           "label": "Midnight Flare Skirt"
         }
       ],
-      "is_new_arrival": true
+      "is_new_arrival": true,
+      "show_on_homepage_new_arrivals": false,
+      "homepage_new_arrival_position": null
     },
     {
       "id": "w-26",
@@ -473,7 +481,9 @@
       "badge": "New Arrival",
       "isNew": true,
       "separates": [],
-      "is_new_arrival": false
+      "is_new_arrival": false,
+      "show_on_homepage_new_arrivals": false,
+      "homepage_new_arrival_position": null
     },
     {
       "id": "w-25",
@@ -556,7 +566,9 @@
       "badge": "New Arrival",
       "isNew": true,
       "separates": [],
-      "is_new_arrival": false
+      "is_new_arrival": false,
+      "show_on_homepage_new_arrivals": false,
+      "homepage_new_arrival_position": null
     },
     {
       "id": "w-08",
@@ -655,7 +667,9 @@
         }
       ],
       "is_new_arrival": true,
-      "category_id": "suits"
+      "category_id": "suits",
+      "show_on_homepage_new_arrivals": false,
+      "homepage_new_arrival_position": null
     },
     {
       "id": "w-28",
@@ -736,7 +750,9 @@
       "badge": "New Arrival",
       "isNew": true,
       "separates": [],
-      "is_new_arrival": false
+      "is_new_arrival": false,
+      "show_on_homepage_new_arrivals": false,
+      "homepage_new_arrival_position": null
     },
     {
       "id": "w-22",
@@ -819,7 +835,9 @@
       "badge": "New Arrival",
       "isNew": true,
       "separates": [],
-      "is_new_arrival": false
+      "is_new_arrival": false,
+      "show_on_homepage_new_arrivals": false,
+      "homepage_new_arrival_position": null
     },
     {
       "id": "w-05",
@@ -911,7 +929,9 @@
       "isNew": true,
       "separates": [],
       "is_new_arrival": true,
-      "category_id": "suits"
+      "category_id": "suits",
+      "show_on_homepage_new_arrivals": true,
+      "homepage_new_arrival_position": 3
     },
     {
       "id": "w-04",
@@ -1007,7 +1027,9 @@
         }
       ],
       "is_new_arrival": true,
-      "category_id": "suits"
+      "category_id": "suits",
+      "show_on_homepage_new_arrivals": true,
+      "homepage_new_arrival_position": 2
     },
     {
       "id": "w-02",
@@ -1102,7 +1124,9 @@
           "label": "Midnight Column Skirt"
         }
       ],
-      "is_new_arrival": false
+      "is_new_arrival": false,
+      "show_on_homepage_new_arrivals": false,
+      "homepage_new_arrival_position": null
     },
     {
       "id": "w-03",
@@ -1197,7 +1221,9 @@
         }
       ],
       "is_new_arrival": false,
-      "category_id": "suits"
+      "category_id": "suits",
+      "show_on_homepage_new_arrivals": false,
+      "homepage_new_arrival_position": null
     },
     {
       "id": "w-07",
@@ -1287,7 +1313,9 @@
       "isNew": true,
       "separates": [],
       "image_url": "/products/the-dusty-rose-embroidered-farchi-set/1.png",
-      "is_new_arrival": false
+      "is_new_arrival": false,
+      "show_on_homepage_new_arrivals": false,
+      "homepage_new_arrival_position": null
     },
     {
       "id": "w-29",
@@ -1394,7 +1422,9 @@
         }
       ],
       "is_new_arrival": true,
-      "category_id": "suits"
+      "category_id": "suits",
+      "show_on_homepage_new_arrivals": true,
+      "homepage_new_arrival_position": 4
     },
     {
       "id": "w-30",
@@ -1478,7 +1508,9 @@
       },
       "is_new_arrival": false,
       "badge": "New Arrival",
-      "category": "suits"
+      "category": "suits",
+      "show_on_homepage_new_arrivals": false,
+      "homepage_new_arrival_position": null
     }
   ]
 }

@@ -376,7 +376,9 @@ function ensureProductSizeStock(p) {
     moments,
     moment_name: momentName,
     size_stock: sizeStock,
-    is_new_arrival: Boolean(p.is_new_arrival ?? p.isNew ?? false)
+    is_new_arrival: Boolean(p.is_new_arrival ?? p.isNew ?? false),
+    show_on_homepage_new_arrivals: Boolean(p.show_on_homepage_new_arrivals ?? false),
+    homepage_new_arrival_position: p.homepage_new_arrival_position ? Number(p.homepage_new_arrival_position) : null
   };
 }
 
@@ -534,6 +536,8 @@ async function createProduct(productData) {
       moments: Array.isArray(productData.moments) ? productData.moments : [productData.moment || "boardroom"],
       moment_name: productData.momentName || productData.moment_name || "The Boardroom Edit",
       is_new_arrival: Boolean(productData.is_new_arrival),
+      show_on_homepage_new_arrivals: Boolean(productData.show_on_homepage_new_arrivals),
+      homepage_new_arrival_position: productData.show_on_homepage_new_arrivals && productData.homepage_new_arrival_position ? Number(productData.homepage_new_arrival_position) : null,
       seo_title: seoTitle,
       seo_description: seoDescription,
       seo_keywords: seoKeywords,
@@ -549,8 +553,8 @@ async function createProduct(productData) {
 
   // Real Postgres mode
   const res = await pool.query(
-    `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric, color, secondary_color, pattern, finish, silhouette, fit, occasion, moment, moments, moment_name, seo_title, seo_description, seo_keywords, seo_schema, gallery, is_new_arrival)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
+    `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric, color, secondary_color, pattern, finish, silhouette, fit, occasion, moment, moments, moment_name, seo_title, seo_description, seo_keywords, seo_schema, gallery, is_new_arrival, show_on_homepage_new_arrivals, homepage_new_arrival_position)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)
      RETURNING *`,
     [
       newId,
@@ -585,7 +589,9 @@ async function createProduct(productData) {
       seoKeywords,
       JSON.stringify(seoSchema),
       JSON.stringify(gallery),
-      Boolean(productData.is_new_arrival)
+      Boolean(productData.is_new_arrival),
+      Boolean(productData.show_on_homepage_new_arrivals),
+      productData.show_on_homepage_new_arrivals && productData.homepage_new_arrival_position ? Number(productData.homepage_new_arrival_position) : null
     ]
   );
   return ensureProductSizeStock(res.rows[0]);
@@ -650,6 +656,10 @@ async function updateProduct(id, updateData) {
       moments: updateData.moments !== undefined ? updateData.moments : current.moments,
       moment_name: updateData.moment_name !== undefined ? updateData.moment_name : (updateData.momentName !== undefined ? updateData.momentName : current.moment_name),
       is_new_arrival: updateData.is_new_arrival !== undefined ? Boolean(updateData.is_new_arrival) : Boolean(current.is_new_arrival),
+      show_on_homepage_new_arrivals: updateData.show_on_homepage_new_arrivals !== undefined ? Boolean(updateData.show_on_homepage_new_arrivals) : Boolean(current.show_on_homepage_new_arrivals),
+      homepage_new_arrival_position: updateData.show_on_homepage_new_arrivals !== undefined 
+        ? (updateData.show_on_homepage_new_arrivals && updateData.homepage_new_arrival_position ? Number(updateData.homepage_new_arrival_position) : null)
+        : (current.homepage_new_arrival_position ? Number(current.homepage_new_arrival_position) : null),
       seo_title: updateData.seo_title !== undefined ? updateData.seo_title : current.seo_title,
       seo_description: updateData.seo_description !== undefined ? updateData.seo_description : current.seo_description,
       seo_keywords: updateData.seo_keywords !== undefined ? updateData.seo_keywords : current.seo_keywords,
@@ -720,6 +730,12 @@ async function updateProduct(id, updateData) {
          seo_schema = COALESCE($28, seo_schema),
          sku = COALESCE($29, sku),
          is_new_arrival = COALESCE($30, is_new_arrival),
+         show_on_homepage_new_arrivals = COALESCE($32, show_on_homepage_new_arrivals),
+         homepage_new_arrival_position = CASE 
+           WHEN $32 = true THEN $33
+           WHEN $32 = false THEN NULL
+           ELSE homepage_new_arrival_position
+         END,
          updated_at = now()
      WHERE id = $31 OR slug = $31
      RETURNING *`,
@@ -754,7 +770,9 @@ async function updateProduct(id, updateData) {
       updateData.seo_schema ? JSON.stringify(updateData.seo_schema) : null,
       updateData.sku !== undefined ? updateData.sku : null,
       updateData.is_new_arrival !== undefined ? Boolean(updateData.is_new_arrival) : null,
-      String(id)
+      String(id),
+      updateData.show_on_homepage_new_arrivals !== undefined ? Boolean(updateData.show_on_homepage_new_arrivals) : null,
+      updateData.show_on_homepage_new_arrivals && updateData.homepage_new_arrival_position ? Number(updateData.homepage_new_arrival_position) : null
     ]
   );
   return ensureProductSizeStock(res.rows[0]);

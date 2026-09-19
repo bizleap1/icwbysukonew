@@ -918,7 +918,9 @@ const Admin = () => {
     fit: "Tailored",
     occasion: "Business Formal",
     status: "active",
-    is_new_arrival: false
+    is_new_arrival: false,
+    show_on_homepage_new_arrivals: false,
+    homepage_new_arrival_position: ""
   };
   const [formData, setFormData] = useState(initialGarmentForm);
   const [applicableSizes, setApplicableSizes] = useState(["38", "40", "42", "44", "46"]);
@@ -1317,7 +1319,9 @@ const Admin = () => {
     description: "",
     sizes: "",
     status: "active",
-    is_new_arrival: false
+    is_new_arrival: false,
+    show_on_homepage_new_arrivals: false,
+    homepage_new_arrival_position: ""
   });
   const [editApplicableSizes, setEditApplicableSizes] = useState(["38", "40", "42", "44", "46"]);
   const [editSizeStockMap, setEditSizeStockMap] = useState({});
@@ -1373,7 +1377,9 @@ const Admin = () => {
       occasion: p.occasion || "Business Formal",
       description: p.description || "",
       status: p.status || "active",
-      is_new_arrival: Boolean(p.is_new_arrival ?? p.isNew ?? false)
+      is_new_arrival: Boolean(p.is_new_arrival ?? p.isNew ?? false),
+      show_on_homepage_new_arrivals: Boolean(p.show_on_homepage_new_arrivals ?? false),
+      homepage_new_arrival_position: p.homepage_new_arrival_position ? String(p.homepage_new_arrival_position) : ""
     });
     setEditSizeStockMap(initialMap);
 
@@ -1395,6 +1401,26 @@ const Admin = () => {
     let uploadToastId = null;
 
     try {
+      if (editFormData.show_on_homepage_new_arrivals) {
+        if (!editFormData.homepage_new_arrival_position) {
+          toast.error("Please assign a Homepage New Arrival Position (1, 2, 3, or 4).");
+          setUpdatingProduct(false);
+          return;
+        }
+        const posNum = Number(editFormData.homepage_new_arrival_position);
+        const conflict = products.find(p => 
+          (editingProduct ? String(p.id) !== String(editingProduct.id) && String(p.slug) !== String(editingProduct.slug) : true) &&
+          (p.status || "active").toLowerCase() !== "archived" &&
+          Boolean(p.show_on_homepage_new_arrivals) &&
+          Number(p.homepage_new_arrival_position) === posNum
+        );
+        if (conflict) {
+          toast.error(`Position Conflict: "${conflict.name}" already occupies Homepage Position ${posNum}. Please reassign or clear that product before saving.`);
+          setUpdatingProduct(false);
+          return;
+        }
+      }
+
       uploadToastId = toast.loading("Persisting updates & syncing cloud media...");
 
       const data = new FormData();
@@ -1405,6 +1431,8 @@ const Admin = () => {
       if (editFormData.sub_category) data.append("sub_category", editFormData.sub_category);
       data.append("status", editFormData.status || "active");
       data.append("is_new_arrival", String(Boolean(editFormData.is_new_arrival)));
+      data.append("show_on_homepage_new_arrivals", String(Boolean(editFormData.show_on_homepage_new_arrivals)));
+      data.append("homepage_new_arrival_position", editFormData.show_on_homepage_new_arrivals && editFormData.homepage_new_arrival_position ? String(editFormData.homepage_new_arrival_position) : "");
       data.append("color", editFormData.color || "");
       data.append("secondary_color", editFormData.secondary_color || "");
       data.append("fabric", editFormData.fabric || "");
@@ -1857,6 +1885,26 @@ const Admin = () => {
         return;
       }
 
+      if (formData.show_on_homepage_new_arrivals) {
+        if (!formData.homepage_new_arrival_position) {
+          toast.error("Please assign a Homepage New Arrival Position (1, 2, 3, or 4).");
+          setUploading(false);
+          return;
+        }
+        const posNum = Number(formData.homepage_new_arrival_position);
+        const conflict = products.find(p => 
+          (editingGarmentId ? String(p.id) !== String(editingGarmentId) && String(p.slug) !== String(editingGarmentId) : true) &&
+          (p.status || "active").toLowerCase() !== "archived" &&
+          Boolean(p.show_on_homepage_new_arrivals) &&
+          Number(p.homepage_new_arrival_position) === posNum
+        );
+        if (conflict) {
+          toast.error(`Position Conflict: "${conflict.name}" already occupies Homepage Position ${posNum}. Please reassign or clear that product before saving.`);
+          setUploading(false);
+          return;
+        }
+      }
+
       const data = new FormData();
       data.append("name", formData.name);
       data.append("price", formData.price);
@@ -1873,6 +1921,8 @@ const Admin = () => {
       if (formData.sub_category) data.append("sub_category", formData.sub_category);
       data.append("status", finalStatus);
       data.append("is_new_arrival", String(Boolean(formData.is_new_arrival)));
+      data.append("show_on_homepage_new_arrivals", String(Boolean(formData.show_on_homepage_new_arrivals)));
+      data.append("homepage_new_arrival_position", formData.show_on_homepage_new_arrivals && formData.homepage_new_arrival_position ? String(formData.homepage_new_arrival_position) : "");
       data.append("color", formData.color || "");
       data.append("secondary_color", formData.secondary_color || "");
       data.append("fabric", formData.fabric || "");
@@ -1988,7 +2038,9 @@ const Admin = () => {
       fit: prod.fit || "Tailored",
       occasion: prod.occasion || "Business Formal",
       status: prod.status || "active",
-      is_new_arrival: Boolean(prod.is_new_arrival ?? prod.isNew ?? false)
+      is_new_arrival: Boolean(prod.is_new_arrival ?? prod.isNew ?? false),
+      show_on_homepage_new_arrivals: Boolean(prod.show_on_homepage_new_arrivals ?? false),
+      homepage_new_arrival_position: prod.homepage_new_arrival_position ? String(prod.homepage_new_arrival_position) : ""
     });
 
     let appSizes = [];
@@ -6372,6 +6424,11 @@ const Admin = () => {
                                         NEW ARRIVAL
                                       </span>
                                     )}
+                                    {Boolean(p.show_on_homepage_new_arrivals) && (
+                                      <span className="text-[9px] uppercase tracking-wider font-mono text-[#111113] border border-[#111113]/40 bg-[#FAF8F5] px-2 py-0.5 rounded-[2px] font-semibold">
+                                        HOMEPAGE: POS {p.homepage_new_arrival_position || "—"}
+                                      </span>
+                                    )}
                                     {p.category && (
                                       <span className="text-[9px] uppercase tracking-wider font-mono text-[#C2922E] border border-[#C2922E]/30 bg-[#C2922E]/10 px-2 py-0.5 rounded-[2px]">
                                         {typeof p.category === 'object' ? p.category.name : (p.categoryName || p.category)}
@@ -7916,8 +7973,120 @@ const Admin = () => {
                                   </span>
                                   <span className="text-[10px] text-[#746F68] font-mono">
                                     {formData.is_new_arrival 
-                                      ? "Eligible for homepage top-4 & /new-arrivals edit" 
+                                      ? "Eligible for automatic /new-arrivals catalog page" 
                                       : "Collections master catalogue only"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* HOMEPAGE NEW ARRIVAL PLACEMENT — Manual 4-Item Homepage Control */}
+                              <div className="bg-white border border-[#E5DDD1] p-3.5 sm:p-4 rounded-[2px] space-y-3">
+                                <div className="flex items-center justify-between gap-3">
+                                  <div>
+                                    <span className="text-[10.5px] uppercase tracking-[0.16em] text-[#111113] font-mono font-semibold block">
+                                      HOMEPAGE NEW ARRIVAL PLACEMENT
+                                    </span>
+                                    <p className="text-[11px] text-[#746F68] font-sans mt-0.5 leading-relaxed">
+                                      Manually feature in the 4-product showcase on the homepage.
+                                    </p>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setFormData(prev => {
+                                      const nextVal = !prev.show_on_homepage_new_arrivals;
+                                      return {
+                                        ...prev,
+                                        show_on_homepage_new_arrivals: nextVal,
+                                        homepage_new_arrival_position: nextVal ? (prev.homepage_new_arrival_position || "") : ""
+                                      };
+                                    })}
+                                    className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                      formData.show_on_homepage_new_arrivals ? "bg-[#C2922E]" : "bg-[#D8D2C6]"
+                                    }`}
+                                    role="switch"
+                                    aria-checked={Boolean(formData.show_on_homepage_new_arrivals)}
+                                    title="Toggle feature in Homepage New Arrivals"
+                                  >
+                                    <span
+                                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                        formData.show_on_homepage_new_arrivals ? "translate-x-6" : "translate-x-0"
+                                      }`}
+                                    />
+                                  </button>
+                                </div>
+
+                                {formData.show_on_homepage_new_arrivals && (
+                                  <div className="pt-2 border-t border-[#E5DDD1]/60 space-y-2.5">
+                                    <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block">
+                                      Homepage Position (1 to 4) *
+                                    </label>
+                                    <select
+                                      name="homepage_new_arrival_position"
+                                      value={formData.homepage_new_arrival_position || ""}
+                                      onChange={handleInputChange}
+                                      className="w-full bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
+                                    >
+                                      <option value="">Select Homepage Position...</option>
+                                      {[1, 2, 3, 4].map(pos => {
+                                        const occupiedBy = products.find(p => 
+                                          (editingGarmentId ? String(p.id) !== String(editingGarmentId) && String(p.slug) !== String(editingGarmentId) : true) &&
+                                          (p.status || "active").toLowerCase() !== "archived" &&
+                                          Boolean(p.show_on_homepage_new_arrivals) &&
+                                          Number(p.homepage_new_arrival_position) === pos
+                                        );
+                                        const isCurrent = editingGarmentId && products.find(p => 
+                                          (String(p.id) === String(editingGarmentId) || String(p.slug) === String(editingGarmentId)) &&
+                                          Number(p.homepage_new_arrival_position) === pos
+                                        );
+                                        return (
+                                          <option key={pos} value={pos}>
+                                            Position {pos} {isCurrent ? "— (Current Selection)" : occupiedBy ? `— (Occupied: ${occupiedBy.name})` : "— (Available)"}
+                                          </option>
+                                        );
+                                      })}
+                                    </select>
+
+                                    {/* Live Position Conflict Alert */}
+                                    {(() => {
+                                      if (!formData.homepage_new_arrival_position) return null;
+                                      const posNum = Number(formData.homepage_new_arrival_position);
+                                      const conflict = products.find(p => 
+                                        (editingGarmentId ? String(p.id) !== String(editingGarmentId) && String(p.slug) !== String(editingGarmentId) : true) &&
+                                        (p.status || "active").toLowerCase() !== "archived" &&
+                                        Boolean(p.show_on_homepage_new_arrivals) &&
+                                        Number(p.homepage_new_arrival_position) === posNum
+                                      );
+                                      if (!conflict) return null;
+                                      return (
+                                        <div className="bg-[#FFF8E7] border border-[#C2922E]/40 p-3 rounded-[2px] flex items-start gap-2.5">
+                                          <span className="text-[#C2922E] text-sm leading-none mt-0.5">⚠️</span>
+                                          <div className="text-[11px] text-[#7A5812] leading-relaxed font-sans">
+                                            <span className="font-semibold block font-mono text-[10.5px] uppercase tracking-wider text-[#A06D12]">
+                                              Position Conflict Detected
+                                            </span>
+                                            <strong className="font-medium">"{conflict.name}"</strong> is currently assigned to Position {posNum}. Please change this product's position or reassign the other product first.
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                )}
+
+                                <div className="flex items-center gap-2 pt-1 border-t border-[#E5DDD1]/60">
+                                  <span className={`text-[9px] uppercase font-mono px-2 py-0.5 rounded-[2px] font-medium tracking-wider ${
+                                    formData.show_on_homepage_new_arrivals 
+                                      ? "bg-[#C2922E]/15 text-[#C2922E] border border-[#C2922E]/40" 
+                                      : "bg-[#FAF8F5] text-[#746F68] border border-[#E5DDD1]"
+                                  }`}>
+                                    {formData.show_on_homepage_new_arrivals 
+                                      ? `HOMEPAGE: POS ${formData.homepage_new_arrival_position || "UNASSIGNED"}` 
+                                      : "HOMEPAGE: OFF"}
+                                  </span>
+                                  <span className="text-[10px] text-[#746F68] font-mono">
+                                    {formData.show_on_homepage_new_arrivals 
+                                      ? "Manually curated for 4-outfit home showcase" 
+                                      : "Not displayed in homepage 4-piece grid"}
                                   </span>
                                 </div>
                               </div>
@@ -8169,9 +8338,19 @@ const Admin = () => {
                                     UTR
                                   </span>
                                   {o.transaction_id ? (
-                                    <p className="font-mono text-[10.5px] text-[#111113] font-medium tracking-wide select-all leading-none truncate" title={o.transaction_id}>
-                                      {o.transaction_id}
-                                    </p>
+                                    <div className="space-y-1">
+                                      <p className="font-mono text-[10.5px] text-[#111113] font-medium tracking-wide select-all leading-none truncate" title={o.transaction_id}>
+                                        {o.transaction_id}
+                                      </p>
+                                      {o.is_duplicate_utr && (
+                                        <span
+                                          className="inline-flex items-center gap-1 text-[8.5px] font-mono text-rose-800 bg-rose-50 border border-rose-300 px-1.5 py-0.5 rounded-[2px] font-semibold tracking-wider uppercase leading-none"
+                                          title={o.duplicate_utr_order_id ? `Matches Order #SUKO-${1000 + o.duplicate_utr_order_id}` : "Duplicate UTR across orders"}
+                                        >
+                                          ⚠️ DUPLICATE {o.duplicate_utr_order_id ? `#SUKO-${1000 + o.duplicate_utr_order_id}` : ""}
+                                        </span>
+                                      )}
+                                    </div>
                                   ) : (
                                     <span className="text-[10px] text-[#A8A196] font-mono italic block leading-none">Not submitted</span>
                                   )}
@@ -8401,6 +8580,13 @@ const Admin = () => {
                               </span>
                             </div>
                           </div>
+
+                          {/* Mobile Duplicate UTR Warning Chip */}
+                          {o.is_duplicate_utr && (
+                            <div className="p-2 bg-rose-50 border border-rose-300 text-rose-900 text-[10.5px] font-mono flex items-center gap-1.5 rounded-[2px]">
+                              <span>⚠️ DUPLICATE UTR: Matches {o.duplicate_utr_order_id ? `#SUKO-${1000 + o.duplicate_utr_order_id}` : "another order"}</span>
+                            </div>
+                          )}
 
                           {/* Inline Verification Action if pending */}
                           {o.status === "payment_verification_pending" && (
@@ -9513,6 +9699,111 @@ const Admin = () => {
                       </button>
                     </div>
 
+                    {/* HOMEPAGE NEW ARRIVAL PLACEMENT — Manual Homepage Curation in Edit Drawer */}
+                    <div className="bg-[#FAF8F5] border border-[#E5DDD1] p-3 rounded-[2px] space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <span className="text-[10px] uppercase tracking-[0.14em] text-[#111113] font-mono font-semibold block">
+                            HOMEPAGE NEW ARRIVAL PLACEMENT
+                          </span>
+                          <span className="text-[10px] text-[#746F68] font-mono block mt-0.5">
+                            Show in the 4-outfit showcase on Homepage
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditFormData(prev => {
+                            const nextVal = !prev.show_on_homepage_new_arrivals;
+                            return {
+                              ...prev,
+                              show_on_homepage_new_arrivals: nextVal,
+                              homepage_new_arrival_position: nextVal ? (prev.homepage_new_arrival_position || "") : ""
+                            };
+                          })}
+                          className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            editFormData.show_on_homepage_new_arrivals ? "bg-[#C2922E]" : "bg-[#D8D2C6]"
+                          }`}
+                          role="switch"
+                          aria-checked={Boolean(editFormData.show_on_homepage_new_arrivals)}
+                          title="Toggle show on Homepage New Arrivals"
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                              editFormData.show_on_homepage_new_arrivals ? "translate-x-5" : "translate-x-0"
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      {editFormData.show_on_homepage_new_arrivals && (
+                        <div className="pt-2 border-t border-[#E5DDD1]/60 space-y-2">
+                          <label className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono block">
+                            Homepage Position (1 to 4) *
+                          </label>
+                          <select
+                            value={editFormData.homepage_new_arrival_position || ""}
+                            onChange={(e) => setEditFormData({ ...editFormData, homepage_new_arrival_position: e.target.value })}
+                            className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-1.5 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
+                          >
+                            <option value="">Select Homepage Position...</option>
+                            {[1, 2, 3, 4].map(pos => {
+                              const occupiedBy = products.find(p => 
+                                (editingProduct ? String(p.id) !== String(editingProduct.id) && String(p.slug) !== String(editingProduct.slug) : true) &&
+                                (p.status || "active").toLowerCase() !== "archived" &&
+                                Boolean(p.show_on_homepage_new_arrivals) &&
+                                Number(p.homepage_new_arrival_position) === pos
+                              );
+                              const isCurrent = editingProduct && products.find(p => 
+                                (String(p.id) === String(editingProduct.id) || String(p.slug) === String(editingProduct.slug)) &&
+                                Number(p.homepage_new_arrival_position) === pos
+                              );
+                              return (
+                                <option key={pos} value={pos}>
+                                  Position {pos} {isCurrent ? "— (Current Selection)" : occupiedBy ? `— (Occupied: ${occupiedBy.name})` : "— (Available)"}
+                                </option>
+                              );
+                            })}
+                          </select>
+
+                          {/* Live Position Conflict Alert in Edit Drawer */}
+                          {(() => {
+                            if (!editFormData.homepage_new_arrival_position) return null;
+                            const posNum = Number(editFormData.homepage_new_arrival_position);
+                            const conflict = products.find(p => 
+                              (editingProduct ? String(p.id) !== String(editingProduct.id) && String(p.slug) !== String(editingProduct.slug) : true) &&
+                              (p.status || "active").toLowerCase() !== "archived" &&
+                              Boolean(p.show_on_homepage_new_arrivals) &&
+                              Number(p.homepage_new_arrival_position) === posNum
+                            );
+                            if (!conflict) return null;
+                            return (
+                              <div className="bg-[#FFF8E7] border border-[#C2922E]/40 p-2.5 rounded-[2px] flex items-start gap-2">
+                                <span className="text-[#C2922E] text-xs leading-none mt-0.5">⚠️</span>
+                                <div className="text-[10.5px] text-[#7A5812] leading-relaxed font-sans">
+                                  <span className="font-semibold block font-mono text-[9.5px] uppercase tracking-wider text-[#A06D12]">
+                                    Position Conflict Detected
+                                  </span>
+                                  <strong className="font-medium">"{conflict.name}"</strong> already occupies Position {posNum}. Please choose another position or clear it from "{conflict.name}" first.
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 pt-1 border-t border-[#E5DDD1]/60">
+                        <span className={`text-[9px] uppercase font-mono px-2 py-0.5 rounded-[2px] font-medium tracking-wider ${
+                          editFormData.show_on_homepage_new_arrivals 
+                            ? "bg-[#C2922E]/15 text-[#C2922E] border border-[#C2922E]/40" 
+                            : "bg-white text-[#746F68] border border-[#E5DDD1]"
+                        }`}>
+                          {editFormData.show_on_homepage_new_arrivals 
+                            ? `HOMEPAGE: POS ${editFormData.homepage_new_arrival_position || "UNASSIGNED"}` 
+                            : "HOMEPAGE: OFF"}
+                        </span>
+                      </div>
+                    </div>
+
                     {/* COLOR PALETTE SUITE (EDIT DRAWER) */}
                     <div className="space-y-3 bg-[#FCFAF7] border border-[#E5DDD1] p-3.5 rounded-[2px]">
                       <div className="flex items-center justify-between">
@@ -9927,6 +10218,19 @@ const Admin = () => {
                             </button>
                           )}
                         </div>
+                        {selectedOrderDetails.is_duplicate_utr && (
+                          <div className="mt-2 p-2.5 bg-rose-50 border border-rose-300 rounded-[2px] text-rose-900 text-[11.5px] font-mono flex items-start gap-2">
+                            <span className="text-sm shrink-0">⚠️</span>
+                            <div>
+                              <span className="font-semibold block uppercase tracking-wider text-[10px] text-rose-800">
+                                SECURITY WARNING: Duplicate UTR Detected
+                              </span>
+                              <span>
+                                This UTR was previously submitted on {selectedOrderDetails.duplicate_utr_order_id ? `Order #SUKO-${1000 + selectedOrderDetails.duplicate_utr_order_id}` : "another order"}. Ensure this is not a duplicate or fraudulent payment receipt.
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -9955,8 +10259,14 @@ const Admin = () => {
                             <span>Amount matches order total ({formatINR(selectedOrderDetails.total)})</span>
                           </li>
                           <li className="flex items-center gap-2">
-                            <span className="text-[10px] text-[#A8A196] font-medium">02</span>
-                            <span>UTR matches payment proof ({selectedOrderDetails.transaction_id || "entered UTR"})</span>
+                            <span className={`text-[10px] font-medium ${selectedOrderDetails.is_duplicate_utr ? "text-rose-700" : "text-[#A8A196]"}`}>02</span>
+                            {selectedOrderDetails.is_duplicate_utr ? (
+                              <span className="text-rose-800 font-semibold">
+                                ⚠️ UTR Duplicate Warning: Matches {selectedOrderDetails.duplicate_utr_order_id ? `#SUKO-${1000 + selectedOrderDetails.duplicate_utr_order_id}` : "another order"}! Audit bank ledger.
+                              </span>
+                            ) : (
+                              <span>UTR matches payment proof ({selectedOrderDetails.transaction_id || "entered UTR"})</span>
+                            )}
                           </li>
                           <li className="flex items-center gap-2">
                             <span className="text-[10px] text-[#A8A196] font-medium">03</span>
@@ -12208,6 +12518,22 @@ const Admin = () => {
                       {verifyPaymentModalOrder.transaction_id || verifyPaymentModalOrder.utr || "Not provided"}
                     </span>
                   </div>
+
+                  {verifyPaymentModalOrder.is_duplicate_utr && (
+                    <div className="pt-2 border-t border-[#F0EBE1] text-left">
+                      <div className="p-2.5 bg-rose-50 border border-rose-300 rounded-[2px] text-rose-900 text-[11px] font-mono flex items-start gap-2">
+                        <span className="text-sm shrink-0">⚠️</span>
+                        <div>
+                          <span className="font-semibold block uppercase tracking-wider text-[9.5px] text-rose-800">
+                            SECURITY WARNING: DUPLICATE UTR
+                          </span>
+                          <span>
+                            This UTR matches {verifyPaymentModalOrder.duplicate_utr_order_id ? `Order #SUKO-${1000 + verifyPaymentModalOrder.duplicate_utr_order_id}` : "another existing order"}. Verify merchant ledger before approving.
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Confirmation Copy */}
