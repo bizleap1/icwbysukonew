@@ -436,6 +436,7 @@ router.post(
         seo_schema,
         gallery: rawGallery,
         existing_images: rawExistingImages,
+        garment_label,
         is_new_arrival,
         show_on_homepage_new_arrivals,
         homepage_new_arrival_position
@@ -563,6 +564,7 @@ router.post(
         seo_description: seo_description || undefined,
         seo_keywords: seo_keywords || undefined,
         seo_schema: parsedSeoSchema || undefined,
+        garment_label: garment_label ? String(garment_label).trim() : null,
         is_new_arrival: is_new_arrival === true || is_new_arrival === "true" || is_new_arrival === 1 || is_new_arrival === "1",
         show_on_homepage_new_arrivals: isShowOnHomepage,
         homepage_new_arrival_position: isShowOnHomepage ? homepagePos : null
@@ -664,6 +666,11 @@ router.put("/:id", requireAdmin, handleOptionalMultipart, async (req, res) => {
     if (seo_description !== undefined) updateData.seo_description = seo_description;
     if (seo_keywords !== undefined) updateData.seo_keywords = seo_keywords;
     if (parsedSeoSchema !== undefined) updateData.seo_schema = parsedSeoSchema;
+    if (req.body.garment_label !== undefined) {
+      updateData.garment_label = req.body.garment_label ? String(req.body.garment_label).trim() : null;
+    } else if (req.body.garmentLabel !== undefined) {
+      updateData.garment_label = req.body.garmentLabel ? String(req.body.garmentLabel).trim() : null;
+    }
     if (req.body.is_new_arrival !== undefined) {
       updateData.is_new_arrival = req.body.is_new_arrival === true || req.body.is_new_arrival === "true" || req.body.is_new_arrival === 1 || req.body.is_new_arrival === "1";
     }
@@ -719,37 +726,81 @@ router.put("/:id", requireAdmin, handleOptionalMultipart, async (req, res) => {
       newUploadedUrls = uploadResult.allUrls;
     }
 
-    const combinedImages = [...parsedExisting, ...newUploadedUrls];
-    if (combinedImages.length > 0) {
-      const syncMedia = productService.synchronizeGalleryAndImages(
-        req.body.gallery,
-        combinedImages,
-        combinedImages[0]
-      );
-      updateData.images = syncMedia.images;
-      updateData.gallery = syncMedia.gallery;
-      updateData.image_url = syncMedia.imageUrl;
-    } else if (req.body.image_url) {
-      const syncMedia = productService.synchronizeGalleryAndImages(
-        req.body.gallery,
-        [req.body.image_url],
-        req.body.image_url
-      );
-      updateData.images = syncMedia.images;
-      updateData.gallery = syncMedia.gallery;
-      updateData.image_url = syncMedia.imageUrl;
+    // Parse gallery_structure if provided for slot-ordered replacement and reordering
+    let parsedGalleryStructure = null;
+    if (req.body.gallery_structure) {
+      try {
+        parsedGalleryStructure = typeof req.body.gallery_structure === "string"
+          ? JSON.parse(req.body.gallery_structure)
+          : req.body.gallery_structure;
+      } catch (e) {}
+    }
+
+    let finalOrderedImages = [];
+    let finalGallery = [];
+
+    if (Array.isArray(parsedGalleryStructure) && parsedGalleryStructure.length > 0) {
+      const canonicalTypes = productService.CANONICAL_GALLERY_TYPES || ["model_front", "model_three_quarter", "detail", "model_back"];
+      parsedGalleryStructure.forEach((slot, idx) => {
+        let slotUrl = "";
+        if (slot.type === "existing" && slot.url) {
+          slotUrl = slot.url;
+        } else if (slot.type === "new" && typeof slot.fileIndex === "number" && newUploadedUrls[slot.fileIndex]) {
+          slotUrl = newUploadedUrls[slot.fileIndex];
+        } else if (slot.url && !slot.url.startsWith("blob:") && !slot.url.startsWith("data:")) {
+          slotUrl = slot.url;
+        }
+
+        if (slotUrl) {
+          finalOrderedImages.push(slotUrl);
+          finalGallery.push({
+            url: slotUrl,
+            type: slot.role || slot.type || canonicalTypes[idx] || "detail",
+            ...(slot.crop ? { crop: slot.crop } : {})
+          });
+        }
+      });
+
+      if (finalOrderedImages.length > 0) {
+        updateData.images = finalOrderedImages;
+        updateData.gallery = finalGallery;
+        updateData.image_url = finalOrderedImages[0];
+      }
+    } else {
+      const combinedImages = [...parsedExisting, ...newUploadedUrls];
+      if (combinedImages.length > 0) {
+        const syncMedia = productService.synchronizeGalleryAndImages(
+          req.body.gallery,
+          combinedImages,
+          combinedImages[0]
+        );
+        updateData.images = syncMedia.images;
+        updateData.gallery = syncMedia.gallery;
+        updateData.image_url = syncMedia.imageUrl;
+      } else if (req.body.image_url) {
+        const syncMedia = productService.synchronizeGalleryAndImages(
+          req.body.gallery,
+          [req.body.image_url],
+          req.body.image_url
+        );
+        updateData.images = syncMedia.images;
+        updateData.gallery = syncMedia.gallery;
+        updateData.image_url = syncMedia.imageUrl;
+      }
     }
 
     const current = await productService.getProductById(req.params.id);
     if (!current) return res.status(404).json({ error: "Product not found" });
 
     const targetStatus = status || current.status || "active";
-    const effectiveImages = combinedImages.length > 0 
-      ? combinedImages 
-      : (current.images?.length ? current.images : (current.image_url ? [current.image_url] : []));
+    const effectiveImages = finalOrderedImages.length > 0
+      ? finalOrderedImages
+      : (updateData.images?.length 
+          ? updateData.images 
+          : (current.images?.length ? current.images : (current.image_url ? [current.image_url] : [])));
 
     if (targetStatus === "active" && effectiveImages.length < 3) {
-      return res.status(400).json({ error: "Add at least 3 product images before publishing." });
+      return res.status(400).json({ error: "Active showroom products require at least 3 images. Add more images or set status to Draft." });
     }
     if (targetStatus === "draft" && effectiveImages.length < 1) {
       return res.status(400).json({ error: "Add at least 1 product image for draft." });

@@ -376,6 +376,7 @@ function ensureProductSizeStock(p) {
     moments,
     moment_name: momentName,
     size_stock: sizeStock,
+    garment_label: p.garment_label || p.garmentLabel || null,
     is_new_arrival: Boolean(p.is_new_arrival ?? p.isNew ?? false),
     show_on_homepage_new_arrivals: Boolean(p.show_on_homepage_new_arrivals ?? false),
     homepage_new_arrival_position: p.homepage_new_arrival_position ? Number(p.homepage_new_arrival_position) : null
@@ -535,6 +536,7 @@ async function createProduct(productData) {
       moment: productData.moment || "boardroom",
       moments: Array.isArray(productData.moments) ? productData.moments : [productData.moment || "boardroom"],
       moment_name: productData.momentName || productData.moment_name || "The Boardroom Edit",
+      garment_label: productData.garment_label || productData.garmentLabel || null,
       is_new_arrival: Boolean(productData.is_new_arrival),
       show_on_homepage_new_arrivals: Boolean(productData.show_on_homepage_new_arrivals),
       homepage_new_arrival_position: productData.show_on_homepage_new_arrivals && productData.homepage_new_arrival_position ? Number(productData.homepage_new_arrival_position) : null,
@@ -553,8 +555,8 @@ async function createProduct(productData) {
 
   // Real Postgres mode
   const res = await pool.query(
-    `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric, color, secondary_color, pattern, finish, silhouette, fit, occasion, moment, moments, moment_name, seo_title, seo_description, seo_keywords, seo_schema, gallery, is_new_arrival, show_on_homepage_new_arrivals, homepage_new_arrival_position)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)
+    `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric, color, secondary_color, pattern, finish, silhouette, fit, occasion, moment, moments, moment_name, seo_title, seo_description, seo_keywords, seo_schema, gallery, is_new_arrival, show_on_homepage_new_arrivals, homepage_new_arrival_position, garment_label)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36)
      RETURNING *`,
     [
       newId,
@@ -591,7 +593,8 @@ async function createProduct(productData) {
       JSON.stringify(gallery),
       Boolean(productData.is_new_arrival),
       Boolean(productData.show_on_homepage_new_arrivals),
-      productData.show_on_homepage_new_arrivals && productData.homepage_new_arrival_position ? Number(productData.homepage_new_arrival_position) : null
+      productData.show_on_homepage_new_arrivals && productData.homepage_new_arrival_position ? Number(productData.homepage_new_arrival_position) : null,
+      productData.garment_label || productData.garmentLabel || null
     ]
   );
   return ensureProductSizeStock(res.rows[0]);
@@ -655,6 +658,9 @@ async function updateProduct(id, updateData) {
       moment: updateData.moment !== undefined ? updateData.moment : current.moment,
       moments: updateData.moments !== undefined ? updateData.moments : current.moments,
       moment_name: updateData.moment_name !== undefined ? updateData.moment_name : (updateData.momentName !== undefined ? updateData.momentName : current.moment_name),
+      garment_label: updateData.garment_label !== undefined 
+        ? (updateData.garment_label ? String(updateData.garment_label).trim() : null) 
+        : (updateData.garmentLabel !== undefined ? (updateData.garmentLabel ? String(updateData.garmentLabel).trim() : null) : current.garment_label),
       is_new_arrival: updateData.is_new_arrival !== undefined ? Boolean(updateData.is_new_arrival) : Boolean(current.is_new_arrival),
       show_on_homepage_new_arrivals: updateData.show_on_homepage_new_arrivals !== undefined ? Boolean(updateData.show_on_homepage_new_arrivals) : Boolean(current.show_on_homepage_new_arrivals),
       homepage_new_arrival_position: updateData.show_on_homepage_new_arrivals !== undefined 
@@ -698,6 +704,10 @@ async function updateProduct(id, updateData) {
     updateData.image_url = syncMedia.imageUrl;
   }
 
+  const isGarmentLabelProvided = updateData.garment_label !== undefined || updateData.garmentLabel !== undefined;
+  const rawGarmentLabelVal = updateData.garment_label !== undefined ? updateData.garment_label : updateData.garmentLabel;
+  const targetGarmentLabel = isGarmentLabelProvided ? (rawGarmentLabelVal ? String(rawGarmentLabelVal).trim() : null) : null;
+
   const res = await pool.query(
     `UPDATE products
      SET name = COALESCE($1, name),
@@ -736,6 +746,10 @@ async function updateProduct(id, updateData) {
            WHEN $32 = false THEN NULL
            ELSE homepage_new_arrival_position
          END,
+         garment_label = CASE 
+           WHEN $34::boolean THEN $35 
+           ELSE garment_label 
+         END,
          updated_at = now()
      WHERE id = $31 OR slug = $31
      RETURNING *`,
@@ -772,7 +786,9 @@ async function updateProduct(id, updateData) {
       updateData.is_new_arrival !== undefined ? Boolean(updateData.is_new_arrival) : null,
       String(id),
       updateData.show_on_homepage_new_arrivals !== undefined ? Boolean(updateData.show_on_homepage_new_arrivals) : null,
-      updateData.show_on_homepage_new_arrivals && updateData.homepage_new_arrival_position ? Number(updateData.homepage_new_arrival_position) : null
+      updateData.show_on_homepage_new_arrivals && updateData.homepage_new_arrival_position ? Number(updateData.homepage_new_arrival_position) : null,
+      isGarmentLabelProvided,
+      targetGarmentLabel
     ]
   );
   return ensureProductSizeStock(res.rows[0]);

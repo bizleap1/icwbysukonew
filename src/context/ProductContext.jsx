@@ -183,6 +183,8 @@ export const ProductProvider = ({ children }) => {
             moments: finalMoments,
             momentName: finalMomentName,
             moment_name: finalMomentName,
+            garment_label: bp.garment_label || bp.garmentLabel || matchedFallback?.garment_label || matchedFallback?.garmentLabel || '',
+            garmentLabel: bp.garment_label || bp.garmentLabel || matchedFallback?.garment_label || matchedFallback?.garmentLabel || '',
             created_at: bp.created_at,
             updated_at: bp.updated_at
           };
@@ -243,6 +245,8 @@ export const ProductProvider = ({ children }) => {
               moments: Array.isArray(fp.moments) ? fp.moments : [fp.moment || 'boardroom'],
               momentName: fp.momentName || 'The Boardroom Edit',
               moment_name: fp.momentName || 'The Boardroom Edit',
+              garment_label: fp.garment_label || fp.garmentLabel || '',
+              garmentLabel: fp.garment_label || fp.garmentLabel || '',
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             });

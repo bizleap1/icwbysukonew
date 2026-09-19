@@ -62,7 +62,7 @@ export const ProductAccordion = ({ product }) => {
       content: (
         <div className="space-y-2 text-xs sm:text-[13.5px] text-[#555560] font-light leading-relaxed font-body">
           <p>
-            Complimentary express domestic shipping across India (3–5 business days).
+            Complimentary express domestic shipping across India (10 days).
           </p>
           <p>
             Easy 7-day exchanges. Connect directly with our WhatsApp styling concierge for personalized fit and styling guidance.

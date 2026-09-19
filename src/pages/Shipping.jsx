@@ -55,7 +55,7 @@ const Shipping = () => {
               </h2>
             </div>
             <p className="text-xs sm:text-[13.5px] text-[#555560] font-light leading-relaxed">
-              Each order placed with ICW by Suko is prepared and dispatched directly from our facilities. Once your shipment is arranged, confirmation details and status updates are provided via your registered contact information.
+              Each order placed with ICW by Suko is prepared and dispatched directly from our facilities. Complimentary standard delivery across India is fulfilled within 10 days. Once your shipment is arranged, confirmation details and status updates are provided via your registered contact information.
             </p>
           </section>
 

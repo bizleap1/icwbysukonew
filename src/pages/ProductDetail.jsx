@@ -256,11 +256,12 @@ export const ProductDetail = () => {
 
   const isOutOfStock = isProductOutOfStock || isSelectedSizeOutOfStock;
 
+  const customGarmentLabel = (product.garment_label || product.garmentLabel || "").trim();
   const categoryType = product.categoryType || (product.category === "suits" || product.category === "coords" ? "set" : "blazer");
   const isFullSet = categoryType === "set";
 
-  // Customer-facing garment type label next to price (never generic "Tailored Separate")
-  const garmentTypeLabel = {
+  // Customer-facing garment type label next to price (prioritizes manual admin setting)
+  const fallbackGarmentTypeLabel = {
     set: "Complete Set",
     blazer: "Blazer",
     trouser: "Trousers",
@@ -270,6 +271,8 @@ export const ProductDetail = () => {
     shirt: "Shirt",
     dress: "Dress"
   }[categoryType] || (product.subCategory ? product.subCategory.replace(/s$/i, "") : "Silhouetted Piece");
+
+  const garmentTypeLabel = customGarmentLabel || fallbackGarmentTypeLabel;
 
   // Coordinates resolution (supporting both { slug, label } objects and string slugs)
   const cleanSlug = (s) => String(s || "").toLowerCase().replace(/^the-/, "");

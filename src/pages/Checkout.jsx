@@ -1694,7 +1694,7 @@ const Checkout = () => {
                             Standard Delivery
                           </p>
                           <p className="text-[11.5px] text-[#6E6E75] font-light">
-                            Estimated delivery: 4–7 business days
+                            Estimated delivery: 10 days
                           </p>
                         </div>
                       </div>

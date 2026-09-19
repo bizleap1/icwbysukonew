@@ -14,6 +14,7 @@ import {
 import { formatINR, CATEGORIES as DEFAULT_CATEGORIES } from "../data/products";
 import { useProducts } from "../context/ProductContext";
 import ImageCropperModal from "../components/ImageCropperModal";
+import ProductImageManager from "../components/ProductImageManager";
 import AtelierOperationsCalendar from "../components/admin/AtelierOperationsCalendar";
 import AdminControlsSection from "../components/admin/AdminControlsSection";
 import BrandDocumentsSection from "../components/admin/BrandDocumentsSection";
@@ -887,6 +888,7 @@ const Admin = () => {
   const [cropperRole, setCropperRole] = useState("model_front");
   const [croppingIndex, setCroppingIndex] = useState(null);
   const [cropperCallback, setCropperCallback] = useState(null);
+  const [cropperTarget, setCropperTarget] = useState("galleryFiles"); // "galleryFiles" | "editGalleryImages"
   const [demoActiveIndex, setDemoActiveIndex] = useState(0);
 
   // Calendar States
@@ -905,6 +907,7 @@ const Admin = () => {
     name: "",
     price: "",
     discount_price: "",
+    garment_label: "",
     stock: "25",
     description: "",
     category_id: "",
@@ -1305,6 +1308,7 @@ const Admin = () => {
   const [editFormData, setEditFormData] = useState({
     name: "",
     price: "",
+    garment_label: "",
     stock: "",
     category_id: "",
     sub_category: "",
@@ -1365,6 +1369,7 @@ const Admin = () => {
     setEditFormData({
       name: p.name || "",
       price: p.price || "",
+      garment_label: p.garment_label || p.garmentLabel || "",
       category_id: p.category_id || "",
       sub_category: p.sub_category || "",
       color: p.color || "",
@@ -1383,10 +1388,41 @@ const Admin = () => {
     });
     setEditSizeStockMap(initialMap);
 
-    // Set existing gallery images
-    const existingList = Array.isArray(p.images) && p.images.length > 0
-      ? p.images.map(url => ({ url, preview: url, isPrimary: url === p.image_url }))
-      : p.image_url ? [{ url: p.image_url, preview: p.image_url, isPrimary: true }] : [];
+    // Set existing gallery images with rich metadata (types, crops, primary status)
+    let existingList = [];
+    if (Array.isArray(p.gallery) && p.gallery.length > 0) {
+      existingList = p.gallery.map((g, idx) => {
+        const url = typeof g === "string" ? g : (g.url || g.image || g.preview || "");
+        const type = typeof g === "object" && g.type ? g.type : (idx === 0 ? "model_front" : idx === 1 ? "model_three_quarter" : "detail");
+        return {
+          id: `existing-edit-${idx}-${Date.now()}`,
+          url,
+          preview: url,
+          type,
+          crop: typeof g === "object" ? g.crop : undefined,
+          isPrimary: idx === 0,
+          isCropped: Boolean(typeof g === "object" && g.crop)
+        };
+      }).filter(g => Boolean(g.url));
+    } else if (Array.isArray(p.images) && p.images.length > 0) {
+      existingList = p.images.map((url, idx) => ({
+        id: `existing-edit-${idx}-${Date.now()}`,
+        url,
+        preview: url,
+        type: idx === 0 ? "model_front" : idx === 1 ? "model_three_quarter" : "detail",
+        isPrimary: idx === 0,
+        isCropped: false
+      }));
+    } else if (p.image_url) {
+      existingList = [{
+        id: `existing-edit-0-${Date.now()}`,
+        url: p.image_url,
+        preview: p.image_url,
+        type: "model_front",
+        isPrimary: true,
+        isCropped: false
+      }];
+    }
 
     setEditGalleryImages(existingList);
     setEditImage(null);
@@ -1401,6 +1437,18 @@ const Admin = () => {
     let uploadToastId = null;
 
     try {
+      const targetStatus = editFormData.status || "active";
+      if (targetStatus === "active" && editGalleryImages.length < 3) {
+        toast.error("Active Showroom products require at least 3 images. Please upload more images or set status to Draft.");
+        setUpdatingProduct(false);
+        return;
+      }
+      if (targetStatus === "draft" && editGalleryImages.length < 1) {
+        toast.error("Draft products require at least 1 image.");
+        setUpdatingProduct(false);
+        return;
+      }
+
       if (editFormData.show_on_homepage_new_arrivals) {
         if (!editFormData.homepage_new_arrival_position) {
           toast.error("Please assign a Homepage New Arrival Position (1, 2, 3, or 4).");
@@ -1427,6 +1475,7 @@ const Admin = () => {
       data.append("name", editFormData.name);
       data.append("price", editFormData.price);
       data.append("description", editFormData.description);
+      if (editFormData.garment_label !== undefined) data.append("garment_label", editFormData.garment_label.trim());
       if (editFormData.category_id) data.append("category_id", editFormData.category_id);
       if (editFormData.sub_category) data.append("sub_category", editFormData.sub_category);
       data.append("status", editFormData.status || "active");
@@ -1450,6 +1499,32 @@ const Admin = () => {
       data.append("stock", String(computedEditStock));
       data.append("sizes", JSON.stringify(editApplicableSizes));
 
+      // Build structured gallery mapping for exact slot ordering, replacement, and Cloudinary sync
+      let nextNewFileIndex = 0;
+      const galleryStructure = [];
+      const newFilesList = [];
+
+      editGalleryImages.forEach((g) => {
+        if (g.file) {
+          galleryStructure.push({
+            type: "new",
+            fileIndex: nextNewFileIndex++,
+            role: g.type || "detail",
+            crop: g.crop
+          });
+          newFilesList.push(g.file);
+        } else if (g.url) {
+          galleryStructure.push({
+            type: "existing",
+            url: g.url,
+            role: g.type || "detail",
+            crop: g.crop
+          });
+        }
+      });
+
+      data.append("gallery_structure", JSON.stringify(galleryStructure));
+
       const existingUrls = editGalleryImages.filter(g => g.url && !g.file).map(g => g.url);
       data.append("existing_images", JSON.stringify(existingUrls));
 
@@ -1460,9 +1535,9 @@ const Admin = () => {
         data.append("image", editImage);
       }
 
-      editGalleryImages.forEach(g => {
-        if (g.file && g !== primaryItem) {
-          data.append("images", g.file);
+      newFilesList.forEach(file => {
+        if (file !== primaryItem?.file) {
+          data.append("images", file);
         }
       });
 
@@ -1681,18 +1756,21 @@ const Admin = () => {
     { value: "model_side", label: "Side Profile", shortLabel: "Side Profile" }
   ];
 
-  const handleOpenCropper = (index) => {
-    const item = galleryFiles[index];
-    if (!item) return;
-    setCropperSrc(item.preview || item.url);
-    setCropperRole(item.type || (index === 0 ? "model_front" : index === 1 ? "model_three_quarter" : "detail"));
+  const handleOpenCropper = (index, target = "galleryFiles", customSrc = null) => {
+    const list = target === "editGalleryImages" ? editGalleryImages : galleryFiles;
+    const item = list[index];
+    const src = customSrc || item?.preview || item?.url;
+    if (!src) return;
+    setCropperTarget(target);
+    setCropperSrc(src);
+    setCropperRole(item?.type || (index === 0 ? "model_front" : index === 1 ? "model_three_quarter" : "detail"));
     setCroppingIndex(index);
     pushModalState("cropper");
   };
 
   const handleSaveCroppedImage = (cropped) => {
     if (croppingIndex !== null && croppingIndex !== undefined) {
-      setGalleryFiles(prev => prev.map((item, idx) => {
+      const updater = prev => prev.map((item, idx) => {
         if (idx === croppingIndex) {
           return {
             ...item,
@@ -1706,7 +1784,13 @@ const Admin = () => {
           };
         }
         return item;
-      }));
+      });
+
+      if (cropperTarget === "editGalleryImages") {
+        setEditGalleryImages(updater);
+      } else {
+        setGalleryFiles(updater);
+      }
       toast.success("4:5 portrait crop saved! Master asset preserved.");
     }
     setCropperSrc(null);
@@ -1909,6 +1993,7 @@ const Admin = () => {
       data.append("name", formData.name);
       data.append("price", formData.price);
       if (formData.discount_price) data.append("discount_price", formData.discount_price);
+      if (formData.garment_label !== undefined) data.append("garment_label", formData.garment_label.trim());
       
       const sanitizedStock = {};
       applicableSizes.forEach(sz => {
@@ -1948,6 +2033,28 @@ const Admin = () => {
           data.append("images", g.file);
         }
       });
+
+      // Build structured gallery mapping for exact slot ordering & Cloudinary sync
+      let nextNewFileIndex = 0;
+      const galleryStructure = [];
+      galleryFiles.forEach((g) => {
+        if (g.file) {
+          galleryStructure.push({
+            type: "new",
+            fileIndex: nextNewFileIndex++,
+            role: g.type || "detail",
+            crop: g.crop
+          });
+        } else if (g.url) {
+          galleryStructure.push({
+            type: "existing",
+            url: g.url,
+            role: g.type || "detail",
+            crop: g.crop
+          });
+        }
+      });
+      data.append("gallery_structure", JSON.stringify(galleryStructure));
 
       // Gallery metadata ordering with canonical roles and crop coordinates
       const galleryMeta = galleryFiles.map((g, idx) => ({
@@ -2025,6 +2132,7 @@ const Admin = () => {
       name: prod.name || "",
       price: prod.price || "",
       discount_price: prod.discount_price || "",
+      garment_label: prod.garment_label || prod.garmentLabel || "",
       stock: prod.stock !== undefined ? String(prod.stock) : "25",
       description: prod.description || "",
       category_id: prod.category_id || prod.category?.id || prod.category || "",
@@ -3567,10 +3675,10 @@ const Admin = () => {
       return new Date(o.delivery_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
     }
     if (o.status === "completed") {
-      const d = new Date(new Date(o.created_at || Date.now()).getTime() + 5 * 86400000);
+      const d = new Date(new Date(o.created_at || Date.now()).getTime() + 10 * 86400000);
       return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
     }
-    return "Standard 3-5 Business Days";
+    return "Standard 10 Days";
   };
 
   const getProfessionalDateStr = () => {
@@ -7513,21 +7621,39 @@ const Admin = () => {
                             </div>
 
                             <div className={`space-y-4 pt-1 ${mobileFormAccordions.pricing ? "block" : "hidden lg:block"}`}>
-                              <div className="max-w-md">
-                                <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
-                                  Atelier Retail Price (INR) *
-                                </label>
-                                <div className="relative">
-                                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-mono text-[#746F68]">₹</span>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-w-xl">
+                                <div>
+                                  <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                    Atelier Retail Price (INR) *
+                                  </label>
+                                  <div className="relative">
+                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-mono text-[#746F68]">₹</span>
+                                    <input
+                                      type="number"
+                                      name="price"
+                                      value={formData.price}
+                                      onChange={handleInputChange}
+                                      placeholder="4990"
+                                      required
+                                      className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-7 pr-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
+                                    />
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                                    Garment Label (Beside Price)
+                                  </label>
                                   <input
-                                    type="number"
-                                    name="price"
-                                    value={formData.price}
+                                    type="text"
+                                    name="garment_label"
+                                    value={formData.garment_label || ""}
                                     onChange={handleInputChange}
-                                    placeholder="4990"
-                                    required
-                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] pl-7 pr-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-mono"
+                                    placeholder="e.g. Blazer, Complete Set, Tailored Suit, Vest Set, Trousers"
+                                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-sans"
                                   />
+                                  <span className="text-[9.5px] text-[#746F68] font-mono block mt-1 leading-tight">
+                                    Displayed beside price on storefront. Leave empty for auto fallback.
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -7689,214 +7815,13 @@ const Admin = () => {
                             </div>
 
                             <div className={`space-y-4 pt-1 ${mobileFormAccordions.imagery ? "block" : "hidden lg:block"}`}>
-                              {/* 3 Standard Slots + Uploaded Cards + Add Image */}
-                              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                                {[
-                                  { label: "FRONT / MAIN", defaultRole: "model_front" },
-                                  { label: "BACK / 3/4", defaultRole: "model_three_quarter" },
-                                  { label: "DETAIL", defaultRole: "detail" }
-                                ].map((slot, slotIdx) => {
-                                  const item = galleryFiles[slotIdx];
-                                  if (item) {
-                                    return (
-                                      <div
-                                        key={item.id || `slot-${slotIdx}`}
-                                        className={`relative aspect-[4/5] bg-[#111113] rounded-[2px] overflow-hidden border group shadow-2xs transition-all ${
-                                          slotIdx === 0 ? "border-[#C2922E]" : "border-[#E5DDD1] hover:border-[#111113]"
-                                        }`}
-                                      >
-                                        <img
-                                          src={item.preview || item.url}
-                                          alt={slot.label}
-                                          className="w-full h-full object-cover"
-                                        />
-
-                                        {/* Small PRIMARY label on first image */}
-                                        {slotIdx === 0 && (
-                                          <div className="absolute top-2 left-2 bg-[#111113]/90 text-[#C2922E] text-[8px] font-mono uppercase font-bold px-1.5 py-0.5 rounded-[1px] tracking-wider border border-[#C2922E]/30 z-10">
-                                            PRIMARY
-                                          </div>
-                                        )}
-
-                                        {/* Slot Name Tag */}
-                                        <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-xs text-white/90 text-[8.5px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-[1px] truncate group-hover:opacity-0 transition-opacity text-center">
-                                          {slot.label}
-                                        </div>
-
-                                        {/* Hover Overlay: Edit Crop · Replace · Remove */}
-                                        <div className="absolute inset-0 bg-black/65 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex flex-col items-center justify-center p-3 gap-2 z-20">
-                                          <span className="text-[9px] font-mono uppercase tracking-wider text-white/80 font-semibold mb-1">
-                                            {slot.label}
-                                          </span>
-
-                                          <button
-                                            type="button"
-                                            onClick={() => handleOpenCropper(slotIdx)}
-                                            className="w-full max-w-[125px] py-1.5 px-2 bg-white hover:bg-[#C2922E] text-[#111113] hover:text-white rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                                          >
-                                            <Crop size={11} />
-                                            <span>Edit Crop</span>
-                                          </button>
-
-                                          <label
-                                            className="w-full max-w-[125px] py-1.5 px-2 bg-white/90 hover:bg-[#111113] text-[#111113] hover:text-white rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                                          >
-                                            <RefreshCw size={11} />
-                                            <span>Replace</span>
-                                            <input
-                                              type="file"
-                                              accept="image/*"
-                                              className="hidden"
-                                              onChange={(e) => {
-                                                if (e.target.files?.[0]) {
-                                                  handleReplaceGalleryItem(slotIdx, e.target.files[0]);
-                                                }
-                                              }}
-                                            />
-                                          </label>
-
-                                          <button
-                                            type="button"
-                                            onClick={() => handleRemoveGalleryItem(slotIdx)}
-                                            className="w-full max-w-[125px] py-1.5 px-2 bg-rose-600 hover:bg-rose-700 text-white rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                                          >
-                                            <Trash2 size={11} />
-                                            <span>Remove</span>
-                                          </button>
-                                        </div>
-                                      </div>
-                                    );
-                                  }
-
-                                  return (
-                                    <label
-                                      key={`empty-slot-${slotIdx}`}
-                                      className="border border-dashed border-[#E5DDD1] hover:border-[#C2922E] rounded-[2px] aspect-[4/5] bg-white hover:bg-[#FAF8F5] transition-all flex flex-col items-center justify-center p-4 text-center cursor-pointer group shadow-2xs"
-                                    >
-                                      <div className="w-10 h-10 rounded-full bg-[#FAF8F5] border border-[#E5DDD1] group-hover:border-[#C2922E] group-hover:bg-[#111113] flex items-center justify-center transition-all mb-2.5">
-                                        <Plus size={18} className="text-[#C2922E] group-hover:text-white" />
-                                      </div>
-                                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#111113]">
-                                        {slot.label}
-                                      </span>
-                                      <span className="text-[9px] font-mono text-[#C2922E] mt-1 group-hover:underline font-semibold">
-                                        + Upload
-                                      </span>
-                                      <input
-                                        type="file"
-                                        accept="image/*"
-                                        className="hidden"
-                                        onChange={(e) => {
-                                          if (e.target.files?.[0]) {
-                                            handleSlotUpload(slotIdx, e.target.files[0]);
-                                          }
-                                        }}
-                                      />
-                                    </label>
-                                  );
-                                })}
-
-                                {/* Extra images beyond first 3 */}
-                                {galleryFiles.slice(3).map((item, extraIdx) => {
-                                  const actualIdx = 3 + extraIdx;
-                                  return (
-                                    <div
-                                      key={item.id || `extra-${actualIdx}`}
-                                      className="relative aspect-[4/5] bg-[#111113] rounded-[2px] overflow-hidden border border-[#E5DDD1] hover:border-[#111113] group shadow-2xs transition-all"
-                                    >
-                                      <img
-                                        src={item.preview || item.url}
-                                        alt={`Image 0${actualIdx + 1}`}
-                                        className="w-full h-full object-cover"
-                                      />
-
-                                      <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-xs text-white/90 text-[8.5px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-[1px] truncate group-hover:opacity-0 transition-opacity text-center">
-                                        IMAGE 0{actualIdx + 1}
-                                      </div>
-
-                                      {/* Hover Overlay: Edit Crop · Replace · Remove */}
-                                      <div className="absolute inset-0 bg-black/65 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex flex-col items-center justify-center p-3 gap-2 z-20">
-                                        <span className="text-[9px] font-mono uppercase tracking-wider text-white/80 font-semibold mb-1">
-                                          IMAGE 0{actualIdx + 1}
-                                        </span>
-
-                                        <button
-                                          type="button"
-                                          onClick={() => handleOpenCropper(actualIdx)}
-                                          className="w-full max-w-[125px] py-1.5 px-2 bg-white hover:bg-[#C2922E] text-[#111113] hover:text-white rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                                        >
-                                          <Crop size={11} />
-                                          <span>Edit Crop</span>
-                                        </button>
-
-                                        <label
-                                          className="w-full max-w-[125px] py-1.5 px-2 bg-white/90 hover:bg-[#111113] text-[#111113] hover:text-white rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                                        >
-                                          <RefreshCw size={11} />
-                                          <span>Replace</span>
-                                          <input
-                                            type="file"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={(e) => {
-                                              if (e.target.files?.[0]) {
-                                                handleReplaceGalleryItem(actualIdx, e.target.files[0]);
-                                              }
-                                            }}
-                                          />
-                                        </label>
-
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRemoveGalleryItem(actualIdx)}
-                                          className="w-full max-w-[125px] py-1.5 px-2 bg-rose-600 hover:bg-rose-700 text-white rounded-[2px] text-[9.5px] font-mono uppercase tracking-wider font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                                        >
-                                          <Trash2 size={11} />
-                                          <span>Remove</span>
-                                        </button>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-
-                                {/* + ADD IMAGE Card */}
-                                <label className="border border-dashed border-[#E5DDD1] hover:border-[#C2922E] rounded-[2px] aspect-[4/5] bg-white hover:bg-[#FAF8F5] transition-all flex flex-col items-center justify-center p-4 text-center cursor-pointer group shadow-2xs">
-                                  <div className="w-10 h-10 rounded-full bg-[#FAF8F5] border border-[#E5DDD1] group-hover:border-[#C2922E] group-hover:bg-[#111113] flex items-center justify-center transition-all mb-2.5">
-                                    <Plus size={18} className="text-[#C2922E] group-hover:text-white" />
-                                  </div>
-                                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#111113] group-hover:text-[#C2922E]">
-                                    + ADD IMAGE
-                                  </span>
-                                  <input
-                                    type="file"
-                                    multiple
-                                    accept="image/*"
-                                    onChange={handleAddGalleryFiles}
-                                    className="hidden"
-                                  />
-                                </label>
-                              </div>
-
-                              {/* Subtle drag & drop / browse strip */}
-                              <div className="border border-dashed border-[#E5DDD1] hover:border-[#C2922E] bg-white rounded-[2px] p-2.5 text-center transition-colors">
-                                <input
-                                  id="bulk-gallery-upload-input"
-                                  type="file"
-                                  multiple
-                                  accept="image/*"
-                                  onChange={handleAddGalleryFiles}
-                                  className="hidden"
-                                />
-                                <label
-                                  htmlFor="bulk-gallery-upload-input"
-                                  className="cursor-pointer flex items-center justify-center gap-1.5 text-[10px] font-mono text-[#746F68] hover:text-[#111113]"
-                                >
-                                  <span>Drag &amp; drop multiple photos or</span>
-                                  <span className="text-[#C2922E] uppercase tracking-wider font-semibold underline">
-                                    Browse Files &rarr;
-                                  </span>
-                                </label>
-                              </div>
+                              <ProductImageManager
+                                images={galleryFiles}
+                                onChange={setGalleryFiles}
+                                onOpenCropper={(idx, src) => handleOpenCropper(idx, "galleryFiles", src)}
+                                productStatus={formData.status || "active"}
+                                disabled={uploading}
+                              />
                             </div>
                           </div>
 
@@ -9399,8 +9324,18 @@ const Admin = () => {
           <ImageCropperModal
             imageSrc={cropperSrc}
             imageRole={cropperRole}
-            initialCrop={croppingIndex !== null && galleryFiles[croppingIndex]?.crop ? galleryFiles[croppingIndex].crop : { x: 0, y: 0 }}
-            initialZoom={croppingIndex !== null && galleryFiles[croppingIndex]?.zoom ? galleryFiles[croppingIndex].zoom : 1}
+            initialCrop={
+              croppingIndex !== null &&
+              (cropperTarget === "editGalleryImages" ? editGalleryImages : galleryFiles)[croppingIndex]?.crop
+                ? (cropperTarget === "editGalleryImages" ? editGalleryImages : galleryFiles)[croppingIndex].crop
+                : { x: 0, y: 0 }
+            }
+            initialZoom={
+              croppingIndex !== null &&
+              (cropperTarget === "editGalleryImages" ? editGalleryImages : galleryFiles)[croppingIndex]?.zoom
+                ? (cropperTarget === "editGalleryImages" ? editGalleryImages : galleryFiles)[croppingIndex].zoom
+                : 1
+            }
             onSave={(cropped) => {
               if (cropperCallback) {
                 cropperCallback(cropped);
@@ -9620,7 +9555,7 @@ const Admin = () => {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Price (INR) *</label>
                         <input
@@ -9631,6 +9566,24 @@ const Admin = () => {
                           required
                         />
                       </div>
+                      <div>
+                        <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">
+                          Garment Label (Beside Price)
+                        </label>
+                        <input
+                          type="text"
+                          value={editFormData.garment_label || ""}
+                          onChange={(e) => setEditFormData({ ...editFormData, garment_label: e.target.value })}
+                          placeholder="e.g. Blazer, Complete Set, Tailored Suit, Vest Set"
+                          className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none font-sans"
+                        />
+                        <span className="text-[9px] text-[#746F68] font-mono block mt-1 leading-tight">
+                          Displayed beside price on storefront. Leave empty for auto fallback.
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Collection *</label>
                         <select
@@ -9644,9 +9597,6 @@ const Admin = () => {
                           ))}
                         </select>
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Category</label>
                         <input
@@ -9657,18 +9607,30 @@ const Admin = () => {
                           className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none"
                         />
                       </div>
-                      <div>
-                        <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Product Status *</label>
-                        <select
-                          value={editFormData.status || "active"}
-                          onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
-                          className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
-                        >
-                          <option value="active">Active (Showroom)</option>
-                          <option value="draft">Draft (Private)</option>
-                          <option value="archived">Archived (Retired)</option>
-                        </select>
-                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] uppercase tracking-[0.14em] text-[#746F68] font-mono block mb-1">Product Status *</label>
+                      <select
+                        value={editFormData.status || "active"}
+                        onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                        className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3.5 py-2 text-xs text-[#111113] focus:border-[#C2922E] outline-none cursor-pointer font-mono"
+                      >
+                        <option value="active">Active (Showroom)</option>
+                        <option value="draft">Draft (Private)</option>
+                        <option value="archived">Archived (Retired)</option>
+                      </select>
+                    </div>
+
+                    {/* ATELIER PRODUCT IMAGERY MANAGEMENT (EDIT DRAWER) */}
+                    <div className="bg-white border border-[#E5DDD1] p-3.5 rounded-[2px] shadow-2xs">
+                      <ProductImageManager
+                        images={editGalleryImages}
+                        onChange={setEditGalleryImages}
+                        onOpenCropper={(idx, src) => handleOpenCropper(idx, "editGalleryImages", src)}
+                        productStatus={editFormData.status || "active"}
+                        disabled={updatingProduct}
+                      />
                     </div>
 
                     {/* FEATURE IN NEW ARRIVALS — Merchandising Control in Edit Drawer */}
