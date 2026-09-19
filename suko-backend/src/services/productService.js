@@ -1637,6 +1637,9 @@ async function bulkUpdateProducts(ids = [], updates = {}, adminEmail) {
       patch.moments = Array.isArray(updates.moments) ? updates.moments : [updates.moment];
       patch.moment_name = updates.moment_name || updates.momentName || "The Boardroom Edit";
     }
+    if (updates.garment_label !== undefined) {
+      patch.garment_label = updates.garment_label ? updates.garment_label.trim() : "";
+    }
 
     // Price calculation modes
     if (updates.price_mode && updates.price_value !== undefined && updates.price_value !== "") {
@@ -1700,7 +1703,7 @@ async function bulkUpdateProducts(ids = [], updates = {}, adminEmail) {
 async function bulkInventoryUpdate(ids = [], options = {}, adminEmail) {
   if (!Array.isArray(ids) || ids.length === 0) return { success: true, count: 0, products: [] };
 
-  const { mode = "replace", size_stock = {}, delta = 0, commonQty, reason = "New Production Batch" } = options;
+  const { mode = "replace", size_stock = {}, product_size_stocks = {}, delta = 0, commonQty, reason = "New Production Batch" } = options;
   const allProducts = await getAllProducts({ includeArchived: true });
   const updatedProducts = [];
 
@@ -1712,14 +1715,24 @@ async function bulkInventoryUpdate(ids = [], options = {}, adminEmail) {
     const prevTotal = Object.values(prevSizeStock).reduce((a, b) => a + Number(b), 0);
     let newSizeStock = {};
 
-    if (mode === "replace") {
+    const prodSpecificStock = product_size_stocks[current.id] || product_size_stocks[String(current.id)];
+    const targetSizes = Object.keys(prevSizeStock).length > 0
+      ? Object.keys(prevSizeStock)
+      : (Array.isArray(current.sizes) && current.sizes.length > 0 ? current.sizes : ["38", "40", "42", "44", "46"]);
+
+    if (prodSpecificStock && typeof prodSpecificStock === "object") {
+      Object.keys(prodSpecificStock).forEach(sz => {
+        newSizeStock[sz] = Math.max(0, Number(prodSpecificStock[sz]) || 0);
+      });
+    } else if (mode === "replace") {
       if (commonQty !== undefined && commonQty !== "") {
         const qty = Math.max(0, Number(commonQty));
-        ["XS", "S", "M", "L", "XL"].forEach(sz => {
+        targetSizes.forEach(sz => {
           newSizeStock[sz] = qty;
         });
       } else {
-        ["XS", "S", "M", "L", "XL"].forEach(sz => {
+        const allSizes = Array.from(new Set([...targetSizes, ...Object.keys(size_stock)]));
+        allSizes.forEach(sz => {
           newSizeStock[sz] = size_stock[sz] !== undefined && size_stock[sz] !== "" 
             ? Math.max(0, Number(size_stock[sz])) 
             : (prevSizeStock[sz] || 0);
@@ -1727,16 +1740,15 @@ async function bulkInventoryUpdate(ids = [], options = {}, adminEmail) {
       }
     } else if (mode === "increase") {
       const inc = Number(delta) || 0;
-      Object.keys(prevSizeStock).forEach(sz => {
-        newSizeStock[sz] = Math.max(0, (prevSizeStock[sz] || 0) + inc);
-      });
-      ["XS", "S", "M", "L", "XL"].forEach(sz => {
-        if (newSizeStock[sz] === undefined) newSizeStock[sz] = Math.max(0, inc);
+      targetSizes.forEach(sz => {
+        const customInc = size_stock[sz] !== undefined && size_stock[sz] !== "" ? Number(size_stock[sz]) : inc;
+        newSizeStock[sz] = Math.max(0, (prevSizeStock[sz] || 0) + customInc);
       });
     } else if (mode === "decrease") {
       const dec = Number(delta) || 0;
-      Object.keys(prevSizeStock).forEach(sz => {
-        newSizeStock[sz] = Math.max(0, (prevSizeStock[sz] || 0) - dec);
+      targetSizes.forEach(sz => {
+        const customDec = size_stock[sz] !== undefined && size_stock[sz] !== "" ? Number(size_stock[sz]) : dec;
+        newSizeStock[sz] = Math.max(0, (prevSizeStock[sz] || 0) - customDec);
       });
     }
 

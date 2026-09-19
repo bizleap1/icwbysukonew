@@ -854,10 +854,33 @@ const Admin = () => {
   const [isOrderExportModalOpen, setIsOrderExportModalOpen] = useState(false);
   const [orderExportScope, setOrderExportScope] = useState("all"); // 'all' | 'filtered'
 
+  // Dedicated Action Modals for Catalogue Toolbar
+  const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
+  const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+  const [isArchiveConfirmModalOpen, setIsArchiveConfirmModalOpen] = useState(false);
+
+  // Dedicated Variant-Level Inventory States (Product -> Variant)
+  const [inventoryMode, setInventoryMode] = useState("replace"); // 'replace' | 'increase' | 'decrease'
+  const [inventoryCommonQty, setInventoryCommonQty] = useState("");
+  const [inventoryDelta, setInventoryDelta] = useState("");
+  const [inventoryReason, setInventoryReason] = useState("Stock adjustment from Atelier Catalogue");
+  const [inventoryVariantStock, setInventoryVariantStock] = useState({}); // { [productId]: { [size]: number } }
+  const [inventoryGlobalSizes, setInventoryGlobalSizes] = useState({});
+
+  // Dedicated Price Modal State
+  const [priceStrategy, setPriceStrategy] = useState("fixed"); // 'fixed' | 'percent_increase' | 'percent_decrease' | 'amount_increase' | 'amount_decrease'
+  const [priceValue, setPriceValue] = useState("");
+
+  // Dedicated Move Modal State
+  const [moveDestinationCategory, setMoveDestinationCategory] = useState("");
+  const [moveSubCategory, setMoveSubCategory] = useState("");
+
   // Bulk Edit Form (Strict Partial Update)
   const [bulkForm, setBulkForm] = useState({
     category_id: "",
     sub_category: "",
+    garment_label: "",
     status: "",
     color: "",
     moment: "",
@@ -2986,6 +3009,9 @@ const Admin = () => {
       const updates = {};
       if (bulkForm.category_id) updates.category_id = bulkForm.category_id;
       if (bulkForm.sub_category) updates.sub_category = bulkForm.sub_category;
+      if (bulkForm.garment_label !== undefined && bulkForm.garment_label !== "") {
+        updates.garment_label = bulkForm.garment_label.trim();
+      }
       if (bulkForm.status) {
         if (bulkForm.status === "active") {
           const invalidProd = (products || []).find(p => selectedProductIds.includes(p.id) && (p.images?.length || (p.image_url ? 1 : 0)) < 3);
@@ -3162,6 +3188,185 @@ const Admin = () => {
     } catch (err) {
       toast.error(err.message);
     }
+  };
+
+  // Open Edit Action from Floating Toolbar (Single -> Drawer, Multi -> Bulk Modal)
+  const handleOpenEditAction = () => {
+    if (selectedProductIds.length === 0) return;
+    if (selectedProductIds.length === 1) {
+      const targetProd = products.find(p => p.id === selectedProductIds[0]);
+      if (targetProd) {
+        handleOpenEdit(targetProd, true);
+        return;
+      }
+    }
+    // If multiple products selected, open dedicated Bulk Edit modal
+    setBulkActiveTab("edit");
+    setBulkForm(prev => ({
+      ...prev,
+      garment_label: ""
+    }));
+    setIsBulkModalOpen(true);
+  };
+
+  // Open Dedicated Variant Inventory Modal (Product -> Variant)
+  const handleOpenInventoryModal = () => {
+    if (selectedProductIds.length === 0) return;
+    const initialMap = {};
+    const selectedProds = products.filter(p => selectedProductIds.includes(p.id));
+    selectedProds.forEach(p => {
+      initialMap[p.id] = resolveProductSizeStock(p);
+    });
+    setInventoryVariantStock(initialMap);
+    setInventoryMode("replace");
+    setInventoryCommonQty("");
+    setInventoryDelta("");
+    setInventoryReason("Stock adjustment from Atelier Catalogue");
+    setInventoryGlobalSizes({});
+    setIsInventoryModalOpen(true);
+  };
+
+  // Save Dedicated Variant Inventory
+  const handleSaveInventoryModal = async (e) => {
+    if (e) e.preventDefault();
+    if (selectedProductIds.length === 0) return;
+    setIsBulkSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/products/bulk-inventory`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ids: selectedProductIds,
+          mode: inventoryMode,
+          product_size_stocks: inventoryVariantStock,
+          size_stock: inventoryGlobalSizes,
+          delta: inventoryDelta,
+          commonQty: inventoryCommonQty,
+          reason: inventoryReason || "Inventory management allocation"
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to adjust inventory");
+
+      toast.success(data.message || `Inventory updated across ${data.count} garments`);
+      setIsInventoryModalOpen(false);
+      setSelectedProductIds([]);
+      fetchDashboardData();
+      refreshGlobalProducts();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setIsBulkSubmitting(false);
+    }
+  };
+
+  // Open Dedicated Price Modal
+  const handleOpenPriceModal = () => {
+    if (selectedProductIds.length === 0) return;
+    const selectedProds = products.filter(p => selectedProductIds.includes(p.id));
+    if (selectedProds.length === 1) {
+      setPriceStrategy("fixed");
+      setPriceValue(String(selectedProds[0].price || ""));
+    } else {
+      setPriceStrategy("fixed");
+      setPriceValue("");
+    }
+    setIsPriceModalOpen(true);
+  };
+
+  // Save Dedicated Price
+  const handleSavePriceModal = async (e) => {
+    if (e) e.preventDefault();
+    if (selectedProductIds.length === 0) return;
+    if (priceValue === "" || isNaN(Number(priceValue))) {
+      toast.error("Please enter a valid price or adjustment amount");
+      return;
+    }
+    setIsBulkSubmitting(true);
+    try {
+      const updates = {
+        price_mode: priceStrategy,
+        price_value: priceValue
+      };
+      const res = await fetch(`${API_BASE_URL}/api/products/bulk-update`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ ids: selectedProductIds, updates })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update pricing");
+
+      toast.success(data.message || `Pricing updated across ${data.count} garments`);
+      setIsPriceModalOpen(false);
+      setSelectedProductIds([]);
+      fetchDashboardData();
+      refreshGlobalProducts();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setIsBulkSubmitting(false);
+    }
+  };
+
+  // Open Dedicated Move Modal
+  const handleOpenMoveModal = () => {
+    if (selectedProductIds.length === 0) return;
+    setMoveDestinationCategory(categories[0]?.id || "");
+    setMoveSubCategory("");
+    setIsMoveModalOpen(true);
+  };
+
+  // Save Dedicated Move
+  const handleSaveMoveModal = async (e) => {
+    if (e) e.preventDefault();
+    if (selectedProductIds.length === 0 || !moveDestinationCategory) return;
+    setIsBulkSubmitting(true);
+    try {
+      const updates = {
+        category_id: moveDestinationCategory
+      };
+      if (moveSubCategory.trim()) {
+        updates.sub_category = moveSubCategory.trim();
+      }
+      const res = await fetch(`${API_BASE_URL}/api/products/bulk-update`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ ids: selectedProductIds, updates })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to move garments");
+
+      toast.success(data.message || `Moved ${data.count} garments`);
+      setIsMoveModalOpen(false);
+      setSelectedProductIds([]);
+      fetchDashboardData();
+      refreshGlobalProducts();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setIsBulkSubmitting(false);
+    }
+  };
+
+  // Open Dedicated Archive Confirmation Modal
+  const handleOpenArchiveModal = () => {
+    if (selectedProductIds.length === 0) return;
+    setIsArchiveConfirmModalOpen(true);
+  };
+
+  // Confirm Archive Execution
+  const handleConfirmBulkArchive = async () => {
+    setIsArchiveConfirmModalOpen(false);
+    await handleExecuteBulkArchive(selectedProductIds);
   };
 
   // Bulk Permanent Delete (Password Verified)
@@ -6775,41 +6980,45 @@ const Admin = () => {
 
                         {/* Tier 1 Primary Actions */}
                         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                          {/* Bulk Edit Specs */}
+                          {/* Edit Garment / Bulk Specs */}
                           <button
                             type="button"
-                            onClick={() => { setBulkActiveTab("edit"); setIsBulkModalOpen(true); }}
+                            onClick={handleOpenEditAction}
                             className="bg-white/10 hover:bg-white hover:text-[#111113] text-[#FAF8F5] border border-white/20 hover:border-white px-3 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            title={selectedProductIds.length === 1 ? "Open Edit Product Modal" : "Bulk Edit Selected Garments"}
                           >
                             <Edit2 size={11} className="text-[#C2922E]" />
                             <span>Edit</span>
                           </button>
 
-                          {/* Bulk Inventory Allocation */}
+                          {/* Dedicated Variant Inventory Allocation */}
                           <button
                             type="button"
-                            onClick={() => { setBulkActiveTab("inventory"); setIsBulkModalOpen(true); }}
+                            onClick={handleOpenInventoryModal}
                             className="bg-white/10 hover:bg-white hover:text-[#111113] text-[#FAF8F5] border border-white/20 hover:border-white px-3 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            title="Manage Variant / Size Level Inventory"
                           >
                             <Package size={11} className="text-[#C2922E]" />
                             <span>Inventory</span>
                           </button>
 
-                          {/* Bulk Price Adjustment */}
+                          {/* Dedicated Price Adjustment */}
                           <button
                             type="button"
-                            onClick={() => { setBulkActiveTab("price"); setIsBulkModalOpen(true); }}
+                            onClick={handleOpenPriceModal}
                             className="bg-white/10 hover:bg-white hover:text-[#111113] text-[#FAF8F5] border border-white/20 hover:border-white px-3 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            title="Update Price for Selected Garments"
                           >
                             <Tag size={11} className="text-[#C2922E]" />
                             <span>Price</span>
                           </button>
 
-                          {/* Bulk Move Collection */}
+                          {/* Dedicated Move Collection */}
                           <button
                             type="button"
-                            onClick={() => { setBulkActiveTab("move"); setIsBulkModalOpen(true); }}
+                            onClick={handleOpenMoveModal}
                             className="bg-white/10 hover:bg-white hover:text-[#111113] text-[#FAF8F5] border border-white/20 hover:border-white px-3 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            title="Move to Collection / Taxonomy"
                           >
                             <Layers size={11} className="text-[#C2922E]" />
                             <span>Move</span>
@@ -6828,8 +7037,9 @@ const Admin = () => {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => handleExecuteBulkArchive(selectedProductIds)}
+                              onClick={handleOpenArchiveModal}
                               className="bg-[#C2922E] hover:bg-[#A87B22] text-[#111113] font-medium px-3.5 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-[0.14em] font-mono transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                              title="Move Selected to Private Archive (Confirm first)"
                             >
                               <Archive size={11} strokeWidth={2.5} />
                               <span>Archive</span>
@@ -6883,7 +7093,10 @@ const Admin = () => {
                                 {catalogueViewTab !== "archived" && (
                                   <button
                                     type="button"
-                                    onClick={() => handleExecuteBulkArchive(selectedProductIds)}
+                                    onClick={() => {
+                                      setIsBulkMoreOpen(false);
+                                      handleOpenArchiveModal();
+                                    }}
                                     className="w-full px-3.5 py-1.5 text-left text-[#FAF8F5] hover:bg-white/10 flex items-center gap-2 text-[11px] tracking-wider transition-colors cursor-pointer"
                                   >
                                     <Archive size={12} className="text-amber-400" />
@@ -11447,6 +11660,19 @@ const Admin = () => {
 
                       <div>
                         <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block mb-1.5 font-medium">
+                          Garment Label (Beside Price)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Blazer, Complete Set, Tailored Suit"
+                          value={bulkForm.garment_label || ""}
+                          onChange={(e) => setBulkForm(prev => ({ ...prev, garment_label: e.target.value }))}
+                          className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-2 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block mb-1.5 font-medium">
                           Color Specification
                         </label>
                         <input
@@ -11716,6 +11942,591 @@ const Admin = () => {
                     )}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* DEDICATED VARIANT INVENTORY MODAL (Product -> Variant)       */}
+        {/* ============================================================= */}
+        {isInventoryModalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+            onClick={() => setIsInventoryModalOpen(false)}
+          >
+            <div
+              className="bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden font-body animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="shrink-0 px-6 py-4 border-b border-[#E5DDD1] bg-white flex items-center justify-between">
+                <div>
+                  <span className="text-[9.5px] uppercase tracking-[0.18em] text-[#C2922E] font-mono font-medium block">
+                    ATELIER VARIANT INVENTORY CONTROL
+                  </span>
+                  <h3 className="font-serif text-lg font-medium text-[#111113]">
+                    Variant-Level Inventory Allocation ({selectedProductIds.length} Selected)
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsInventoryModalOpen(false)}
+                  className="p-1 text-[#746F68] hover:text-[#111113] cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Mode Bar & Quick Actions */}
+              <div className="shrink-0 px-6 py-3 bg-[#F7F3ED] border-b border-[#E5DDD1] space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  {/* Mode Buttons */}
+                  <div className="flex items-center gap-1.5">
+                    {[
+                      { id: "replace", label: "Replace / Set Exact", desc: "Sets size stock to exact count" },
+                      { id: "increase", label: "Increase (+N)", desc: "Adds units to current stock" },
+                      { id: "decrease", label: "Decrease (-N)", desc: "Deducts units (floored at 0)" }
+                    ].map(m => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setInventoryMode(m.id)}
+                        className={`px-3 py-1.5 rounded-[2px] border text-xs font-mono font-medium transition-all cursor-pointer ${
+                          inventoryMode === m.id
+                            ? "bg-[#111113] border-[#C2922E] text-white shadow-xs"
+                            : "bg-white border-[#E5DDD1] text-[#746F68] hover:text-[#111113]"
+                        }`}
+                        title={m.desc}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Fast Fill All Variants */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono text-[#746F68] whitespace-nowrap">Fill all sizes:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Qty"
+                      value={inventoryCommonQty}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setInventoryCommonQty(val);
+                        if (val !== "") {
+                          const num = Math.max(0, parseInt(val, 10) || 0);
+                          setInventoryVariantStock(prev => {
+                            const updated = { ...prev };
+                            Object.keys(updated).forEach(pId => {
+                              const sMap = { ...updated[pId] };
+                              Object.keys(sMap).forEach(sz => {
+                                sMap[sz] = num;
+                              });
+                              updated[pId] = sMap;
+                            });
+                            return updated;
+                          });
+                        }
+                      }}
+                      className="w-18 bg-white border border-[#E5DDD1] rounded-[2px] px-2.5 py-1 text-xs font-mono text-center outline-none text-[#111113] focus:border-[#C2922E]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Scrollable Products -> Variants List */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 suko-scrollbar">
+                {products
+                  .filter(p => selectedProductIds.includes(p.id))
+                  .map(prod => {
+                    const prodStockMap = inventoryVariantStock[prod.id] || resolveProductSizeStock(prod);
+                    const sizesList = Object.keys(prodStockMap).length > 0
+                      ? Object.keys(prodStockMap)
+                      : (Array.isArray(prod.sizes) && prod.sizes.length > 0 ? prod.sizes : ["38", "40", "42", "44", "46"]);
+                    const currentTotalUnits = Object.values(resolveProductSizeStock(prod)).reduce((a, b) => a + (Number(b) || 0), 0);
+                    const plannedTotalUnits = Object.values(prodStockMap).reduce((a, b) => a + (Number(b) || 0), 0);
+
+                    return (
+                      <div key={prod.id} className="bg-white border border-[#E5DDD1] rounded-[2px] p-4 space-y-3 shadow-xs">
+                        {/* Product Header */}
+                        <div className="flex items-center justify-between gap-3 border-b border-[#E5DDD1]/70 pb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-13 bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] overflow-hidden shrink-0 flex items-center justify-center">
+                              {prod.image_url || prod.images?.[0] ? (
+                                <img
+                                  src={prod.image_url || prod.images?.[0]}
+                                  alt={prod.name}
+                                  className="w-full h-full object-cover object-top"
+                                />
+                              ) : (
+                                <Package size={16} className="text-[#C2922E]" />
+                              )}
+                            </div>
+                            <div>
+                              <h4 className="font-serif text-sm font-medium text-[#111113] leading-snug">
+                                {prod.name}
+                              </h4>
+                              <div className="flex items-center gap-2 text-[10px] font-mono text-[#746F68] mt-0.5">
+                                <span>SKU: {prod.sku || "ICW-AUTO"}</span>
+                                <span>&middot;</span>
+                                <span className="text-[#C2922E] uppercase">{prod.categoryName || prod.category_id || "Showroom"}</span>
+                                {prod.garment_label && (
+                                  <>
+                                    <span>&middot;</span>
+                                    <span className="bg-[#FAF8F5] border border-[#E5DDD1] px-1 py-0.2 rounded-[1px] text-[9px] uppercase font-semibold text-[#111113]">
+                                      {prod.garment_label}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Total Count Badge */}
+                          <div className="text-right shrink-0">
+                            <span className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block">
+                              Total Stock
+                            </span>
+                            <span className="font-mono text-xs font-semibold text-[#111113]">
+                              {inventoryMode === "replace" ? (
+                                <>
+                                  <span className="text-[#746F68] line-through mr-1">{currentTotalUnits}</span>
+                                  <span className="text-[#C2922E]">{plannedTotalUnits} units</span>
+                                </>
+                              ) : (
+                                <span>{currentTotalUnits} units</span>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Variants Breakdown (Product -> Variant) */}
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block font-medium">
+                            Sizes & Variants
+                          </span>
+                          <div className="grid grid-cols-2 sm:grid-cols-5 md:grid-cols-6 gap-2">
+                            {sizesList.map(sz => {
+                              const currentVal = resolveProductSizeStock(prod)[sz] || 0;
+                              const currentInputVal = prodStockMap[sz] !== undefined ? prodStockMap[sz] : currentVal;
+
+                              return (
+                                <div key={sz} className="bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] p-2 text-center">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[11px] font-mono font-semibold text-[#111113]">
+                                      {sz}
+                                    </span>
+                                    <span className="text-[9px] font-mono text-[#746F68]" title="Current Stock">
+                                      cur: {currentVal}
+                                    </span>
+                                  </div>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    placeholder={String(currentVal)}
+                                    value={currentInputVal === "" ? "" : currentInputVal}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setInventoryVariantStock(prev => ({
+                                        ...prev,
+                                        [prod.id]: {
+                                          ...(prev[prod.id] || resolveProductSizeStock(prod)),
+                                          [sz]: val === "" ? "" : Math.max(0, parseInt(val, 10) || 0)
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full text-center bg-white border border-[#E5DDD1] rounded-[2px] py-1 text-xs font-mono outline-none text-[#111113] focus:border-[#C2922E]"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                {/* Audit Reason Input */}
+                <div className="bg-white border border-[#E5DDD1] rounded-[2px] p-4">
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block mb-1.5 font-medium">
+                    Inventory Audit Note / Log Reason
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Batch #44 Inward, Showroom Reconciliation, Size re-allocation"
+                    value={inventoryReason}
+                    onChange={(e) => setInventoryReason(e.target.value)}
+                    className="w-full bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] px-3 py-2 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113]"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="shrink-0 px-6 py-3.5 border-t border-[#E5DDD1] bg-[#FAF8F5] flex items-center justify-between gap-3">
+                <span className="text-[11px] font-mono text-[#746F68]">
+                  Targeting <strong className="text-[#111113]">{selectedProductIds.length}</strong> selected pieces at variant level
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsInventoryModalOpen(false)}
+                    className="border border-[#E5DDD1] hover:bg-[#EFE9DF] text-[#111113] px-3.5 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-wider font-mono transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isBulkSubmitting}
+                    onClick={handleSaveInventoryModal}
+                    className="bg-[#111113] hover:bg-[#C2922E] text-white px-4 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-wider font-mono font-medium transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {isBulkSubmitting ? (
+                      <>
+                        <RefreshCw size={11} className="animate-spin" />
+                        <span>Updating Inventory...</span>
+                      </>
+                    ) : (
+                      <span>Save Updated Inventory</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* DEDICATED PRICE UPDATE MODAL                                   */}
+        {/* ============================================================= */}
+        {isPriceModalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+            onClick={() => setIsPriceModalOpen(false)}
+          >
+            <div
+              className="bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] w-full max-w-lg shadow-2xl overflow-hidden font-body animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-[#E5DDD1] bg-white flex items-center justify-between">
+                <div>
+                  <span className="text-[9.5px] uppercase tracking-[0.18em] text-[#C2922E] font-mono font-medium block">
+                    ATELIER PRICING & ECONOMICS
+                  </span>
+                  <h3 className="font-serif text-lg font-medium text-[#111113]">
+                    Update Price ({selectedProductIds.length} Selected)
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPriceModalOpen(false)}
+                  className="p-1 text-[#746F68] hover:text-[#111113] cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-4">
+                {/* Strategy Selector */}
+                <div>
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block mb-1.5 font-medium">
+                    Pricing Strategy
+                  </label>
+                  <select
+                    value={priceStrategy}
+                    onChange={(e) => setPriceStrategy(e.target.value)}
+                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-2 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113]"
+                  >
+                    <option value="fixed">Set Exact Price (₹) for selected</option>
+                    <option value="percent_increase">Increase by Percentage (+%)</option>
+                    <option value="percent_decrease">Decrease by Percentage (-%)</option>
+                    <option value="amount_increase">Increase by Flat Amount (+₹)</option>
+                    <option value="amount_decrease">Decrease by Flat Amount (-₹)</option>
+                  </select>
+                </div>
+
+                {/* Price Input */}
+                <div>
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block mb-1.5 font-medium">
+                    {priceStrategy.includes("percent") ? "Percentage Value (%)" : "Amount in INR (₹)"}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder={priceStrategy.includes("percent") ? "e.g. 10 for 10%" : "e.g. 48000 for ₹48,000"}
+                    value={priceValue}
+                    onChange={(e) => setPriceValue(e.target.value)}
+                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-2 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113]"
+                    autoFocus
+                  />
+                </div>
+
+                {/* Real-time Preview of Affected Garments */}
+                <div className="bg-white border border-[#E5DDD1] rounded-[2px] p-3 space-y-2 max-h-48 overflow-y-auto suko-scrollbar">
+                  <span className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block font-medium">
+                    Price Calculation Preview:
+                  </span>
+                  <div className="divide-y divide-[#E5DDD1]/50 space-y-1.5">
+                    {products
+                      .filter(p => selectedProductIds.includes(p.id))
+                      .slice(0, 5)
+                      .map(p => {
+                        const cur = Number(p.price) || 0;
+                        const num = Number(priceValue) || 0;
+                        let nextPrice = cur;
+                        if (priceValue !== "") {
+                          if (priceStrategy === "fixed") nextPrice = Math.max(0, num);
+                          else if (priceStrategy === "percent_increase") nextPrice = Math.round(cur * (1 + num / 100));
+                          else if (priceStrategy === "percent_decrease") nextPrice = Math.max(0, Math.round(cur * (1 - num / 100)));
+                          else if (priceStrategy === "amount_increase") nextPrice = cur + num;
+                          else if (priceStrategy === "amount_decrease") nextPrice = Math.max(0, cur - num);
+                        }
+
+                        return (
+                          <div key={p.id} className="pt-1.5 flex items-center justify-between text-xs font-mono">
+                            <span className="truncate max-w-[240px] text-[#111113]">{p.name}</span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="text-[#746F68] line-through">₹{cur.toLocaleString("en-IN")}</span>
+                              <span>&rarr;</span>
+                              <span className="text-[#C2922E] font-semibold">₹{nextPrice.toLocaleString("en-IN")}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {selectedProductIds.length > 5 && (
+                      <p className="text-[10px] font-mono text-[#746F68] pt-1 text-center">
+                        + {selectedProductIds.length - 5} more garments
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-3.5 border-t border-[#E5DDD1] bg-[#FAF8F5] flex items-center justify-between">
+                <span className="text-[11px] font-mono text-[#746F68]">
+                  {selectedProductIds.length} piece(s) to update
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPriceModalOpen(false)}
+                    className="border border-[#E5DDD1] hover:bg-[#EFE9DF] text-[#111113] px-3.5 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-wider font-mono transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isBulkSubmitting || priceValue === ""}
+                    onClick={handleSavePriceModal}
+                    className="bg-[#111113] hover:bg-[#C2922E] text-white px-4 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-wider font-mono font-medium transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {isBulkSubmitting ? (
+                      <>
+                        <RefreshCw size={11} className="animate-spin" />
+                        <span>Updating...</span>
+                      </>
+                    ) : (
+                      <span>Save Updated Price</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* DEDICATED MOVE COLLECTION MODAL                                */}
+        {/* ============================================================= */}
+        {isMoveModalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+            onClick={() => setIsMoveModalOpen(false)}
+          >
+            <div
+              className="bg-[#FAF8F5] border border-[#E5DDD1] rounded-[2px] w-full max-w-lg shadow-2xl overflow-hidden font-body animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-[#E5DDD1] bg-white flex items-center justify-between">
+                <div>
+                  <span className="text-[9.5px] uppercase tracking-[0.18em] text-[#C2922E] font-mono font-medium block">
+                    ATELIER TAXONOMY & REASSIGNMENT
+                  </span>
+                  <h3 className="font-serif text-lg font-medium text-[#111113]">
+                    Move to Collection ({selectedProductIds.length} Selected)
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMoveModalOpen(false)}
+                  className="p-1 text-[#746F68] hover:text-[#111113] cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-4">
+                <p className="text-xs text-[#746F68]">
+                  Select the destination collection for all {selectedProductIds.length} selected garments.
+                </p>
+
+                {/* Collection Selection Grid */}
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block font-medium">
+                    Destination Collection
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {categories.map(c => {
+                      const isSelected = moveDestinationCategory === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setMoveDestinationCategory(c.id)}
+                          className={`p-3 rounded-[2px] border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-[#111113] border-[#C2922E] text-white shadow-xs"
+                              : "bg-white border-[#E5DDD1] text-[#111113] hover:border-[#C2922E]"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-serif text-xs font-semibold">{c.name}</span>
+                            {isSelected && <Check size={14} className="text-[#C2922E]" />}
+                          </div>
+                          <span className={`text-[10px] font-mono block mt-0.5 ${isSelected ? "text-white/70" : "text-[#746F68]"}`}>
+                            {c.tagline || `${c.name} category`}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Subcategory optional override */}
+                <div>
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-[#746F68] block mb-1.5 font-medium">
+                    Optional Sub-Category / Garment Type
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Blazers, Trousers, Vests, Tunics"
+                    value={moveSubCategory}
+                    onChange={(e) => setMoveSubCategory(e.target.value)}
+                    className="w-full bg-white border border-[#E5DDD1] rounded-[2px] px-3 py-2 text-xs font-mono focus:border-[#C2922E] outline-none text-[#111113]"
+                  />
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-3.5 border-t border-[#E5DDD1] bg-[#FAF8F5] flex items-center justify-between">
+                <span className="text-[11px] font-mono text-[#746F68]">
+                  {selectedProductIds.length} piece(s) will be moved
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsMoveModalOpen(false)}
+                    className="border border-[#E5DDD1] hover:bg-[#EFE9DF] text-[#111113] px-3.5 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-wider font-mono transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isBulkSubmitting || !moveDestinationCategory}
+                    onClick={handleSaveMoveModal}
+                    className="bg-[#111113] hover:bg-[#C2922E] text-white px-4 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-wider font-mono font-medium transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {isBulkSubmitting ? (
+                      <>
+                        <RefreshCw size={11} className="animate-spin" />
+                        <span>Moving...</span>
+                      </>
+                    ) : (
+                      <span>Move to Selected Collection</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* DEDICATED ARCHIVE CONFIRMATION MODAL                           */}
+        {/* ============================================================= */}
+        {isArchiveConfirmModalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+            onClick={() => setIsArchiveConfirmModalOpen(false)}
+          >
+            <div
+              className="bg-[#FAF8F5] border border-[#C2922E]/40 rounded-[2px] w-full max-w-md shadow-2xl overflow-hidden font-body animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="px-6 py-4 bg-[#111113] text-white border-b border-[#C2922E]/30 flex items-start gap-3">
+                <div className="p-2 bg-amber-500/10 border border-amber-500/30 text-[#C2922E] rounded-[2px] shrink-0 mt-0.5">
+                  <Archive size={18} />
+                </div>
+                <div>
+                  <span className="text-[9.5px] uppercase tracking-[0.18em] text-[#C2922E] font-mono font-medium block">
+                    ATELIER VAULT CONFIRMATION
+                  </span>
+                  <h3 className="font-serif text-lg font-medium text-[#FAF8F5]">
+                    Archive {selectedProductIds.length} Garment(s)?
+                  </h3>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-3">
+                <p className="text-xs text-[#555560] leading-relaxed">
+                  These garments will be immediately hidden from the public showroom and search. All order histories, customer purchase records, and inventory data will remain safely preserved.
+                </p>
+
+                {/* Items List Preview */}
+                <div className="bg-white border border-[#E5DDD1] rounded-[2px] p-3 max-h-40 overflow-y-auto suko-scrollbar divide-y divide-[#E5DDD1]/60">
+                  {products
+                    .filter(p => selectedProductIds.includes(p.id))
+                    .map(p => (
+                      <div key={p.id} className="py-1.5 first:pt-0 last:pb-0 flex items-center justify-between text-xs font-mono">
+                        <span className="truncate max-w-[230px] text-[#111113] font-medium">{p.name}</span>
+                        <span className="text-[10px] text-[#746F68]">{p.sku || "ICW-AUTO"}</span>
+                      </div>
+                    ))}
+                </div>
+
+                <p className="text-[11px] text-[#746F68] bg-[#F7F3ED] border border-[#E5DDD1] p-2.5 rounded-[2px]">
+                  You can restore archived garments to the active showroom anytime from the <strong>Archived Collection</strong> tab.
+                </p>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-3.5 border-t border-[#E5DDD1] bg-[#FAF8F5] flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsArchiveConfirmModalOpen(false)}
+                  className="border border-[#E5DDD1] hover:bg-[#EFE9DF] text-[#111113] px-3.5 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-wider font-mono transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmBulkArchive}
+                  className="bg-[#C2922E] hover:bg-[#A87B22] text-[#111113] font-mono font-medium px-4 py-1.5 rounded-[2px] text-[10.5px] uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+                >
+                  <Archive size={12} strokeWidth={2.5} />
+                  <span>Confirm & Move to Archive</span>
+                </button>
               </div>
             </div>
           </div>

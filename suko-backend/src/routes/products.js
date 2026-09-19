@@ -157,11 +157,11 @@ router.post("/bulk-update", requireAdmin, async (req, res) => {
 // POST /api/products/bulk-inventory -- 3-mode inventory batch update (Admin)
 router.post("/bulk-inventory", requireAdmin, async (req, res) => {
   try {
-    const { ids, mode, size_stock, delta, commonQty, reason } = req.body;
+    const { ids, mode, size_stock, product_size_stocks, delta, commonQty, reason } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ error: "No garment IDs provided for inventory update" });
     }
-    const result = await productService.bulkInventoryUpdate(ids, { mode, size_stock, delta, commonQty, reason }, req.user?.email);
+    const result = await productService.bulkInventoryUpdate(ids, { mode, size_stock, product_size_stocks, delta, commonQty, reason }, req.user?.email);
     res.json({
       success: true,
       message: `Inventory updated across ${result.count} garments`,
