@@ -13,8 +13,7 @@ import { SIZES, COLOURS } from "../data/products";
 export const NEW_ARRIVALS_CATEGORIES = [
   { id: "all", label: "ALL PIECES" },
   { id: "suits", label: "POWER SUITS & SETS" },
-  { id: "blazers", label: "BLAZERS" },
-  { id: "trousers", label: "TROUSERS" },
+  { id: "separates", label: "TAILORED SEPARATES" },
   { id: "coords", label: "VESTS & CO-ORDS" },
   { id: "signatures", label: "SIGNATURE PIECES" }
 ];
@@ -43,6 +42,7 @@ const NewIn = () => {
 
   // Active Filter States
   const [selectedCategory, setSelectedCategory] = useState(() => getInitialValue("category", "suko_newin_cat", "all").toLowerCase());
+  const [selectedSubCategory, setSelectedSubCategory] = useState(() => getInitialValue("subcat", "suko_newin_subcat", "all").toLowerCase());
   const [selectedSize, setSelectedSize] = useState(() => getInitialValue("size", "suko_newin_size", "all"));
   const [selectedColour, setSelectedColour] = useState(() => getInitialValue("colour", "suko_newin_colour", "all"));
   const [selectedSort, setSelectedSort] = useState(() => getInitialValue("sort", "suko_newin_sort", "newest"));
@@ -63,23 +63,28 @@ const NewIn = () => {
     }
 
     sessionStorage.setItem("suko_newin_cat", selectedCategory);
+    sessionStorage.setItem("suko_newin_subcat", selectedSubCategory);
     sessionStorage.setItem("suko_newin_size", selectedSize);
     sessionStorage.setItem("suko_newin_colour", selectedColour);
     sessionStorage.setItem("suko_newin_sort", selectedSort);
 
     const newParams = new URLSearchParams();
     if (selectedCategory && selectedCategory !== "all") newParams.set("category", selectedCategory);
+    if (selectedSubCategory && selectedSubCategory !== "all") newParams.set("subcat", selectedSubCategory);
     if (selectedSize && selectedSize !== "all") newParams.set("size", selectedSize);
     if (selectedColour && selectedColour !== "all") newParams.set("colour", selectedColour);
     if (selectedSort && selectedSort !== "newest") newParams.set("sort", selectedSort);
 
     setSearchParams(newParams, { replace: true });
-  }, [selectedCategory, selectedSize, selectedColour, selectedSort, setSearchParams]);
+  }, [selectedCategory, selectedSubCategory, selectedSize, selectedColour, selectedSort, setSearchParams]);
 
   // Synchronize state with URL search params if changed externally (e.g. Back/Forward)
   useEffect(() => {
     const cat = searchParams.get("category");
     if (cat !== null) setSelectedCategory(cat.toLowerCase());
+
+    const subcat = searchParams.get("subcat");
+    if (subcat !== null) setSelectedSubCategory(subcat.toLowerCase());
 
     const size = searchParams.get("size");
     if (size !== null) setSelectedSize(size);
@@ -143,12 +148,26 @@ const NewIn = () => {
         if (selCat === "suits") {
           const isSuit = (cat === "suits" || catName.includes("power suit") || catName.includes("suit") || pCatId === "suits" || pSub.includes("suit") || pName.includes("suit")) && pCatId !== "signatures" && cat !== "signatures";
           if (!isSuit) return false;
-        } else if (selCat === "blazers") {
-          const isBlazer = cat === "blazers" || catName.includes("blazer") || pCatId === "blazers" || pSub.includes("blazer") || pName.includes("blazer");
-          if (!isBlazer) return false;
-        } else if (selCat === "trousers") {
-          const isTrouser = cat === "trousers" || catName.includes("trouser") || pCatId === "trousers" || pSub.includes("trouser") || pSub.includes("pant") || pName.includes("trouser") || pName.includes("pant");
-          if (!isTrouser) return false;
+        } else if (selCat === "separates" || selCat === "tailored-separates" || selCat === "blazers" || selCat === "trousers") {
+          // Strictly standalone Tailored Separates
+          const isSeparate = cat === "separates" || catName.includes("separates") || pCatId === "separates" || cat === "blazers" || catName.includes("blazer") || pCatId === "blazers" || cat === "trousers" || catName.includes("trouser") || pCatId === "trousers";
+          if (!isSeparate) return false;
+
+          // Subcategory check if selected (Blazers, Trousers, Skirts, etc.)
+          if (selectedSubCategory && selectedSubCategory !== "all") {
+            const sub = selectedSubCategory.toLowerCase();
+            if (sub === "blazers" || sub === "blazer") {
+              if (!pSub.includes("blazer") && !pName.includes("blazer") && cat !== "blazers" && !catName.includes("blazer")) return false;
+            } else if (sub === "pants" || sub === "pant" || sub === "trousers" || sub === "trouser") {
+              if (!pSub.includes("trouser") && !pSub.includes("pant") && !pName.includes("trouser") && !pName.includes("pant") && cat !== "trousers" && !catName.includes("trouser")) return false;
+            } else if (sub === "skirts" || sub === "skirt") {
+              if (!pSub.includes("skirt") && !pName.includes("skirt")) return false;
+            } else if (sub === "jackets" || sub === "jacket") {
+              if (!pSub.includes("jacket") && !pName.includes("jacket")) return false;
+            } else if (sub === "vests" || sub === "vest") {
+              if (!pSub.includes("vest") && !pName.includes("vest")) return false;
+            }
+          }
         } else if (selCat === "coords" || selCat === "coord" || selCat === "co-ords") {
           const isCoord = (cat === "coords" || cat === "waistcoats" || catName.includes("co-ord") || catName.includes("vest") || catName.includes("waistcoat") || pCatId === "coords" || pSub.includes("coord") || pSub.includes("vest") || pSub.includes("waistcoat") || pName.includes("vest") || pName.includes("waistcoat") || pName.includes("co-ord")) && pCatId !== "signatures" && cat !== "signatures";
           if (!isCoord) return false;
@@ -192,15 +211,17 @@ const NewIn = () => {
     }
 
     return list;
-  }, [productsList, selectedCategory, selectedSize, selectedColour, selectedSort]);
+  }, [productsList, selectedCategory, selectedSubCategory, selectedSize, selectedColour, selectedSort]);
 
   const clearAllFilters = () => {
     setSelectedCategory("all");
+    setSelectedSubCategory("all");
     setSelectedSize("all");
     setSelectedColour("all");
     setSelectedSort("newest");
 
     sessionStorage.removeItem("suko_newin_cat");
+    sessionStorage.removeItem("suko_newin_subcat");
     sessionStorage.removeItem("suko_newin_size");
     sessionStorage.removeItem("suko_newin_colour");
     sessionStorage.removeItem("suko_newin_sort");
@@ -208,7 +229,7 @@ const NewIn = () => {
     setSearchParams({}, { replace: true });
   };
 
-  const activeFiltersCount = (selectedSize !== "all" ? 1 : 0) + (selectedColour !== "all" ? 1 : 0);
+  const activeFiltersCount = (selectedSize !== "all" ? 1 : 0) + (selectedColour !== "all" ? 1 : 0) + (selectedSubCategory !== "all" ? 1 : 0);
 
   return (
     <div 
@@ -250,7 +271,10 @@ const NewIn = () => {
               return (
                 <button
                   key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
+                  onClick={() => {
+                    setSelectedCategory(cat.id);
+                    setSelectedSubCategory("all");
+                  }}
                   className={`group relative py-1 px-1 text-[10.5px] sm:text-[11px] uppercase whitespace-nowrap transition-all focus-visible:outline-none cursor-pointer tracking-[0.18em] ${
                     isActive
                       ? "text-[#121215] font-medium"
@@ -329,6 +353,30 @@ const NewIn = () => {
           </div>
 
         </div>
+
+        {/* Secondary Subcategories Strip for Tailored Separates */}
+        {selectedCategory === "separates" && (
+          <div className="w-full bg-[#F5F1E8]/95 border-t border-[#E8E4DC] py-2 sm:py-2.5 px-4 sm:px-8 lg:px-14 flex items-center justify-start sm:justify-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar text-[10px] sm:text-[10.5px] uppercase tracking-[0.2em]">
+            <span className="text-[#8C887B] font-medium shrink-0">SEPARATES:</span>
+            {["All Separates", "Blazers", "Trousers", "Skirts"].map((sub) => {
+              const subKey = sub === "All Separates" ? "all" : sub.toLowerCase();
+              const isSubActive = selectedSubCategory === subKey;
+              return (
+                <button
+                  key={sub}
+                  onClick={() => setSelectedSubCategory(subKey)}
+                  className={`py-0.5 px-1.5 transition-all rounded-[1px] shrink-0 cursor-pointer whitespace-nowrap ${
+                    isSubActive
+                      ? "text-[#C2922E] font-semibold border-b border-[#C2922E]"
+                      : "text-[#555560] hover:text-[#121215] font-normal"
+                  }`}
+                >
+                  {sub}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Editorial Merchandising Presentation (Asymmetric 1-Featured + 4-Small + Continuation) */}
@@ -461,6 +509,8 @@ const NewIn = () => {
         categories={NEW_ARRIVALS_CATEGORIES}
         selectedCategory={selectedCategory}
         setSelectedCategory={setSelectedCategory}
+        selectedSubCategory={selectedSubCategory}
+        setSelectedSubCategory={setSelectedSubCategory}
         selectedSize={selectedSize}
         setSelectedSize={setSelectedSize}
         selectedColour={selectedColour}
