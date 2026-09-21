@@ -68,7 +68,7 @@ export const NewArrivalsSection = () => {
 
           {/* Top-Right Header Link (Hero Luxury Signature Style) */}
           <Link
-            to="/new-arrivals"
+            to="/new-in"
             className="group relative inline-block pt-1 pb-1.5 select-none self-start md:self-end"
           >
             <span className="text-[11.5px] sm:text-[12.5px] uppercase tracking-[0.20em] sm:tracking-[0.22em] font-medium text-[#121215] block">

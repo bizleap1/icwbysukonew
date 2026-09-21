@@ -1,5 +1,4 @@
 {
-  "cleanUrls": true,
   "headers": [
     {
       "source": "/sitemap.xml",
@@ -22,6 +21,43 @@
           "value": "text/plain; charset=utf-8"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/collections",
+      "destination": "/collection",
+      "permanent": true
+    },
+    {
+      "source": "/new-arrivals",
+      "destination": "/new-in",
+      "permanent": true
+    },
+    {
+      "source": "/concierge",
+      "destination": "/wardrobe-concierge",
+      "permanent": true
+    },
+    {
+      "source": "/personal-styling",
+      "destination": "/wardrobe-concierge",
+      "permanent": true
+    },
+    {
+      "source": "/returns-exchanges",
+      "destination": "/returns",
+      "permanent": true
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy-policy",
+      "permanent": true
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms-conditions",
+      "permanent": true
     }
   ],
   "rewrites": [

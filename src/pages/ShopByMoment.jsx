@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useSearchParams, useParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, MessageCircle, Sparkles } from "lucide-react";
 import SEO from "../components/SEO";
@@ -9,17 +9,28 @@ import ServiceStrip from "../components/home/ServiceStrip";
 
 export const ShopByMoment = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const momentParam = searchParams.get("moment") || "boardroom";
+  const { momentSlug } = useParams();
+
+  const resolvedMoment = useMemo(() => {
+    const q = searchParams.get("moment");
+    if (q) return q.toLowerCase();
+    if (momentSlug) {
+      const clean = momentSlug.toLowerCase().replace(/^the-/, "").replace(/-edit$/, "");
+      const match = MOMENTS.find(m => m.id === clean || m.slug === momentSlug || m.id === momentSlug);
+      if (match) return match.id;
+    }
+    return "boardroom";
+  }, [searchParams, momentSlug]);
 
   const { products } = useProducts();
-  const [activeMomentId, setActiveMomentId] = useState(momentParam);
+  const [activeMomentId, setActiveMomentId] = useState(resolvedMoment);
   const tabsStripRef = useRef(null);
 
   useEffect(() => {
-    if (momentParam) {
-      setActiveMomentId(momentParam);
+    if (resolvedMoment) {
+      setActiveMomentId(resolvedMoment);
     }
-  }, [momentParam]);
+  }, [resolvedMoment]);
 
   // Auto-scroll active tab into center/visible position when selected
   useEffect(() => {

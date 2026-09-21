@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, Suspense, lazy } from "react";
-import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType, useParams } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ReactLenis, useLenis } from "lenis/react";
 import { AnimatePresence } from "framer-motion";
@@ -64,6 +64,12 @@ const PageLoader = () => (
     <div className="w-8 h-8 border-2 border-[#111113] border-t-transparent animate-spin rounded-full" />
   </div>
 );
+
+// Helper component to redirect legacy /collection/:category URL to /collection?category=:category
+const CategoryRouteRedirect = () => {
+  const { category } = useParams();
+  return <Navigate to={`/collection?category=${encodeURIComponent(category || "")}`} replace />;
+};
 
 // Global In-Memory and Session Scroll Cache
 const scrollPositionCache = new Map();
@@ -178,26 +184,26 @@ const AnimatedRoutes = () => {
           <Route path="/shop-by-moment" element={<PageWrapper><ShopByMoment /></PageWrapper>} />
           <Route path="/moment/:momentSlug" element={<PageWrapper><ShopByMoment /></PageWrapper>} />
           <Route path="/wardrobe-concierge" element={<PageWrapper><WardrobeConcierge /></PageWrapper>} />
-          <Route path="/concierge" element={<PageWrapper><WardrobeConcierge /></PageWrapper>} />
-          <Route path="/personal-styling" element={<PageWrapper><WardrobeConcierge /></PageWrapper>} />
+          <Route path="/concierge" element={<Navigate to="/wardrobe-concierge" replace />} />
+          <Route path="/personal-styling" element={<Navigate to="/wardrobe-concierge" replace />} />
           <Route path="/women" element={<PageWrapper><Women /></PageWrapper>} />
           <Route path="/shop" element={<PageWrapper><NewIn /></PageWrapper>} />
           <Route path="/collection" element={<PageWrapper><Collection /></PageWrapper>} />
-          <Route path="/collections" element={<PageWrapper><Collection /></PageWrapper>} />
+          <Route path="/collections" element={<Navigate to="/collection" replace />} />
           <Route path="/new-in" element={<PageWrapper><NewIn /></PageWrapper>} />
-          <Route path="/new-arrivals" element={<PageWrapper><NewIn /></PageWrapper>} />
-          <Route path="/collection/:category" element={<PageWrapper><NewIn /></PageWrapper>} />
+          <Route path="/new-arrivals" element={<Navigate to="/new-in" replace />} />
+          <Route path="/collection/:category" element={<CategoryRouteRedirect />} />
           <Route path="/product/:slug" element={<PageWrapper><ProductDetail /></PageWrapper>} />
           <Route path="/wishlist" element={<PageWrapper><Wishlist /></PageWrapper>} />
           <Route path="/about" element={<PageWrapper><About /></PageWrapper>} />
           <Route path="/contact" element={<PageWrapper><Contact /></PageWrapper>} />
           <Route path="/shipping" element={<PageWrapper><Shipping /></PageWrapper>} />
           <Route path="/returns" element={<PageWrapper><Returns /></PageWrapper>} />
-          <Route path="/returns-exchanges" element={<PageWrapper><Returns /></PageWrapper>} />
+          <Route path="/returns-exchanges" element={<Navigate to="/returns" replace />} />
           <Route path="/size-guide" element={<PageWrapper><SizeGuide /></PageWrapper>} />
-          <Route path="/privacy" element={<PageWrapper><PrivacyPolicy /></PageWrapper>} />
+          <Route path="/privacy" element={<Navigate to="/privacy-policy" replace />} />
           <Route path="/privacy-policy" element={<PageWrapper><PrivacyPolicy /></PageWrapper>} />
-          <Route path="/terms" element={<PageWrapper><Terms /></PageWrapper>} />
+          <Route path="/terms" element={<Navigate to="/terms-conditions" replace />} />
           <Route path="/terms-conditions" element={<PageWrapper><Terms /></PageWrapper>} />
           <Route path="/checkout" element={<PageWrapper><Checkout /></PageWrapper>} />
           <Route path="/auth" element={<PageWrapper><Auth /></PageWrapper>} />

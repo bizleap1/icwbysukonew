@@ -41,23 +41,14 @@ async function buildSitemapXml() {
   const now = new Date().toISOString();
   const urlEntries = [];
 
-  // 1. Core High-Priority Public Pages
+  // 1. Core High-Priority Public Canonical Pages
   const staticRoutes = [
     { path: "/", priority: "1.0", changefreq: "daily" },
     { path: "/collection", priority: "0.9", changefreq: "daily" },
-    { path: "/shop", priority: "0.9", changefreq: "daily" },
     { path: "/new-in", priority: "0.9", changefreq: "daily" },
+    { path: "/shop", priority: "0.8", changefreq: "daily" },
     { path: "/women", priority: "0.8", changefreq: "daily" },
     { path: "/shop-by-moment", priority: "0.8", changefreq: "weekly" },
-
-    // Curated Moments
-    { path: "/moment/the-boardroom-edit", priority: "0.7", changefreq: "weekly" },
-    { path: "/moment/the-executive-essentials", priority: "0.7", changefreq: "weekly" },
-    { path: "/moment/the-founder-edit", priority: "0.7", changefreq: "weekly" },
-    { path: "/moment/the-presentation-edit", priority: "0.7", changefreq: "weekly" },
-    { path: "/moment/the-after-hours-executive", priority: "0.7", changefreq: "weekly" },
-
-    // Brand, Concierge & Customer Trust Pages
     { path: "/wardrobe-concierge", priority: "0.7", changefreq: "monthly" },
     { path: "/about", priority: "0.7", changefreq: "monthly" },
     { path: "/contact", priority: "0.6", changefreq: "monthly" },
@@ -74,25 +65,6 @@ async function buildSitemapXml() {
       lastmod: now,
       changefreq: r.changefreq,
       priority: r.priority
-    });
-  }
-
-  // 2. Active Collections / Categories
-  const categorySlugs = new Set(["suits", "separates", "coords", "signatures"]);
-  if (Array.isArray(categories)) {
-    for (const cat of categories) {
-      if (cat && !cat.is_archived && cat.slug) {
-        categorySlugs.add(cat.slug.toLowerCase().trim());
-      }
-    }
-  }
-
-  for (const slug of categorySlugs) {
-    urlEntries.push({
-      loc: `${DOMAIN}/collection/${encodeURIComponent(slug)}`,
-      lastmod: now,
-      changefreq: "weekly",
-      priority: "0.8"
     });
   }
 

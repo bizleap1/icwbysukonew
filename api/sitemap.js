@@ -33,23 +33,14 @@ function buildXmlFromData(products = [], categories = []) {
   const now = new Date().toISOString();
   const urlEntries = [];
 
-  // 1. Core High-Priority Public Pages
+  // 1. Core High-Priority Public Canonical Pages
   const staticRoutes = [
     { path: "/", priority: "1.0", changefreq: "daily" },
     { path: "/collection", priority: "0.9", changefreq: "daily" },
-    { path: "/shop", priority: "0.9", changefreq: "daily" },
     { path: "/new-in", priority: "0.9", changefreq: "daily" },
+    { path: "/shop", priority: "0.8", changefreq: "daily" },
     { path: "/women", priority: "0.8", changefreq: "daily" },
     { path: "/shop-by-moment", priority: "0.8", changefreq: "weekly" },
-
-    // Curated Moments
-    { path: "/moment/the-boardroom-edit", priority: "0.7", changefreq: "weekly" },
-    { path: "/moment/the-executive-essentials", priority: "0.7", changefreq: "weekly" },
-    { path: "/moment/the-founder-edit", priority: "0.7", changefreq: "weekly" },
-    { path: "/moment/the-presentation-edit", priority: "0.7", changefreq: "weekly" },
-    { path: "/moment/the-after-hours-executive", priority: "0.7", changefreq: "weekly" },
-
-    // Brand & Service Pages
     { path: "/wardrobe-concierge", priority: "0.7", changefreq: "monthly" },
     { path: "/about", priority: "0.7", changefreq: "monthly" },
     { path: "/contact", priority: "0.6", changefreq: "monthly" },
@@ -66,25 +57,6 @@ function buildXmlFromData(products = [], categories = []) {
       lastmod: now,
       changefreq: r.changefreq,
       priority: r.priority
-    });
-  }
-
-  // 2. Active Collections / Categories
-  const categorySlugs = new Set(["suits", "separates", "coords", "signatures"]);
-  if (Array.isArray(categories)) {
-    for (const cat of categories) {
-      if (cat && !cat.is_archived && cat.slug) {
-        categorySlugs.add(cat.slug.toLowerCase().trim());
-      }
-    }
-  }
-
-  for (const slug of categorySlugs) {
-    urlEntries.push({
-      loc: `${DOMAIN}/collection/${encodeURIComponent(slug)}`,
-      lastmod: now,
-      changefreq: "weekly",
-      priority: "0.8"
     });
   }
 
@@ -125,33 +97,9 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    // Strategy 1: Attempt to fetch pre-rendered XML from backend
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4500);
-      const xmlRes = await fetch(`${BACKEND_BASE}/sitemap.xml`, {
-        signal: controller.signal,
-        headers: { "Accept": "application/xml" }
-      });
-      clearTimeout(timeoutId);
-
-      if (xmlRes.ok) {
-        const text = await xmlRes.text();
-        if (text && text.trim().startsWith("<?xml")) {
-          cachedSitemapXml = text;
-          lastFetchTime = now;
-          res.setHeader("Content-Type", "application/xml; charset=utf-8");
-          res.setHeader("Cache-Control", "public, s-maxage=3600, stale-while-revalidate=86400");
-          return res.status(200).send(text);
-        }
-      }
-    } catch (e) {
-      // Backend /sitemap.xml not yet available or timed out, proceed to Strategy 2
-    }
-
-    // Strategy 2: Fetch products & categories directly from backend API
+    // Primary: Fetch live active products & categories from backend API
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
 
     const [prodsRes, catsRes] = await Promise.all([
       fetch(`${BACKEND_BASE}/api/products`, { signal: controller.signal })
