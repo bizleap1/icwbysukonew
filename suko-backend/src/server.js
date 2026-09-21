@@ -15,6 +15,7 @@ const reviewsRoutes = require("./routes/reviews");
 const cartRoutes = require("./routes/cart");
 const broadcastsRoutes = require("./routes/broadcasts");
 const settingsRoutes = require("./routes/settings");
+const { router: sitemapRoutes } = require("./routes/sitemap");
 
 const { securityHeaders, requestLogger } = require("./middleware/security");
 const { apiLimiter } = require("./middleware/rateLimiter");
@@ -104,6 +105,8 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/broadcasts", broadcastsRoutes);
 app.use("/api/admin/send-email", broadcastsRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/", sitemapRoutes);
+app.use("/api", sitemapRoutes);
 
 // 404 fallback
 app.use((req, res) => {

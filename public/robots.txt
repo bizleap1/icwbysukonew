@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Private, customer account, and admin surfaces
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /auth
+Disallow: /account
+Disallow: /checkout
+Disallow: /orders
+Disallow: /wishlist
+
+# Canonical XML Sitemap
+Sitemap: https://www.indiancorporatewear.com/sitemap.xml
