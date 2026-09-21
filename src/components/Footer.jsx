@@ -297,8 +297,19 @@ export const Footer = () => {
               className="w-[96px] sm:w-[106px] h-auto object-contain mx-auto opacity-90 group-hover:opacity-100 transition-opacity duration-300"
             />
           </Link>
-          <div className="mt-2.5 text-[9.5px] uppercase tracking-[0.24em] text-white/40 font-body pb-1">
+          <div className="mt-2.5 text-[9.5px] uppercase tracking-[0.24em] text-white/40 font-body pb-0.5">
             &copy; {new Date().getFullYear()} SUKO &middot; THE INDIAN CORPORATE WEAR. ALL RIGHTS RESERVED.
+          </div>
+          <div className="mt-1 text-[9px] uppercase tracking-[0.2em] text-white/40 font-body pb-1">
+            Developed and Managed by{" "}
+            <a
+              href="https://bizleap.in/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/60 hover:text-[#C2922E] transition-colors duration-200 underline underline-offset-4 decoration-white/20 hover:decoration-[#C2922E]"
+            >
+              BIZLEAP
+            </a>
           </div>
         </div>
 
