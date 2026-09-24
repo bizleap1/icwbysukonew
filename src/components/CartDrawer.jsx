@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Minus, Plus, ShoppingBag, ArrowRight } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
+import { useLenis } from "lenis/react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
@@ -12,6 +13,117 @@ const CartDrawer = () => {
   const { isOpen, closeCart, items, removeItem, updateQty, subtotal } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const lenis = useLenis();
+  const drawerRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+
+  // 1. Lock background page scroll & stop Lenis smooth-scroll while cart is open
+  useEffect(() => {
+    if (isOpen) {
+      lenis?.stop();
+
+      const prevOverflow = document.body.style.overflow;
+      const prevPaddingRight = document.body.style.paddingRight;
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`;
+      }
+      document.body.style.overflow = "hidden";
+
+      return () => {
+        lenis?.start();
+        document.body.style.overflow = prevOverflow;
+        document.body.style.paddingRight = prevPaddingRight;
+      };
+    } else {
+      lenis?.start();
+      document.body.style.overflow = "";
+      document.body.style.paddingRight = "";
+    }
+  }, [isOpen, lenis]);
+
+  // 2. Prevent mouse wheel & trackpad scroll from bleeding into the background webpage
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const drawerEl = drawerRef.current;
+    const scrollEl = scrollContainerRef.current;
+
+    // Trap wheel events occurring on fixed header or footer
+    const handleDrawerWheel = (e) => {
+      if (scrollEl && !scrollEl.contains(e.target)) {
+        e.preventDefault();
+      }
+    };
+
+    // Trap wheel events occurring at scroll container boundaries (top / bottom)
+    const handleScrollWheel = (e) => {
+      if (!scrollEl) return;
+      const { scrollTop, scrollHeight, clientHeight } = scrollEl;
+      const isScrollable = scrollHeight > clientHeight;
+
+      if (!isScrollable) {
+        e.preventDefault();
+        return;
+      }
+
+      const isAtTop = scrollTop <= 0;
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1;
+
+      if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) {
+        e.preventDefault();
+      }
+    };
+
+    // Mobile / Touch boundary trap
+    let touchStartY = 0;
+    const handleTouchStart = (e) => {
+      if (e.touches.length === 1) {
+        touchStartY = e.touches[0].clientY;
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      if (!scrollEl || e.touches.length !== 1) return;
+      const currentY = e.touches[0].clientY;
+      const deltaY = touchStartY - currentY;
+      const { scrollTop, scrollHeight, clientHeight } = scrollEl;
+      const isScrollable = scrollHeight > clientHeight;
+
+      if (!isScrollable) {
+        e.preventDefault();
+        return;
+      }
+
+      const isAtTop = scrollTop <= 0;
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1;
+
+      if ((deltaY < 0 && isAtTop) || (deltaY > 0 && isAtBottom)) {
+        e.preventDefault();
+      }
+    };
+
+    if (drawerEl) {
+      drawerEl.addEventListener("wheel", handleDrawerWheel, { passive: false });
+    }
+    if (scrollEl) {
+      scrollEl.addEventListener("wheel", handleScrollWheel, { passive: false });
+      scrollEl.addEventListener("touchstart", handleTouchStart, { passive: true });
+      scrollEl.addEventListener("touchmove", handleTouchMove, { passive: false });
+    }
+
+    return () => {
+      if (drawerEl) {
+        drawerEl.removeEventListener("wheel", handleDrawerWheel);
+      }
+      if (scrollEl) {
+        scrollEl.removeEventListener("wheel", handleScrollWheel);
+        scrollEl.removeEventListener("touchstart", handleTouchStart);
+        scrollEl.removeEventListener("touchmove", handleTouchMove);
+      }
+    };
+  }, [isOpen, items.length]);
 
   const goCheckout = () => {
     closeCart();
@@ -34,21 +146,31 @@ const CartDrawer = () => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35 }}
             onClick={closeCart}
-            className="fixed inset-0 bg-black/45 backdrop-blur-sm z-[70]"
+            onWheel={(e) => e.preventDefault()}
+            onTouchMove={(e) => e.preventDefault()}
+            data-lenis-prevent="true"
+            data-lenis-prevent-wheel="true"
+            data-lenis-prevent-touch="true"
+            className="fixed inset-0 bg-black/45 backdrop-blur-sm z-[70] overscroll-contain"
             data-testid="cart-backdrop"
           />
 
           {/* Luxury Warm Ivory Slide-Over Drawer */}
           <motion.aside
+            ref={drawerRef}
             data-testid="cart-drawer"
+            data-lenis-prevent="true"
+            data-lenis-prevent-wheel="true"
+            data-lenis-prevent-touch="true"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed top-0 right-0 bottom-0 z-[80] w-full sm:w-[480px] bg-[#FAF8F5] text-[#121215] border-l border-[#E8E4DC] shadow-2xl flex flex-col font-body selection:bg-[#C2922E] selection:text-white"
+            className="fixed top-0 right-0 bottom-0 z-[80] w-full sm:w-[480px] bg-[#FAF8F5] text-[#121215] border-l border-[#E8E4DC] shadow-2xl flex flex-col font-body selection:bg-[#C2922E] selection:text-white overscroll-contain"
+            style={{ overscrollBehavior: "contain" }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 sm:px-8 py-5 sm:py-6 border-b border-[#E8E4DC] bg-[#FAF8F5]">
+            <div className="shrink-0 flex items-center justify-between px-6 sm:px-8 py-5 sm:py-6 border-b border-[#E8E4DC] bg-[#FAF8F5]">
               <div>
                 <span className="text-[9.5px] uppercase tracking-[0.24em] text-[#C2922E] font-medium block mb-0.5">
                   YOUR CURATED SELECTION
@@ -68,7 +190,17 @@ const CartDrawer = () => {
             </div>
 
             {/* Scrollable Items Section */}
-            <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-6">
+            <div 
+              ref={scrollContainerRef}
+              data-lenis-prevent="true"
+              data-lenis-prevent-wheel="true"
+              data-lenis-prevent-touch="true"
+              className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-6 sm:px-8 py-6"
+              style={{
+                overscrollBehavior: "contain",
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
               {items.length === 0 ? (
                 <div data-testid="cart-empty" className="flex flex-col items-center justify-center py-24 sm:py-32 text-center">
                   <div className="w-14 h-14 rounded-full bg-[#F3EFE6] border border-[#E8E4DC] flex items-center justify-center mb-5 text-[#C2922E]">
@@ -172,7 +304,7 @@ const CartDrawer = () => {
 
             {/* Footer Summary / Checkout CTA */}
             {items.length > 0 && (
-              <div className="border-t border-[#E8E4DC] bg-[#FAF8F5] px-6 sm:px-8 py-5 sm:py-6 space-y-4">
+              <div className="shrink-0 border-t border-[#E8E4DC] bg-[#FAF8F5] px-6 sm:px-8 py-5 sm:py-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] uppercase tracking-[0.22em] text-[#555560] font-medium">
                     Estimated Subtotal
