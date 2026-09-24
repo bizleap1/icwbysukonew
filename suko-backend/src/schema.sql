@@ -65,6 +65,7 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS is_new_arrival BOOLEAN DEFAULT fal
 ALTER TABLE products ADD COLUMN IF NOT EXISTS show_on_homepage_new_arrivals BOOLEAN DEFAULT false;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS homepage_new_arrival_position INTEGER;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS garment_label VARCHAR(100);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS size_guide JSONB DEFAULT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
 CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku);

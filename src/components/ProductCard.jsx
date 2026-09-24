@@ -6,6 +6,7 @@ import { formatINR } from "../data/products";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import { getCardImage } from "../utils/mediaUtils";
+import { resolveCleanProductSizes } from "../utils/sizeUtils";
 
 const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = false, showAddToBag = false, disableHoverImage = false, useSecondImage, className = "" }) => {
   const navigate = useNavigate();
@@ -111,22 +112,7 @@ const ProductCard = ({ product, index = 0, lightTheme = false, isFeatured = fals
   const wishlisted = isInWishlist ? isInWishlist(product.id) : false;
 
   const availableSizes = useMemo(() => {
-    if (product.size_stock && typeof product.size_stock === "object" && Object.keys(product.size_stock).length > 0) {
-      return Object.keys(product.size_stock);
-    }
-    if (Array.isArray(product.sizes) && product.sizes.length > 0) {
-      return product.sizes;
-    }
-    if (typeof product.sizes === "string") {
-      try {
-        const parsed = JSON.parse(product.sizes);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch {}
-      if (product.sizes.trim()) {
-        return product.sizes.split(",").map(s => s.trim()).filter(Boolean);
-      }
-    }
-    return ["38", "40", "42", "44", "46"];
+    return resolveCleanProductSizes(product);
   }, [product]);
 
   const handleWishlistClick = (e) => {

@@ -3,9 +3,25 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Heart, ShoppingBag } from "lucide-react";
 import { formatINR } from "../../data/products";
+import { DEFAULT_SIZE_GUIDE, NUMERIC_SIZE_GUIDE, resolveCleanProductSizes } from "../../utils/sizeUtils";
 
-export const SizeGuideModal = ({ isOpen, onClose }) => {
+export const SizeGuideModal = ({ isOpen, onClose, product, customGuide }) => {
   if (!isOpen || typeof document === "undefined") return null;
+
+  // Resolve rows: product custom guide > customGuide prop > numeric vs alpha check > default
+  let rows = DEFAULT_SIZE_GUIDE;
+
+  if (Array.isArray(product?.size_guide) && product.size_guide.length > 0) {
+    rows = product.size_guide;
+  } else if (Array.isArray(customGuide) && customGuide.length > 0) {
+    rows = customGuide;
+  } else if (product) {
+    const cleanSizes = resolveCleanProductSizes(product);
+    const isNumeric = cleanSizes.some((s) => /^\d+$/.test(s));
+    if (isNumeric) {
+      rows = NUMERIC_SIZE_GUIDE;
+    }
+  }
 
   return createPortal(
     <AnimatePresence>
@@ -37,7 +53,7 @@ export const SizeGuideModal = ({ isOpen, onClose }) => {
               type="button"
               onClick={onClose}
               aria-label="Close size guide"
-              className="w-8 h-8 rounded-full bg-[#F3EFE6] flex items-center justify-center text-[#111113] hover:text-[#C2922E]"
+              className="w-8 h-8 rounded-full bg-[#F3EFE6] flex items-center justify-center text-[#111113] hover:text-[#C2922E] cursor-pointer"
             >
               <X size={15} />
             </button>
@@ -54,18 +70,12 @@ export const SizeGuideModal = ({ isOpen, onClose }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E8E4DC]">
-                {[
-                  { sz: "XS", bust: "32–33", waist: "25–26", hip: "35–36" },
-                  { sz: "S", bust: "34–35", waist: "27–28", hip: "37–38" },
-                  { sz: "M", bust: "36–37", waist: "29–30", hip: "39–40" },
-                  { sz: "L", bust: "38–39", waist: "31–32", hip: "41–42" },
-                  { sz: "XL", bust: "40–42", waist: "33–35", hip: "43–45" }
-                ].map((row, i) => (
+                {rows.map((row, i) => (
                   <tr key={i} className="hover:bg-[#F3EFE6]">
-                    <td className="py-2.5 px-3 font-semibold">{row.sz}</td>
-                    <td className="py-2.5 px-3 text-[#555560]">{row.bust}</td>
-                    <td className="py-2.5 px-3 text-[#555560]">{row.waist}</td>
-                    <td className="py-2.5 px-3 text-[#555560]">{row.hip}</td>
+                    <td className="py-2.5 px-3 font-semibold">{row.size || row.sz}</td>
+                    <td className="py-2.5 px-3 text-[#555560]">{row.bust || "—"}</td>
+                    <td className="py-2.5 px-3 text-[#555560]">{row.waist || "—"}</td>
+                    <td className="py-2.5 px-3 text-[#555560]">{row.hip || "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -83,16 +93,16 @@ export const SizeGuideModal = ({ isOpen, onClose }) => {
                   Need help finding your fit?
                 </span>
                 <span className="text-[11px] text-[#666672] font-light">
-                  Our SUKO stylists can assist you with size selection and fit guidance.
+                  Our ICW stylists can assist you with size selection and fit guidance.
                 </span>
               </div>
               <a
-                href="https://wa.me/919370350885?text=Hello%20SUKO%20Stylist%2C%20I%20would%20like%20assistance%20with%20sizing%20and%20fit%20guidance."
+                href="https://wa.me/919370350885?text=Hello%20ICW%20Stylist%2C%20I%20would%20like%20assistance%20with%20sizing%20and%20fit%20guidance."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center px-4 py-2 bg-[#111113] text-white text-[10.5px] uppercase tracking-[0.18em] font-medium hover:bg-[#C2922E] transition-colors shrink-0 cursor-pointer"
               >
-                Chat with a SUKO Stylist
+                Chat with an ICW Stylist
               </a>
             </div>
           </div>

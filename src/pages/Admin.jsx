@@ -22,6 +22,8 @@ import CouponsSection from "../components/admin/CouponsSection";
 import CustomerCommunicationSection from "../components/admin/CustomerCommunicationSection";
 import CustomerDirectorySection from "../components/admin/CustomerDirectorySection";
 import OrderDocumentPreviewModal from "../components/admin/OrderDocumentPreviewModal";
+import ProductSizeInventoryManager from "../components/admin/ProductSizeInventoryManager";
+import { resolveCleanProductSizes, sortGarmentSizes } from "../utils/sizeUtils";
 import { apiClient, API_BASE_URL } from "../config/api";
 
 const dataURLtoFile = (dataurl, filename) => {
@@ -889,9 +891,22 @@ const Admin = () => {
     inventory_mode: "replace", // 'replace' | 'increase' | 'decrease'
     inventory_delta: "",
     inventory_common_qty: "",
-    size_stock: { "38": "", "40": "", "42": "", "44": "", "46": "", "Free": "" },
+    size_stock: {},
     inventory_reason: ""
   });
+
+  const bulkAvailableSizes = useMemo(() => {
+    if (!selectedProductIds || selectedProductIds.length === 0) {
+      return ["XS", "S", "M", "L", "XL"];
+    }
+    const selectedProds = (products || []).filter(p => selectedProductIds.includes(p.id) || selectedProductIds.includes(String(p.id)));
+    const sizeSet = new Set();
+    selectedProds.forEach(p => {
+      resolveCleanProductSizes(p).forEach(sz => sizeSet.add(sz));
+    });
+    if (sizeSet.size === 0) return ["XS", "S", "M", "L", "XL"];
+    return sortGarmentSizes(Array.from(sizeSet));
+  }, [selectedProductIds, products]);
 
   // Category Form State
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -949,8 +964,9 @@ const Admin = () => {
     homepage_new_arrival_position: ""
   };
   const [formData, setFormData] = useState(initialGarmentForm);
-  const [applicableSizes, setApplicableSizes] = useState(["38", "40", "42", "44", "46"]);
-  const [sizeStockMap, setSizeStockMap] = useState({ "38": 10, "40": 10, "42": 5, "44": 0, "46": 0 });
+  const [applicableSizes, setApplicableSizes] = useState(["XS", "S", "M", "L", "XL"]);
+  const [sizeStockMap, setSizeStockMap] = useState({ "XS": 3, "S": 5, "M": 5, "L": 3, "XL": 2 });
+  const [sizeGuide, setSizeGuide] = useState(null);
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
 
@@ -1350,8 +1366,9 @@ const Admin = () => {
     show_on_homepage_new_arrivals: false,
     homepage_new_arrival_position: ""
   });
-  const [editApplicableSizes, setEditApplicableSizes] = useState(["38", "40", "42", "44", "46"]);
+  const [editApplicableSizes, setEditApplicableSizes] = useState(["XS", "S", "M", "L", "XL"]);
   const [editSizeStockMap, setEditSizeStockMap] = useState({});
+  const [editSizeGuide, setEditSizeGuide] = useState(null);
   const [editImage, setEditImage] = useState(null);
   const [updatingProduct, setUpdatingProduct] = useState(false);
 
@@ -1377,17 +1394,17 @@ const Admin = () => {
     setIsDrawerInEditMode(startInEdit);
 
     const initialMap = resolveProductSizeStock(p);
-    let appSizes = [];
-    if (p.size_stock && typeof p.size_stock === "object" && Object.keys(p.size_stock).length > 0) {
-      appSizes = Object.keys(p.size_stock);
-    } else if (Array.isArray(p.sizes) && p.sizes.length > 0) {
-      appSizes = p.sizes;
-    } else if (Object.keys(initialMap).length > 0) {
-      appSizes = Object.keys(initialMap);
-    } else {
-      appSizes = ["38", "40", "42", "44", "46"];
-    }
+    const appSizes = resolveCleanProductSizes(p);
     setEditApplicableSizes(appSizes);
+
+    let parsedGuide = null;
+    if (p.size_guide) {
+      if (Array.isArray(p.size_guide)) parsedGuide = p.size_guide;
+      else if (typeof p.size_guide === "string") {
+        try { parsedGuide = JSON.parse(p.size_guide); } catch {}
+      }
+    }
+    setEditSizeGuide(parsedGuide);
 
     setEditFormData({
       name: p.name || "",
@@ -1521,6 +1538,7 @@ const Admin = () => {
       data.append("size_stock", JSON.stringify(sanitizedEditStock));
       data.append("stock", String(computedEditStock));
       data.append("sizes", JSON.stringify(editApplicableSizes));
+      data.append("size_guide", editSizeGuide && Array.isArray(editSizeGuide) && editSizeGuide.length > 0 ? JSON.stringify(editSizeGuide) : "null");
 
       // Build structured gallery mapping for exact slot ordering, replacement, and Cloudinary sync
       let nextNewFileIndex = 0;
@@ -2041,6 +2059,7 @@ const Admin = () => {
       data.append("occasion", formData.occasion || "Business Formal");
       data.append("size_stock", JSON.stringify(sanitizedStock));
       data.append("sizes", JSON.stringify(applicableSizes));
+      data.append("size_guide", sizeGuide && Array.isArray(sizeGuide) && sizeGuide.length > 0 ? JSON.stringify(sizeGuide) : "null");
 
       // Handling images: Primary file
       const primaryItem = galleryFiles.find(g => g.isPrimary) || galleryFiles[0];
@@ -2174,14 +2193,7 @@ const Admin = () => {
       homepage_new_arrival_position: prod.homepage_new_arrival_position ? String(prod.homepage_new_arrival_position) : ""
     });
 
-    let appSizes = [];
-    if (prod.size_stock && typeof prod.size_stock === "object" && Object.keys(prod.size_stock).length > 0) {
-      appSizes = Object.keys(prod.size_stock);
-    } else if (Array.isArray(prod.sizes) && prod.sizes.length > 0) {
-      appSizes = prod.sizes;
-    } else {
-      appSizes = ["38", "40", "42", "44", "46"];
-    }
+    const appSizes = resolveCleanProductSizes(prod);
     setApplicableSizes(appSizes);
 
     let sMap = {};
@@ -2193,6 +2205,15 @@ const Admin = () => {
       prod.sizes.forEach(sz => { sMap[sz] = perSize; });
     }
     setSizeStockMap(sMap);
+
+    let parsedGuide = null;
+    if (prod.size_guide) {
+      if (Array.isArray(prod.size_guide)) parsedGuide = prod.size_guide;
+      else if (typeof prod.size_guide === "string") {
+        try { parsedGuide = JSON.parse(prod.size_guide); } catch {}
+      }
+    }
+    setSizeGuide(parsedGuide);
 
     let initialGallery = [];
     if (Array.isArray(prod.gallery) && prod.gallery.length > 0) {
@@ -2242,8 +2263,9 @@ const Admin = () => {
   const handleCancelEdit = () => {
     setEditingGarmentId(null);
     setFormData(initialGarmentForm);
-    setApplicableSizes(["38", "40", "42", "44", "46"]);
-    setSizeStockMap({ "38": 10, "40": 10, "42": 5, "44": 0, "46": 0 });
+    setApplicableSizes(["XS", "S", "M", "L", "XL"]);
+    setSizeStockMap({ "XS": 3, "S": 5, "M": 5, "L": 3, "XL": 2 });
+    setSizeGuide(null);
     setExistingImagesForEdit([]);
     setGalleryFiles([]);
     setImage(null);
@@ -7880,7 +7902,7 @@ const Admin = () => {
                             >
                               <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-[#111113]">
-                                  03 &middot; Size Inventory
+                                  03 &middot; Size Inventory &amp; Specifications
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
@@ -7894,122 +7916,14 @@ const Admin = () => {
                             </div>
 
                             <div className={`space-y-3 pt-1 ${mobileFormAccordions.inventory ? "block" : "hidden lg:block"}`}>
-                              {/* Applicable Sizes Selector Bar */}
-                              <div className="bg-[#FAF8F5] border border-[#E5DDD1] p-3 rounded-[2px] space-y-2.5">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                  <span className="text-[9.5px] uppercase font-mono tracking-wider text-[#746F68] font-medium">
-                                    Applicable Sizes for this Silhouette:
-                                  </span>
-                                  {/* Presets */}
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-[9px] font-mono text-[#8E877E] uppercase">Presets:</span>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const standard = ["38", "40", "42", "44", "46"];
-                                        setApplicableSizes(standard);
-                                        const newMap = { ...sizeStockMap };
-                                        standard.forEach(sz => { if (newMap[sz] === undefined) newMap[sz] = 0; });
-                                        setSizeStockMap(newMap);
-                                      }}
-                                      className="px-2 py-0.5 text-[9px] font-mono uppercase rounded-[1px] border border-[#DDD8CE] bg-white text-[#111113] hover:border-[#C2922E] hover:text-[#C2922E] transition-colors cursor-pointer"
-                                    >
-                                      Tailored 38-46
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const ext = ["36", "38", "40", "42", "44", "46"];
-                                        setApplicableSizes(ext);
-                                        const newMap = { ...sizeStockMap };
-                                        ext.forEach(sz => { if (newMap[sz] === undefined) newMap[sz] = 0; });
-                                        setSizeStockMap(newMap);
-                                      }}
-                                      className="px-2 py-0.5 text-[9px] font-mono uppercase rounded-[1px] border border-[#DDD8CE] bg-white text-[#111113] hover:border-[#C2922E] hover:text-[#C2922E] transition-colors cursor-pointer"
-                                    >
-                                      Extended 36-46
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setApplicableSizes(["Free"]);
-                                        const newMap = { ...sizeStockMap };
-                                        if (newMap["Free"] === undefined) newMap["Free"] = 10;
-                                        setSizeStockMap(newMap);
-                                      }}
-                                      className="px-2 py-0.5 text-[9px] font-mono uppercase rounded-[1px] border border-[#DDD8CE] bg-white text-[#111113] hover:border-[#C2922E] hover:text-[#C2922E] transition-colors cursor-pointer"
-                                    >
-                                      Free Size
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {/* Size Toggle Chips */}
-                                <div className="flex flex-wrap gap-1.5 pt-0.5">
-                                  {["36", "38", "40", "42", "44", "46", "Free"].map(sz => {
-                                    const isApplicable = applicableSizes.includes(sz);
-                                    return (
-                                      <button
-                                        key={sz}
-                                        type="button"
-                                        onClick={() => {
-                                          if (isApplicable) {
-                                            if (applicableSizes.length <= 1) {
-                                              toast.error("At least one size must remain applicable.");
-                                              return;
-                                            }
-                                            setApplicableSizes(applicableSizes.filter(s => s !== sz));
-                                          } else {
-                                            const allSizes = ["36", "38", "40", "42", "44", "46", "Free"];
-                                            const nextSizes = allSizes.filter(s => s === sz || applicableSizes.includes(s));
-                                            setApplicableSizes(nextSizes);
-                                            if (sizeStockMap[sz] === undefined) {
-                                              setSizeStockMap(prev => ({ ...prev, [sz]: 0 }));
-                                            }
-                                          }
-                                        }}
-                                        className={`px-3 py-1 text-xs font-mono font-medium rounded-[2px] border transition-all cursor-pointer ${
-                                          isApplicable
-                                            ? "bg-[#111113] text-white border-[#111113] shadow-xs"
-                                            : "bg-white text-[#746F68] border-[#E5DDD1] hover:border-[#111113] hover:text-[#111113]"
-                                        }`}
-                                      >
-                                        {isApplicable ? `✓ ${sz}` : `+ ${sz}`}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-
-                              {/* Size Stock Cards */}
-                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2.5">
-                                {applicableSizes.map(sz => {
-                                  const qty = sizeStockMap[sz] ?? 0;
-                                  const isZero = qty === 0;
-                                  return (
-                                    <div 
-                                      key={sz} 
-                                      className={`p-3 border rounded-[2px] text-center transition-all bg-white ${
-                                        isZero ? "border-[#E5DDD1] opacity-75" : "border-[#C2922E]/50 shadow-xs ring-1 ring-[#C2922E]/10"
-                                      }`}
-                                    >
-                                      <span className="text-xs font-mono font-bold tracking-wider text-[#111113] block mb-1">
-                                        {sz}
-                                      </span>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        value={qty}
-                                        onChange={(e) => setSizeStockMap({ ...sizeStockMap, [sz]: Math.max(0, parseInt(e.target.value, 10) || 0) })}
-                                        className="w-full bg-[#FAF8F5] border border-[#E5DDD1] focus:border-[#C2922E] text-center text-sm font-mono font-medium text-[#111113] py-1 px-1 rounded-[2px] outline-none"
-                                      />
-                                      <span className={`text-[9px] font-mono tracking-tight block mt-1.5 ${isZero ? "text-rose-600 font-semibold" : "text-[#746F68]"}`}>
-                                        {isZero ? "Out of Stock" : `${qty} available`}
-                                      </span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                              <ProductSizeInventoryManager
+                                applicableSizes={applicableSizes}
+                                setApplicableSizes={setApplicableSizes}
+                                sizeStockMap={sizeStockMap}
+                                setSizeStockMap={setSizeStockMap}
+                                sizeGuide={sizeGuide}
+                                setSizeGuide={setSizeGuide}
+                              />
                             </div>
                           </div>
 
@@ -10142,67 +10056,17 @@ const Admin = () => {
                       </div>
                     </div>
 
-                    {/* Size Stock Distribution */}
+                    {/* Size Inventory & Guide */}
                     <div className="space-y-2 border border-[#E5DDD1] p-3.5 rounded-[2px] bg-white">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[9.5px] uppercase tracking-[0.14em] text-[#746F68] font-mono font-medium block">
-                          Size Inventory
-                        </label>
-                        <span className="text-[10px] font-mono text-[#C2922E] font-semibold">
-                          TOTAL: {editApplicableSizes.reduce((acc, sz) => acc + (Math.max(0, Number(editSizeStockMap[sz])) || 0), 0)} UNITS
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1 pt-1 pb-1">
-                        {["36", "38", "40", "42", "44", "46", "Free"].map(sz => {
-                          const isApp = editApplicableSizes.includes(sz);
-                          return (
-                            <button
-                              key={sz}
-                              type="button"
-                              onClick={() => {
-                                if (isApp) {
-                                  if (editApplicableSizes.length <= 1) {
-                                    toast.error("At least one size must remain applicable.");
-                                    return;
-                                  }
-                                  setEditApplicableSizes(editApplicableSizes.filter(s => s !== sz));
-                                } else {
-                                  const all = ["36", "38", "40", "42", "44", "46", "Free"];
-                                  setEditApplicableSizes(all.filter(s => s === sz || editApplicableSizes.includes(s)));
-                                  if (editSizeStockMap[sz] === undefined) {
-                                    setEditSizeStockMap(prev => ({ ...prev, [sz]: 0 }));
-                                  }
-                                }
-                              }}
-                              className={`px-2 py-0.5 text-[9.5px] font-mono rounded-[1px] border transition-colors cursor-pointer ${
-                                isApp 
-                                  ? "bg-[#111113] text-white border-[#111113]" 
-                                  : "bg-white text-[#746F68] border-[#E5DDD1] hover:border-[#111113]"
-                              }`}
-                            >
-                              {isApp ? `✓ ${sz}` : `+ ${sz}`}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 pt-1">
-                        {editApplicableSizes.map(sz => (
-                          <div key={sz} className="text-center bg-[#FAF8F5] p-2 border border-[#E5DDD1] rounded-[2px]">
-                            <span className="text-[9.5px] font-mono font-semibold block text-[#111113] mb-0.5">{sz}</span>
-                            <input
-                              type="number"
-                              min="0"
-                              value={editSizeStockMap[sz] ?? 0}
-                              onChange={(e) => setEditSizeStockMap({ ...editSizeStockMap, [sz]: Math.max(0, parseInt(e.target.value, 10) || 0) })}
-                              className="w-full bg-white border border-[#E5DDD1] rounded-[2px] p-1 text-center text-xs font-mono text-[#111113] focus:border-[#C2922E] outline-none"
-                            />
-                            <span className={`text-[8.5px] font-mono block mt-1 ${(editSizeStockMap[sz] ?? 0) === 0 ? "text-rose-600 font-semibold" : "text-[#746F68]"}`}>
-                              {(editSizeStockMap[sz] ?? 0) === 0 ? "Out" : `${editSizeStockMap[sz] ?? 0} avl`}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                      <ProductSizeInventoryManager
+                        applicableSizes={editApplicableSizes}
+                        setApplicableSizes={setEditApplicableSizes}
+                        sizeStockMap={editSizeStockMap}
+                        setSizeStockMap={setEditSizeStockMap}
+                        sizeGuide={editSizeGuide}
+                        setSizeGuide={setEditSizeGuide}
+                        isDrawer={true}
+                      />
                     </div>
 
                     <div>
@@ -11745,10 +11609,14 @@ const Admin = () => {
                             value={bulkForm.inventory_common_qty}
                             onChange={(e) => {
                               const val = e.target.value;
+                              const updatedStock = {};
+                              bulkAvailableSizes.forEach(sz => {
+                                updatedStock[sz] = val;
+                              });
                               setBulkForm(prev => ({
                                 ...prev,
                                 inventory_common_qty: val,
-                                size_stock: { "38": val, "40": val, "42": val, "44": val, "46": val, "Free": val }
+                                size_stock: updatedStock
                               }));
                             }}
                             className="w-16 bg-white border border-[#E5DDD1] rounded-[2px] px-2 py-0.5 text-xs font-mono outline-none text-[#111113] focus:border-[#C2922E]"
@@ -11757,7 +11625,7 @@ const Admin = () => {
                       </div>
 
                       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                        {["38", "40", "42", "44", "46", "Free"].map(sz => (
+                        {bulkAvailableSizes.map(sz => (
                           <div key={sz} className="bg-white border border-[#E5DDD1] rounded-[2px] p-2 text-center">
                             <span className="text-xs font-mono font-medium text-[#111113] block mb-1">{sz}</span>
                             <input

@@ -302,6 +302,17 @@ function ensureProductSizeStock(p) {
     }
   }
 
+  if (sizeStock && typeof sizeStock === "object" && Object.keys(sizeStock).length > 0) {
+    const entries = Object.entries(sizeStock);
+    const hasAlphaWithStock = entries.some(([k, v]) => ["XS", "S", "M", "L", "XL", "XXL", "3XL"].includes(k.toUpperCase()) && Number(v) > 0);
+    if (hasAlphaWithStock) {
+      const filtered = entries.filter(([k, v]) => !(/^\d+$/.test(k) && Number(v) === 0) && !(k.toLowerCase().includes("free") && Number(v) === 0));
+      if (filtered.length > 0 && filtered.length < entries.length) {
+        sizeStock = Object.fromEntries(filtered);
+      }
+    }
+  }
+
   if (!sizeStock || typeof sizeStock !== "object" || Object.keys(sizeStock).length === 0) {
     let sizes = p.sizes;
     if (typeof sizes === "string") {
@@ -328,6 +339,16 @@ function ensureProductSizeStock(p) {
       ).catch(() => {});
     }
   }
+
+  p.size_stock = sizeStock;
+  p.sizes = Object.keys(sizeStock);
+  p.stock = Object.values(sizeStock).reduce((acc, v) => acc + (Math.max(0, Number(v)) || 0), 0);
+
+  let sizeGuide = p.size_guide;
+  if (typeof sizeGuide === "string") {
+    try { sizeGuide = JSON.parse(sizeGuide); } catch (e) { sizeGuide = null; }
+  }
+  p.size_guide = sizeGuide || null;
 
   // Parse and ensure moments structure
   let moments = p.moments;
@@ -498,6 +519,8 @@ async function createProduct(productData) {
   const seoKeywords = productData.seo_keywords || "";
   const seoSchema = productData.seo_schema || {};
 
+  const sizeGuide = productData.size_guide ? (typeof productData.size_guide === "string" ? productData.size_guide : JSON.stringify(productData.size_guide)) : null;
+
   if (pool.isMock) {
     const store = ensureDevStoreProducts();
     const cat = (store.categories || []).find(c => c.id === productData.category_id || c.slug === productData.category_id) || {
@@ -522,6 +545,7 @@ async function createProduct(productData) {
       gallery,
       sizes,
       size_stock: sizeStock,
+      size_guide: productData.size_guide || null,
       status,
       sku,
       gender: productData.gender || "female",
@@ -555,8 +579,8 @@ async function createProduct(productData) {
 
   // Real Postgres mode
   const res = await pool.query(
-    `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric, color, secondary_color, pattern, finish, silhouette, fit, occasion, moment, moments, moment_name, seo_title, seo_description, seo_keywords, seo_schema, gallery, is_new_arrival, show_on_homepage_new_arrivals, homepage_new_arrival_position, garment_label)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36)
+    `INSERT INTO products (id, name, slug, price, discount_price, stock, category_id, sub_category, description, image_url, images, sizes, size_stock, status, sku, gender, fabric, color, secondary_color, pattern, finish, silhouette, fit, occasion, moment, moments, moment_name, seo_title, seo_description, seo_keywords, seo_schema, gallery, is_new_arrival, show_on_homepage_new_arrivals, homepage_new_arrival_position, garment_label, size_guide)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37)
      RETURNING *`,
     [
       newId,
@@ -594,7 +618,8 @@ async function createProduct(productData) {
       Boolean(productData.is_new_arrival),
       Boolean(productData.show_on_homepage_new_arrivals),
       productData.show_on_homepage_new_arrivals && productData.homepage_new_arrival_position ? Number(productData.homepage_new_arrival_position) : null,
-      productData.garment_label || productData.garmentLabel || null
+      productData.garment_label || productData.garmentLabel || null,
+      sizeGuide
     ]
   );
   return ensureProductSizeStock(res.rows[0]);
@@ -704,9 +729,27 @@ async function updateProduct(id, updateData) {
     updateData.image_url = syncMedia.imageUrl;
   }
 
+  if (updateData.size_stock && typeof updateData.size_stock === "object") {
+    const entries = Object.entries(updateData.size_stock);
+    const hasAlpha = entries.some(([k, v]) => ["XS", "S", "M", "L", "XL", "XXL", "3XL"].includes(k.toUpperCase()) && Number(v) > 0);
+    let cleanStock = updateData.size_stock;
+    if (hasAlpha) {
+      const filtered = entries.filter(([k, v]) => !(/^\d+$/.test(k) && Number(v) === 0) && !(k.toLowerCase().includes("free") && Number(v) === 0));
+      if (filtered.length > 0) cleanStock = Object.fromEntries(filtered);
+    }
+    updateData.size_stock = cleanStock;
+    updateData.sizes = Object.keys(cleanStock);
+    if (updateData.stock === undefined || updateData.stock === null) {
+      updateData.stock = Object.values(cleanStock).reduce((acc, q) => acc + (Math.max(0, Number(q)) || 0), 0);
+    }
+  }
+
   const isGarmentLabelProvided = updateData.garment_label !== undefined || updateData.garmentLabel !== undefined;
   const rawGarmentLabelVal = updateData.garment_label !== undefined ? updateData.garment_label : updateData.garmentLabel;
   const targetGarmentLabel = isGarmentLabelProvided ? (rawGarmentLabelVal ? String(rawGarmentLabelVal).trim() : null) : null;
+
+  const isSizeGuideProvided = updateData.size_guide !== undefined;
+  const targetSizeGuide = isSizeGuideProvided ? (updateData.size_guide ? JSON.stringify(updateData.size_guide) : null) : null;
 
   const res = await pool.query(
     `UPDATE products
@@ -750,6 +793,10 @@ async function updateProduct(id, updateData) {
            WHEN $34::boolean THEN $35 
            ELSE garment_label 
          END,
+         size_guide = CASE 
+           WHEN $36::boolean THEN $37::jsonb 
+           ELSE size_guide 
+         END,
          updated_at = now()
      WHERE id = $31 OR slug = $31
      RETURNING *`,
@@ -788,7 +835,9 @@ async function updateProduct(id, updateData) {
       updateData.show_on_homepage_new_arrivals !== undefined ? Boolean(updateData.show_on_homepage_new_arrivals) : null,
       updateData.show_on_homepage_new_arrivals && updateData.homepage_new_arrival_position ? Number(updateData.homepage_new_arrival_position) : null,
       isGarmentLabelProvided,
-      targetGarmentLabel
+      targetGarmentLabel,
+      isSizeGuideProvided,
+      targetSizeGuide
     ]
   );
   return ensureProductSizeStock(res.rows[0]);
@@ -1718,7 +1767,7 @@ async function bulkInventoryUpdate(ids = [], options = {}, adminEmail) {
     const prodSpecificStock = product_size_stocks[current.id] || product_size_stocks[String(current.id)];
     const targetSizes = Object.keys(prevSizeStock).length > 0
       ? Object.keys(prevSizeStock)
-      : (Array.isArray(current.sizes) && current.sizes.length > 0 ? current.sizes : ["38", "40", "42", "44", "46"]);
+      : (Array.isArray(current.sizes) && current.sizes.length > 0 ? current.sizes : ["XS", "S", "M", "L", "XL"]);
 
     if (prodSpecificStock && typeof prodSpecificStock === "object") {
       Object.keys(prodSpecificStock).forEach(sz => {
@@ -1731,7 +1780,10 @@ async function bulkInventoryUpdate(ids = [], options = {}, adminEmail) {
           newSizeStock[sz] = qty;
         });
       } else {
-        const allSizes = Array.from(new Set([...targetSizes, ...Object.keys(size_stock)]));
+        const validSpecifiedKeys = Object.keys(size_stock).filter(k => size_stock[k] !== undefined && size_stock[k] !== "");
+        const allSizes = validSpecifiedKeys.length > 0
+          ? Array.from(new Set([...targetSizes, ...validSpecifiedKeys]))
+          : targetSizes;
         allSizes.forEach(sz => {
           newSizeStock[sz] = size_stock[sz] !== undefined && size_stock[sz] !== "" 
             ? Math.max(0, Number(size_stock[sz])) 
