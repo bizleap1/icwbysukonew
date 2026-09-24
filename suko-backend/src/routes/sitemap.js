@@ -77,7 +77,6 @@ async function buildSitemapXml() {
     { path: "/collection", priority: "0.9", changefreq: "daily" },
     { path: "/new-in", priority: "0.9", changefreq: "daily" },
     { path: "/shop", priority: "0.8", changefreq: "daily" },
-    { path: "/women", priority: "0.8", changefreq: "daily" },
     { path: "/shop-by-moment", priority: "0.8", changefreq: "weekly" },
     { path: "/wardrobe-concierge", priority: "0.7", changefreq: "monthly" },
     { path: "/about", priority: "0.7", changefreq: "monthly" },

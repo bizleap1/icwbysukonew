@@ -30,6 +30,11 @@
       "permanent": true
     },
     {
+      "source": "/women",
+      "destination": "/collection",
+      "permanent": true
+    },
+    {
       "source": "/new-arrivals",
       "destination": "/new-in",
       "permanent": true

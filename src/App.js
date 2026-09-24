@@ -38,7 +38,6 @@ const lazyWithRetry = (componentImport) =>
 
 // Lazy-loaded routes
 const Home = lazyWithRetry(() => import("./pages/Home"));
-const Women = lazyWithRetry(() => import("./pages/Women"));
 const Collection = lazyWithRetry(() => import("./pages/Collection"));
 const NewIn = lazyWithRetry(() => import("./pages/NewIn"));
 const ShopByMoment = lazyWithRetry(() => import("./pages/ShopByMoment"));
@@ -186,7 +185,7 @@ const AnimatedRoutes = () => {
           <Route path="/wardrobe-concierge" element={<PageWrapper><WardrobeConcierge /></PageWrapper>} />
           <Route path="/concierge" element={<Navigate to="/wardrobe-concierge" replace />} />
           <Route path="/personal-styling" element={<Navigate to="/wardrobe-concierge" replace />} />
-          <Route path="/women" element={<PageWrapper><Women /></PageWrapper>} />
+          <Route path="/women" element={<Navigate to="/collection" replace />} />
           <Route path="/shop" element={<PageWrapper><NewIn /></PageWrapper>} />
           <Route path="/collection" element={<PageWrapper><Collection /></PageWrapper>} />
           <Route path="/collections" element={<Navigate to="/collection" replace />} />

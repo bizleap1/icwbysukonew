@@ -77,13 +77,12 @@ function buildXml(rawProducts = []) {
   const now = new Date().toISOString();
   const urlEntries = [];
 
-  // 1. The 14 Canonical Core High-Priority Pages
+  // 1. The 13 Canonical Core High-Priority Pages
   const staticRoutes = [
     { path: "/", priority: "1.0", changefreq: "daily" },
     { path: "/collection", priority: "0.9", changefreq: "daily" },
     { path: "/new-in", priority: "0.9", changefreq: "daily" },
     { path: "/shop", priority: "0.8", changefreq: "daily" },
-    { path: "/women", priority: "0.8", changefreq: "daily" },
     { path: "/shop-by-moment", priority: "0.8", changefreq: "weekly" },
     { path: "/wardrobe-concierge", priority: "0.7", changefreq: "monthly" },
     { path: "/about", priority: "0.7", changefreq: "monthly" },
