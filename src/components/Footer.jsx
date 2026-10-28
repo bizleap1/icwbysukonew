@@ -146,11 +146,11 @@ export const Footer = () => {
                   <span className="font-light">+91 93703 50885 (WhatsApp)</span>
                 </a>
                 <a
-                  href="mailto:indiancoporatewearbysuko@gmail.com"
+                  href="mailto:indiancorporatewearbysuko@gmail.com"
                   className="flex items-center gap-2 text-[12px] text-[#A8A8B4] hover:text-[#C2922E] transition-colors"
                 >
                   <Mail size={14} className="text-[#C2922E] shrink-0" />
-                  <span className="break-all font-light">indiancoporatewearbysuko@gmail.com</span>
+                  <span className="break-all font-light">indiancorporatewearbysuko@gmail.com</span>
                 </a>
                 <div className="flex items-center gap-3 pt-1">
                   <a
@@ -254,12 +254,12 @@ export const Footer = () => {
                 </span>
               </a>
               <a
-                href="mailto:indiancoporatewearbysuko@gmail.com"
+                href="mailto:indiancorporatewearbysuko@gmail.com"
                 className="flex items-center gap-2 text-[12.5px] text-[#A8A8B4] hover:text-[#C2922E] transition-colors group"
               >
                 <Mail size={14} className="text-[#C2922E] shrink-0" />
                 <span className="break-all font-light group-hover:text-white transition-colors">
-                  indiancoporatewearbysuko@gmail.com
+                  indiancorporatewearbysuko@gmail.com
                 </span>
               </a>
               <div className="flex items-center gap-3 text-white/75 pt-1">

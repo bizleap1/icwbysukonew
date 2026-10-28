@@ -11,7 +11,8 @@ const NotFound = () => {
     >
       <SEO 
         title="Page Not Found"
-        description="The requested page could not be found. Explore ICW by Suko ultra-luxury corporate tailoring."
+        description="The requested page could not be found. Explore SUKO corporate wear for women."
+        noindex
       />
 
       <div className="max-w-xl w-full mx-auto text-center">

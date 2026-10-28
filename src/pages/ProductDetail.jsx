@@ -207,6 +207,7 @@ export const ProductDetail = () => {
   if (!product) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center bg-[#FAF8F5] px-6 text-center font-body">
+        <SEO title="Piece Not Found" description="This SUKO piece is unavailable or has been archived." noindex />
         <div>
           <span className="text-[10.5px] uppercase tracking-[0.3em] text-[#C2922E] font-medium block mb-2">
             SUKO &middot; THE INDIAN CORPORATE WEAR

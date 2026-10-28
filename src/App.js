@@ -13,6 +13,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { ProductProvider } from "./context/ProductContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import PageWrapper from "./components/PageWrapper";
+import MetaPixelTracker from "./components/MetaPixelTracker";
 import Aurora from "./components/Aurora";
 
 // Helper to automatically retry or reload on ChunkLoadError
@@ -186,7 +187,7 @@ const AnimatedRoutes = () => {
           <Route path="/concierge" element={<Navigate to="/wardrobe-concierge" replace />} />
           <Route path="/personal-styling" element={<Navigate to="/wardrobe-concierge" replace />} />
           <Route path="/women" element={<Navigate to="/collection" replace />} />
-          <Route path="/shop" element={<PageWrapper><NewIn /></PageWrapper>} />
+          <Route path="/shop" element={<Navigate to="/new-in" replace />} />
           <Route path="/collection" element={<PageWrapper><Collection /></PageWrapper>} />
           <Route path="/collections" element={<Navigate to="/collection" replace />} />
           <Route path="/new-in" element={<PageWrapper><NewIn /></PageWrapper>} />
@@ -238,6 +239,7 @@ function LayoutContent() {
     <>
       <GlobalBackground />
       <ScrollToTop />
+      <MetaPixelTracker />
       {!isAdminPage && !isCheckoutPage && <Navbar />}
       {!isCheckoutPage && <CartDrawer />}
       <Toaster
